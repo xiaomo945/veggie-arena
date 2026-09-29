@@ -24,6 +24,10 @@ signal pickup_spawned(pos: Vector2, value: int)
 signal weapons_changed(weapons: Array)
 signal weapon_merged(key: String, level: int)
 
+# ---- 战斗发射 ----
+# Player 只发信号说"我要往这个方向打一发"，不认识子弹、也不认识敌人列表
+signal weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, color: Color)
+
 # ---- 操作输入 ----
 # 摇杆只发信号，不认识 Player；Player 只收信号，不认识摇杆。
 signal stick_dir_changed(dir: Vector2)

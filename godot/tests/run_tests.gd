@@ -9,6 +9,8 @@ const TEconomy := preload("res://tests/test_economy.gd")
 const TInventory := preload("res://tests/test_inventory.gd")
 const TBalance := preload("res://tests/test_balance.gd")
 const TMovement := preload("res://tests/test_movement.gd")
+const TWeapon := preload("res://tests/test_weapon.gd")
+const THit := preload("res://tests/test_hit.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -30,6 +32,8 @@ func _initialize() -> void:
 	_run("Inventory", TInventory)
 	_run("Balance(配平)", TBalance, data)
 	_run("Movement(手感)", TMovement, data)
+	_run("Weapon(武器)", TWeapon, data)
+	_run("Hit(命中/分离)", THit, data)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告
 	data.free()

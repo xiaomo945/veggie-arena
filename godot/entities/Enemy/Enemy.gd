@@ -1,0 +1,89 @@
+extends Node2D
+
+# 敌人：三种造型必须一眼能分清（之前版本被吐槽"看不到敌人是谁"）。
+#   小兵 grunt = 红色圆（最常见）
+#   冲刺兵 fast = 橙色尖三角（细长、快）
+#   重甲兵 tank = 紫色六边形（大、慢、硬）
+
+var alive := false
+var eid := 0
+var etype := "grunt"
+var hp := 10.0
+var max_hp := 10.0
+var speed := 50.0
+var dmg := 5.0
+var radius := 14.0
+var gold := 1
+var tint := Color(0.88, 0.38, 0.37)
+var _flash := 0.0
+
+func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
+	etype = str(stats.get("type", "grunt"))
+	eid = id
+	hp = float(stats.get("hp", 10))
+	max_hp = hp
+	speed = float(stats.get("speed", 50))
+	dmg = float(stats.get("damage", 5))
+	radius = float(stats.get("radius", 14))
+	gold = int(stats.get("gold", 1))
+	tint = Color(str(stats.get("color", "#e0605f")))
+	global_position = pos
+	alive = true
+	_flash = 0.0
+	visible = true
+	queue_redraw()
+
+func recycle() -> void:
+	alive = false
+	visible = false
+
+# 返回 true 表示这一击打死了它
+func hurt(amount: float) -> bool:
+	hp -= amount
+	_flash = 0.12
+	queue_redraw()
+	if hp <= 0.0:
+		recycle()
+		return true
+	return false
+
+func tick(delta: float) -> void:
+	if _flash > 0.0:
+		_flash -= delta
+		if _flash <= 0.0:
+			queue_redraw()
+
+func _draw() -> void:
+	if not alive:
+		return
+	var c := tint
+	if _flash > 0.0:
+		c = Color(1, 1, 1, 1).lerp(tint, 0.25)
+	match etype:
+		"fast":
+			# 尖三角，尖端朝上表示"冲得快"
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(0, -radius * 1.25),
+				Vector2(radius * 0.95, radius * 0.75),
+				Vector2(-radius * 0.95, radius * 0.75)]), c)
+		"tank":
+			# 六边形，厚重
+			var pts := PackedVector2Array()
+			for i in range(6):
+				var a := TAU * float(i) / 6.0 - PI * 0.5
+				pts.append(Vector2(cos(a), sin(a)) * radius)
+			draw_colored_polygon(pts, c)
+			draw_arc(Vector2.ZERO, radius * 0.55, 0.0, TAU, 12,
+				Color(1, 1, 1, 0.35), 3.0, true)
+		_:
+			# 小兵：圆 + 一条"腰带"，比纯圆更好认
+			draw_circle(Vector2.ZERO, radius, c)
+			draw_arc(Vector2.ZERO, radius * 0.6, 0.0, TAU, 14,
+				Color(0, 0, 0, 0.28), 3.0, true)
+	# 血条：只在受伤后显示，满血时不挡视线
+	if hp < max_hp:
+		var w := radius * 2.0
+		var y := -radius - 8.0
+		draw_rect(Rect2(-w * 0.5, y, w, 3.5), Color(0, 0, 0, 0.55))
+		draw_rect(Rect2(-w * 0.5, y, w * clampf(hp / max_hp, 0.0, 1.0), 3.5),
+			Color(0.85, 0.95, 0.5))
