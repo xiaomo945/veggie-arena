@@ -7,8 +7,9 @@ export_credentials.cfg
 mono_crash.*.json
 
 # 导出产物（体积大，不进 git）
-web/build/
-build/
+# 注意：build2/build3 这类临时目录也要挡掉，否则只传上去 index.js 而 wasm 被挡，
+# 结果是仓库里躺着一堆跑不起来的残件
+web/build*/
 *.zip
 *.pck
 *.wasm
