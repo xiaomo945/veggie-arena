@@ -14,7 +14,7 @@ fail=0
 n=0
 skip=0
 while IFS= read -r f; do
-  if grep -qE '\b(Data|Events|GameState)\.' "$f" 2>/dev/null; then
+  if grep -qE '\b(Art|Data|Events|GameState)\.' "$f" 2>/dev/null; then
     skip=$((skip+1))
     continue
   fi

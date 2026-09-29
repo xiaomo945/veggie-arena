@@ -11,6 +11,7 @@ run/main_scene="res://ui/Screens/Main.tscn"
 
 [autoload]
 
+Art="*res://autoload/Art.gd"
 Data="*res://autoload/Data.gd"
 Events="*res://autoload/Events.gd"
 GameState="*res://autoload/GameState.gd"

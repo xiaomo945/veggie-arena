@@ -2,11 +2,18 @@ extends CharacterBody2D
 
 # 玩家：跑位手感（core/Movement）+ 武器环绕与自动开火（core/Weapon）
 # 本文件不含任何平衡数值 —— 速度、冷却、伤害全读 balance.json / weapons.json
+#
+# 外观优先级：res://art/sprite_player.png 存在 → 画贴图；
+# 不存在 → 退回下面的手绘造型。呼吸挤压、无敌帧闪烁在两条路径下都生效。
 
 const Movement := preload("res://core/Movement.gd")
 const Weapon := preload("res://core/Weapon.gd")
 
 const MOUNT_RADIUS := 42.0
+# 贴图边长 = radius * 系数（贴图里角色占画布约 90%，画出来跟手绘版体量一致）
+const SPRITE_SCALE := 2.8
+# 环绕武器图标的边长（px）
+const MOUNT_ICON := 30.0
 
 var _dir := Vector2.ZERO
 var _vx := 0.0
@@ -54,8 +61,13 @@ func _on_dir(d: Vector2) -> void:
 func _on_release() -> void:
 	_dir = Vector2.ZERO
 
+# 给模拟/AI 用：直接下移动指令（等价于手指推摇杆）
+func set_move_dir(d: Vector2) -> void:
+	_dir = d.normalized() if d.length() > 1.0 else d
+
 # 武器列表变化（买了/合成）时重建缓存，避免每帧读 JSON
-func _rebuild_weapons() -> void:
+# 参数来自 weapons_changed 信号，本函数直接读 GameState，故忽略它（命名避开成员 _weapons）
+func _rebuild_weapons(_ignored: Array = []) -> void:
 	_weapons = []
 	var cfg := Data.combat_cfg()
 	# 强化加成在这里一次性算进武器属性，开火时不再重复计算
@@ -80,7 +92,9 @@ func _rebuild_weapons() -> void:
 			"level": lv,
 			"stats": st,
 			"color": Color(str(def.get("color", "#ffffff"))),
-			"timer": 999.0,
+			# ⚠️ timer 初值必须是 cd（表示"冷却已满，可立即开火"）。
+			#    填成很大的数会导致 timer-cd 永远为正 → 每帧都开火（实测 876 发/17 秒）
+			"timer": float(st.get("cd", 1.0)),
 		})
 	queue_redraw()
 
@@ -129,6 +143,21 @@ func _draw() -> void:
 	var stretch := 1.0 / squash
 	# 受伤闪烁：无敌帧内半透明，让玩家知道"刚才挨打了"
 	var alpha := 1.0 if _ifr <= 0.0 else 0.55
+	var tex := Art.sprite("player")
+	if tex != null:
+		_draw_sprite(tex, squash, stretch, alpha)
+	else:
+		_draw_body(squash, stretch, alpha)
+	_draw_mounts()
+
+# 贴图版：squash/stretch 一样作用到贴图上，保证"贴图一接入，动画不会消失"
+func _draw_sprite(tex: Texture2D, squash: float, stretch: float, alpha: float) -> void:
+	var w := _radius * SPRITE_SCALE * stretch
+	var h := _radius * SPRITE_SCALE * squash
+	draw_texture_rect_region(tex, Rect2(-w * 0.5, -h * 0.5, w, h),
+		Rect2(Vector2.ZERO, tex.get_size()), Color(1, 1, 1, alpha))
+
+func _draw_body(squash: float, stretch: float, alpha: float) -> void:
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(-9, -12), Vector2(-3, -30), Vector2(0, -11)]), Color(LEAF.r, LEAF.g, LEAF.b, alpha))
 	draw_colored_polygon(PackedVector2Array([
@@ -156,6 +185,19 @@ func _draw() -> void:
 	draw_circle(Vector2(4.6 + look.x * 2.2, -2 + look.y * 1.6), 2.3,
 		Color(EYE.r, EYE.g, EYE.b, alpha))
 
-# 武器图标画在角色身上（跟着一起移动）
-func draw_mounts() -> void:
-	pass
+# 武器图标绕着角色站位（位置由 core/Weapon.mount_position 算，跟开火点是同一个）
+# 缺图时退化成一个色点，玩家至少能看出"我带了几把武器"
+func _draw_mounts() -> void:
+	var n := _weapons.size()
+	if n == 0:
+		return
+	for i in n:
+		var w: Dictionary = _weapons[i]
+		var p := Weapon.mount_position(Vector2.ZERO, i, n, MOUNT_RADIUS)
+		var s := MOUNT_ICON
+		var tex := Art.icon("weapon_" + str(w["key"]))
+		if tex == null:
+			draw_circle(p, s * 0.42, w["color"] as Color)
+			continue
+		draw_texture_rect_region(tex, Rect2(p.x - s * 0.5, p.y - s * 0.5, s, s),
+			Rect2(Vector2.ZERO, tex.get_size()))

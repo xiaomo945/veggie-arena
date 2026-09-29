@@ -4,6 +4,12 @@ extends Node2D
 #   小兵 grunt = 红色圆（最常见）
 #   冲刺兵 fast = 橙色尖三角（细长、快）
 #   重甲兵 tank = 紫色六边形（大、慢、硬）
+#
+# 外观优先级：res://art/sprite_enemy_<类型>.png 存在 → 画贴图；
+# 不存在 → 退回下面的手绘几何体。两条路径共用同一套闪白/血条逻辑。
+
+# 贴图绘制边长 = radius * 该系数（贴图里角色占画布约 90%，画出来跟手绘版体量一致）
+const SPRITE_SCALE := 2.2
 
 var alive := false
 var eid := 0
@@ -59,6 +65,15 @@ func _draw() -> void:
 	var c := tint
 	if _flash > 0.0:
 		c = Color(1, 1, 1, 1).lerp(tint, 0.25)
+	var tex := Art.sprite("enemy_" + etype)
+	if tex != null:
+		_draw_sprite(tex, radius * SPRITE_SCALE, c)
+	else:
+		_draw_shape(c)
+	_draw_hp_bar()
+
+# 缺图时的手绘造型（保留原顺序：先"看清敌人"，再谈美术）
+func _draw_shape(c: Color) -> void:
 	match etype:
 		"fast":
 			# 尖三角，尖端朝上表示"冲得快"
@@ -80,10 +95,19 @@ func _draw() -> void:
 			draw_circle(Vector2.ZERO, radius, c)
 			draw_arc(Vector2.ZERO, radius * 0.6, 0.0, TAU, 14,
 				Color(0, 0, 0, 0.28), 3.0, true)
-	# 血条：只在受伤后显示，满血时不挡视线
-	if hp < max_hp:
-		var w := radius * 2.0
-		var y := -radius - 8.0
-		draw_rect(Rect2(-w * 0.5, y, w, 3.5), Color(0, 0, 0, 0.55))
-		draw_rect(Rect2(-w * 0.5, y, w * clampf(hp / max_hp, 0.0, 1.0), 3.5),
-			Color(0.85, 0.95, 0.5))
+
+# 贴图版本：modulate 直接吃闪白，血条照旧画在上面
+func _draw_sprite(tex: Texture2D, size: float, c: Color) -> void:
+	var half := size * 0.5
+	draw_texture_rect_region(tex, Rect2(-half, -half, size, size),
+		Rect2(Vector2.ZERO, tex.get_size()), c)
+
+# 血条：只在受伤后显示，满血时不挡视线
+func _draw_hp_bar() -> void:
+	if hp >= max_hp:
+		return
+	var w := radius * 2.0
+	var y := -radius - 8.0
+	draw_rect(Rect2(-w * 0.5, y, w, 3.5), Color(0, 0, 0, 0.55))
+	draw_rect(Rect2(-w * 0.5, y, w * clampf(hp / max_hp, 0.0, 1.0), 3.5),
+		Color(0.85, 0.95, 0.5))

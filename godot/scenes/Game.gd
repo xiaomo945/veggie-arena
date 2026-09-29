@@ -7,6 +7,7 @@ const BulletScene := preload("res://entities/Bullet/Bullet.tscn")
 const EnemyScene := preload("res://entities/Enemy/Enemy.tscn")
 const HUDScene := preload("res://ui/HUD/HUD.tscn")
 const ShopScene := preload("res://ui/Shop/Shop.tscn")
+const DeathScene := preload("res://ui/Screens/DeathScreen.tscn")
 const Economy := preload("res://core/Economy.gd")
 const Spawner := preload("res://core/Spawner.gd")
 const Hit := preload("res://core/Hit.gd")
@@ -43,6 +44,7 @@ func _ready() -> void:
 	GameState.reset()
 	add_child(HUDScene.instantiate())
 	add_child(ShopScene.instantiate())
+	add_child(DeathScene.instantiate())
 	Events.shop_closed.connect(_on_shop_closed)
 
 func _build_pools() -> void:
@@ -176,6 +178,7 @@ func _resolve_hits() -> void:
 		if b.hit_ids.has(e.eid):
 			continue          # 同一发子弹不重复打同一个敌人
 		b.hit_ids[e.eid] = true
+		hits_landed += 1
 		_damage_enemy(e, b.dmg)
 		if b.aoe_radius > 0.0:
 			_explode(b, e)
@@ -198,7 +201,11 @@ func _damage_enemy(e, amount: float) -> void:
 		GameState.add_kill()
 		GameState.add_gold(e.gold)
 
+var shots_fired := 0
+var hits_landed := 0
+
 func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) -> void:
+	shots_fired += 1
 	for attempt in MAX_BULLETS:
 		var b = _bullets[_bullet_cursor]
 		_bullet_cursor = (_bullet_cursor + 1) % MAX_BULLETS

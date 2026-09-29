@@ -60,7 +60,7 @@ func _on_wave_progress(elapsed: float, length: float) -> void:
 	_kill.text = "击杀 %d" % GameState.kills
 	_wave.text = "第 %d 波" % GameState.wave
 
-func _on_weapons() -> void:
+func _on_weapons(_ignored: Array = []) -> void:
 	var slots: Array = []
 	for w in GameState.weapons:
 		if not (w is Dictionary):
