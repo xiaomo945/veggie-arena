@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://ui/Joystick/Joystick.gd" id="1"]
+[ext_resource type="Script" path="res://ui/Joystick/StickView.gd" id="2"]
+
+[node name="Joystick" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1")
+
+[node name="StickView" type="Node2D" parent="."]
+script = ExtResource("2")

@@ -8,6 +8,7 @@ const TSpawner := preload("res://tests/test_spawner.gd")
 const TEconomy := preload("res://tests/test_economy.gd")
 const TInventory := preload("res://tests/test_inventory.gd")
 const TBalance := preload("res://tests/test_balance.gd")
+const TMovement := preload("res://tests/test_movement.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -28,6 +29,7 @@ func _initialize() -> void:
 	_run("Economy", TEconomy)
 	_run("Inventory", TInventory)
 	_run("Balance(配平)", TBalance, data)
+	_run("Movement(手感)", TMovement, data)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告
 	data.free()
