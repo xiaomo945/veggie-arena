@@ -155,6 +155,9 @@ func _run_simulation(seconds: float) -> void:
 	print("  金币        : %d" % GameState.gold)
 	print("  玩家血量    : %d / %d" % [GameState.hp, GameState.max_hp])
 	print("  玩家状态    : %s" % ("存活" if GameState.running else "已死亡"))
+	print("  美术装载    : 玩家=%s 敌人=%s" % [
+		"贴图" if Art.sprite("player") != null else "手绘兜底",
+		"贴图" if Art.sprite("enemy_grunt") != null else "手绘兜底"])
 	get_tree().quit(0)
 
 func _draw() -> void:
