@@ -1,0 +1,48 @@
+{
+  "arena": { "x": 12, "y": 74, "w": 516, "h": 756 },
+  "player": {
+    "max_hp": 100,
+    "speed": 180,
+    "radius": 16,
+    "ifr_seconds": 0.38,
+    "touch_cooldown": 0.7
+  },
+  "wave": {
+    "length": 20,
+    "heal_percent": 0.12,
+    "bonus_base": 10,
+    "bonus_per_wave": 4
+  },
+  "spawn": {
+    "base_rate": 0.55,
+    "per_wave": 0.30,
+    "cap": 4.6,
+    "max_alive": 88,
+    "warn_time": 0.45,
+    "edge_offset": 20,
+    "fast_from_wave": 2,
+    "fast_chance": 0.28,
+    "tank_from_wave": 3,
+    "tank_chance": 0.12,
+    "tank_chance_late": 0.18,
+    "tank_late_from_wave": 6
+  },
+  "shop": {
+    "offer_count": 4,
+    "reroll_base": 3,
+    "reroll_step": 2,
+    "max_slot": 6,
+    "max_lv": 4
+  },
+  "combat": {
+    "min_damage": 1,
+    "merge_dmg_multiplier": 1.30,
+    "merge_cd_multiplier": 0.93
+  },
+  "feel": {
+    "joystick_radius": 52,
+    "joystick_deadzone": 3,
+    "accel_forward": 90,
+    "accel_reverse": 110
+  }
+}

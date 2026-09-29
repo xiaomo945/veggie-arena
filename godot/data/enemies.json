@@ -1,0 +1,38 @@
+{
+  "grunt": {
+    "zh": "小兵",
+    "hp_base": 8,
+    "hp_per_wave": 4.5,
+    "speed_base": 48,
+    "speed_per_wave": 1.8,
+    "dmg_base": 4,
+    "dmg_per_wave": 0.7,
+    "radius": 14,
+    "gold": 1,
+    "color": "#e0605f"
+  },
+  "fast": {
+    "zh": "冲刺兵",
+    "hp_base": 5,
+    "hp_per_wave": 2.6,
+    "speed_base": 96,
+    "speed_per_wave": 2.2,
+    "dmg_base": 3,
+    "dmg_per_wave": 0.5,
+    "radius": 11,
+    "gold": 1,
+    "color": "#ef9a4a"
+  },
+  "tank": {
+    "zh": "重甲兵",
+    "hp_base": 26,
+    "hp_per_wave": 11,
+    "speed_base": 30,
+    "speed_per_wave": 0.7,
+    "dmg_base": 9,
+    "dmg_per_wave": 1.3,
+    "radius": 23,
+    "gold": 3,
+    "color": "#9a7ad0"
+  }
+}

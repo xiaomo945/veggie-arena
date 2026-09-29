@@ -1,0 +1,51 @@
+{
+  "hp": {
+    "zh": "最大生命 +15",
+    "stat": "max_hp",
+    "value": 15,
+    "cost": 14,
+    "tip": "血条更长，立刻补满这 15 点"
+  },
+  "spd": {
+    "zh": "移动速度 +8%",
+    "stat": "speed_pct",
+    "value": 0.08,
+    "cost": 12,
+    "tip": "跑得快 = 更难被围住"
+  },
+  "dmg": {
+    "zh": "伤害 +10%",
+    "stat": "dmg_pct",
+    "value": 0.10,
+    "cost": 16,
+    "tip": "所有武器伤害一起提升"
+  },
+  "rate": {
+    "zh": "攻速 +8%",
+    "stat": "rate_pct",
+    "value": 0.08,
+    "cost": 16,
+    "tip": "所有武器射速一起提升"
+  },
+  "arm": {
+    "zh": "护甲 +2",
+    "stat": "armor",
+    "value": 2,
+    "cost": 18,
+    "tip": "每次被撞到的伤害 -2"
+  },
+  "pick": {
+    "zh": "拾取范围 +30%",
+    "stat": "pickup_pct",
+    "value": 0.30,
+    "cost": 8,
+    "tip": "金币自动吸过来的范围变大"
+  },
+  "heal": {
+    "zh": "立刻回复 40 生命",
+    "stat": "heal_now",
+    "value": 40,
+    "cost": 10,
+    "tip": "残血时的救命稻草"
+  }
+}

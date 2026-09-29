@@ -1,0 +1,88 @@
+extends RefCounted
+
+const Inventory := preload("res://core/Inventory.gd")
+
+var _p := 0
+var _f := 0
+var _failures: Array = []
+
+func chk(cond: bool, msg: String) -> void:
+	if cond:
+		_p += 1
+		print("  OK: " + msg)
+	else:
+		_f += 1
+		_failures.append(msg)
+		print("  FAIL: " + msg)
+
+var COMBAT_CFG := {"merge_dmg_multiplier": 1.30, "merge_cd_multiplier": 0.93}
+
+func run() -> Dictionary:
+	var MAX_SLOT := 6
+	var MAX_LV := 4
+
+	# 1) 能否进商店池
+	var w1: Array = [{"key": "pistol", "lv": 1, "dmg": 9, "cd": 0.42}]
+	chk(Inventory.can_accept(w1, "bow", MAX_SLOT, MAX_LV) == true, "槽位没满，新武器可以买")
+	chk(Inventory.can_accept(w1, "pistol", MAX_SLOT, MAX_LV) == true, "槽位没满，同类武器也可以买")
+
+	var full: Array = []
+	for i in MAX_SLOT:
+		full.append({"key": "w%d" % i, "lv": 1, "dmg": 10, "cd": 0.5})
+	chk(Inventory.can_accept(full, "newgun", MAX_SLOT, MAX_LV) == false, "槽位满了，全新武器不能买")
+	chk(Inventory.can_accept(full, "w0", MAX_SLOT, MAX_LV) == true, "槽位满了，但已有的 w0 可以合成")
+
+	var maxed: Array = [{"key": "pistol", "lv": 4, "dmg": 20, "cd": 0.3}]
+	chk(Inventory.can_accept(maxed, "pistol", 1, MAX_LV) == false, "已满级的武器不能再合成")
+
+	# 2) 合成升级：不占新槽
+	var inv: Array = [{"key": "pistol", "lv": 1, "dmg": 9, "cd": 0.42}]
+	var ok := Inventory.merge_or_add(inv, {"key": "pistol", "dmg": 9, "cd": 0.42}, MAX_SLOT, MAX_LV, COMBAT_CFG)
+	chk(ok == true, "合成成功")
+	chk(inv.size() == 1, "合成不占新槽位（还是 1 把，实际 %d）" % inv.size())
+	chk(int(inv[0]["lv"]) == 2, "等级升到 2（实际 %d）" % inv[0]["lv"])
+	chk(int(inv[0]["dmg"]) == 12, "伤害 9 ×1.3 → 12（实际 %d）" % inv[0]["dmg"])
+	chk(abs(float(inv[0]["cd"]) - 0.42 * 0.93) < 0.001, "冷却 0.42 ×0.93（实际 %.3f）" % float(inv[0]["cd"]))
+
+	# 连升到 4 级
+	for i in 3:
+		Inventory.merge_or_add(inv, {"key": "pistol", "dmg": 9, "cd": 0.42}, MAX_SLOT, MAX_LV, COMBAT_CFG)
+	chk(int(inv[0]["lv"]) == MAX_LV, "连买 4 次升到满级 4（实际 %d）" % inv[0]["lv"])
+	var ok2 := Inventory.merge_or_add(inv, {"key": "pistol", "dmg": 9, "cd": 0.42}, MAX_SLOT, MAX_LV, COMBAT_CFG)
+	chk(ok2 == true, "满级后再买同 key：仍能买（因为槽位没满，会新开一把）")
+	chk(inv.size() == 2, "满级后再买会新开一把（实际 %d 把）" % inv.size())
+
+	# 3) 槽位满 + 不可合成 → 购买失败
+	var full2: Array = []
+	for i in MAX_SLOT:
+		full2.append({"key": "g%d" % i, "lv": 4, "dmg": 10, "cd": 0.5})
+	var ok3 := Inventory.merge_or_add(full2, {"key": "newgun", "dmg": 10}, MAX_SLOT, MAX_LV, COMBAT_CFG)
+	chk(ok3 == false, "槽满且无法合成 → 购买失败")
+	chk(full2.size() == MAX_SLOT, "失败时槽位不变（实际 %d）" % full2.size())
+
+	# 4) 强化生效
+	var stats := {"hp": 50, "max_hp": 100, "speed_pct": 0.0, "dmg_pct": 0.0,
+		"rate_pct": 0.0, "armor": 0.0, "pickup_pct": 0.0}
+	stats = Inventory.apply_upgrade(stats, {"stat": "max_hp", "value": 15})
+	chk(float(stats["max_hp"]) == 115, "最大生命 +15（实际 %s）" % stats["max_hp"])
+	chk(float(stats["hp"]) == 65, "同时补 15 点血（实际 %s）" % stats["hp"])
+	stats = Inventory.apply_upgrade(stats, {"stat": "armor", "value": 2})
+	chk(float(stats["armor"]) == 2, "护甲 +2（实际 %s）" % stats["armor"])
+	stats = Inventory.apply_upgrade(stats, {"stat": "dmg_pct", "value": 0.10})
+	chk(abs(float(stats["dmg_pct"]) - 0.10) < 0.001, "伤害 +10%%（实际 %s）" % stats["dmg_pct"])
+	stats = Inventory.apply_upgrade(stats, {"stat": "heal_now", "value": 40})
+	chk(float(stats["hp"]) == 105, "立刻回血 40（实际 %s）" % stats["hp"])
+	# 回血不会超过上限
+	stats = Inventory.apply_upgrade(stats, {"stat": "heal_now", "value": 999})
+	chk(float(stats["hp"]) == float(stats["max_hp"]), "回血不超过血量上限")
+
+	# 5) 总 DPS
+	var w: Array = [
+		{"dmg": 9, "cd": 0.42, "pellets": 1},
+		{"dmg": 8, "cd": 0.95, "pellets": 4},
+	]
+	var t := Inventory.total_dps(w)
+	chk(abs(t - (9.0 / 0.42 + 32.0 / 0.95)) < 0.01, "总 DPS = 各武器之和（实际 %.1f）" % t)
+	chk(Inventory.total_dps([]) == 0.0, "空武器列表 DPS 为 0")
+
+	return {"pass": _p, "fail": _f, "failures": _failures}

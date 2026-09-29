@@ -22,7 +22,7 @@ echo "  检查了 $n 个 .gd 文件，语法错误 $fail 个"
 echo ""
 echo "=== 2. 单元测试（headless） ==="
 if [ -f tests/run_tests.gd ]; then
-  "$GODOT" --headless --script tests/run_tests.gd
+  "$GODOT" --headless --path . --script res://tests/run_tests.gd
   tfail=$?
 else
   echo "  ⚠ 还没有 tests/run_tests.gd（阶段 0.8 待完成）"

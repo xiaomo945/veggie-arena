@@ -1,0 +1,35 @@
+; Engine configuration file.
+; veggie-arena —— 手机竖屏竞技场生存 Roguelite
+config_version=5
+
+[application]
+
+config/name="veggie-arena"
+config/description="手机竖屏竞技场生存 Roguelite"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+run/main_scene="res://ui/Screens/Main.tscn"
+
+[autoload]
+
+Data="*res://autoload/Data.gd"
+Events="*res://autoload/Events.gd"
+GameState="*res://autoload/GameState.gd"
+
+[display]
+
+window/size/viewport_width=540
+window/size/viewport_height=900
+window/handheld/orientation=1
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=true
+pointing/emulate_touch_from_mouse=false
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0

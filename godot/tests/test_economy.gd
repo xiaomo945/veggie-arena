@@ -1,0 +1,90 @@
+extends RefCounted
+
+const Economy := preload("res://core/Economy.gd")
+
+var _p := 0
+var _f := 0
+var _failures: Array = []
+
+func chk(cond: bool, msg: String) -> void:
+	if cond:
+		_p += 1
+		print("  OK: " + msg)
+	else:
+		_f += 1
+		_failures.append(msg)
+		print("  FAIL: " + msg)
+
+var WAVE_CFG := {"bonus_base": 10, "bonus_per_wave": 4}
+var SHOP_CFG := {"reroll_base": 3, "reroll_step": 2, "offer_count": 4}
+
+func run() -> Dictionary:
+	# 1) 波次奖励
+	chk(Economy.wave_bonus(1, WAVE_CFG) == 14, "第 1 波奖励 14 金币")
+	chk(Economy.wave_bonus(5, WAVE_CFG) == 30, "第 5 波奖励 30 金币")
+	chk(Economy.wave_bonus(5, WAVE_CFG) > Economy.wave_bonus(1, WAVE_CFG), "奖励随波次递增")
+
+	# 2) 刷新价格
+	chk(Economy.reroll_cost(0, SHOP_CFG) == 3, "首次刷新 3 金币")
+	chk(Economy.reroll_cost(1, SHOP_CFG) == 5, "第二次刷新 5 金币")
+	chk(Economy.reroll_cost(3, SHOP_CFG) == 9, "第四次刷新 9 金币（越刷越贵）")
+
+	# 3) 购买力
+	chk(Economy.can_buy(20, 12) == true, "钱够能买")
+	chk(Economy.can_buy(11, 12) == false, "钱不够不能买")
+	chk(Economy.can_buy(12, 12) == true, "刚好够能买")
+
+	# 4) 抽卡不重复
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 999
+	var pool := ["a", "b", "c", "d", "e", "f", "g"]
+	var offers := Economy.roll_offers(pool, 4, rng)
+	chk(offers.size() == 4, "抽出 4 个商品（实际 %d）" % offers.size())
+	var seen := {}
+	var dup := false
+	for o in offers:
+		if seen.has(o):
+			dup = true
+		seen[o] = true
+	chk(not dup, "4 个商品互不重复")
+	# 池子不够时不会崩
+	var small := Economy.roll_offers(["x"], 4, rng)
+	chk(small.size() == 1, "池子只有 1 个时只出 1 个（不崩溃）")
+
+	# 5) 商品池构造
+	var weapon_defs := {
+		"pistol": {"dmg": 9, "cd": 0.42},
+		"bow": {"dmg": 18, "cd": 0.8},
+	}
+	var upgrade_defs := {"hp": {"stat": "max_hp", "value": 15}}
+	var empty_weapons: Array = []
+	var p1 := Economy.build_pool(empty_weapons, weapon_defs, upgrade_defs, 6, 4)
+	chk(p1.size() == 3, "空背包：2 武器 + 1 强化 = 3 个候选（实际 %d）" % p1.size())
+
+	# 槽位满时，只有能合成的武器才进池
+	var full: Array = [
+		{"key": "pistol", "lv": 4, "dmg": 20, "cd": 0.3},
+		{"key": "bow", "lv": 1, "dmg": 18, "cd": 0.8},
+		{"key": "smg", "lv": 2, "dmg": 6, "cd": 0.12},
+		{"key": "staff", "lv": 3, "dmg": 20, "cd": 0.9},
+		{"key": "rocket", "lv": 1, "dmg": 40, "cd": 1.8},
+		{"key": "shotgun", "lv": 4, "dmg": 15, "cd": 0.9},
+	]
+	var wd2 := {
+		"pistol": {"dmg": 9}, "bow": {"dmg": 18}, "smg": {"dmg": 5},
+		"staff": {"dmg": 14}, "rocket": {"dmg": 40}, "shotgun": {"dmg": 8},
+	}
+	var p2 := Economy.build_pool(full, wd2, upgrade_defs, 6, 4)
+	var kinds := {}
+	for it in p2:
+		kinds[it.get("key")] = it.get("kind")
+	chk(p2.size() == 5, "满槽时只有未达 4 级的武器进池（4 把 + 1 强化 = 5，实际 %d）" % p2.size())
+	chk(not kinds.has("pistol"), "已满级的 pistol 不再出现在商店")
+	chk(not kinds.has("shotgun"), "已满级的 shotgun 不再出现在商店")
+	chk(kinds.has("bow"), "未满级的 bow 仍可购买（合成升级）")
+
+	# 6) 一波收入
+	var inc := Economy.wave_income(1, 15, 1.0, WAVE_CFG)
+	chk(inc == 29, "第1波：15 杀 ×1 金币 + 14 奖励 = 29（实际 %d）" % inc)
+
+	return {"pass": _p, "fail": _f, "failures": _failures}
