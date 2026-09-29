@@ -7,9 +7,17 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/godot" || exit 1
 
 echo "=== 1. GDScript 语法检查 ==="
+# 注意：--script 模式不会注册 autoload，引用 Data/Events/GameState 的文件
+# 会误报 "Identifier not found"。这类文件交给第 2 步的"主场景启动"验证，
+# 那里 autoload 是真实注册的，能抓到真正的错误。
 fail=0
 n=0
+skip=0
 while IFS= read -r f; do
+  if grep -qE '\b(Data|Events|GameState)\.' "$f" 2>/dev/null; then
+    skip=$((skip+1))
+    continue
+  fi
   n=$((n+1))
   if ! "$GODOT" --headless --check-only --script "$f" >/dev/null 2>&1; then
     echo "  语法错误: $f"
@@ -17,7 +25,18 @@ while IFS= read -r f; do
     fail=$((fail+1))
   fi
 done < <(find . -name "*.gd" -not -path "./.godot/*")
-echo "  检查了 $n 个 .gd 文件，语法错误 $fail 个"
+echo "  逐文件检查 $n 个，语法错误 $fail 个；跳过 $skip 个（用 autoload，由第 2 步覆盖）"
+
+echo ""
+echo "=== 1.5 主场景启动验证（autoload 真实注册）==="
+boot_out=$("$GODOT" --headless --path . --quit-after 30 2>&1)
+if echo "$boot_out" | grep -qiE "SCRIPT ERROR|Parse Error|Compile Error|Identifier not found"; then
+  echo "  ❌ 主场景启动有错："
+  echo "$boot_out" | grep -iE "SCRIPT ERROR|Parse Error|Compile Error|Identifier not found" | head -6
+  fail=$((fail+1))
+else
+  echo "  ✅ 主场景启动无报错"
+fi
 
 echo ""
 echo "=== 2. 单元测试（headless） ==="
