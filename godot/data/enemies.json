@@ -37,5 +37,32 @@
     "gold": 3,
     "color": "#9a7ad0",
     "en": "Tank"
+  },
+  "fly": {
+    "zh": "飞虫",
+    "hp_base": 4,
+    "hp_per_wave": 2.0,
+    "speed_base": 118,
+    "speed_per_wave": 2.6,
+    "dmg_base": 3,
+    "dmg_per_wave": 0.4,
+    "radius": 10,
+    "gold": 2,
+    "color": "#56cfe0",
+    "en": "Flyer",
+    "flight": true
+  },
+  "boss": {
+    "zh": "首领",
+    "hp_base": 240,
+    "hp_per_wave": 46,
+    "speed_base": 34,
+    "speed_per_wave": 1.1,
+    "dmg_base": 16,
+    "dmg_per_wave": 2.6,
+    "radius": 40,
+    "gold": 25,
+    "color": "#e0507a",
+    "en": "Boss"
   }
 }

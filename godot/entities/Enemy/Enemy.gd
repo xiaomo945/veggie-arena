@@ -21,7 +21,10 @@ var dmg := 5.0
 var radius := 14.0
 var gold := 1
 var tint := Color(0.88, 0.38, 0.37)
+var flight := false
+var elite := false
 var _flash := 0.0
+var _phase := 0.0
 
 func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	etype = str(stats.get("type", "grunt"))
@@ -33,9 +36,12 @@ func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	radius = float(stats.get("radius", 14))
 	gold = int(stats.get("gold", 1))
 	tint = Color(str(stats.get("color", "#e0605f")))
+	flight = bool(stats.get("flight", false))
+	elite = bool(stats.get("elite", false))
 	global_position = pos
 	alive = true
 	_flash = 0.0
+	_phase = 0.0
 	visible = true
 	queue_redraw()
 
@@ -70,6 +76,11 @@ func _draw() -> void:
 		_draw_sprite(tex, radius * SPRITE_SCALE, c)
 	else:
 		_draw_shape(c)
+		# 精英/Boss 加一道描边，远远就能认出是"硬货"
+		if elite:
+			draw_arc(Vector2.ZERO, radius + 4.0, 0.0, TAU, 16, Color(1, 1, 1, 0.7), 2.5, true)
+		elif etype == "boss":
+			draw_arc(Vector2.ZERO, radius + 5.0, 0.0, TAU, 18, Color(1, 0.3, 0.4, 0.8), 3.5, true)
 	_draw_hp_bar()
 
 # 缺图时的手绘造型（保留原顺序：先"看清敌人"，再谈美术）
@@ -90,6 +101,24 @@ func _draw_shape(c: Color) -> void:
 			draw_colored_polygon(pts, c)
 			draw_arc(Vector2.ZERO, radius * 0.55, 0.0, TAU, 12,
 				Color(1, 1, 1, 0.35), 3.0, true)
+		"fly":
+			# 菱形（四角星），小、亮，和其余三种一眼不同
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(0, -radius * 1.3),
+				Vector2(radius * 0.55, 0),
+				Vector2(0, radius * 1.3),
+				Vector2(-radius * 0.55, 0)]), c)
+			draw_circle(Vector2.ZERO, radius * 0.32, Color(1, 1, 1, 0.5))
+		"boss":
+			# 十二角星，大、狰狞，是场地里的视觉焦点
+			var sp := PackedVector2Array()
+			for i in range(24):
+				var a := TAU * float(i) / 24.0
+				var rr := radius * (0.62 if i % 2 == 0 else 1.0)
+				sp.append(Vector2(cos(a), sin(a)) * rr)
+			draw_colored_polygon(sp, c)
+			draw_arc(Vector2.ZERO, radius * 0.5, 0.0, TAU, 14,
+				Color(1, 1, 1, 0.4), 4.0, true)
 		_:
 			# 小兵：圆 + 一条"腰带"，比纯圆更好认
 			draw_circle(Vector2.ZERO, radius, c)
@@ -102,9 +131,9 @@ func _draw_sprite(tex: Texture2D, size: float, c: Color) -> void:
 	draw_texture_rect_region(tex, Rect2(-half, -half, size, size),
 		Rect2(Vector2.ZERO, tex.get_size()), c)
 
-# 血条：只在受伤后显示，满血时不挡视线
+# 血条：精英/Boss 常显（让玩家盯紧大目标）；普通怪满血时不挡视线
 func _draw_hp_bar() -> void:
-	if hp >= max_hp:
+	if hp >= max_hp and not elite and etype != "boss":
 		return
 	var w := radius * 2.0
 	var y := -radius - 8.0

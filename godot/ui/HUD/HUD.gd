@@ -13,6 +13,8 @@ var _gold: Label
 var _kill: Label
 var _wave_time := 0.0
 var _wave_len := 20.0
+var _banner: Label
+var _banner_t := 0.0
 
 func _ready() -> void:
 	layer = 20
@@ -24,12 +26,24 @@ func _ready() -> void:
 	_gold = _mk_label(Vector2(14, 54), 15, Color(0.98, 0.84, 0.35))
 	_kill = _mk_label(Vector2(150, 54), 13, Color(0.75, 0.75, 0.78))
 
+	# Boss 波居中横幅
+	_banner = Label.new()
+	_banner.position = Vector2(0, 288)
+	_banner.custom_minimum_size = Vector2(540, 44)
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_banner.add_theme_font_size_override("font_size", 34)
+	_banner.add_theme_color_override("font_color", Color(0.96, 0.34, 0.46))
+	_banner.text = ""
+	add_child(_banner)
+
 	Events.player_hp_changed.connect(_on_hp)
 	Events.gold_changed.connect(_on_gold)
 	Events.wave_started.connect(_on_wave_started)
 	Events.wave_progress.connect(_on_wave_progress)
 	Events.weapons_changed.connect(_on_weapons)
 	Events.run_started.connect(_on_weapons)
+	Events.boss_wave.connect(_on_boss_wave)
 
 	_wave_len = float(Data.wave_cfg().get("length", 20))
 	_on_weapons()
@@ -80,3 +94,16 @@ func _on_weapons(_ignored: Array = []) -> void:
 func _refresh() -> void:
 	_wave.text = "WAVE %d" % GameState.wave
 	_kill.text = "KILLS %d" % GameState.kills
+
+func _on_boss_wave(wave: int) -> void:
+	_banner.text = "BOSS WAVE %d" % wave
+	_banner_t = 2.6
+
+func _process(delta: float) -> void:
+	if _banner_t > 0.0:
+		_banner_t -= delta
+		# 最后 0.6s 渐隐
+		var a := clampf(_banner_t / 0.6, 0.0, 1.0)
+		_banner.modulate.a = a
+		if _banner_t <= 0.0:
+			_banner.text = ""

@@ -8,12 +8,12 @@
     "en": "Max HP +15"
   },
   "spd": {
-    "zh": "移动速度 +8%",
+    "zh": "移动速度 +10%",
     "stat": "speed_pct",
-    "value": 0.08,
+    "value": 0.10,
     "cost": 12,
     "tip": "跑得快 = 更难被围住",
-    "en": "Move Speed +8%"
+    "en": "Move Speed +10%"
   },
   "dmg": {
     "zh": "伤害 +10%",

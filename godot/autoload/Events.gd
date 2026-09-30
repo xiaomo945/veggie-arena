@@ -15,6 +15,7 @@ signal damage_dealt(amount: int, pos: Vector2, critical: bool)
 signal wave_started(wave: int)
 signal wave_ended(wave: int)
 signal wave_progress(elapsed: float, length: float)
+signal boss_wave(wave: int)
 
 # ---- 经济 ----
 signal gold_changed(gold: int)

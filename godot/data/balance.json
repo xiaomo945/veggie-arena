@@ -2,7 +2,7 @@
   "arena": { "x": 12, "y": 74, "w": 516, "h": 756 },
   "player": {
     "max_hp": 100,
-    "speed": 180,
+    "speed": 240,
     "radius": 16,
     "ifr_seconds": 0.38,
     "touch_cooldown": 0.7
@@ -25,7 +25,12 @@
     "tank_from_wave": 3,
     "tank_chance": 0.10,
     "tank_chance_late": 0.16,
-    "tank_late_from_wave": 6
+    "tank_late_from_wave": 6,
+    "fly_from_wave": 4,
+    "fly_chance": 0.20,
+    "boss_every": 5,
+    "boss_rate_mult": 0.55,
+    "elite_chance": 0.30
   },
   "shop": {
     "offer_count": 4,
@@ -42,7 +47,8 @@
   "feel": {
     "joystick_radius": 52,
     "joystick_deadzone": 3,
-    "accel_forward": 90,
-    "accel_reverse": 110
+    "accel_forward": 130,
+    "accel_reverse": 160,
+    "joystick_visible": false
   }
 }

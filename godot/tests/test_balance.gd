@@ -109,4 +109,18 @@ func run(data) -> Dictionary:
 	chk(float(pc.get("ifr_seconds", 0)) > 0.2, "无敌帧 %.2f 秒，能防止被围秒杀" % float(pc.get("ifr_seconds", 0)))
 	chk(float(pc.get("speed", 0)) >= 150, "移速 %s ≥ 150，跑位跟得上" % pc.get("speed"))
 
+	# 11) 玩家初始移速不能慢于任何基础敌人（用户核心诉求：应≥或等于怪物速度，才能风筝走位）
+	var pspeed := float(pc.get("speed", 0))
+	var slowest_ok := true
+	var fastest_enemy := ""
+	var fastest_speed := 0.0
+	for k in data.enemies.keys():
+		var es := float(data.enemy(k).get("speed_base", 0))
+		if es > fastest_speed:
+			fastest_speed = es
+			fastest_enemy = k
+		if pspeed < es:
+			slowest_ok = false
+	chk(slowest_ok, "玩家移速 %.0f ≥ 所有基础敌人（最快 %s=%.0f）" % [pspeed, fastest_enemy, fastest_speed])
+
 	return {"pass": _p, "fail": _f, "failures": _failures}

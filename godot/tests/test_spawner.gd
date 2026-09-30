@@ -19,6 +19,7 @@ var CFG := {
 	"base_rate": 0.55, "per_wave": 0.30, "cap": 4.6, "max_alive": 88,
 	"warn_time": 0.45, "edge_offset": 20,
 	"fast_from_wave": 2, "fast_chance": 0.28,
+	"fly_from_wave": 4, "fly_chance": 0.20,
 	"tank_from_wave": 3, "tank_chance": 0.12,
 	"tank_late_from_wave": 6, "tank_chance_late": 0.18,
 }
@@ -27,8 +28,12 @@ var DEFS := {
 		"dmg_base": 4, "dmg_per_wave": 0.7, "radius": 14, "gold": 1},
 	"fast": {"hp_base": 5, "hp_per_wave": 2.6, "speed_base": 96, "speed_per_wave": 2.2,
 		"dmg_base": 3, "dmg_per_wave": 0.5, "radius": 11, "gold": 1},
+	"fly": {"hp_base": 4, "hp_per_wave": 2.0, "speed_base": 118, "speed_per_wave": 2.6,
+		"dmg_base": 3, "dmg_per_wave": 0.4, "radius": 10, "gold": 2},
 	"tank": {"hp_base": 26, "hp_per_wave": 11, "speed_base": 30, "speed_per_wave": 0.7,
 		"dmg_base": 9, "dmg_per_wave": 1.3, "radius": 23, "gold": 3},
+	"boss": {"hp_base": 240, "hp_per_wave": 46, "speed_base": 34, "speed_per_wave": 1.1,
+		"dmg_base": 16, "dmg_per_wave": 2.6, "radius": 40, "gold": 25},
 }
 var ARENA := {"x": 12, "y": 74, "w": 516, "h": 756, "edge_offset": 20}
 
@@ -50,6 +55,12 @@ func run() -> Dictionary:
 	chk(Spawner.pick_type(1, 0.99, CFG) == "grunt", "第 1 波不刷重甲")
 	chk(Spawner.pick_type(3, 0.99, CFG) == "tank", "第 3 波开始有重甲")
 	chk(Spawner.pick_type(5, 0.1, CFG) == "fast", "第 5 波有冲刺兵")
+	# 飞行兵：第 4 波起才出现，且落在 fast 之后的概率带
+	chk(Spawner.pick_type(1, 0.4, CFG) == "grunt", "第 1 波无飞行兵")
+	chk(Spawner.pick_type(4, 0.3, CFG) == "fly", "第 4 波出现飞行兵（概率带中段）")
+	chk(Spawner.pick_type(6, 0.4, CFG) == "fly", "第 6 波飞行兵稳定出现")
+	# 首领不走 pick_type（由 Boss 波单独刷），普通刷怪永远不会出 boss
+	chk(Spawner.pick_type(5, 0.99, CFG) == "tank", "普通刷怪不刷首领（仍是重甲）")
 	# 统计 1000 次，检查比例大致合理
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 12345
@@ -74,6 +85,22 @@ func run() -> Dictionary:
 	chk(float(Spawner.stats_for("tank", 1, DEFS)["hp"]) > float(g1["hp"]), "重甲比小兵血厚")
 	chk(float(Spawner.stats_for("fast", 1, DEFS)["speed"]) > float(g1["speed"]), "冲刺兵比小兵快")
 	chk(Spawner.stats_for("不存在的怪", 1, DEFS).is_empty(), "未知敌种返回空字典（不崩溃）")
+
+	# 5.1) 精英缩放：血更厚、体型更大、金币更多、带 elite 标记
+	var base_g := Spawner.stats_for("grunt", 5, DEFS)
+	var elite_g := Spawner.stats_for("grunt", 5, DEFS, true)
+	chk(float(elite_g["hp"]) > float(base_g["hp"]) * 2.0, "精英血量翻倍以上（%.0f vs %.0f）" % [elite_g["hp"], base_g["hp"]])
+	chk(float(elite_g["radius"]) > float(base_g["radius"]), "精英体型更大")
+	chk(int(elite_g["gold"]) > int(base_g["gold"]), "精英金币更多")
+	chk(bool(elite_g.get("elite", false)) == true, "精英带 elite 标记")
+	# 非精英默认无标记
+	chk(bool(base_g.get("elite", false)) == false, "普通怪无 elite 标记")
+
+	# 5.2) 首领属性合理：血厚、体型最大、高伤、高金币
+	var boss := Spawner.stats_for("boss", 5, DEFS)
+	chk(float(boss["hp"]) > float(Spawner.stats_for("tank", 5, DEFS)["hp"]), "首领比重甲还厚")
+	chk(float(boss["radius"]) > float(Spawner.stats_for("tank", 5, DEFS)["radius"]), "首领体型最大")
+	chk(int(boss["gold"]) >= 25, "首领金币丰厚（%d）" % int(boss["gold"]))
 
 	# 6) 波次总血量递增
 	var h1 := Spawner.wave_total_hp(1, CFG, DEFS, 20.0)

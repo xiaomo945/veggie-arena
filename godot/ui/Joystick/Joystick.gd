@@ -22,6 +22,10 @@ func _ready() -> void:
 	_radius = float(f["radius"])
 	_deadzone = float(f["deadzone"])
 	_view.radius = _radius
+	# 手机竖屏下，跟随手指的摇杆底盘会挡住下方视野。
+	# 设为 false 时彻底不画摇杆（控制依旧是"按哪走哪"的浮点拖拽，手感不变），
+	# 玩家靠角色响应方向来感知操作，不再被一个圈挡住视线。
+	_view.visible = bool(f.get("joystick_visible", true))
 
 func _input(event: InputEvent) -> void:
 	# 触屏（手机真机）

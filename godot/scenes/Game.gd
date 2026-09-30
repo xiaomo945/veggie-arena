@@ -76,13 +76,33 @@ func _on_player_died() -> void:
 	set_physics_process(false)
 
 # ---- 刷怪 ----
+func _boss_wave() -> bool:
+	var every := int(Data.spawn_cfg().get("boss_every", 5))
+	return every > 0 and GameState.wave % every == 0
+
 func _spawn_one() -> void:
 	var e = _enemies[_enemy_cursor]
 	_enemy_cursor = (_enemy_cursor + 1) % MAX_ENEMIES
 	var side := _rng.randi_range(0, 3)
 	var pos := Spawner.edge_position(side, Data.arena(), _rng.randf(), _rng.randf())
 	var type := Spawner.pick_type(GameState.wave, _rng.randf(), Data.spawn_cfg())
-	var stats := Spawner.stats_for(type, GameState.wave, Data.enemies)
+	# Boss 波里，普通怪有一定概率是"精英版"（更厚更大更值钱）
+	var elite := false
+	if _boss_wave() and _rng.randf() < float(Data.spawn_cfg().get("elite_chance", 0.3)):
+		elite = true
+	var stats := Spawner.stats_for(type, GameState.wave, Data.enemies, elite)
+	if stats.is_empty():
+		return
+	e.spawn(pos, stats, _next_id)
+	_next_id += 1
+
+# Boss 波开局额外刷一只首领：慢、大、硬、疼，但金币丰厚
+func _spawn_boss() -> void:
+	var e = _enemies[_enemy_cursor]
+	_enemy_cursor = (_enemy_cursor + 1) % MAX_ENEMIES
+	var side := _rng.randi_range(0, 3)
+	var pos := Spawner.edge_position(side, Data.arena(), _rng.randf(), _rng.randf())
+	var stats := Spawner.stats_for("boss", GameState.wave, Data.enemies)
 	if stats.is_empty():
 		return
 	e.spawn(pos, stats, _next_id)
@@ -101,9 +121,12 @@ func _physics_process(delta: float) -> void:
 		return
 	GameState.tick_wave(delta)
 
-	# 刷怪
+	# 刷怪：Boss 波降低普通刷怪速率，把注意力留给首领
 	var cfg := Data.spawn_cfg()
-	_spawn_acc += Spawner.spawn_rate(GameState.wave, cfg) * delta
+	var rate := Spawner.spawn_rate(GameState.wave, cfg)
+	if _boss_wave():
+		rate *= float(cfg.get("boss_rate_mult", 0.55))
+	_spawn_acc += rate * delta
 	var cap := int(cfg.get("max_alive", 88))
 	while _spawn_acc >= 1.0:
 		_spawn_acc -= 1.0
@@ -138,6 +161,10 @@ func _end_wave() -> void:
 func _on_shop_closed() -> void:
 	_paused = false
 	GameState.next_wave()
+	# 新的波次若是 Boss 波，开局刷一只首领并通知 HUD 弹横幅
+	if _boss_wave():
+		Events.boss_wave.emit(GameState.wave)
+		_spawn_boss()
 
 func _update_enemies(delta: float) -> void:
 	var pp := player.global_position
@@ -149,7 +176,13 @@ func _update_enemies(delta: float) -> void:
 		# 朝玩家
 		var to_p := (pp - pos)
 		if to_p.length() > 0.001:
-			pos += to_p.normalized() * e.speed * delta
+			var dir := to_p.normalized()
+			# 飞行兵：在朝玩家的方向上叠加左右蛇形摆动，更难被预判/击中
+			if e.flight:
+				e._phase += delta * 7.0
+				var perp := Vector2(-dir.y, dir.x)
+				dir = (dir + perp * sin(e._phase) * 0.7).normalized()
+			pos += dir * e.speed * delta
 		# 分离：只算附近的，避免 O(n^2) 在满怪时拖慢手机
 		_neighbors.clear()
 		for j in _enemies.size():
