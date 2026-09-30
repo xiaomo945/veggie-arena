@@ -1,0 +1,34 @@
+{
+  "turnip": {
+    "zh": "萝卜",
+    "en": "Turnip",
+    "color": "#f4f1e8",
+    "tip": "Balanced. No penalty, no bonus.",
+    "tip_zh": "均衡，没有加成也没有惩罚，新手首选",
+    "stats": {}
+  },
+  "potato": {
+    "zh": "土豆",
+    "en": "Potato",
+    "color": "#c9a25c",
+    "tip": "Tanky but slow: +40 HP, -10% speed",
+    "tip_zh": "厚实耐揍但跑得慢：生命 +40，移速 -10%",
+    "stats": { "max_hp": 40, "speed_pct": -0.10 }
+  },
+  "tomato": {
+    "zh": "番茄",
+    "en": "Tomato",
+    "color": "#e24a3c",
+    "tip": "Glass cannon: +18% fire rate, -20 HP",
+    "tip_zh": "脆皮炮台：攻速 +18%，生命 -20",
+    "stats": { "rate_pct": 0.18, "max_hp": -20 }
+  },
+  "chili": {
+    "zh": "辣椒",
+    "en": "Chili",
+    "color": "#d7263d",
+    "tip": "Speedster: +15% speed, -10% damage",
+    "tip_zh": "灵活跑酷：移速 +15%，伤害 -10%",
+    "stats": { "speed_pct": 0.15, "dmg_pct": -0.10 }
+  }
+}

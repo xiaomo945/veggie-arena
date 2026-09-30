@@ -4,6 +4,8 @@ extends CanvasLayer
 # 开始按钮发 Events.run_requested，由 Main 统一接管开跑（标题页自己只负责隐藏）。
 # 出海游戏，主文案用英文；"萝卜突围"作中文品牌副标（项目已嵌 CJK 字体，能正常显示）。
 
+const CharacterPickerScript := preload("res://ui/Screens/CharacterPicker.gd")
+
 var _root: Control
 
 func _ready() -> void:
@@ -64,15 +66,30 @@ func _build() -> void:
 	how.add_theme_font_size_override("font_size", 17)
 	how.add_theme_color_override("font_color", Color(0.82, 0.85, 0.90))
 	how.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	how.set_position(Vector2(0, 400))
+	how.set_position(Vector2(0, 386))
 	how.set_size(Vector2(540, 96))
 	_root.add_child(how)
+
+	# 角色选择：4 张卡片横排，点一下换人（换的是属性加成 + 外观）
+	var picker = Control.new()
+	picker.set_script(CharacterPickerScript)
+	picker.set_position(Vector2((540.0 - 414.0) * 0.5, 500.0))
+	_root.add_child(picker)
+
+	var pick_hint := Label.new()
+	pick_hint.text = "CHOOSE YOUR VEG"
+	pick_hint.add_theme_font_size_override("font_size", 13)
+	pick_hint.add_theme_color_override("font_color", Color(0.60, 0.64, 0.72))
+	pick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pick_hint.set_position(Vector2(0, 476))
+	pick_hint.set_size(Vector2(540, 20))
+	_root.add_child(pick_hint)
 
 	# 开始按钮
 	var btn := Button.new()
 	btn.text = "START"
 	btn.set_size(Vector2(280, 78))
-	btn.set_position(Vector2((540 - 280) * 0.5, 600))
+	btn.set_position(Vector2((540 - 280) * 0.5, 646))
 	btn.add_theme_font_size_override("font_size", 28)
 	btn.add_theme_color_override("font_color", Color(0.07, 0.08, 0.05))
 	var n := StyleBoxFlat.new()

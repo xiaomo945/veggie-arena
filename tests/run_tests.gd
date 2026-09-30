@@ -14,6 +14,7 @@ const THit := preload("res://tests/test_hit.gd")
 const TWok := preload("res://tests/test_wok.gd")
 const TPickup := preload("res://tests/test_pickup.gd")
 const TDash := preload("res://tests/test_dash.gd")
+const TCharacter := preload("res://tests/test_character.gd")
 const TRun := preload("res://tests/test_run.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
@@ -41,6 +42,7 @@ func _initialize() -> void:
 	_run("Wok(锅气)", TWok, data)
 	_run("Pickup(金币磁吸)", TPickup, data)
 	_run("Dash(冲刺闪避)", TDash, data)
+	_run("Character(角色)", TCharacter, data)
 	_run("Run(通关)", TRun, data)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告

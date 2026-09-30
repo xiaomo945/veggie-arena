@@ -62,6 +62,7 @@ func _ready() -> void:
 	Events.stick_dir_changed.connect(_on_dir)
 	Events.stick_released.connect(_on_release)
 	Events.dash_requested.connect(_on_dash_requested)
+	Events.character_changed.connect(_on_character_changed)
 	Events.weapons_changed.connect(_rebuild_weapons)
 	_rebuild_weapons()
 
@@ -98,7 +99,8 @@ func _rebuild_weapons(_ignored: Array = []) -> void:
 	# 强化加成在这里一次性算进武器属性，开火时不再重复计算
 	var dmg_pct := GameState.stat_value("dmg_pct")
 	var rate_pct := GameState.stat_value("rate_pct")
-	_max_hp = int(Data.player_cfg().get("max_hp", 100)) + int(GameState.stat_value("max_hp"))
+	# 血量上限以 GameState 为准（角色加成 + 强化加成都已并进去，这里不要再加一遍）
+	_max_hp = GameState.max_hp
 	_speed = float(Data.player_cfg().get("speed", 180)) * (1.0 + GameState.stat_value("speed_pct"))
 	for w in GameState.weapons:
 		if not (w is Dictionary):
@@ -210,7 +212,7 @@ func _draw() -> void:
 	var stretch := 1.0 / squash
 	# 受伤闪烁：无敌帧内半透明，让玩家知道"刚才挨打了"
 	var alpha := 1.0 if _ifr <= 0.0 else 0.55
-	var tex := Art.sprite("player")
+	var tex := _skin_texture()
 	# 冲刺瞬间沿冲刺方向拉长（速度感），武器图标不跟着变形，所以画完马上复位
 	if Dash.active(_dash):
 		var ang: float = (_dash["dir"] as Vector2).angle()
@@ -266,6 +268,17 @@ func _draw_body(squash: float, stretch: float, alpha: float) -> void:
 # 武器图标绕着角色站位（位置由 core/Weapon.mount_position 算，跟开火点是同一个）
 # 缺图时退化成一个色点，玩家至少能看出"我带了几把武器"
 # 冲刺残影：只画几个半透明的淡影，位置存的是世界坐标（画的时候转回局部）
+# 角色贴图：优先 char_<角色>，缺图退回通用 player，再缺图就走手绘
+func _skin_texture() -> Texture2D:
+	var t := Art.sprite("char_" + GameState.character)
+	if t != null:
+		return t
+	return Art.sprite("player")
+
+func _on_character_changed(_key: String) -> void:
+	# 属性加成变了（生命上限 / 移速 / 伤害 / 攻速都读 stat_value），重建缓存即可
+	_rebuild_weapons()
+
 func _draw_trails() -> void:
 	for item in _dash_trail:
 		var t: Dictionary = item as Dictionary

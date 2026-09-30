@@ -11,6 +11,9 @@ var kills: int = 0
 var elapsed_in_wave: float = 0.0
 var running: bool = false
 
+# 当前选择的角色（data/characters.json 的键）。角色自带属性加成，与强化叠加。
+var character: String = "turnip"
+
 # 装备：元素形如 {"key": "pistol", "lv": 1}
 # ⚠️ 字段名必须是 "lv"（core/Inventory 里就用这个），写成 "level" 会让合成静默失效
 var weapons: Array = []
@@ -38,7 +41,8 @@ func _ready() -> void:
 
 func reset() -> void:
 	var p := Data.player_cfg()
-	max_hp = int(p.get("max_hp", 100))
+	# 角色自带的生命加成在这里并入上限（其它属性走 stat_value）
+	max_hp = int(p.get("max_hp", 100)) + int(_char_stat("max_hp"))
 	hp = max_hp
 	wave = 1
 	gold = 0
@@ -55,6 +59,25 @@ func reset() -> void:
 	# 开局自带手枪 + 冲锋枪：双武器起步，前期清怪有手感、锅气攒得快
 	weapons.append({"key": "pistol", "lv": 1})
 	weapons.append({"key": "smg", "lv": 1})
+
+# ---- 角色 ----
+func set_character(key: String) -> void:
+	if key.is_empty() or not Data.characters.has(key):
+		return
+	character = key
+	Events.character_changed.emit(key)
+	# 立刻重算一局状态：标题页换角色后，开局的血量上限要跟着变
+	var p := Data.player_cfg()
+	max_hp = int(p.get("max_hp", 100)) + int(_char_stat("max_hp"))
+	hp = max_hp
+	Events.player_hp_changed.emit(hp, max_hp)
+	Events.weapons_changed.emit(weapons)
+
+# 角色自带的某条属性加成（读 characters.json，缺角色返回 0）
+func _char_stat(stat: String) -> float:
+	var c := Data.character(character)
+	var st: Dictionary = c.get("stats", {}) as Dictionary
+	return float(st.get(stat, 0.0))
 
 # ---- 血量 ----
 func take_damage(amount: int) -> void:
@@ -135,7 +158,7 @@ func buy_upgrade(key: String) -> void:
 
 # 某个属性的总加成值（如 dmg_pct、speed_pct）
 func stat_value(stat: String) -> float:
-	var total := 0.0
+	var total := _char_stat(stat)
 	for k in upgrades:
 		var up := Data.upgrade(k)
 		if str(up.get("stat", "")) == stat:

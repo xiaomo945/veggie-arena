@@ -47,6 +47,11 @@ func _ready() -> void:
 
 	# headless 自测：godot --headless -- --sim=30 会跑 30 秒战斗并打印结果
 	# 画面看不到，就用数字确认"怪刷出来了、被打死了、玩家会掉血"
+	# --char=potato：模拟指定角色（必须在这里单独扫一遍，
+	# 不能塞进 _sim_arg 的循环里 —— 那里遇到 --sim= 就 return 了，--char 会被跳过）
+	for ua in OS.get_cmdline_user_args():
+		if ua.begins_with("--char="):
+			GameState.set_character(ua.substr(7))
 	var secs := _sim_arg()
 	if OS.get_cmdline_user_args().has("--sim") or secs > 0.0:
 		_begin_run()
@@ -206,6 +211,9 @@ func _run_simulation(seconds: float) -> void:
 	print("  玩家血量    : %d / %d" % [GameState.hp, GameState.max_hp])
 	print("  玩家状态    : %s" % ("存活" if GameState.running else "已死亡"))
 	print("  冲刺次数    : %d（威胁帧 %d）" % [int(player.dash_count), _threats])
+	print("  角色        : %s（贴图 %s）" % [
+		GameState.character,
+		"已装载" if Art.sprite("char_" + GameState.character) != null else "缺图兜底"])
 	print("  美术装载    : 玩家=%s 敌人=%s 武器图标=%s" % [
 		"贴图" if Art.sprite("player") != null else "手绘兜底",
 		"贴图" if Art.sprite("enemy_grunt") != null else "手绘兜底",
