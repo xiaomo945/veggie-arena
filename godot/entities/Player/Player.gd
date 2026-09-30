@@ -123,7 +123,13 @@ func auto_fire(enemies: Array, delta: float) -> void:
 		if ti < 0:
 			continue
 		var e: Dictionary = enemies[ti]
-		var base_dir: Vector2 = (e.get("pos", global_position) - global_position).normalized()
+		# 自动瞄准打提前量：按子弹飞行时间，预判敌人会移到哪
+		var epos: Vector2 = e.get("pos", global_position)
+		var vel: Vector2 = e.get("vel", Vector2.ZERO)
+		var bs := float(st.get("bullet_speed", 600))
+		var t := global_position.distance_to(epos) / maxf(bs, 1.0)
+		var aim := epos + vel * t
+		var base_dir: Vector2 = (aim - global_position).normalized()
 		var dirs := Weapon.pellet_directions(base_dir,
 			int(st.get("pellets", 1)), float(st.get("spread", 0.0)), _rng)
 		var mpos := Weapon.mount_position(global_position, i, _weapons.size(), MOUNT_RADIUS)

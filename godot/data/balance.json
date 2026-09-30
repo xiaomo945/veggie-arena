@@ -9,22 +9,22 @@
   },
   "wave": {
     "length": 20,
-    "heal_percent": 0.12,
+    "heal_percent": 0.15,
     "bonus_base": 10,
     "bonus_per_wave": 4
   },
   "spawn": {
-    "base_rate": 0.55,
-    "per_wave": 0.30,
-    "cap": 4.6,
-    "max_alive": 88,
+    "base_rate": 0.42,
+    "per_wave": 0.20,
+    "cap": 3.6,
+    "max_alive": 80,
     "warn_time": 0.45,
     "edge_offset": 20,
     "fast_from_wave": 2,
-    "fast_chance": 0.28,
+    "fast_chance": 0.26,
     "tank_from_wave": 3,
-    "tank_chance": 0.12,
-    "tank_chance_late": 0.18,
+    "tank_chance": 0.10,
+    "tank_chance_late": 0.16,
     "tank_late_from_wave": 6
   },
   "shop": {

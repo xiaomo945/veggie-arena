@@ -6,6 +6,7 @@ extends Node2D
 const PlayerScene := preload("res://entities/Player/Player.tscn")
 const JoystickScene := preload("res://ui/Joystick/Joystick.tscn")
 const GameScene := preload("res://scenes/Game.tscn")
+const TitleScene := preload("res://ui/Screens/TitleScreen.gd")
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
 
@@ -33,13 +34,25 @@ func _ready() -> void:
 	add_child(game)
 
 	add_child(JoystickScene.instantiate())
+
+	# 标题页：盖在最上层，点 START 才开跑（run_requested 由 Main 接管）
+	var title = TitleScene.new()
+	add_child(title)
+	Events.run_requested.connect(_begin_run)
+
 	queue_redraw()
 
 	# headless 自测：godot --headless -- --sim=30 会跑 30 秒战斗并打印结果
 	# 画面看不到，就用数字确认"怪刷出来了、被打死了、玩家会掉血"
 	var secs := _sim_arg()
 	if OS.get_cmdline_user_args().has("--sim") or secs > 0.0:
+		_begin_run()
 		_run_simulation(secs if secs > 0.0 else 30.0)
+
+# 标题页"开始" / 死亡页"再来一局" 都走这里：正式开跑一局
+func _begin_run() -> void:
+	if game != null and game.has_method("start_run"):
+		game.start_run()
 
 func _sim_arg() -> float:
 	# 注意：Godot 4 里 "--" 之后的参数只在 get_cmdline_user_args() 里，
@@ -155,9 +168,10 @@ func _run_simulation(seconds: float) -> void:
 	print("  金币        : %d" % GameState.gold)
 	print("  玩家血量    : %d / %d" % [GameState.hp, GameState.max_hp])
 	print("  玩家状态    : %s" % ("存活" if GameState.running else "已死亡"))
-	print("  美术装载    : 玩家=%s 敌人=%s" % [
+	print("  美术装载    : 玩家=%s 敌人=%s 武器图标=%s" % [
 		"贴图" if Art.sprite("player") != null else "手绘兜底",
-		"贴图" if Art.sprite("enemy_grunt") != null else "手绘兜底"])
+		"贴图" if Art.sprite("enemy_grunt") != null else "手绘兜底",
+		"贴图" if Art.icon("weapon_pistol") != null else "色点兜底"])
 	get_tree().quit(0)
 
 func _draw() -> void:

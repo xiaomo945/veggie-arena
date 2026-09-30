@@ -1,7 +1,7 @@
 extends CanvasLayer
 
 # 死亡页：告诉玩家"你撑到第几波、杀了多少"，然后一键重开。
-# 重开用 reload_current_scene —— GameState 会在 Game._ready() 里自动 reset，不用手动清状态。
+# 重开发 Events.run_requested —— 由 Main 调 Game.start_run() 回收并重置，比 reload 场景更干净。
 
 var _root: Control
 var _title: Label
@@ -25,18 +25,19 @@ func _build() -> void:
 	_root.add_child(shade)
 
 	_title = Label.new()
-	_title.text = "被吃掉了"
-	_title.add_theme_font_size_override("font_size", 38)
+	_title.text = "GAME OVER"
+	_title.add_theme_font_size_override("font_size", 40)
+	_title.add_theme_color_override("font_color", Color(0.96, 0.55, 0.45))
 	_title.set_position(Vector2(150, 300))
 	_root.add_child(_title)
 
 	_stat = Label.new()
 	_stat.add_theme_font_size_override("font_size", 20)
-	_stat.set_position(Vector2(150, 370))
+	_stat.set_position(Vector2(150, 372))
 	_root.add_child(_stat)
 
 	_btn = Button.new()
-	_btn.text = "再来一局"
+	_btn.text = "PLAY AGAIN"
 	_btn.set_size(Vector2(300, 74))
 	_btn.set_position(Vector2(120, 470))
 	_btn.add_theme_font_size_override("font_size", 24)
@@ -44,8 +45,9 @@ func _build() -> void:
 	_root.add_child(_btn)
 
 func _show() -> void:
-	_stat.text = "撑到第 %d 波 · 击杀 %d 个" % [GameState.wave, GameState.kills]
+	_stat.text = "Reached Wave %d  ·  %d Kills" % [GameState.wave, GameState.kills]
 	_root.visible = true
 
 func _restart() -> void:
-	get_tree().reload_current_scene()
+	_root.visible = false
+	Events.run_requested.emit()

@@ -44,7 +44,7 @@ func _build() -> void:
 	_root.add_child(panel)
 
 	var title := Label.new()
-	title.text = "补给站"
+	title.text = "SHOP"
 	title.set_position(Vector2(20, 14))
 	title.add_theme_font_size_override("font_size", 24)
 	panel.add_child(title)
@@ -76,7 +76,7 @@ func _build() -> void:
 	_next_btn = Button.new()
 	_next_btn.set_size(Vector2(262, 58))
 	_next_btn.set_position(Vector2(228, y + 6))
-	_next_btn.text = "开始下一波 →"
+	_next_btn.text = "NEXT WAVE →"
 	_next_btn.add_theme_font_size_override("font_size", 19)
 	_next_btn.pressed.connect(_next_wave)
 	panel.add_child(_next_btn)
@@ -97,7 +97,7 @@ func _roll() -> void:
 	_refresh()
 
 func _refresh() -> void:
-	_gold_lbl.text = "金币 %d" % GameState.gold
+	_gold_lbl.text = "GOLD %d" % GameState.gold
 	var cfg := Data.shop_cfg()
 	for i in _cards.size():
 		var b: Button = _cards[i]
@@ -107,17 +107,17 @@ func _refresh() -> void:
 		b.visible = true
 		var o: Dictionary = _offers[i]
 		var cost := int(o.get("cost", 0))
-		var name := str(o.get("zh", o.get("key", "")))
+		var name := str(o.get("en", o.get("zh", o.get("key", ""))))
 		var tip := str(o.get("tip", ""))
 		var kind := str(o.get("kind", ""))
-		var tag := "武器" if kind == "weapon" else "强化"
+		var tag := "WEAPON" if kind == "weapon" else "UPGRADE"
 		if _sold[i]:
-			b.text = "[%s] %s\n已购买" % [tag, name]
+			b.text = "[%s] %s\nSOLD" % [tag, name]
 			b.disabled = true
 			continue
-		b.text = "[%s] %s\n%s\n%d 金币" % [tag, name, tip, cost]
+		b.text = "[%s] %s\n%s\n%d Gold" % [tag, name, tip, cost]
 		b.disabled = not Economy.can_buy(GameState.gold, cost)
-	_reroll_btn.text = "刷新 (%d)" % Economy.reroll_cost(_reroll_times, cfg)
+	_reroll_btn.text = "REROLL (%d)" % Economy.reroll_cost(_reroll_times, cfg)
 	_reroll_btn.disabled = not Economy.can_buy(GameState.gold, Economy.reroll_cost(_reroll_times, cfg))
 
 func _buy(index: int) -> void:

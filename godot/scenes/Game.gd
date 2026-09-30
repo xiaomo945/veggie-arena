@@ -41,11 +41,24 @@ func _ready() -> void:
 	_build_pools()
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.player_died.connect(_on_player_died)
-	GameState.reset()
+	# ⚠️ 不再这里 reset —— 一局由标题页"开始"或死亡页"再来一局"触发 start_run()
+	# （reset 会把 running 置 true，若提前调了，标题页还没点就开始刷怪了）
 	add_child(HUDScene.instantiate())
 	add_child(ShopScene.instantiate())
 	add_child(DeathScene.instantiate())
 	Events.shop_closed.connect(_on_shop_closed)
+
+# 由标题页/死亡页的 run_requested 触发。回收场上所有敌人/子弹，重置状态，正式开跑。
+func start_run() -> void:
+	for e in _enemies:
+		e.recycle()
+	for b in _bullets:
+		b.recycle()
+	_spawn_acc = 0.0
+	_next_id = 1
+	GameState.reset()
+	set_physics_process(true)
+	Events.run_started.emit()
 
 func _build_pools() -> void:
 	for i in MAX_BULLETS:
@@ -161,7 +174,13 @@ func _collect_enemy_data() -> void:
 	_edata.clear()
 	for e in _enemies:
 		if e.alive:
-			_edata.append({"pos": e.global_position, "radius": e.radius, "alive": true, "ref": e})
+			# 敌人基本朝玩家追，用"朝玩家方向 × 速度"近似速度，给自动瞄准打提前量
+			var vel := Vector2.ZERO
+			var to_p: Vector2 = player.global_position - e.global_position
+			if to_p.length() > 0.001:
+				vel = to_p.normalized() * float(e.speed)
+			_edata.append({"pos": e.global_position, "radius": e.radius,
+				"vel": vel, "alive": true, "ref": e})
 
 func _resolve_hits() -> void:
 	_bdata.clear()

@@ -48,7 +48,7 @@ func _on_hp(hp: int, max_hp: int) -> void:
 	_bars.queue_redraw()
 
 func _on_gold(gold: int) -> void:
-	_gold.text = "金币 %d" % gold
+	_gold.text = "GOLD %d" % gold
 
 func _on_wave_started(wave: int) -> void:
 	_refresh()
@@ -57,8 +57,8 @@ func _on_wave_progress(elapsed: float, length: float) -> void:
 	_bars.set("wave_progress", elapsed / maxf(0.001, length))
 	_bars.queue_redraw()
 	# 击杀数每帧跟着刷新（省一个信号，反正波次进度也是每帧发）
-	_kill.text = "击杀 %d" % GameState.kills
-	_wave.text = "第 %d 波" % GameState.wave
+	_kill.text = "KILLS %d" % GameState.kills
+	_wave.text = "WAVE %d" % GameState.wave
 
 func _on_weapons(_ignored: Array = []) -> void:
 	var slots: Array = []
@@ -72,11 +72,11 @@ func _on_weapons(_ignored: Array = []) -> void:
 			"key": str(w.get("key", "")),
 			"lv": int(w.get("lv", 1)),
 			"color": Color(str(def.get("color", "#ffffff"))),
-			"zh": str(def.get("zh", "")),
+			"zh": str(def.get("en", def.get("zh", ""))),
 		})
 	_bars.set("slots", slots)
 	_bars.queue_redraw()
 
 func _refresh() -> void:
-	_wave.text = "第 %d 波" % GameState.wave
-	_kill.text = "击杀 %d" % GameState.kills
+	_wave.text = "WAVE %d" % GameState.wave
+	_kill.text = "KILLS %d" % GameState.kills

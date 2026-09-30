@@ -29,6 +29,10 @@ window/stretch/aspect="keep"
 pointing/emulate_mouse_from_touch=true
 pointing/emulate_touch_from_mouse=false
 
+[gui]
+
+theme/default_font="res://fonts/NotoSansSC-Subset.otf"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
