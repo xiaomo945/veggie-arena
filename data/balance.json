@@ -67,5 +67,9 @@
     "toss_dmg_mult": 0.6,
     "toss_knock": 130,
     "toss_reset": 25
+  },
+  "bullet": {
+    "homing_turn": 4.0,
+    "homing_range": 360
   }
 }

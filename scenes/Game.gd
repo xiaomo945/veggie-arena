@@ -150,14 +150,20 @@ func _physics_process(delta: float) -> void:
 	# 敌人移动 + 互相分离 + 不要贴玩家脸
 	_update_enemies(delta)
 
+	# 先收集敌人数组（含本帧位置/速度），供开火与子弹追踪共用
+	_collect_enemy_data()
+
+	# 开火（武器自动瞄准最近目标）
+	if player.has_method("auto_fire"):
+		player.auto_fire(_edata, delta)
+
+	# 子弹追踪：飞行中轻微朝当前最近存活怪转向，
+	# 让"朝你走来的怪"被稳稳咬住，多怪时不再平行打空
+	_home_bullets(delta)
+
 	# 子弹飞行
 	for b in _bullets:
 		b.advance(delta)
-
-	# 开火（武器需要敌人列表来自动瞄准）
-	_collect_enemy_data()
-	if player.has_method("auto_fire"):
-		player.auto_fire(_edata, delta)
 
 	# 命中结算
 	_resolve_hits()
@@ -235,6 +241,38 @@ func _collect_enemy_data() -> void:
 				vel = to_p.normalized() * float(e.speed)
 			_edata.append({"pos": e.global_position, "radius": e.radius,
 				"vel": vel, "alive": true, "ref": e})
+
+# 子弹追踪：每帧把每颗激活子弹的方向，朝"当前最近的存活怪"最多转 homing_turn*delta 弧度。
+# 幅度克制（约 4 rad/s），只修正发射后怪的绕走/多怪时的误判，不会瞬转成"导航弹"。
+func _home_bullets(delta: float) -> void:
+	var cfg := Data.bullet_cfg()
+	var turn := float(cfg.get("homing_turn", 0.0))
+	if turn <= 0.0:
+		return
+	var hr := float(cfg.get("homing_range", 360))
+	var max_turn := turn * delta
+	for b in _bullets:
+		if not b.active:
+			continue
+		var best := -1
+		var best_d := INF
+		for k in _edata.size():
+			var e: Dictionary = _edata[k]
+			if not bool(e.get("alive", false)):
+				continue
+			var d: float = b.global_position.distance_to(e.get("pos", Vector2.ZERO))
+			if d < best_d:
+				best_d = d
+				best = int(k)
+		if best < 0 or best_d > hr:
+			continue
+		var ep: Vector2 = _edata[best].get("pos", Vector2.ZERO)
+		var desired := (ep - b.global_position).normalized()
+		var cur: Vector2 = b.dir.normalized()
+		var ang := cur.angle_to(desired)
+		ang = clampf(ang, -max_turn, max_turn)
+		b.dir = cur.rotated(ang)
+		b.rotation = b.dir.angle()
 
 func _resolve_hits() -> void:
 	_bdata.clear()
