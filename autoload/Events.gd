@@ -31,6 +31,10 @@ signal pickup_spawned(pos: Vector2, value: int)
 # 玩家吃到一枚金币（音效/特效订阅；加钱由 Game 直接调 GameState.add_gold）
 signal pickup_collected(pos: Vector2, value: int)
 
+# ---- 存档 / 解锁 ----
+# 一局结束后，新达成解锁的武器逐个发出（HUD 弹提示用）
+signal unlocked(key: String)
+
 # ---- 角色 ----
 # 标题页选人时发出；Player/GameState 各自响应（换贴图 / 重算上限）
 signal character_changed(key: String)

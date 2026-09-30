@@ -14,6 +14,7 @@ const DASH_SIZE := 96.0
 
 var _bars: Node2D
 var _dash_btn: Control
+var _unlock: Label
 var _wave: Label
 var _gold: Label
 var _kill: Label
@@ -25,6 +26,8 @@ var _wok_banner: Label
 var _wok_banner_t := 0.0
 var _wok_last_tier := 0
 var _toss_btn: Button
+var _unlock_queue: Array = []    # 待展示的解锁提示（一次一條，避免刷屏）
+var _unlock_t := 0.0
 
 func _ready() -> void:
 	layer = 20
@@ -100,6 +103,18 @@ func _ready() -> void:
 	Events.boss_wave.connect(_on_boss_wave)
 	Events.wok_heat_changed.connect(_on_wok_heat)
 	Events.wok_ready_changed.connect(_on_wok_ready)
+	Events.unlocked.connect(_on_unlocked)
+
+	# 解锁横幅（复用 Boss 横幅的位置与渐隐逻辑，另开一个 Label）
+	_unlock = Label.new()
+	_unlock.position = Vector2(0, 340)
+	_unlock.custom_minimum_size = Vector2(540, 40)
+	_unlock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_unlock.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_unlock.add_theme_font_size_override("font_size", 24)
+	_unlock.add_theme_color_override("font_color", Color(1.0, 0.84, 0.36))
+	_unlock.text = ""
+	add_child(_unlock)
 
 	_wave_len = float(Data.wave_cfg().get("length", 20))
 	_on_weapons()
@@ -188,6 +203,26 @@ func _pop_wok(text: String, c: Color) -> void:
 	_wok_banner.modulate.a = 1.0
 	_wok_banner_t = 1.6
 
+func _on_unlocked(key: String) -> void:
+	_unlock_queue.append(key)
+
+# 解锁提示：一次显示一条，2.2 秒后换下一条（多条时排队，不叠在一起）
+func _tick_unlock(delta: float) -> void:
+	if _unlock_t > 0.0:
+		_unlock_t -= delta
+		var a := clampf(_unlock_t / 0.5, 0.0, 1.0)
+		_unlock.modulate.a = a
+		if _unlock_t <= 0.0:
+			_unlock.text = ""
+		return
+	if _unlock_queue.is_empty():
+		return
+	var key := str(_unlock_queue.pop_front())
+	var def := Data.weapon(key)
+	var name := str(def.get("en", def.get("zh", key)))
+	_unlock.text = "UNLOCKED: %s!" % name.to_upper()
+	_unlock_t = 2.2
+
 func _process(delta: float) -> void:
 	if _banner_t > 0.0:
 		_banner_t -= delta
@@ -205,3 +240,4 @@ func _process(delta: float) -> void:
 	# 颠勺按钮满气时呼吸闪烁，提示玩家"戳这里放颠勺"
 	if _toss_btn.visible:
 		_toss_btn.modulate.a = 0.65 + 0.35 * sin(Time.get_ticks_msec() / 110.0)
+	_tick_unlock(delta)

@@ -10,6 +10,7 @@ var weapons: Dictionary = {}
 var enemies: Dictionary = {}
 var upgrades: Dictionary = {}
 var characters: Dictionary = {}
+var unlocks: Dictionary = {}
 
 func _ready() -> void:
 	load_all()
@@ -20,6 +21,7 @@ func load_all() -> void:
 	enemies = _read("res://data/enemies.json")
 	upgrades = _read("res://data/upgrades.json")
 	characters = _read("res://data/characters.json")
+	unlocks = _read("res://data/unlocks.json")
 
 func _read(path: String) -> Dictionary:
 	var f := FileAccess.open(path, FileAccess.READ)
@@ -73,6 +75,9 @@ func pickup_cfg() -> Dictionary:
 
 func weapon(key: String) -> Dictionary:
 	return weapons.get(key, {})
+
+func unlocks_cfg() -> Dictionary:
+	return unlocks
 
 func character(key: String) -> Dictionary:
 	return characters.get(key, {})

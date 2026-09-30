@@ -33,9 +33,13 @@ static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator) -> 
 
 # 构造可用商品池：武器（槽位未满，或可合成）+ 全部强化
 # weapons 里每项需含 "key" 与 "lv"
-static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Dictionary, max_slot: int, max_lv: int) -> Array:
+# unlocked_weapons: 已解锁的武器 key 列表。传空数组表示"全部可买"（默认，向后兼容）。
+static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Dictionary, max_slot: int, max_lv: int, unlocked_weapons: Array = []) -> Array:
 	var pool: Array = []
 	for key in weapon_defs.keys():
+		# 未解锁的武器根本不进池子（商店里看不到，也不会被抽到）
+		if not unlocked_weapons.is_empty() and not unlocked_weapons.has(str(key)):
+			continue
 		if Inventory.can_accept(weapons, key, max_slot, max_lv):
 			var w: Dictionary = weapon_defs[key].duplicate()
 			w["key"] = key

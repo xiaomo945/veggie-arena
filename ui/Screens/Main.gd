@@ -218,6 +218,12 @@ func _run_simulation(seconds: float) -> void:
 		"贴图" if Art.sprite("player") != null else "手绘兜底",
 		"贴图" if Art.sprite("enemy_grunt") != null else "手绘兜底",
 		"贴图" if Art.icon("weapon_pistol") != null else "色点兜底"])
+	# 模拟结束写一次存档（真实游戏里由阵亡/通关触发），用来验证存档链路可写
+	SaveMgr.record_run(GameState.wave, GameState.kills, GameState.gold,
+		GameState.run_score(), false)
+	print("  存档        : runs=%d best=%d wave=%d 解锁武器=%d/12 角色=%s" % [
+		SaveMgr.total_runs(), SaveMgr.best_score(), SaveMgr.best_wave(),
+		SaveMgr.unlocked_weapons().size(), SaveMgr.last_character()])
 	get_tree().quit(0)
 
 func _draw() -> void:

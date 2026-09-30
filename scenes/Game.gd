@@ -55,6 +55,7 @@ func _ready() -> void:
 	_build_pools()
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.player_died.connect(_on_player_died)
+	Events.run_won.connect(_on_run_won)
 	# ⚠️ 不再这里 reset —— 一局由标题页"开始"或死亡页"再来一局"触发 start_run()
 	# （reset 会把 running 置 true，若提前调了，标题页还没点就开始刷怪了）
 	add_child(HUDScene.instantiate())
@@ -93,6 +94,17 @@ func _build_pools() -> void:
 
 func _on_player_died() -> void:
 	set_physics_process(false)
+	_finish_run(false)
+
+# 通关（撑过最后一波）
+func _on_run_won() -> void:
+	set_physics_process(false)
+	_finish_run(true)
+
+# 一局结束的统一收尾：把成绩写进存档（解锁判定也在这里触发）
+func _finish_run(won: bool) -> void:
+	SaveMgr.record_run(GameState.wave, GameState.kills, GameState.gold,
+		GameState.run_score(), won)
 
 # ---- 刷怪 ----
 func _boss_wave() -> bool:

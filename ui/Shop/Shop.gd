@@ -88,8 +88,10 @@ func _open() -> void:
 
 func _roll() -> void:
 	var cfg := Data.shop_cfg()
+	# 只卖已解锁的武器（未解锁的根本不进池子）
 	var pool := Economy.build_pool(GameState.weapons, Data.weapons, Data.upgrades,
-		int(cfg.get("max_slot", 6)), int(cfg.get("max_lv", 4)))
+		int(cfg.get("max_slot", 6)), int(cfg.get("max_lv", 4)),
+		SaveMgr.unlocked_weapons())
 	_offers = Economy.roll_offers(pool, int(cfg.get("offer_count", 4)), _rng)
 	_sold = []
 	for i in _offers.size():

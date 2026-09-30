@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b0e0c">
 
 <title>Support &amp; Contact - TURNIP TROUBLE</title>
-<meta name="description" content="Support and contact page for TURNIP TROUBLE. Answers about loading issues, auto-fire controls, unlocking weapons, saved progress, supported devices, battery and heat. Contact the developer directly.">
+<meta name="description" content="Support and contact page for TURNIP TROUBLE. Answers about loading issues, auto-fire controls, the dash cooldown, coin pickup, choosing a character, unlocking weapons, saved progress, supported devices, battery and heat. Contact the developer directly.">
 <meta name="robots" content="index, follow">
 <meta name="author" content="Veggie Arena">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -302,10 +302,45 @@ footer .flinks{display:flex; flex-wrap:wrap; justify-content:center; gap:6px 14p
       </details>
 
       <details>
+        <summary>How do I dash, and why does nothing happen when I press it?</summary>
+        <p>Dashing uses the <kbd>DASH</kbd> button in the <b>bottom-right corner</b> of the screen — it is the only on-screen button during combat besides <kbd>WOK TOSS</kbd>. Tap it and you lurch forward with <b>invincibility frames</b> for the length of the dash, which is how you escape a ring that just closed around you.</p>
+        <p>If nothing happens when you tap it, it is almost certainly <b>still on cooldown</b>: recharge takes <b>1.8 seconds</b>, so the button stays dimmed until it's ready again. Tapping mid-cooldown does queue nothing — wait for it to light back up and tap again.</p>
+        <ul>
+          <li>During those first frames you cannot take damage, so dashing <em>through</em> an attack or a wall of enemies is safe.</li>
+          <li>It recharges whether you use it or not, so save it for a real pinch — being surrounded, or crossing a gap in the swarm.</li>
+          <li>On desktop, <kbd>Space</kbd> triggers dash. If the button looks dead even after waiting, reload the page (see the first FAQ).</li>
+        </ul>
+      </details>
+
+      <details>
+        <summary>Why didn't my coins get added? I killed the enemy.</summary>
+        <p>Coins are physical drops, not instant credit. When an enemy dies it drops coins <b>on the ground where it fell</b>, and you collect them by getting close: once you are inside your <b>magnet range</b>, the coins fly to you and bank automatically.</p>
+        <ul>
+          <li>If the coins are just sitting there, you are <b>outside the pickup radius</b> — walk toward them and they'll come to you.</li>
+          <li><b>Anything left behind is not lost:</b> every coin still on the field is swept up automatically when the wave ends.</li>
+          <li>Coins collected either way go to your run balance, which you spend in the shop between waves.</li>
+        </ul>
+        <p>So there are two ways money lands: magnet it mid-wave yourself, or let the end-of-wave sweep do it for you. Nothing you earned during a wave disappears.</p>
+      </details>
+
+      <details>
+        <summary>How do I choose a different character?</summary>
+        <p>On the <b>title screen</b>, before the run starts, the available veggies are shown as cards — <b>tap the card</b> for the one you want, then start the run. There is no separate unlock screen; all four are there from the start.</p>
+        <ul>
+          <li><b>Turnip</b> — balanced baseline, no bonus and no penalty. Best one to learn on.</li>
+          <li><b>Potato</b> — <b>+40 max HP</b>, <b>-10% move speed</b>. The tank: forgiving, but slow to reposition.</li>
+          <li><b>Tomato</b> — <b>+18% attack speed</b>, <b>-20 max HP</b>. Glass cannon: melts waves, punishes mistakes.</li>
+          <li><b>Chili</b> — <b>+15% move speed</b>, <b>-10% damage</b>. The runner: great for kiting and coin runs.</li>
+        </ul>
+        <p>Nobody here is a straight upgrade — every character trades something away, so if one feels weak, the wave probably just happens to hit the stat it gave up.</p>
+      </details>
+
+      <details>
         <summary>How do I unlock more weapons?</summary>
         <p>Inside a run, from the <b>shop between waves</b>. After every wave you clear, the shop opens and offers randomized items — new weapons, stat boosts and upgrades.</p>
         <ul>
-          <li>Weapons are <b>bought with currency earned during that run</b>, so they are per-run, not permanent unlocks.</li>
+          <li>Weapons are <b>bought with coins earned during that run</b> (see "Why didn't my coins get added?" above), so they are per-run, not permanent unlocks.</li>
+          <li>There are <b>12 kitchen weapons</b> in the pool: Cleaver, Skewer, Ladle, Teapot, Chili Cannon and Blender, plus Pistol, SMG, Shotgun, Rocket, Laser and Boomerang.</li>
           <li>The shop is random each time, so no two runs give you the same build. That is the roguelite part.</li>
           <li>If you have never seen a certain weapon, just play more waves: the shop pool rolls differently every run.</li>
         </ul>
