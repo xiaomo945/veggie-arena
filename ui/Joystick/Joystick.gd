@@ -64,6 +64,10 @@ func _start(index: int, pos: Vector2) -> void:
 	if GameState.wok_ready() and GameState.wok_toss_rect.has_point(pos):
 		Events.wok_toss_requested.emit()
 		return
+	# 冲刺按钮区域：戳这里只冲刺，不当成走位拖拽
+	if GameState.dash_rect.has_point(pos):
+		Events.dash_requested.emit()
+		return
 	_active = true
 	_index = index
 	_origin = pos          # 摇杆在手指按下的位置生成

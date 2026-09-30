@@ -127,14 +127,31 @@ func _auto_shop() -> void:
 			GameState.buy_upgrade(str(o.get("key", "")))
 		GameState.spend_gold(cost)
 
+# 有怪进到 70px 内 = 威胁，模拟 AI 这时才按冲刺
+var _threats := 0
+
+func _threat_close(dist: float = 70.0) -> bool:
+	var pp := player.global_position
+	for e in game._enemies:
+		if e.alive and e.global_position.distance_to(pp) < dist:
+			return true
+	return false
+
 func _run_simulation(seconds: float) -> void:
 	var steps := int(seconds * 60.0)
 	var peak_alive := 0
 	var survived := 0
 	var _trace := OS.get_cmdline_user_args().has("--trace")
+	var use_dash := OS.get_cmdline_user_args().has("--dash")
+	_threats = 0
 	for i in steps:
 		# 站着不动是最坏情况；模拟里让玩家自动躲，才能看出"会玩的话能撑多久"
 		player.set_move_dir(_dodge_dir())
+		# --dash：怪贴脸时冲刺脱离，验证冲刺在实战里的代码路径与收益
+		# 每 2 秒冲一次（覆盖代码路径）+ 怪贴近 140px 时真躲一下
+		if use_dash and (i % 120 == 0 or _threat_close(140.0)):
+			_threats += 1
+			Events.dash_requested.emit()
 		player._physics_process(1.0 / 60.0)
 		game._physics_process(1.0 / 60.0)
 		# 波次结束：自动逛补给站（买得起的全买，验证购买运行期路径不崩），再开下一波
@@ -188,6 +205,7 @@ func _run_simulation(seconds: float) -> void:
 		GameState.gold, game.gold_picked, game.ground_gold()])
 	print("  玩家血量    : %d / %d" % [GameState.hp, GameState.max_hp])
 	print("  玩家状态    : %s" % ("存活" if GameState.running else "已死亡"))
+	print("  冲刺次数    : %d（威胁帧 %d）" % [int(player.dash_count), _threats])
 	print("  美术装载    : 玩家=%s 敌人=%s 武器图标=%s" % [
 		"贴图" if Art.sprite("player") != null else "手绘兜底",
 		"贴图" if Art.sprite("enemy_grunt") != null else "手绘兜底",

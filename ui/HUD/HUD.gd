@@ -6,8 +6,14 @@ extends CanvasLayer
 # 拇指会挡住下半屏，所以所有信息都放顶部。
 
 const HudBarsScene := preload("res://ui/HUD/HudBars.gd")
+const DashButtonScript := preload("res://ui/HUD/DashButton.gd")
+
+# 冲刺按钮位置：右下角，避开中间的颠勺按钮（210..330）与左下拇指区
+const DASH_POS := Vector2(398, 748)
+const DASH_SIZE := 96.0
 
 var _bars: Node2D
+var _dash_btn: Control
 var _wave: Label
 var _gold: Label
 var _kill: Label
@@ -76,6 +82,14 @@ func _ready() -> void:
 	add_child(_toss_btn)
 	# 共享给 Joystick：玩家戳这个区域时只触发颠勺、不移动
 	GameState.wok_toss_rect = Rect2(210, 706, 120, 120)
+
+	# 冲刺按钮（常驻右下角，自带冷却扇形）
+	_dash_btn = Control.new()
+	_dash_btn.set_script(DashButtonScript)
+	_dash_btn.position = DASH_POS
+	add_child(_dash_btn)
+	# 共享给 Joystick：戳这块只冲刺，不当成走位拖拽
+	GameState.dash_rect = Rect2(DASH_POS, Vector2(DASH_SIZE, DASH_SIZE))
 
 	Events.player_hp_changed.connect(_on_hp)
 	Events.gold_changed.connect(_on_gold)

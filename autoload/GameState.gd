@@ -30,6 +30,8 @@ var _wok_tier: int = 0
 var _wok_ready_emitted := false
 # 颠勺按钮在屏幕上的可点区域（HUD 写入，Joystick 读取以避让移动）
 var wok_toss_rect := Rect2(0, 0, 0, 0)
+# 冲刺按钮占的屏幕区域（HUD 写入，Joystick 读取后避让：戳这块只冲刺、不走位）
+var dash_rect := Rect2(0, 0, 0, 0)
 
 func _ready() -> void:
 	reset()

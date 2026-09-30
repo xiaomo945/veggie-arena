@@ -63,6 +63,12 @@ func wok_cfg() -> Dictionary:
 func bullet_cfg() -> Dictionary:
 	return balance.get("bullet", {})
 
+func dash_cfg() -> Dictionary:
+	return balance.get("dash", {})
+
+func pickup_cfg() -> Dictionary:
+	return balance.get("pickup", {})
+
 func weapon(key: String) -> Dictionary:
 	return weapons.get(key, {})
 

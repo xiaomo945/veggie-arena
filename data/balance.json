@@ -72,6 +72,13 @@
     "homing_turn": 4.0,
     "homing_range": 360
   },
+  "dash": {
+    "cooldown": 1.8,
+    "duration": 0.16,
+    "speed_mult": 3.4,
+    "ifr": 0.30,
+    "distance": 96
+  },
   "pickup": {
     "magnet": 92,
     "pull_speed": 430,

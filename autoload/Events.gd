@@ -43,6 +43,12 @@ signal weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, color: Color)
 # 摇杆只发信号，不认识 Player；Player 只收信号，不认识摇杆。
 signal stick_dir_changed(dir: Vector2)
 signal stick_released()
+# 冲刺闪避：HUD 按钮 / 摇杆避让区点按发出，由 Player 执行
+signal dash_requested()
+# Player → HUD：冷却进度(0..1)与是否可用，用于画按钮冷却扇形
+signal dash_state_changed(ratio: float, ready: bool)
+# 冲刺起步的视觉反馈（残影/尘土），纯表现层订阅
+signal dash_started(pos: Vector2, dir: Vector2)
 
 # ---- 流程 ----
 signal run_started()

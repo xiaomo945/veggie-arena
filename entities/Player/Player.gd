@@ -8,6 +8,7 @@ extends CharacterBody2D
 
 const Movement := preload("res://core/Movement.gd")
 const Weapon := preload("res://core/Weapon.gd")
+const Dash := preload("res://core/Dash.gd")
 
 const MOUNT_RADIUS := 42.0
 # 贴图边长 = radius * 系数（贴图里角色占画布约 90%，画出来跟手绘版体量一致）
@@ -30,6 +31,12 @@ var _rng := RandomNumberGenerator.new()
 var _hp := 100
 var _max_hp := 100
 var _ifr := 0.0
+# 冲刺闪避状态（core/Dash 的字典，纯函数推进）
+var _dash: Dictionary = {}
+var _dash_cfg: Dictionary = {}
+var _face := Vector2(0, -1)      # 面朝方向：没推摇杆时冲刺默认朝这边
+var _dash_trail: Array = []      # 冲刺残影 [{pos, t}]
+var dash_count := 0            # 本局冲刺次数（诊断/HUD 用）
 
 const SKIN := Color(0.97, 0.96, 0.92)
 const SHADE := Color(0.86, 0.85, 0.80)
@@ -50,16 +57,34 @@ func _ready() -> void:
 	_arena = Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
 		float(a.get("w", 540)), float(a.get("h", 900)))
 	_rng.randomize()
+	_dash_cfg = Dash.cfg(Data.dash_cfg())
+	_dash = Dash.make()
 	Events.stick_dir_changed.connect(_on_dir)
 	Events.stick_released.connect(_on_release)
+	Events.dash_requested.connect(_on_dash_requested)
 	Events.weapons_changed.connect(_rebuild_weapons)
 	_rebuild_weapons()
 
 func _on_dir(d: Vector2) -> void:
 	_dir = d
+	if d.length_squared() > 0.0001:
+		_face = d.normalized()
 
 func _on_release() -> void:
 	_dir = Vector2.ZERO
+
+# 冲刺按钮：有摇杆方向就朝那边冲，没推摇杆就朝面朝方向冲
+func _on_dash_requested() -> void:
+	var d := _dir
+	if d.length_squared() < 0.0001:
+		d = _face
+	if not Dash.can_start(_dash, _dash_cfg):
+		return
+	if Dash.start(_dash, d, _dash_cfg):
+		dash_count += 1
+		Events.dash_started.emit(global_position, d)
+		Events.dash_state_changed.emit(0.0, false)
+		queue_redraw()
 
 # 给模拟/AI 用：直接下移动指令（等价于手指推摇杆）
 func set_move_dir(d: Vector2) -> void:
@@ -99,16 +124,45 @@ func _rebuild_weapons(_ignored: Array = []) -> void:
 	queue_redraw()
 
 func _physics_process(delta: float) -> void:
-	var nv := Movement.step(_vx, _vy, _dir.x, _dir.y,
-		_speed, delta, _k_forward, _k_reverse)
-	_vx = nv.x
-	_vy = nv.y
+	Dash.step(_dash, delta)
+	if Dash.active(_dash):
+		# 冲刺中：直接以冲刺速度位移，不走加速度（这就是"窜出去"的爆发感来源）
+		var dv: Vector2 = (_dash["dir"] as Vector2) * Dash.speed(_dash, _speed, _dash_cfg)
+		_vx = dv.x
+		_vy = dv.y
+		_push_trail()
+	else:
+		var nv := Movement.step(_vx, _vy, _dir.x, _dir.y,
+			_speed, delta, _k_forward, _k_reverse)
+		_vx = nv.x
+		_vy = nv.y
 	global_position = Movement.clamp_to_arena(
 		global_position + Vector2(_vx, _vy) * delta, _arena, _radius)
 	if _ifr > 0.0:
 		_ifr -= delta
+	# 冲刺附带的无敌：比冲刺位移本身长一点，穿过怪堆不会刚落地就挨打
+	var difr := Dash.ifr_left(_dash, _dash_cfg)
+	if difr > 0.0 and difr > _ifr:
+		_ifr = difr
+	_age_trails(delta)
 	_bob += delta * 6.0 * (Movement.speed_of(_vx, _vy) / maxf(_speed, 1.0))
+	# 冷却进度给 HUD 画扇形（每帧一个信号，接收方只做一个赋值，开销可忽略）
+	Events.dash_state_changed.emit(
+		Dash.cooldown_ratio(_dash, _dash_cfg), Dash.can_start(_dash, _dash_cfg))
 	queue_redraw()
+
+# ---- 冲刺残影 ----
+func _push_trail() -> void:
+	if _dash_trail.size() >= 6:
+		_dash_trail.remove_at(0)
+	_dash_trail.append({"w": global_position, "t": 0.22})
+
+func _age_trails(delta: float) -> void:
+	for i in range(_dash_trail.size() - 1, -1, -1):
+		var t: Dictionary = _dash_trail[i] as Dictionary
+		t["t"] = float(t.get("t", 0.0)) - delta
+		if float(t.get("t", 0.0)) <= 0.0:
+			_dash_trail.remove_at(i)
 
 # 由 Game 每帧调用：传入敌人列表（含 pos），自动瞄准最近目标开火
 func auto_fire(enemies: Array, delta: float) -> void:
@@ -151,11 +205,23 @@ func take_hit(amount: float) -> void:
 	GameState.take_damage(int(amount))
 
 func _draw() -> void:
+	_draw_trails()
 	var squash := 1.0 + 0.05 * sin(_bob)
 	var stretch := 1.0 / squash
 	# 受伤闪烁：无敌帧内半透明，让玩家知道"刚才挨打了"
 	var alpha := 1.0 if _ifr <= 0.0 else 0.55
 	var tex := Art.sprite("player")
+	# 冲刺瞬间沿冲刺方向拉长（速度感），武器图标不跟着变形，所以画完马上复位
+	if Dash.active(_dash):
+		var ang: float = (_dash["dir"] as Vector2).angle()
+		draw_set_transform(Vector2.ZERO, ang, Vector2(1.45, 0.72))
+		if tex != null:
+			_draw_sprite(tex, 1.0, 1.0, 1.0)
+		else:
+			_draw_body(1.0, 1.0, 1.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		_draw_mounts()
+		return
 	if tex != null:
 		_draw_sprite(tex, squash, stretch, alpha)
 	else:
@@ -199,6 +265,15 @@ func _draw_body(squash: float, stretch: float, alpha: float) -> void:
 
 # 武器图标绕着角色站位（位置由 core/Weapon.mount_position 算，跟开火点是同一个）
 # 缺图时退化成一个色点，玩家至少能看出"我带了几把武器"
+# 冲刺残影：只画几个半透明的淡影，位置存的是世界坐标（画的时候转回局部）
+func _draw_trails() -> void:
+	for item in _dash_trail:
+		var t: Dictionary = item as Dictionary
+		var k := clampf(float(t.get("t", 0.0)) / 0.22, 0.0, 1.0)
+		var lp: Vector2 = to_local(t.get("w", global_position) as Vector2)
+		draw_circle(lp, _radius * 0.85 * (0.6 + 0.4 * k),
+			Color(0.98, 0.98, 1.0, 0.30 * k))
+
 func _draw_mounts() -> void:
 	var n := _weapons.size()
 	if n == 0:
