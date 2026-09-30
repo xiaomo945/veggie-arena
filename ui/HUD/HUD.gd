@@ -15,7 +15,9 @@ var _wave_time := 0.0
 var _wave_len := 20.0
 var _banner: Label
 var _banner_t := 0.0
-var _wok_label: Label
+var _wok_banner: Label
+var _wok_banner_t := 0.0
+var _wok_last_tier := 0
 var _toss_btn: Button
 
 func _ready() -> void:
@@ -24,9 +26,9 @@ func _ready() -> void:
 	_bars.set_script(HudBarsScene)
 	add_child(_bars)
 
-	_wave = _mk_label(Vector2(14, 34), 17, Color(0.95, 0.95, 0.95))
-	_gold = _mk_label(Vector2(14, 54), 15, Color(0.98, 0.84, 0.35))
-	_kill = _mk_label(Vector2(150, 54), 13, Color(0.75, 0.75, 0.78))
+	_wave = _mk_label(Vector2(14, 44), 16, Color(0.95, 0.95, 0.95))
+	_gold = _mk_label(Vector2(14, 62), 14, Color(0.98, 0.84, 0.35))
+	_kill = _mk_label(Vector2(180, 62), 12, Color(0.75, 0.75, 0.78))
 
 	# Boss 波居中横幅
 	_banner = Label.new()
@@ -39,9 +41,15 @@ func _ready() -> void:
 	_banner.text = ""
 	add_child(_banner)
 
-	# 锅气标签（底部，火候条左侧）
-	_wok_label = _mk_label(Vector2(120, 828), 14, Color(0.95, 0.85, 0.6))
-	_wok_label.text = "WOK 锅气 · 微温"
+	# 锅气档位弹窗（顶部偏下，火候上档时弹出"翻炒!"/"爆炒!"）
+	_wok_banner = Label.new()
+	_wok_banner.position = Vector2(0, 96)
+	_wok_banner.custom_minimum_size = Vector2(540, 40)
+	_wok_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_wok_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_wok_banner.add_theme_font_size_override("font_size", 30)
+	_wok_banner.text = ""
+	add_child(_wok_banner)
 
 	# 颠勺按钮：满锅气才出现，点一下全屏甩飞。屏幕坐标共享给 Joystick 用于避让移动。
 	_toss_btn = Button.new()
@@ -146,18 +154,25 @@ func _on_wok_heat(value: float, tier: int) -> void:
 	_bars.set("wok_ratio", clampf(value / 100.0, 0.0, 1.0))
 	_bars.set("wok_tier", tier)
 	_bars.queue_redraw()
-	var name := "微温"
-	if tier >= 2:
-		name = "爆炒"
-	elif tier >= 1:
-		name = "翻炒"
-	_wok_label.text = "WOK 锅气 · %s" % name
+	# 跨档弹窗：让玩家明确知道"锅气上档了、火力变了"
+	if tier != _wok_last_tier:
+		_wok_last_tier = tier
+		if tier >= 2:
+			_pop_wok("爆炒! 伤害+攻速↑", Color(1.0, 0.5, 0.3))
+		elif tier >= 1:
+			_pop_wok("翻炒! 攻速↑", Color(1.0, 0.82, 0.42))
 
 func _on_wok_ready(ready: bool) -> void:
 	_toss_btn.visible = ready
 
 func _on_toss_pressed() -> void:
 	Events.wok_toss_requested.emit()
+
+func _pop_wok(text: String, c: Color) -> void:
+	_wok_banner.text = text
+	_wok_banner.add_theme_color_override("font_color", c)
+	_wok_banner.modulate.a = 1.0
+	_wok_banner_t = 1.6
 
 func _process(delta: float) -> void:
 	if _banner_t > 0.0:
@@ -167,3 +182,12 @@ func _process(delta: float) -> void:
 		_banner.modulate.a = a
 		if _banner_t <= 0.0:
 			_banner.text = ""
+	if _wok_banner_t > 0.0:
+		_wok_banner_t -= delta
+		var a := clampf(_wok_banner_t / 0.6, 0.0, 1.0)
+		_wok_banner.modulate.a = a
+		if _wok_banner_t <= 0.0:
+			_wok_banner.text = ""
+	# 颠勺按钮满气时呼吸闪烁，提示玩家"戳这里放颠勺"
+	if _toss_btn.visible:
+		_toss_btn.modulate.a = 0.65 + 0.35 * sin(Time.get_ticks_msec() / 110.0)

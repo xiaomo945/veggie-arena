@@ -18,10 +18,10 @@ const SLOT_SIZE := 30.0
 const SLOT_GAP := 6.0
 const SLOT_Y := 32.0
 
-# 锅气条放在底部中央（拇指区，但只是进度条不影响操作；颠勺按钮在其上方）
-const WOK_X := 120.0
-const WOK_Y := 852.0
-const WOK_W := 300.0
+# 锅气条放在顶部 HUD 区（与血条并排，全宽），手机底部会被浏览器底栏遮挡，不能放下面
+const WOK_X := 14.0
+const WOK_Y := 24.0
+const WOK_W := 512.0
 const WOK_H := 16.0
 
 func _draw() -> void:
@@ -84,6 +84,11 @@ func _draw_wok() -> void:
 	if wok_tier >= 2:
 		draw_rect(Rect2(WOK_X - 2.0, WOK_Y - 2.0, WOK_W + 4.0, WOK_H + 4.0),
 			Color(1.0, 0.6, 0.4, 0.5), false, 2.0)
+	# 百分比文字：直接在条上写，玩家一眼看到火候涨到多少
+	var pct := int(round(r * 100.0))
+	var txt := "锅气 WOK  %d%%" % pct
+	draw_string(ThemeDB.fallback_font, Vector2(WOK_X + 6.0, WOK_Y + WOK_H - 3.0),
+		txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 1.0, 1.0, 0.92))
 
 func _draw_tick(frac: float, c: Color) -> void:
 	var x := WOK_X + WOK_W * clampf(frac, 0.0, 1.0)
