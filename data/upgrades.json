@@ -10,7 +10,7 @@
   "spd": {
     "zh": "移动速度 +10%",
     "stat": "speed_pct",
-    "value": 0.10,
+    "value": 0.1,
     "cost": 12,
     "tip": "跑得快 = 更难被围住",
     "en": "Move Speed +10%"
@@ -80,12 +80,12 @@
     "en": "Fire Rate +15%"
   },
   "lifesteal": {
-    "zh": "击杀回复 3 点生命",
+    "zh": "击杀有几率回血 3 点",
     "stat": "lifesteal",
     "value": 3,
-    "cost": 24,
-    "tip": "每杀一只回一点血，续航靠它",
-    "en": "Lifesteal +3 HP per kill"
+    "cost": 26,
+    "tip": "每次击杀有 8% 概率回 3 点血，续航靠它",
+    "en": "8% chance: +3 HP on kill"
   },
   "wokgain": {
     "zh": "锅气获取 +25%",

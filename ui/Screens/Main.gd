@@ -88,7 +88,8 @@ func _sim_arg() -> float:
 
 # 模拟用 AI：远离最近的敌人，同时往场地中心靠，避免被逼到墙角定死。
 # 真实游戏里这由玩家手指完成，模拟只能用算法代替。
-func _dodge_dir() -> Vector2:
+# sense：看到多近的怪才开始躲；jitter：方向抖动幅度（越大越"手抖"）
+func _dodge_dir(sense: float = 160.0, jitter: float = 0.35) -> Vector2:
 	var a := Data.arena()
 	var center := Vector2(float(a.get("x", 0)) + float(a.get("w", 540)) * 0.5,
 	                      float(a.get("y", 0)) + float(a.get("h", 900)) * 0.5)
@@ -104,10 +105,10 @@ func _dodge_dir() -> Vector2:
 			nearest = e
 	var to_center := (center - pp).normalized()
 	var away := to_center
-	if nearest != null and nd < 160.0:
+	if nearest != null and nd < sense:
 		away = (pp - nearest.global_position).normalized().lerp(to_center, 0.25)
 	# 抖动避免被逼到死角后反复横跳卡住
-	away = away.rotated(randf_range(-0.35, 0.35))
+	away = away.rotated(randf_range(-jitter, jitter))
 	return away.limit_length(1.0)
 
 # 自动逛补给站：把"买得起的全买"跑一遍，等于把商店的购买运行期路径也测了。
@@ -148,10 +149,29 @@ func _run_simulation(seconds: float) -> void:
 	var survived := 0
 	var _trace := OS.get_cmdline_user_args().has("--trace")
 	var use_dash := OS.get_cmdline_user_args().has("--dash")
+	# --human：模拟"普通玩家"而不是"完美 AI"——
+	# 每 12 帧（0.2 秒，接近人的反应时间）才重新判断一次方向，
+	# 视野更窄（120px 才发现怪），手更抖，还有 12% 概率判断失误。
+	# 调难度要以这一档为准：完美 AI 全程不挨打说明不了任何问题。
+	var human := OS.get_cmdline_user_args().has("--human")
+	var dodge := Vector2.ZERO
+	var dodge_age := 0
 	_threats = 0
 	for i in steps:
 		# 站着不动是最坏情况；模拟里让玩家自动躲，才能看出"会玩的话能撑多久"
-		player.set_move_dir(_dodge_dir())
+		# --still：模拟"站着不动的玩家"（最坏情况），用来量难度下限
+		if OS.get_cmdline_user_args().has("--still"):
+			player.set_move_dir(Vector2.ZERO)
+		elif human:
+			dodge_age -= 1
+			if dodge_age <= 0:
+				dodge = _dodge_dir(120.0, 0.6)
+				if _rng.randf() < 0.12:
+					dodge = dodge.rotated(randf_range(1.2, 2.4))   # 判断失误
+				dodge_age = 12
+			player.set_move_dir(dodge)
+		else:
+			player.set_move_dir(_dodge_dir())
 		# --dash：怪贴脸时冲刺脱离，验证冲刺在实战里的代码路径与收益
 		# 每 2 秒冲一次（覆盖代码路径）+ 怪贴近 140px 时真躲一下
 		if use_dash and (i % 120 == 0 or _threat_close(140.0)):
@@ -209,7 +229,14 @@ func _run_simulation(seconds: float) -> void:
 	print("  金币        : 持有 %d / 累计捡到 %d / 地上待捡 %d" % [
 		GameState.gold, game.gold_picked, game.ground_gold()])
 	print("  玩家血量    : %d / %d" % [GameState.hp, GameState.max_hp])
-	print("  玩家状态    : %s" % ("存活" if GameState.running else "已死亡"))
+	print("  挨打        : %d 次 / 累计 %d 伤害（净掉血看上一条）" % [
+		int(player.hits_taken), int(player.damage_taken)])
+	var ending := "时间到，仍存活"
+	if GameState.won:
+		ending = "通关（打满 %d 波）" % int(Data.wave_cfg().get("total", 20))
+	elif not GameState.running:
+		ending = "阵亡（第 %d 波）" % GameState.wave
+	print("  结局        : %s" % ending)
 	print("  冲刺次数    : %d（威胁帧 %d）" % [int(player.dash_count), _threats])
 	print("  角色        : %s（贴图 %s）" % [
 		GameState.character,

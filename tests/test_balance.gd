@@ -123,4 +123,24 @@ func run(data) -> Dictionary:
 			slowest_ok = false
 	chk(slowest_ok, "玩家移速 %.0f ≥ 所有基础敌人（最快 %s=%.0f）" % [pspeed, fastest_enemy, fastest_speed])
 
+	# 12) 敌人必须"追得上人"，否则永远打不到玩家（曾经踩过：怪太慢，
+	# 还没走到跟前就被秒，玩家整局 0 次挨打 —— 难度曲线直接塌掉）
+	var g1 := Spawner.stats_for("grunt", 1, data.enemies)
+	var g20 := Spawner.stats_for("grunt", 20, data.enemies)
+	var f10 := Spawner.stats_for("fast", 10, data.enemies)
+	var ps20 := float(g20.get("speed", 0))
+	var ps1 := float(g1.get("speed", 0))
+	var fs10 := float(f10.get("speed", 0))
+	chk(ps1 <= pspeed * 0.60,
+		"第1波小兵 %.0f ≤ 玩家 %.0f 的 60%%（开局能轻松拉开）" % [ps1, pspeed])
+	chk(ps20 >= pspeed * 0.70,
+		"第20波小兵 %.0f ≥ 玩家 %.0f 的 70%%（后期无脑绕圈躲不掉）" % [ps20, pspeed])
+	chk(fs10 >= pspeed * 0.85,
+		"第10波冲刺兵 %.0f ≥ 玩家 %.0f 的 85%%（快兵必须靠冲刺/预判）" % [fs10, pspeed])
+
+	# 13) 敌人要活得够久，能走到玩家跟前（出生点在边缘，离中心 250px 以上）
+	# 存活时间太短 = 出生即死 = 玩家永远看不到怪贴脸
+	var g20_hp := float(g20.get("hp", 0))
+	chk(g20_hp >= 150.0, "第20波小兵血量 %.0f ≥ 150（不至于出场即蒸发）" % g20_hp)
+
 	return {"pass": _p, "fail": _f, "failures": _failures}

@@ -37,6 +37,8 @@ var _dash_cfg: Dictionary = {}
 var _face := Vector2(0, -1)      # 面朝方向：没推摇杆时冲刺默认朝这边
 var _dash_trail: Array = []      # 冲刺残影 [{pos, t}]
 var dash_count := 0            # 本局冲刺次数（诊断/HUD 用）
+var hits_taken := 0            # 本局挨打次数（诊断：确认伤害系统真的在打人）
+var damage_taken := 0          # 本局累计受到的伤害
 
 const SKIN := Color(0.97, 0.96, 0.92)
 const SHADE := Color(0.86, 0.85, 0.80)
@@ -204,6 +206,8 @@ func take_hit(amount: float) -> void:
 	if _ifr > 0.0:
 		return
 	_ifr = float(Data.player_cfg().get("ifr_seconds", 0.38))
+	hits_taken += 1
+	damage_taken += int(amount)
 	GameState.take_damage(int(amount))
 
 func _draw() -> void:

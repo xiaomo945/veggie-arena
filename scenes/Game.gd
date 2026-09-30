@@ -19,6 +19,8 @@ const Run := preload("res://core/Run.gd")
 
 const MAX_BULLETS := 90
 const MAX_ENEMIES := 110
+# 击杀回血的触发概率（写在代码里而不是 JSON，避免和 value 混淆）
+const LIFESTEAL_CHANCE := 0.08
 const SEPARATION_FORCE := 90.0
 
 var player: Node2D = null
@@ -103,6 +105,7 @@ func _on_run_won() -> void:
 
 # 一局结束的统一收尾：把成绩写进存档（解锁判定也在这里触发）
 func _finish_run(won: bool) -> void:
+	GameState.won = won
 	SaveMgr.record_run(GameState.wave, GameState.kills, GameState.gold,
 		GameState.run_score(), won)
 
@@ -371,8 +374,10 @@ func _damage_enemy(e, amount: float) -> void:
 		# 击杀爆环（Boss 的环更大）
 		Events.enemy_killed.emit(str(e.etype), epos)
 		# 击杀回血（lifesteal 强化：续航流玩法）
+		# ⚠️ 必须概率触发：按击杀固定回血时，一局 1300+ 杀能回几千血，
+		#    实测"站着不动"都能满血通关，难度被彻底抵消
 		var ls: float = GameState.stat_value("lifesteal")
-		if ls > 0.0:
+		if ls > 0.0 and _rng.randf() < LIFESTEAL_CHANCE:
 			GameState.heal(int(ls))
 		# 击杀按金币攒锅气：普通怪一点点，Boss 一大口，火候涨得有节奏
 		# 再乘上 wok_pct 强化（锅气获取 +X%）

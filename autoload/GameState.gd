@@ -10,6 +10,7 @@ var max_hp: int = 100
 var kills: int = 0
 var elapsed_in_wave: float = 0.0
 var running: bool = false
+var won: bool = false        # 本局是不是打通关了（区分"阵亡"与"通关"，结算页/自测报告都要用）
 
 # 当前选择的角色（data/characters.json 的键）。角色自带属性加成，与强化叠加。
 var character: String = "turnip"
@@ -49,6 +50,7 @@ func reset() -> void:
 	kills = 0
 	elapsed_in_wave = 0.0
 	running = true
+	won = false
 	weapons = []
 	upgrades = {}
 	# 锅气参数从 balance.json 读，避免数值写死在代码里
