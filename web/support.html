@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e0c">
+
+<title>Support &amp; Contact - TURNIP TROUBLE</title>
+<meta name="description" content="Support and contact page for TURNIP TROUBLE. Answers about loading issues, auto-fire controls, unlocking weapons, saved progress, supported devices, battery and heat. Contact the developer directly.">
+<meta name="robots" content="index, follow">
+<meta name="author" content="Veggie Arena">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TURNIP TROUBLE">
+<meta name="application-name" content="TURNIP TROUBLE">
+
+<link rel="canonical" href="https://aacc9a81e890dab49.app.workbuddy.host/support">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TURNIP TROUBLE">
+<meta property="og:title" content="Support &amp; Contact - TURNIP TROUBLE">
+<meta property="og:description" content="Stuck on the loading screen? Wondering why there is no fire button? Read the FAQ or contact the developer.">
+<meta property="og:url" content="https://aacc9a81e890dab49.app.workbuddy.host/support">
+<meta property="og:locale" content="en_US">
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Support &amp; Contact - TURNIP TROUBLE">
+<meta name="twitter:description" content="Stuck on the loading screen? Read the FAQ or contact the developer.">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e0c'/%3E%3Ccircle cx='32' cy='36' r='21' fill='%23f6efe2'/%3E%3Cpath d='M32 15 q12 8 8 21 q-8 -6 -16 0 q-4 -13 8 -21z' fill='%237bd95b'/%3E%3Ccircle cx='25' cy='33' r='3.4' fill='%230b0e0c'/%3E%3Ccircle cx='39' cy='33' r='3.4' fill='%230b0e0c'/%3E%3Cpath d='M25 43 q7 6 14 0' stroke='%230b0e0c' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+
+<style>
+:root{
+  /* 配色与落地页 index.html 保持一致 */
+  --bg:#0b0e0c; --bg2:#141a12; --card:rgba(255,255,255,.045);
+  --line:rgba(255,255,255,.10);
+  --orange:#ff8c3a; --orange2:#ffb066; --green:#7bd95b; --cream:#f6efe2;
+  --text:#e9eee8; --muted:#9aa79b;
+  --r:18px; --maxw:940px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%; scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  line-height:1.68; -webkit-font-smoothing:antialiased;
+  overflow-x:hidden; padding-bottom:env(safe-area-inset-bottom);
+}
+svg{max-width:100%}
+a{color:var(--orange2); text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:0 18px}
+
+h1,h2,h3,.btn,.pill{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Arial Narrow",Impact,sans-serif}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky; top:0; z-index:40;
+  background:rgba(11,14,12,.82); backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.topbar .wrap{display:flex; align-items:center; gap:10px; height:56px}
+.brand{display:flex; align-items:center; gap:9px; font-weight:800; letter-spacing:.5px; color:var(--cream)}
+.brand svg{width:28px; height:28px; flex:none}
+.brand small{display:block; font-size:10px; font-weight:600; letter-spacing:1.4px; color:var(--muted); line-height:1}
+.navlinks{margin-left:auto; display:none; gap:18px; font-size:14px; font-weight:600}
+.navlinks a{color:var(--muted)}
+.navlinks a:hover{color:var(--cream); text-decoration:none}
+@media(min-width:760px){.navlinks{display:flex}}
+
+/* ---------- page head ---------- */
+.head{
+  position:relative; padding:34px 0 30px; text-align:center; overflow:hidden;
+  background:
+    radial-gradient(680px 340px at 50% -20%, rgba(255,140,58,.18), transparent 62%),
+    radial-gradient(520px 320px at 88% 20%, rgba(123,217,91,.12), transparent 66%);
+  border-bottom:1px solid var(--line);
+}
+.backrow{display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:20px}
+.btn.small{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:10px 18px; border-radius:999px; border:1px solid var(--line);
+  background:var(--card); color:var(--cream); font-size:14px; font-weight:700;
+}
+.btn.small:hover{border-color:rgba(255,140,58,.5); text-decoration:none}
+.btn.small svg{width:15px; height:15px; flex:none}
+h1{
+  margin:0 0 10px; font-size:clamp(1.9rem,8.6vw,2.7rem); line-height:1.05;
+  font-weight:900; letter-spacing:-1px; text-transform:uppercase; color:var(--cream);
+  background:linear-gradient(180deg,#fff 0%,var(--orange2) 55%,var(--orange) 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 6px 26px rgba(255,140,58,.26));
+}
+.pill{
+  display:inline-block; margin-top:6px; padding:5px 13px; border-radius:999px;
+  background:var(--card); border:1px solid var(--line);
+  font-size:12.5px; font-weight:700; letter-spacing:.5px; color:var(--muted);
+}
+.intro{margin:18px auto 0; max-width:58ch; font-size:16px; color:#cfd8cf}
+
+/* ---------- quick fixes ---------- */
+section{padding:44px 0}
+@media(min-width:760px){section{padding:60px 0}}
+h2{
+  margin:0 0 10px; font-size:clamp(1.5rem,6.4vw,2.2rem); line-height:1.15;
+  font-weight:900; letter-spacing:-.6px; text-transform:uppercase; color:var(--cream);
+}
+.lead{margin:0 auto 30px; max-width:52ch; color:var(--muted); font-size:16px}
+.center{text-align:center}
+
+.grid{display:grid; gap:14px; grid-template-columns:1fr}
+@media(min-width:620px){.grid{grid-template-columns:1fr 1fr}}
+.card{
+  padding:22px; border:1px solid var(--line); border-radius:var(--r);
+  background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+  transition:transform .16s ease, border-color .16s ease;
+}
+.card:hover{transform:translateY(-3px); border-color:rgba(255,140,58,.34)}
+.card .ico{
+  width:46px; height:46px; margin-bottom:14px; border-radius:13px;
+  display:grid; place-items:center; background:rgba(255,140,58,.14);
+  border:1px solid rgba(255,140,58,.28);
+}
+.card.g .ico{background:rgba(123,217,91,.13); border-color:rgba(123,217,91,.3)}
+.card .ico svg{width:24px; height:24px}
+.card h3{margin:0 0 6px; font-size:17.5px; font-weight:800; color:var(--cream); letter-spacing:-.2px}
+.card p{margin:0; color:var(--muted); font-size:14.5px}
+.card ol{margin:0; padding-left:20px; color:var(--muted); font-size:14.5px}
+.card ol li{margin:6px 0}
+
+/* ---------- faq ---------- */
+.faq{max-width:720px; margin:0 auto}
+.faq details{
+  border:1px solid var(--line); border-radius:14px; background:var(--card);
+  margin-bottom:10px; overflow:hidden; scroll-margin-top:70px;
+}
+.faq summary{
+  cursor:pointer; padding:15px 18px; font-weight:700; color:var(--cream); font-size:15.5px;
+  list-style:none; display:flex; justify-content:space-between; gap:12px; align-items:center;
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+"; color:var(--orange2); font-size:20px; font-weight:900; flex:none}
+.faq details[open] summary::after{content:"\2013"}
+.faq p{margin:0; padding:0 18px 16px; color:var(--muted); font-size:14.5px}
+.faq p + p{padding-top:0}
+.faq ul{margin:0 0 12px; padding:0 18px 4px 38px; color:var(--muted); font-size:14.5px}
+.faq ul li{margin:6px 0}
+.faq b{color:#cfd8cf}
+kbd{
+  display:inline-block; padding:1px 7px; border-radius:6px; border:1px solid var(--line);
+  background:rgba(255,255,255,.07); color:var(--cream); font-size:12.5px; font-family:inherit; font-weight:700;
+}
+
+/* ---------- contact block ---------- */
+.contactbox{
+  max-width:720px; margin:0 auto; padding:26px; text-align:center;
+  border:1px solid rgba(255,140,58,.32); border-radius:var(--r);
+  background:
+    radial-gradient(560px 260px at 50% 0%, rgba(255,140,58,.14), transparent 70%),
+    var(--card);
+}
+.contactbox p{margin:0 0 14px; color:#cfd8cf; font-size:15px}
+.contactbox p:last-child{margin-bottom:0}
+.mailbox{
+  display:inline-flex; align-items:center; gap:10px; margin:6px 0 14px;
+  padding:13px 22px; border-radius:999px; border:1px dashed rgba(255,140,58,.45);
+  background:rgba(255,140,58,.08); color:var(--orange2);
+  font-weight:800; font-size:15.5px; word-break:break-all;
+}
+.mailbox svg{width:18px; height:18px; flex:none}
+.mailbox:hover{text-decoration:none; border-color:var(--orange); color:#fff}
+.placeholder{
+  display:inline-block; margin-bottom:14px; padding:6px 14px; border-radius:999px;
+  border:1px solid rgba(255,140,58,.4); background:rgba(255,140,58,.1);
+  font-size:12.5px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:var(--orange2);
+}
+.warn{
+  max-width:720px; margin:18px auto 0; padding:14px 18px;
+  border:1px solid rgba(255,140,58,.34); border-radius:14px;
+  background:rgba(255,140,58,.08); font-size:13.5px; color:#cfd8cf;
+}
+.warn b{color:var(--orange2)}
+
+.buglist{max-width:720px; margin:0 auto; padding:0; list-style:none; display:grid; gap:12px}
+.buglist li{
+  display:flex; gap:14px; align-items:flex-start; padding:16px 18px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--card);
+  font-size:14.5px; color:var(--muted);
+}
+.buglist li::before{
+  content:""; flex:none; width:9px; height:9px; margin-top:9px; border-radius:50%;
+  background:var(--orange); box-shadow:0 0 10px rgba(255,140,58,.6);
+}
+.buglist b{color:var(--cream)}
+
+/* ---------- footer ---------- */
+footer{
+  border-top:1px solid var(--line); padding:26px 0; text-align:center;
+  color:var(--muted); font-size:13px;
+}
+footer a{color:var(--muted)}
+footer p{margin:4px 0}
+footer .flinks{display:flex; flex-wrap:wrap; justify-content:center; gap:6px 14px; margin-top:8px}
+@media(max-width:540px){
+  .card,.faq summary,.faq p,.faq ul,.contactbox,.buglist li,.warn{padding-left:15px; padding-right:15px}
+  .faq ul{padding-left:34px; padding-right:15px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0b0e0c"/><circle cx="32" cy="36" r="21" fill="#f6efe2"/><path d="M32 15 q12 8 8 21 q-8 -6 -16 0 q-4 -13 8 -21z" fill="#7bd95b"/><circle cx="25" cy="33" r="3.4" fill="#0b0e0c"/><circle cx="39" cy="33" r="3.4" fill="#0b0e0c"/><path d="M25 43 q7 6 14 0" stroke="#0b0e0c" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+      <span>TURNIP TROUBLE<small>VEGGIE ARENA</small></span>
+    </div>
+    <nav class="navlinks">
+      <a href="landing/">Play</a>
+      <a href="https://aacc9a81e890dab49.app.workbuddy.host">Game Demo</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+  </div>
+</div>
+
+<!-- ============ PAGE HEAD ============ -->
+<header class="head">
+  <div class="wrap">
+    <div class="backrow">
+      <a class="btn small" href="https://aacc9a81e890dab49.app.workbuddy.host">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        Back to the game
+      </a>
+      <a class="btn small" href="landing/">Back to play page</a>
+    </div>
+    <h1>Support &amp; Contact</h1>
+    <span class="pill">We answer every message we get</span>
+    <p class="intro">Something broken, something confusing, or just an idea you want thrown into the pot? Start with the FAQ below — if it does not solve it, send us a note.</p>
+  </div>
+</header>
+
+<!-- ============ QUICK FIXES ============ -->
+<section id="quickfix">
+  <div class="wrap">
+    <div class="center">
+      <h2>First, try this</h2>
+      <p class="lead">Three fixes solve roughly nine out of ten problems players write in about.</p>
+    </div>
+    <div class="grid">
+      <article class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#ff8c3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></div>
+        <h3>Reload the page</h3>
+        <p>Close the tab completely and reopen it. On iPhone, also swipe the game out of the app switcher — a stale tab is often all it is.</p>
+      </article>
+      <article class="card g">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#7bd95b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M11 18h2"/></svg></div>
+        <h3>Use Chrome or Safari</h3>
+        <p>In-app browsers (inside Instagram, Facebook, WeChat, TikTok) block things games need. Tap the <b>•••</b> menu and pick <b>Open in Browser</b>.</p>
+      </article>
+      <article class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#ff8c3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v6c0 5-4 7-8 8-4-1-8-3-8-8V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>Check your connection</h3>
+        <p>The game needs network the first time it loads. Switch Wi-Fi and mobile data around, or move somewhere with a stronger signal.</p>
+      </article>
+      <article class="card g">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#7bd95b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></div>
+        <h3>Update your browser</h3>
+        <p>An outdated browser can fail to start the game engine. Update Chrome or Safari from your app store, then try again.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq" style="padding-top:0">
+  <div class="wrap">
+    <div class="center">
+      <h2>Frequently asked</h2>
+      <p class="lead">Tap a question to open it.</p>
+    </div>
+    <div class="faq">
+
+      <details open>
+        <summary>The game is stuck on the loading screen. What do I do?</summary>
+        <p>This is the most common issue and it is almost always the browser, not the game. Work through these in order:</p>
+        <ul>
+          <li><b>Force-refresh.</b> Close the tab entirely and reopen the link. On iOS, also swipe the game away in the app switcher.</li>
+          <li><b>Get out of the in-app browser.</b> If you opened the link from Instagram, Facebook, TikTok or WeChat, tap the <b>•••</b> menu and choose <b>Open in Browser</b>. In-app browsers block the web tech this game runs on.</li>
+          <li><b>Use Chrome (Android) or Safari (iPhone).</b> Those two are what we test against.</li>
+          <li><b>Clear your browser cache.</b> Chrome: Menu → History → Clear browsing data. Safari: Settings → Safari → Clear History and Website Data. A half-downloaded old build sitting in cache will hang the load every time.</li>
+          <li><b>Check the connection.</b> The game downloads its data on first load, so a weak signal can stall it at 90%.</li>
+        </ul>
+        <p>Still stuck after all that? Email us — see the contact section below. Tell us your device model and browser version and we will dig in.</p>
+      </details>
+
+      <details>
+        <summary>Why doesn't the game shoot when I tap? Is auto-fire broken?</summary>
+        <p>It is working exactly as designed. <b>TURNIP TROUBLE has no fire button — your weapons auto-fire continuously.</b> There is nothing to tap to attack.</p>
+        <p>Your only input is movement: drag your thumb anywhere on screen and the turnip follows it. So instead of aiming, you are really deciding <b>where to stand</b>. Lead the wave, keep your distance, and let your kitchenware do the chopping.</p>
+        <p>The one exception is <kbd>WOK TOSS</kbd>, which only becomes available once the Wok Heat gauge fills up.</p>
+      </details>
+
+      <details>
+        <summary>How do I unlock more weapons?</summary>
+        <p>Inside a run, from the <b>shop between waves</b>. After every wave you clear, the shop opens and offers randomized items — new weapons, stat boosts and upgrades.</p>
+        <ul>
+          <li>Weapons are <b>bought with currency earned during that run</b>, so they are per-run, not permanent unlocks.</li>
+          <li>The shop is random each time, so no two runs give you the same build. That is the roguelite part.</li>
+          <li>If you have never seen a certain weapon, just play more waves: the shop pool rolls differently every run.</li>
+        </ul>
+        <p>Tip: stacking several copies of the same early weapon usually beats spreading thin across five different ones.</p>
+      </details>
+
+      <details>
+        <summary>Is my progress saved? What happens if I clear my cache?</summary>
+        <p>Progress is saved <b>locally on your device</b> — your high scores, best wave reached and settings. Nothing is uploaded to a server, so nothing can be synced between your phone and your computer.</p>
+        <p>The trade-off: <b>clearing your browser cache or site data wipes that progress permanently</b>, and we cannot restore it, because we never had a copy. Playing in private/incognito mode also means your progress disappears when you close the tab.</p>
+        <p>Same story if you remove the home-screen shortcut. Full details are in our <a href="privacy.html">Privacy Policy</a>.</p>
+      </details>
+
+      <details>
+        <summary>Which devices and browsers are supported?</summary>
+        <p>TURNIP TROUBLE is built for <b>phones in portrait orientation</b>:</p>
+        <ul>
+          <li><b>iPhone / iPad</b> — Safari (iOS 15 or newer recommended).</li>
+          <li><b>Android phones</b> — Chrome (recent versions).</li>
+          <li><b>Desktop</b> — plays fine in Chrome, Edge, Firefox or Safari, using the mouse to move and the keyboard if you prefer.</li>
+        </ul>
+        <p>It is designed one-handed and vertical, so holding your phone upright gives you the best experience. If it feels cramped, you likely opened it inside an in-app browser — escape to Chrome or Safari first.</p>
+      </details>
+
+      <details>
+        <summary>The game drains my battery and my phone gets warm. Is that normal?</summary>
+        <p>Yes, unfortunately fairly normal for a game rendering constantly at 60fps. A few things that genuinely help:</p>
+        <ul>
+          <li><b>Drop your screen brightness</b> — usually the single biggest battery saving.</li>
+          <li><b>Close background apps</b> so the game is not fighting for CPU.</li>
+          <li><b>Turn off Low Power Mode frustration</b> — no, seriously: if Low Power Mode is on, the phone throttles and the game may stutter instead.</li>
+          <li><b>Take breaks.</b> Runs are about twenty waves, which is a natural stopping point.</li>
+        </ul>
+        <p>Some warmth is expected, especially on older phones. If your device gets <b>hot enough to be uncomfortable</b>, stop playing and let it cool — that is not worth pushing through.</p>
+      </details>
+
+      <details>
+        <summary>Audio is not playing / there is no sound.</summary>
+        <p>Browsers block sound until you interact with the page, so <b>tap the screen once</b> after loading. Also check:</p>
+        <ul>
+          <li>Your phone is not on silent — on iPhone, the physical ringer switch mutes web audio too.</li>
+          <li>The media volume slider is up (volume buttons while the game is running).</li>
+          <li>You do not have Bluetooth audio routed to a device that is out of range.</li>
+        </ul>
+        <p>The game is fully playable muted anyway; nothing in the gameplay depends on hearing a cue.</p>
+      </details>
+
+      <details>
+        <summary>Does TURNIP TROUBLE cost anything? Are there ads?</summary>
+        <p>It is <b>free to play in your browser</b>, with no purchase required and no account. There are currently <b>no ads and no analytics</b> running in it.</p>
+        <p>If monetisation is ever added, our <a href="privacy.html">Privacy Policy</a> is where it will be disclosed first.</p>
+      </details>
+
+      <details>
+        <summary>Can I play without an internet connection?</summary>
+        <p>The game needs a connection to <b>load</b>, since it runs in a browser rather than as an installed app. Once it is fully loaded, a short drop in signal usually will not interrupt your run — but closing the tab while offline means it cannot load again until you are back online.</p>
+        <p>Adding it to your home screen makes launching faster, but it still fetches from the web.</p>
+      </details>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ CONTACT ============ -->
+<section id="contact" style="padding-top:0">
+  <div class="wrap">
+    <div class="center">
+      <h2>Contact us</h2>
+      <p class="lead">Did the FAQ not cover it? Send us a message and we will get back to you.</p>
+    </div>
+
+    <div class="contactbox">
+      <span class="placeholder">Placeholder address — replace before launch</span>
+      <p>Email us at:</p>
+      <a class="mailbox" href="mailto:support@turniptrouble.example">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M3 6l9 7 9-7"/></svg>
+        support@turniptrouble.example
+      </a>
+      <div class="warn">
+        <b>Developers: this is a placeholder.</b> <code>support@turniptrouble.example</code> is not a real mailbox — replace it with a working support email before publishing. Search this file for <code>turniptrouble.example</code> to catch every occurrence.
+      </div>
+    </div>
+
+    <ul class="buglist" style="margin-top:24px">
+      <li><div><b>To get a faster answer, include:</b> your device model, your OS version, which browser you used, and what you were doing right before the problem appeared.</div></li>
+      <li><div><b>Found a crash?</b> A screenshot or screen recording is worth a thousand words.</div></li>
+      <li><div><b>Have a feature idea or balance complaint?</b> We want those too — the game is still being tuned.</div></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><strong style="color:#cfd8cf">TURNIP TROUBLE</strong> — a one-handed arena survival roguelite, playable straight in your browser.</p>
+    <div class="flinks">
+      <a href="landing/">Play</a>
+      <a href="https://aacc9a81e890dab49.app.workbuddy.host">Game Demo</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="support.html">Support</a>
+    </div>
+    <p>&copy; 2026 TURNIP TROUBLE</p>
+  </div>
+</footer>
+
+</body>
+</html>

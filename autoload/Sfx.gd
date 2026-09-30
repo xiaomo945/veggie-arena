@@ -23,7 +23,8 @@ func _ready() -> void:
 	Events.weapon_fired.connect(_on_shoot)
 	Events.damage_dealt.connect(_on_hit)
 	Events.enemy_killed.connect(_on_kill)
-	Events.pickup_spawned.connect(_on_pickup)
+	# 吃钱时才响（掉落不响）：一地金币掉下来若逐个发声会很吵
+	Events.pickup_collected.connect(_on_pickup)
 	Events.wave_started.connect(_on_wave)
 	Events.player_hp_changed.connect(_on_hp)
 	Events.player_died.connect(_on_died)

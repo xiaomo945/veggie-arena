@@ -5,6 +5,7 @@ extends Node2D
 
 const BulletScene := preload("res://entities/Bullet/Bullet.tscn")
 const EnemyScene := preload("res://entities/Enemy/Enemy.tscn")
+const PickupFieldScene := preload("res://entities/Pickup/PickupField.tscn")
 const HUDScene := preload("res://ui/HUD/HUD.tscn")
 const FxScene := preload("res://ui/Fx/FxLayer.tscn")
 const ShopScene := preload("res://ui/Shop/Shop.tscn")
@@ -22,7 +23,10 @@ const SEPARATION_FORCE := 90.0
 
 var player: Node2D = null
 var _paused := false
+# 本局累计捡到的金币（诊断用：与 GameState.gold 的区别是不会被商店花掉）
+var gold_picked := 0
 
+var _pickups: Node2D = null       # 金币场地（自建池，Game 只调三个方法）
 var _bullets: Array = []
 var _enemies: Array = []
 var _rng := RandomNumberGenerator.new()
@@ -46,6 +50,8 @@ func _ready() -> void:
 	var a := Data.arena()
 	_arena = Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
 		float(a.get("w", 540)), float(a.get("h", 900)))
+	_pickups = PickupFieldScene.instantiate()
+	add_child(_pickups)
 	_build_pools()
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.player_died.connect(_on_player_died)
@@ -65,6 +71,8 @@ func start_run() -> void:
 		e.recycle()
 	for b in _bullets:
 		b.recycle()
+	if _pickups != null:
+		_pickups.clear()
 	_spawn_acc = 0.0
 	_next_id = 1
 	GameState.reset()
@@ -119,6 +127,10 @@ func _spawn_boss() -> void:
 	e.spawn(pos, stats, _next_id)
 	_next_id += 1
 
+# 地上还没被捡走的金币面额（诊断/HUD 用）
+func ground_gold() -> int:
+	return _pickups.ground_value() if _pickups != null else 0
+
 func alive_enemy_count() -> int:
 	var n := 0
 	for e in _enemies:
@@ -170,11 +182,30 @@ func _physics_process(delta: float) -> void:
 	# 命中结算
 	_resolve_hits()
 
+	# 金币磁吸：走过去自动收钱，是本作最直接的走位正反馈
+	_collect_pickups(delta)
+
 	# 波次推进：暂停 → 开补给站 → 玩家买完再继续
 	if GameState.wave_finished():
 		_end_wave()
 
+# 每帧推进金币磁吸，把吃到的钱记进 GameState
+func _collect_pickups(delta: float) -> void:
+	if _pickups == null:
+		return
+	var got: int = _pickups.update(delta, player.global_position,
+		GameState.stat_value("pickup_pct"), false)
+	if got > 0:
+		gold_picked += got
+		GameState.add_gold(got)
+
 func _end_wave() -> void:
+	# 波末清场：地上没捡的钱一次性收回，不惩罚玩家"打太散"
+	if _pickups != null:
+		var swept: int = _pickups.collect_all(player.global_position)
+		if swept > 0:
+			gold_picked += swept
+			GameState.add_gold(swept)
 	GameState.add_gold(Economy.wave_bonus(GameState.wave, Data.wave_cfg()))
 	GameState.heal_percent(float(Data.wave_cfg().get("heal_percent", 0.12)))
 	# 最后一波结束 = 通关：停跑并弹胜利页，不再开补给站
@@ -318,7 +349,13 @@ func _damage_enemy(e, amount: float) -> void:
 	Events.damage_dealt.emit(int(amount), epos, false)
 	if e.hurt(amount):
 		GameState.add_kill()
-		GameState.add_gold(e.gold)
+		# 钱掉在地上（不是直接入账）：玩家要走进磁吸圈才收得到
+		# drop 的返回值 = 池满时被直接结算的金额（钱不会凭空蒸发）
+		if _pickups != null:
+			var ov: int = int(_pickups.drop(epos, e.gold))
+			if ov > 0:
+				gold_picked += ov
+				GameState.add_gold(ov)
 		# 击杀爆环（Boss 的环更大）
 		Events.enemy_killed.emit(str(e.etype), epos)
 		# 击杀回血（lifesteal 强化：续航流玩法）

@@ -28,6 +28,8 @@ signal wok_toss_requested()
 # ---- 经济 ----
 signal gold_changed(gold: int)
 signal pickup_spawned(pos: Vector2, value: int)
+# 玩家吃到一枚金币（音效/特效订阅；加钱由 Game 直接调 GameState.add_gold）
+signal pickup_collected(pos: Vector2, value: int)
 
 # ---- 装备 ----
 signal weapons_changed(weapons: Array)

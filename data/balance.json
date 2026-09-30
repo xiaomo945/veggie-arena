@@ -71,5 +71,14 @@
   "bullet": {
     "homing_turn": 4.0,
     "homing_range": 360
+  },
+  "pickup": {
+    "magnet": 92,
+    "pull_speed": 430,
+    "collect_radius": 18,
+    "spread": 26,
+    "life": 0,
+    "pool_size": 120,
+    "max_pieces": 4
   }
 }

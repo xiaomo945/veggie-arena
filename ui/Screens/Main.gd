@@ -184,7 +184,8 @@ func _run_simulation(seconds: float) -> void:
 	print("  开火/命中   : %d / %d（命中率 %.0f%%）" % [
 		game.shots_fired, game.hits_landed,
 		100.0 * float(game.hits_landed) / maxf(1.0, float(game.shots_fired))])
-	print("  金币        : %d" % GameState.gold)
+	print("  金币        : 持有 %d / 累计捡到 %d / 地上待捡 %d" % [
+		GameState.gold, game.gold_picked, game.ground_gold()])
 	print("  玩家血量    : %d / %d" % [GameState.hp, GameState.max_hp])
 	print("  玩家状态    : %s" % ("存活" if GameState.running else "已死亡"))
 	print("  美术装载    : 玩家=%s 敌人=%s 武器图标=%s" % [
