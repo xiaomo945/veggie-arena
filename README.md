@@ -47,15 +47,14 @@ bash scripts/check.sh
 
 ### 导出网页版
 
-```bash
-bash godot/tools/build_web.sh
-```
+用 Godot 编辑器：Project → Export → Web，产物覆盖写到 `web/build/`（唯一在线产物，不进 git）。
+本地一键自检（语法 + 启动 + 单测）：`bash scripts/check.sh`
 
 ---
 
 ## 三条最重要的规则
 
-1. **数值只改 `godot/data/*.json`，不动代码**
+1. **数值只改 `data/*.json`，不动代码**
 2. **一次只做一个功能，测完再做下一个**
 3. **`core/` 不许引用任何画面相关的东西** —— 只有这样才能自动测试
 

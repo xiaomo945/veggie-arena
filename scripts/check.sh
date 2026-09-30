@@ -4,7 +4,7 @@
 set -u
 GODOT="${GODOT:-/opt/godot/Godot_v4.3-stable_linux.x86_64}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT/godot" || exit 1
+cd "$ROOT" || exit 1
 
 echo "=== 1. GDScript 语法检查 ==="
 # 注意：--script 模式不会注册 autoload，引用 Data/Events/GameState 的文件
