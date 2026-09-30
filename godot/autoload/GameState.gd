@@ -17,6 +17,19 @@ var weapons: Array = []
 # 强化：{"key": 数量}
 var upgrades: Dictionary = {}
 
+# ---- 锅气 Wok Heat（招牌机制）----
+# 0..max 的"火候"值。击杀/命中攒，停手衰减，挨打掉。
+# 档位：0 微温 / 1 翻炒(加攻速) / 2 爆炒(加攻速+伤害)。
+# 满锅气可"颠勺"：全屏击退+重伤，然后火候回落。
+# 纯逻辑在 core/Wok.gd（可单测），这里只持有状态 + 发信号。
+const Wok := preload("res://core/Wok.gd")
+var wok: Dictionary = {}
+var wok_heat: float = 0.0
+var _wok_tier: int = 0
+var _wok_ready_emitted := false
+# 颠勺按钮在屏幕上的可点区域（HUD 写入，Joystick 读取以避让移动）
+var wok_toss_rect := Rect2(0, 0, 0, 0)
+
 func _ready() -> void:
 	reset()
 
@@ -31,6 +44,11 @@ func reset() -> void:
 	running = true
 	weapons = []
 	upgrades = {}
+	# 锅气参数从 balance.json 读，避免数值写死在代码里
+	wok = Wok.make(Data.wok_cfg())
+	wok_heat = 0.0
+	_wok_tier = 0
+	_wok_ready_emitted = false
 	# 开局自带一把手枪（否则一进场没武器，玩家会以为坏了）
 	weapons.append({"key": "pistol", "lv": 1})
 
@@ -109,3 +127,47 @@ func stat_value(stat: String) -> float:
 		if str(up.get("stat", "")) == stat:
 			total += float(up.get("value", 0)) * int(upgrades[k])
 	return total
+
+# ---- 锅气 Wok Heat ----
+# 下面这些方法都是对 core/Wok.gd 纯逻辑的薄封装：改状态 + 同步公开字段 + 发信号。
+func _sync_wok() -> void:
+	wok_heat = Wok.heat_of(wok)
+	var t := Wok.tier(wok)
+	if t != _wok_tier:
+		_wok_tier = t
+		Events.wok_tier_changed.emit(_wok_tier)
+	var rd := Wok.ready(wok)
+	if rd != _wok_ready_emitted:
+		_wok_ready_emitted = rd
+		Events.wok_ready_changed.emit(rd)
+	Events.wok_heat_changed.emit(wok_heat, _wok_tier)
+
+func add_wok(amount: float) -> void:
+	Wok.add(wok, Data.wok_cfg(), amount)
+	_sync_wok()
+
+func decay_wok(delta: float) -> void:
+	Wok.decay(wok, Data.wok_cfg(), delta)
+	_sync_wok()
+
+func cool_wok(amount: float) -> void:
+	Wok.cool(wok, Data.wok_cfg(), amount)
+	_sync_wok()
+
+func wok_tier() -> int:
+	return _wok_tier
+
+func wok_ready() -> bool:
+	return Wok.ready(wok)
+
+func wok_fire_mult() -> float:
+	return Wok.fire_mult(wok, Data.wok_cfg())
+
+func wok_dmg_mult() -> float:
+	return Wok.dmg_mult(wok, Data.wok_cfg())
+
+func toss_wok() -> bool:
+	var ok := Wok.toss(wok, Data.wok_cfg())
+	if ok:
+		_sync_wok()
+	return ok

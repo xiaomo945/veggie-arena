@@ -112,11 +112,14 @@ func _physics_process(delta: float) -> void:
 
 # 由 Game 每帧调用：传入敌人列表（含 pos），自动瞄准最近目标开火
 func auto_fire(enemies: Array, delta: float) -> void:
+	# 锅气档位加成：爆炒档攻速最快、还加伤害（"热锅炒菜更猛"）
+	var fire_mult := GameState.wok_fire_mult()
+	var dmg_mult := GameState.wok_dmg_mult()
 	for i in _weapons.size():
 		var w: Dictionary = _weapons[i]
 		var st: Dictionary = w["stats"]
 		w["timer"] = float(w["timer"]) + delta
-		var cd := float(st.get("cd", 1.0))
+		var cd := float(st.get("cd", 1.0)) / maxf(0.05, fire_mult)
 		if not Weapon.can_fire(float(w["timer"]), cd):
 			continue
 		var ti := Weapon.nearest_target(global_position, enemies, float(st.get("range", 300)))
@@ -133,8 +136,11 @@ func auto_fire(enemies: Array, delta: float) -> void:
 		var dirs := Weapon.pellet_directions(base_dir,
 			int(st.get("pellets", 1)), float(st.get("spread", 0.0)), _rng)
 		var mpos := Weapon.mount_position(global_position, i, _weapons.size(), MOUNT_RADIUS)
+		# 锅气伤害加成：复制一份 stats 改 dmg，不污染缓存（st 被多把武器共享引用）
+		var est := st.duplicate()
+		est["dmg"] = float(st.get("dmg", 0)) * dmg_mult
 		for d in dirs:
-			Events.weapon_fired.emit(mpos, d, st, w["color"] as Color)
+			Events.weapon_fired.emit(mpos, d, est, w["color"] as Color)
 		w["timer"] = Weapon.next_cooldown(float(w["timer"]), cd)
 
 # 血量只存在 GameState 一处，Player 只负责无敌帧与受击表现

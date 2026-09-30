@@ -32,6 +32,11 @@ var _enemy_cursor := 0
 var _bdata: Array = []
 var _edata: Array = []
 var _neighbors: Array = []
+# 颠勺冲击波动画：_shock_t<0 表示不在播放；>=0 表示从触发起经过的秒数
+var _shock_t := -1.0
+var _shock_pos := Vector2.ZERO
+var _shock_max := 280.0
+var _shock_dur := 0.38
 
 func _ready() -> void:
 	_rng.randomize()
@@ -47,6 +52,7 @@ func _ready() -> void:
 	add_child(ShopScene.instantiate())
 	add_child(DeathScene.instantiate())
 	Events.shop_closed.connect(_on_shop_closed)
+	Events.wok_toss_requested.connect(_on_wok_toss_requested)
 
 # 由标题页/死亡页的 run_requested 触发。回收场上所有敌人/子弹，重置状态，正式开跑。
 func start_run() -> void:
@@ -120,6 +126,11 @@ func _physics_process(delta: float) -> void:
 	if player == null or not GameState.running or _paused:
 		return
 	GameState.tick_wave(delta)
+	# 锅气自然衰减：停手不刷怪就凉下来，逼你保持进攻节奏
+	GameState.decay_wok(delta)
+	# 颠勺冲击波动画推进
+	if _shock_t >= 0.0:
+		_shock_t += delta
 
 	# 刷怪：Boss 波降低普通刷怪速率，把注意力留给首领
 	var cfg := Data.spawn_cfg()
@@ -202,6 +213,8 @@ func _update_enemies(delta: float) -> void:
 		if pos.distance_to(pp) <= e.radius + float(Data.player_cfg().get("radius", 16)) + 2.0:
 			if player.has_method("take_hit"):
 				player.take_hit(e.dmg)
+				# 挨打掉火候（被摸一下 = 锅被泼了冷水）
+				GameState.cool_wok(e.dmg)
 
 func _collect_enemy_data() -> void:
 	_edata.clear()
@@ -231,6 +244,8 @@ func _resolve_hits() -> void:
 			continue          # 同一发子弹不重复打同一个敌人
 		b.hit_ids[e.eid] = true
 		hits_landed += 1
+		# 命中微量攒锅气（主要靠击杀，命中只是让"没空档"也能维持火候）
+		GameState.add_wok(float(Data.wok_cfg().get("hit_heat", 0.5)))
 		_damage_enemy(e, b.dmg)
 		if b.aoe_radius > 0.0:
 			_explode(b, e)
@@ -252,6 +267,8 @@ func _damage_enemy(e, amount: float) -> void:
 	if e.hurt(amount):
 		GameState.add_kill()
 		GameState.add_gold(e.gold)
+		# 击杀按金币攒锅气：普通怪一点点，Boss 一大口，火候涨得有节奏
+		GameState.add_wok(float(Data.wok_cfg().get("kill_heat", 9)) * (1.0 + 0.2 * float(e.gold)))
 
 var shots_fired := 0
 var hits_landed := 0
@@ -264,3 +281,38 @@ func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) -
 		if not b.active:
 			b.launch(pos, dir, stats, c)
 			return
+
+# ---- 颠勺（满锅气终极）----
+# 由 HUD 颠勺按钮 / Joystick 避让区点按触发：全屏击退+重伤，火候回落。
+func _on_wok_toss_requested() -> void:
+	if not GameState.wok_ready():
+		return
+	var pp := player.global_position
+	var w := Data.wok_cfg()
+	var dmg_mult := float(w.get("toss_dmg_mult", 0.6))
+	var knock := float(w.get("toss_knock", 130))
+	for e in _enemies:
+		if not e.alive:
+			continue
+		var dir: Vector2 = e.global_position - pp
+		if dir.length() < 0.001:
+			dir = Vector2(0, 1)
+		# 重伤：按敌人当前最大血量比例结算，Boss 也削一大块
+		_damage_enemy(e, e.max_hp * dmg_mult + 25.0)
+		# 甩飞：沿远离玩家方向推开，营造"颠勺"的爆开感
+		var np: Vector2 = e.global_position + dir.normalized() * knock
+		e.global_position = Movement.clamp_to_arena(np, _arena, e.radius)
+	# 冲击波视觉
+	_shock_pos = pp
+	_shock_t = 0.0
+	GameState.toss_wok()
+	Events.wok_tossed.emit()
+
+func _draw() -> void:
+	if _shock_t < 0.0 or _shock_t > _shock_dur:
+		return
+	var k := clampf(_shock_t / _shock_dur, 0.0, 1.0)
+	var r := _shock_max * k
+	var a := 1.0 - k
+	draw_arc(_shock_pos, r, 0.0, TAU, 36, Color(1.0, 0.78, 0.42, a), 7.0, true)
+	draw_arc(_shock_pos, r * 0.7, 0.0, TAU, 36, Color(1.0, 0.92, 0.7, a * 0.7), 4.0, true)

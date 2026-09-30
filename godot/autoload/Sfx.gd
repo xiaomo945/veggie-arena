@@ -18,6 +18,7 @@ func _ready() -> void:
 	_make("wave",  _synth(300, 760, 0.35, 0.30, 0.0))
 	_make("hurt",  _synth(220, 80, 0.16, 0.42, 0.4))
 	_make("over",  _synth(520, 110, 0.7, 0.42, 0.2))
+	_make("wok",   _synth(180, 760, 0.30, 0.46, 0.25))
 
 	Events.weapon_fired.connect(_on_shoot)
 	Events.damage_dealt.connect(_on_hit)
@@ -26,6 +27,7 @@ func _ready() -> void:
 	Events.wave_started.connect(_on_wave)
 	Events.player_hp_changed.connect(_on_hp)
 	Events.player_died.connect(_on_died)
+	Events.wok_tossed.connect(_on_wok)
 
 # 合成一段单声道 16bit PCM 的 AudioStreamWAV
 # f0->f1 频率滑音，dur 秒，vol 音量，noise 噪声占比（0=纯音）
@@ -92,3 +94,6 @@ func _on_hp(hp: int, _max_hp: int) -> void:
 
 func _on_died() -> void:
 	_play("over", 500)
+
+func _on_wok() -> void:
+	_play("wok", 120)

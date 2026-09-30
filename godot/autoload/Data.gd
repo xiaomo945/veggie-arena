@@ -57,6 +57,9 @@ func combat_cfg() -> Dictionary:
 func feel_cfg() -> Dictionary:
 	return balance.get("feel", {})
 
+func wok_cfg() -> Dictionary:
+	return balance.get("wok", {})
+
 func weapon(key: String) -> Dictionary:
 	return weapons.get(key, {})
 

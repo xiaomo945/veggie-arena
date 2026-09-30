@@ -17,6 +17,14 @@ signal wave_ended(wave: int)
 signal wave_progress(elapsed: float, length: float)
 signal boss_wave(wave: int)
 
+# ---- 锅气 Wok Heat ----
+signal wok_heat_changed(value: float, tier: int)
+signal wok_tier_changed(tier: int)
+signal wok_ready_changed(ready: bool)
+signal wok_tossed()
+# HUD 颠勺按钮 / Joystick 避让区点按发出，由 Game 真正执行
+signal wok_toss_requested()
+
 # ---- 经济 ----
 signal gold_changed(gold: int)
 signal pickup_spawned(pos: Vector2, value: int)

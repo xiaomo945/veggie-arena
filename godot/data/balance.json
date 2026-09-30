@@ -50,5 +50,21 @@
     "accel_forward": 130,
     "accel_reverse": 160,
     "joystick_visible": false
+  },
+  "wok": {
+    "max": 100,
+    "stir_from": 34,
+    "wokhei_from": 68,
+    "ready": 100,
+    "kill_heat": 9,
+    "hit_heat": 0.5,
+    "decay_per_sec": 7,
+    "cool_on_hit": 0.7,
+    "tier1_fire": 0.25,
+    "tier2_fire": 0.55,
+    "tier2_dmg": 0.30,
+    "toss_dmg_mult": 0.6,
+    "toss_knock": 130,
+    "toss_reset": 18
   }
 }

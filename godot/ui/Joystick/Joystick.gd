@@ -60,6 +60,10 @@ func _input(event: InputEvent) -> void:
 		return
 
 func _start(index: int, pos: Vector2) -> void:
+	# 满锅气时点颠勺按钮区域：只触发颠勺，不开始移动（避免"想甩锅却走位"）
+	if GameState.wok_ready() and GameState.wok_toss_rect.has_point(pos):
+		Events.wok_toss_requested.emit()
+		return
 	_active = true
 	_index = index
 	_origin = pos          # 摇杆在手指按下的位置生成

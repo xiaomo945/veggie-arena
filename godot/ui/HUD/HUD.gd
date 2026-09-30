@@ -15,6 +15,8 @@ var _wave_time := 0.0
 var _wave_len := 20.0
 var _banner: Label
 var _banner_t := 0.0
+var _wok_label: Label
+var _toss_btn: Button
 
 func _ready() -> void:
 	layer = 20
@@ -37,6 +39,36 @@ func _ready() -> void:
 	_banner.text = ""
 	add_child(_banner)
 
+	# 锅气标签（底部，火候条左侧）
+	_wok_label = _mk_label(Vector2(120, 828), 14, Color(0.95, 0.85, 0.6))
+	_wok_label.text = "WOK 锅气 · 微温"
+
+	# 颠勺按钮：满锅气才出现，点一下全屏甩飞。屏幕坐标共享给 Joystick 用于避让移动。
+	_toss_btn = Button.new()
+	_toss_btn.custom_minimum_size = Vector2(120, 120)
+	_toss_btn.size = Vector2(120, 120)
+	_toss_btn.position = Vector2(210, 706)   # 中心 (270, 766)，在火候条上方
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.92, 0.42, 0.26, 0.28)
+	sb.border_color = Color(1.0, 0.72, 0.42, 0.95)
+	sb.set_border_width_all(3)
+	sb.corner_radius_top_left = 60
+	sb.corner_radius_top_right = 60
+	sb.corner_radius_bottom_left = 60
+	sb.corner_radius_bottom_right = 60
+	_toss_btn.add_theme_stylebox_override("normal", sb)
+	var sbp := sb.duplicate()
+	sbp.bg_color = Color(1.0, 0.6, 0.4, 0.5)
+	_toss_btn.add_theme_stylebox_override("pressed", sbp)
+	_toss_btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
+	_toss_btn.add_theme_font_size_override("font_size", 22)
+	_toss_btn.text = "颠勺\nWOK"
+	_toss_btn.visible = false
+	_toss_btn.pressed.connect(_on_toss_pressed)
+	add_child(_toss_btn)
+	# 共享给 Joystick：玩家戳这个区域时只触发颠勺、不移动
+	GameState.wok_toss_rect = Rect2(210, 706, 120, 120)
+
 	Events.player_hp_changed.connect(_on_hp)
 	Events.gold_changed.connect(_on_gold)
 	Events.wave_started.connect(_on_wave_started)
@@ -44,6 +76,8 @@ func _ready() -> void:
 	Events.weapons_changed.connect(_on_weapons)
 	Events.run_started.connect(_on_weapons)
 	Events.boss_wave.connect(_on_boss_wave)
+	Events.wok_heat_changed.connect(_on_wok_heat)
+	Events.wok_ready_changed.connect(_on_wok_ready)
 
 	_wave_len = float(Data.wave_cfg().get("length", 20))
 	_on_weapons()
@@ -98,6 +132,23 @@ func _refresh() -> void:
 func _on_boss_wave(wave: int) -> void:
 	_banner.text = "BOSS WAVE %d" % wave
 	_banner_t = 2.6
+
+func _on_wok_heat(value: float, tier: int) -> void:
+	_bars.set("wok_ratio", clampf(value / 100.0, 0.0, 1.0))
+	_bars.set("wok_tier", tier)
+	_bars.queue_redraw()
+	var name := "微温"
+	if tier >= 2:
+		name = "爆炒"
+	elif tier >= 1:
+		name = "翻炒"
+	_wok_label.text = "WOK 锅气 · %s" % name
+
+func _on_wok_ready(ready: bool) -> void:
+	_toss_btn.visible = ready
+
+func _on_toss_pressed() -> void:
+	Events.wok_toss_requested.emit()
 
 func _process(delta: float) -> void:
 	if _banner_t > 0.0:
