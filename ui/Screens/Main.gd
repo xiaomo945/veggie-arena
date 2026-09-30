@@ -78,8 +78,15 @@ func _process(delta: float) -> void:
 	elif get_tree().root.canvas_transform.origin != Vector2.ZERO:
 		get_tree().root.canvas_transform = Transform2D(0, Vector2.ZERO)
 
+# 逐个敌人报告有没有贴图（缺图会退回手绘几何图形，画面看着"少了点什么"但不崩）
+func _enemy_art_report() -> String:
+	var parts := []
+	for k in Data.enemies.keys():
+		var ok := Art.sprite("enemy_" + str(k)) != null
+		parts.append("%s=%s" % [str(k), "贴图" if ok else "手绘"])
+	return " ".join(parts)
+
 func _sim_arg() -> float:
-	# 注意：Godot 4 里 "--" 之后的参数只在 get_cmdline_user_args() 里，
 	# get_cmdline_args() 拿不到（踩过坑，别改回去）
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--sim="):
@@ -241,10 +248,11 @@ func _run_simulation(seconds: float) -> void:
 	print("  角色        : %s（贴图 %s）" % [
 		GameState.character,
 		"已装载" if Art.sprite("char_" + GameState.character) != null else "缺图兜底"])
-	print("  美术装载    : 玩家=%s 敌人=%s 武器图标=%s" % [
+	print("  美术装载    : 玩家=%s 武器图标=%s" % [
 		"贴图" if Art.sprite("player") != null else "手绘兜底",
-		"贴图" if Art.sprite("enemy_grunt") != null else "手绘兜底",
 		"贴图" if Art.icon("weapon_pistol") != null else "色点兜底"])
+	# 逐个敌人点名：任何一种缺图，这里会显示"手绘"，一眼看出漏了哪张
+	print("  敌人贴图    : %s" % _enemy_art_report())
 	# 模拟结束写一次存档（真实游戏里由阵亡/通关触发），用来验证存档链路可写
 	SaveMgr.record_run(GameState.wave, GameState.kills, GameState.gold,
 		GameState.run_score(), false)
