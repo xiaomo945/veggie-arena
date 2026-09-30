@@ -17,6 +17,7 @@ Events="*res://autoload/Events.gd"
 GameState="*res://autoload/GameState.gd"
 SaveMgr="*res://autoload/SaveMgr.gd"
 Sfx="*res://autoload/Sfx.gd"
+Bgm="*res://autoload/Bgm.gd"
 
 [display]
 

@@ -17,6 +17,7 @@ const TDash := preload("res://tests/test_dash.gd")
 const TCharacter := preload("res://tests/test_character.gd")
 const TSave := preload("res://tests/test_save.gd")
 const TRun := preload("res://tests/test_run.gd")
+const TBgm := preload("res://tests/test_bgm.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -46,6 +47,7 @@ func _initialize() -> void:
 	_run("Character(角色)", TCharacter, data)
 	_run("Save(存档/解锁)", TSave, data)
 	_run("Run(通关)", TRun, data)
+	_run("BGM(背景乐)", TBgm)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告
 	data.free()
