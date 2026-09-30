@@ -6,6 +6,7 @@ extends Node2D
 const BulletScene := preload("res://entities/Bullet/Bullet.tscn")
 const EnemyScene := preload("res://entities/Enemy/Enemy.tscn")
 const HUDScene := preload("res://ui/HUD/HUD.tscn")
+const FxScene := preload("res://ui/Fx/FxLayer.tscn")
 const ShopScene := preload("res://ui/Shop/Shop.tscn")
 const DeathScene := preload("res://ui/Screens/DeathScreen.tscn")
 const VictoryScene := preload("res://ui/Screens/VictoryScreen.tscn")
@@ -51,6 +52,7 @@ func _ready() -> void:
 	# ⚠️ 不再这里 reset —— 一局由标题页"开始"或死亡页"再来一局"触发 start_run()
 	# （reset 会把 running 置 true，若提前调了，标题页还没点就开始刷怪了）
 	add_child(HUDScene.instantiate())
+	add_child(FxScene.instantiate())
 	add_child(ShopScene.instantiate())
 	add_child(DeathScene.instantiate())
 	add_child(VictoryScene.instantiate())
@@ -310,9 +312,15 @@ func _explode(b, center_enemy) -> void:
 			_damage_enemy(e, b.dmg * 0.6)   # 溅射伤害打 6 折
 
 func _damage_enemy(e, amount: float) -> void:
+	# 先取位置：hurt() 触发死亡后会 recycle，之后再取坐标就不稳了
+	var epos: Vector2 = e.global_position
+	# 飘伤害数字（特效层订阅，纯表现）
+	Events.damage_dealt.emit(int(amount), epos, false)
 	if e.hurt(amount):
 		GameState.add_kill()
 		GameState.add_gold(e.gold)
+		# 击杀爆环（Boss 的环更大）
+		Events.enemy_killed.emit(str(e.etype), epos)
 		# 击杀按金币攒锅气：普通怪一点点，Boss 一大口，火候涨得有节奏
 		GameState.add_wok(float(Data.wok_cfg().get("kill_heat", 9)) * (1.0 + 0.2 * float(e.gold)))
 
