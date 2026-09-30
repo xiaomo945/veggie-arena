@@ -9,6 +9,7 @@
   },
   "wave": {
     "length": 20,
+    "total": 20,
     "heal_percent": 0.15,
     "bonus_base": 10,
     "bonus_per_wave": 4

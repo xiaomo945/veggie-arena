@@ -45,6 +45,8 @@ signal stick_released()
 # ---- 流程 ----
 signal run_started()
 signal run_ended(wave: int, kills: int)
+# 撑过最后一波通关时发（胜利页监听），与 player_died（阵亡）互斥
+signal run_won()
 signal shop_opened()
 signal shop_closed()
 # 标题页"开始"/死亡页"再来一局"都发这个，由 Main 统一接管开跑/重开

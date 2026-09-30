@@ -8,10 +8,12 @@ const EnemyScene := preload("res://entities/Enemy/Enemy.tscn")
 const HUDScene := preload("res://ui/HUD/HUD.tscn")
 const ShopScene := preload("res://ui/Shop/Shop.tscn")
 const DeathScene := preload("res://ui/Screens/DeathScreen.tscn")
+const VictoryScene := preload("res://ui/Screens/VictoryScreen.tscn")
 const Economy := preload("res://core/Economy.gd")
 const Spawner := preload("res://core/Spawner.gd")
 const Hit := preload("res://core/Hit.gd")
 const Movement := preload("res://core/Movement.gd")
+const Run := preload("res://core/Run.gd")
 
 const MAX_BULLETS := 90
 const MAX_ENEMIES := 110
@@ -51,6 +53,7 @@ func _ready() -> void:
 	add_child(HUDScene.instantiate())
 	add_child(ShopScene.instantiate())
 	add_child(DeathScene.instantiate())
+	add_child(VictoryScene.instantiate())
 	Events.shop_closed.connect(_on_shop_closed)
 	Events.wok_toss_requested.connect(_on_wok_toss_requested)
 
@@ -164,9 +167,14 @@ func _physics_process(delta: float) -> void:
 		_end_wave()
 
 func _end_wave() -> void:
-	_paused = true
 	GameState.add_gold(Economy.wave_bonus(GameState.wave, Data.wave_cfg()))
 	GameState.heal_percent(float(Data.wave_cfg().get("heal_percent", 0.12)))
+	# 最后一波结束 = 通关：停跑并弹胜利页，不再开补给站
+	if GameState.is_last_wave():
+		GameState.running = false
+		Events.run_won.emit()
+		return
+	_paused = true
 	Events.shop_opened.emit()
 
 func _on_shop_closed() -> void:

@@ -1,21 +1,21 @@
 extends CanvasLayer
 
-# 死亡页：告诉玩家"你撑到第几波、杀了多少、攒了多少分"，然后一键重开。
-# 重开发 Events.run_requested —— 由 Main 调 Game.start_run() 回收并重置，比 reload 场景更干净。
-# 结算分与胜利页共用 core/Run.gd 的口径。
+# 胜利页：撑过最后一波后弹出，展示通关结算（波次 / 击杀 / 金币 / 总分），一键重开。
+# 重开发 Events.run_requested —— 由 Main 接管 Game.start_run() 回收并重置，比 reload 场景干净。
+# 结算分复用 core/Run.gd 的纯逻辑，和死亡页保持一致口径。
+
+const Run := preload("res://core/Run.gd")
 
 var _root: Control
 var _title: Label
 var _stat: Label
 var _btn: Button
 
-const Run := preload("res://core/Run.gd")
-
 func _ready() -> void:
-	layer = 40
+	layer = 41
 	_build()
 	_root.visible = false
-	Events.player_died.connect(_show)
+	Events.run_won.connect(_show)
 
 func _build() -> void:
 	_root = Control.new()
@@ -24,19 +24,19 @@ func _build() -> void:
 
 	var shade := ColorRect.new()
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.color = Color(0.05, 0.02, 0.03, 0.78)
+	shade.color = Color(0.03, 0.06, 0.04, 0.80)
 	_root.add_child(shade)
 
 	_title = Label.new()
-	_title.text = "GAME OVER"
-	_title.add_theme_font_size_override("font_size", 40)
-	_title.add_theme_color_override("font_color", Color(0.96, 0.55, 0.45))
-	_title.set_position(Vector2(150, 300))
+	_title.text = "VICTORY!"
+	_title.add_theme_font_size_override("font_size", 42)
+	_title.add_theme_color_override("font_color", Color(0.95, 0.86, 0.45))
+	_title.set_position(Vector2(160, 290))
 	_root.add_child(_title)
 
 	_stat = Label.new()
 	_stat.add_theme_font_size_override("font_size", 20)
-	_stat.set_position(Vector2(150, 372))
+	_stat.set_position(Vector2(150, 366))
 	_root.add_child(_stat)
 
 	_btn = Button.new()
@@ -49,7 +49,7 @@ func _build() -> void:
 
 func _show() -> void:
 	var sc := Run.score(GameState.kills, GameState.gold, GameState.wave)
-	_stat.text = "Reached Wave %d\n%d Kills  ·  %d Gold\nSCORE %d" % [
+	_stat.text = "Cleared Wave %d\n%d Kills  ·  %d Gold\nSCORE %d" % [
 		GameState.wave, GameState.kills, GameState.gold, sc]
 	_root.visible = true
 

@@ -106,7 +106,10 @@ func _on_wave_progress(elapsed: float, length: float) -> void:
 	_bars.queue_redraw()
 	# 击杀数每帧跟着刷新（省一个信号，反正波次进度也是每帧发）
 	_kill.text = "KILLS %d" % GameState.kills
-	_wave.text = "WAVE %d" % GameState.wave
+	var wtxt := "WAVE %d" % GameState.wave
+	if GameState.is_last_wave():
+		wtxt += " · FINAL"
+	_wave.text = wtxt
 
 func _on_weapons(_ignored: Array = []) -> void:
 	var slots: Array = []
@@ -126,11 +129,17 @@ func _on_weapons(_ignored: Array = []) -> void:
 	_bars.queue_redraw()
 
 func _refresh() -> void:
-	_wave.text = "WAVE %d" % GameState.wave
+	var wtxt := "WAVE %d" % GameState.wave
+	if GameState.is_last_wave():
+		wtxt += " · FINAL"
+	_wave.text = wtxt
 	_kill.text = "KILLS %d" % GameState.kills
 
 func _on_boss_wave(wave: int) -> void:
-	_banner.text = "BOSS WAVE %d" % wave
+	if GameState.is_last_wave():
+		_banner.text = "FINAL WAVE %d" % wave
+	else:
+		_banner.text = "BOSS WAVE %d" % wave
 	_banner_t = 2.6
 
 func _on_wok_heat(value: float, tier: int) -> void:

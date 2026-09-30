@@ -23,6 +23,7 @@ var upgrades: Dictionary = {}
 # 满锅气可"颠勺"：全屏击退+重伤，然后火候回落。
 # 纯逻辑在 core/Wok.gd（可单测），这里只持有状态 + 发信号。
 const Wok := preload("res://core/Wok.gd")
+const Run := preload("res://core/Run.gd")
 var wok: Dictionary = {}
 var wok_heat: float = 0.0
 var _wok_tier: int = 0
@@ -94,9 +95,17 @@ func tick_wave(delta: float) -> void:
 func wave_finished() -> bool:
 	return elapsed_in_wave >= float(Data.wave_cfg().get("length", 20))
 
+# 是否到了通关波（撑过这一波即胜利）。波数阈值走 balance.json 的 wave.total。
+func is_last_wave() -> bool:
+	return Run.is_last_wave(wave, Data.wave_cfg())
+
 # ---- 击杀 ----
 func add_kill() -> void:
 	kills += 1
+
+# 通关/阵亡的统一结算分（与死亡页同口径）
+func run_score() -> int:
+	return Run.score(kills, gold, wave)
 
 # ---- 强化（属性加成）----
 # 所有加成都由 upgrades.json 的 "stat" 字段驱动，加新强化不用改代码
