@@ -70,7 +70,7 @@ func _ready() -> void:
 	_toss_btn.add_theme_stylebox_override("pressed", sbp)
 	_toss_btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
 	_toss_btn.add_theme_font_size_override("font_size", 22)
-	_toss_btn.text = "颠勺\nWOK"
+	_toss_btn.text = "WOK\nTOSS"
 	_toss_btn.visible = false
 	_toss_btn.pressed.connect(_on_toss_pressed)
 	add_child(_toss_btn)
@@ -158,9 +158,9 @@ func _on_wok_heat(value: float, tier: int) -> void:
 	if tier != _wok_last_tier:
 		_wok_last_tier = tier
 		if tier >= 2:
-			_pop_wok("爆炒! 伤害+攻速↑", Color(1.0, 0.5, 0.3))
+			_pop_wok("BLAZING! DMG+SPD", Color(1.0, 0.5, 0.3))
 		elif tier >= 1:
-			_pop_wok("翻炒! 攻速↑", Color(1.0, 0.82, 0.42))
+			_pop_wok("STIR-FRY! SPD UP", Color(1.0, 0.82, 0.42))
 
 func _on_wok_ready(ready: bool) -> void:
 	_toss_btn.visible = ready
