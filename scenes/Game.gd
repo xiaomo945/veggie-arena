@@ -221,8 +221,8 @@ func _update_enemies(delta: float) -> void:
 		if pos.distance_to(pp) <= e.radius + float(Data.player_cfg().get("radius", 16)) + 2.0:
 			if player.has_method("take_hit"):
 				player.take_hit(e.dmg)
-				# 挨打掉火候（被摸一下 = 锅被泼了冷水）
-				GameState.cool_wok(e.dmg)
+				# 挨打掉火候（被摸一下 = 锅被泼了冷水）；封顶 8 点，避免首领一巴掌把火候清零
+				GameState.cool_wok(minf(e.dmg, 8.0))
 
 func _collect_enemy_data() -> void:
 	_edata.clear()

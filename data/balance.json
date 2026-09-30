@@ -15,10 +15,10 @@
     "bonus_per_wave": 4
   },
   "spawn": {
-    "base_rate": 0.42,
-    "per_wave": 0.20,
-    "cap": 3.6,
-    "max_alive": 80,
+    "base_rate": 0.5,
+    "per_wave": 0.16,
+    "cap": 2.2,
+    "max_alive": 40,
     "warn_time": 0.45,
     "edge_offset": 20,
     "fast_from_wave": 2,
@@ -54,18 +54,18 @@
   },
   "wok": {
     "max": 100,
-    "stir_from": 34,
-    "wokhei_from": 68,
+    "stir_from": 28,
+    "wokhei_from": 58,
     "ready": 100,
-    "kill_heat": 9,
-    "hit_heat": 0.5,
-    "decay_per_sec": 7,
-    "cool_on_hit": 0.7,
-    "tier1_fire": 0.25,
-    "tier2_fire": 0.55,
+    "kill_heat": 12,
+    "hit_heat": 1.0,
+    "decay_per_sec": 4,
+    "cool_on_hit": 0.3,
+    "tier1_fire": 0.30,
+    "tier2_fire": 0.65,
     "tier2_dmg": 0.30,
     "toss_dmg_mult": 0.6,
     "toss_knock": 130,
-    "toss_reset": 18
+    "toss_reset": 25
   }
 }

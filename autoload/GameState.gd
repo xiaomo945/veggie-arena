@@ -50,8 +50,9 @@ func reset() -> void:
 	wok_heat = 0.0
 	_wok_tier = 0
 	_wok_ready_emitted = false
-	# 开局自带一把手枪（否则一进场没武器，玩家会以为坏了）
+	# 开局自带手枪 + 冲锋枪：双武器起步，前期清怪有手感、锅气攒得快
 	weapons.append({"key": "pistol", "lv": 1})
+	weapons.append({"key": "smg", "lv": 1})
 
 # ---- 血量 ----
 func take_damage(amount: int) -> void:
