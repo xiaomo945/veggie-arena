@@ -267,7 +267,7 @@ func _home_bullets(delta: float) -> void:
 		if best < 0 or best_d > hr:
 			continue
 		var ep: Vector2 = _edata[best].get("pos", Vector2.ZERO)
-		var desired := (ep - b.global_position).normalized()
+		var desired: Vector2 = (ep - b.global_position).normalized()
 		var cur: Vector2 = b.dir.normalized()
 		var ang := cur.angle_to(desired)
 		ang = clampf(ang, -max_turn, max_turn)

@@ -28,8 +28,11 @@ done < <(find . -name "*.gd" -not -path "./.godot/*")
 echo "  逐文件检查 $n 个，语法错误 $fail 个；跳过 $skip 个（用 autoload，由第 2 步覆盖）"
 
 echo ""
-echo "=== 1.5 主场景启动验证（autoload 真实注册）==="
-boot_out=$("$GODOT" --headless --path . --quit-after 30 2>&1)
+echo "=== 1.5 主场景启动验证（autoload 真实注册，清缓存强制重编译）==="
+# ⚠️ 必须清 .godot/editor 缓存：否则 Godot 会用旧编译的 Game.gd 等脚本，
+# 漏掉"类型推断失败"这类 Parse Error（v0.11 的 desired 变量就因此漏过）
+rm -rf .godot/editor
+boot_out=$("$GODOT" --headless --path . --quit-after 60 2>&1)
 if echo "$boot_out" | grep -qiE "SCRIPT ERROR|Parse Error|Compile Error|Identifier not found"; then
   echo "  ❌ 主场景启动有错："
   echo "$boot_out" | grep -iE "SCRIPT ERROR|Parse Error|Compile Error|Identifier not found" | head -6
