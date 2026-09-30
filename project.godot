@@ -18,6 +18,7 @@ GameState="*res://autoload/GameState.gd"
 SaveMgr="*res://autoload/SaveMgr.gd"
 Sfx="*res://autoload/Sfx.gd"
 Bgm="*res://autoload/Bgm.gd"
+Gamepad="*res://autoload/Gamepad.gd"
 
 [display]
 
