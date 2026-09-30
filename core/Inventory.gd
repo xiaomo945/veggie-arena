@@ -64,6 +64,10 @@ static func apply_upgrade(stats: Dictionary, up: Dictionary) -> Dictionary:
 			stats["armor"] = float(stats.get("armor", 0)) + float(value)
 		"pickup_pct":
 			stats["pickup_pct"] = float(stats.get("pickup_pct", 0)) + float(value)
+		"lifesteal":
+			stats["lifesteal"] = float(stats.get("lifesteal", 0)) + float(value)
+		"wok_pct":
+			stats["wok_pct"] = float(stats.get("wok_pct", 0)) + float(value)
 		_:
 			push_warning("Inventory: 未知强化类型 " + stat)
 	return stats

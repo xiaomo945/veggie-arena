@@ -321,8 +321,15 @@ func _damage_enemy(e, amount: float) -> void:
 		GameState.add_gold(e.gold)
 		# 击杀爆环（Boss 的环更大）
 		Events.enemy_killed.emit(str(e.etype), epos)
+		# 击杀回血（lifesteal 强化：续航流玩法）
+		var ls: float = GameState.stat_value("lifesteal")
+		if ls > 0.0:
+			GameState.heal(int(ls))
 		# 击杀按金币攒锅气：普通怪一点点，Boss 一大口，火候涨得有节奏
-		GameState.add_wok(float(Data.wok_cfg().get("kill_heat", 9)) * (1.0 + 0.2 * float(e.gold)))
+		# 再乘上 wok_pct 强化（锅气获取 +X%）
+		var heat: float = float(Data.wok_cfg().get("kill_heat", 9)) * (1.0 + 0.2 * float(e.gold))
+		heat *= 1.0 + GameState.stat_value("wok_pct")
+		GameState.add_wok(heat)
 
 var shots_fired := 0
 var hits_landed := 0

@@ -54,5 +54,45 @@
     "cost": 10,
     "tip": "残血时的救命稻草",
     "en": "Heal 40 HP"
+  },
+  "hp2": {
+    "zh": "最大生命 +30",
+    "stat": "max_hp",
+    "value": 30,
+    "cost": 26,
+    "tip": "后期堆血，容错更高",
+    "en": "Max HP +30"
+  },
+  "dmg2": {
+    "zh": "伤害 +18%",
+    "stat": "dmg_pct",
+    "value": 0.18,
+    "cost": 30,
+    "tip": "伤害大头，后期必拿",
+    "en": "Damage +18%"
+  },
+  "rate2": {
+    "zh": "攻速 +15%",
+    "stat": "rate_pct",
+    "value": 0.15,
+    "cost": 30,
+    "tip": "射速翻倍靠它堆",
+    "en": "Fire Rate +15%"
+  },
+  "lifesteal": {
+    "zh": "击杀回复 3 点生命",
+    "stat": "lifesteal",
+    "value": 3,
+    "cost": 24,
+    "tip": "每杀一只回一点血，续航靠它",
+    "en": "Lifesteal +3 HP per kill"
+  },
+  "wokgain": {
+    "zh": "锅气获取 +25%",
+    "stat": "wok_pct",
+    "value": 0.25,
+    "cost": 18,
+    "tip": "火候攒得更快，颠勺来得更勤",
+    "en": "Wok Heat gain +25%"
   }
 }

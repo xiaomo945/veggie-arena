@@ -122,7 +122,9 @@ func buy_upgrade(key: String) -> void:
 			max_hp += int(val)
 			hp += int(val)
 			Events.player_hp_changed.emit(hp, max_hp)
-		"heal":
+		# ⚠️ stat 名必须和 upgrades.json 一致（是 heal_now 不是 heal），
+		#    之前写 "heal" 导致买回血强化时静默不生效
+		"heal_now":
 			heal(int(val))
 		_:
 			pass

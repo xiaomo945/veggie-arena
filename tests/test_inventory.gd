@@ -85,4 +85,38 @@ func run() -> Dictionary:
 	chk(abs(t - (9.0 / 0.42 + 32.0 / 0.95)) < 0.01, "总 DPS = 各武器之和（实际 %.1f）" % t)
 	chk(Inventory.total_dps([]) == 0.0, "空武器列表 DPS 为 0")
 
+	# 6) 新增 stat：击杀回血 / 锅气获取
+	#    必须被 apply_upgrade 认识，否则买了强化却静默失效（最难查的一类 bug）
+	var st2: Dictionary = {"hp": 50, "max_hp": 100}
+	st2 = Inventory.apply_upgrade(st2, {"stat": "lifesteal", "value": 3})
+	chk(abs(float(st2.get("lifesteal", 0)) - 3.0) < 0.001,
+		"lifesteal 记入属性表（实际 %s）" % st2.get("lifesteal"))
+	st2 = Inventory.apply_upgrade(st2, {"stat": "wok_pct", "value": 0.25})
+	chk(abs(float(st2.get("wok_pct", 0)) - 0.25) < 0.001,
+		"wok_pct 记入属性表（实际 %s）" % st2.get("wok_pct"))
+	st2 = Inventory.apply_upgrade(st2, {"stat": "lifesteal", "value": 3})
+	chk(abs(float(st2.get("lifesteal", 0)) - 6.0) < 0.001,
+		"lifesteal 可叠加（实际 %s）" % st2.get("lifesteal"))
+
+	# 7) 守卫：数据表里每个强化的 stat 都必须是 Inventory 支持的
+	#    （曾经出过 upgrades.json 写 heal_now、代码却匹配 heal 的静默失效 bug）
+	var known: Array = ["max_hp", "heal_now", "speed_pct", "dmg_pct", "rate_pct",
+		"armor", "pickup_pct", "lifesteal", "wok_pct"]
+	# 直接读 JSON：本测试的 run() 不接收 data 参数，自己读最稳
+	var ups: Dictionary = {}
+	var f := FileAccess.open("res://data/upgrades.json", FileAccess.READ)
+	if f != null:
+		var j := JSON.new()
+		if j.parse(f.get_as_text()) == OK:
+			ups = j.get_data() as Dictionary
+		f.close()
+	var bad: Array = []
+	for k in ups:
+		var d: Dictionary = ups[k] as Dictionary
+		var s := str(d.get("stat", ""))
+		if not known.has(s):
+			bad.append("%s:%s" % [k, s])
+	chk(bad.is_empty(), "upgrades.json 的 stat 都被 Inventory 支持" +
+		("" if bad.is_empty() else "（未知 stat: %s）" % str(bad)))
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
