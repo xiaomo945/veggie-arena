@@ -13,6 +13,8 @@ const Inventory := preload("res://core/Inventory.gd")
 var player: Node2D
 var game: Node
 var _rng := RandomNumberGenerator.new()
+var _shake := 0.0          # 屏幕震动强度，受伤时拉起、每帧衰减
+var _prev_hp := 100
 
 const BG := Color(0.06, 0.07, 0.10)
 const FLOOR := Color(0.11, 0.13, 0.17)
@@ -39,6 +41,7 @@ func _ready() -> void:
 	var title = TitleScene.new()
 	add_child(title)
 	Events.run_requested.connect(_begin_run)
+	Events.player_hp_changed.connect(_on_hp_shake)
 
 	queue_redraw()
 
@@ -51,8 +54,24 @@ func _ready() -> void:
 
 # 标题页"开始" / 死亡页"再来一局" 都走这里：正式开跑一局
 func _begin_run() -> void:
+	_prev_hp = GameState.max_hp
+	_shake = 0.0
 	if game != null and game.has_method("start_run"):
 		game.start_run()
+
+# 掉血 → 屏幕震动（受伤反馈，比单纯闪白更"中被撞"）
+func _on_hp_shake(hp: int, _m: int) -> void:
+	if hp < _prev_hp:
+		_shake = 9.0
+	_prev_hp = hp
+
+func _process(delta: float) -> void:
+	if _shake > 0.1:
+		_shake = maxf(0.0, _shake - delta * 42.0)
+		var o := Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake))
+		get_tree().root.canvas_transform = Transform2D(0, o)
+	elif get_tree().root.canvas_transform.origin != Vector2.ZERO:
+		get_tree().root.canvas_transform = Transform2D(0, Vector2.ZERO)
 
 func _sim_arg() -> float:
 	# 注意：Godot 4 里 "--" 之后的参数只在 get_cmdline_user_args() 里，

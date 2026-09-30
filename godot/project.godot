@@ -15,6 +15,7 @@ Art="*res://autoload/Art.gd"
 Data="*res://autoload/Data.gd"
 Events="*res://autoload/Events.gd"
 GameState="*res://autoload/GameState.gd"
+Sfx="*res://autoload/Sfx.gd"
 
 [display]
 
