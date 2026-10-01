@@ -11,6 +11,7 @@ const FxScene := preload("res://ui/Fx/FxLayer.tscn")
 const ShopScene := preload("res://ui/Shop/Shop.tscn")
 const DeathScene := preload("res://ui/Screens/DeathScreen.tscn")
 const VictoryScene := preload("res://ui/Screens/VictoryScreen.tscn")
+const PauseScene := preload("res://ui/Screens/PauseScreen.tscn")
 const Economy := preload("res://core/Economy.gd")
 const Spawner := preload("res://core/Spawner.gd")
 const Hit := preload("res://core/Hit.gd")
@@ -65,7 +66,11 @@ func _ready() -> void:
 	add_child(ShopScene.instantiate())
 	add_child(DeathScene.instantiate())
 	add_child(VictoryScene.instantiate())
+	add_child(PauseScene.instantiate())
 	Events.shop_closed.connect(_on_shop_closed)
+	Events.pause_requested.connect(_on_pause_requested)
+	Events.resume_requested.connect(_on_resume_requested)
+	Events.quit_to_title_requested.connect(_on_quit_to_title)
 	Events.wok_toss_requested.connect(_on_wok_toss_requested)
 
 # 由标题页/死亡页的 run_requested 触发。回收场上所有敌人/子弹，重置状态，正式开跑。
@@ -79,6 +84,7 @@ func start_run() -> void:
 	_spawn_acc = 0.0
 	_next_id = 1
 	GameState.reset()
+	_paused = false
 	set_physics_process(true)
 	Events.run_started.emit()
 
@@ -102,6 +108,30 @@ func _on_player_died() -> void:
 func _on_run_won() -> void:
 	set_physics_process(false)
 	_finish_run(true)
+
+# ---- 暂停（HUD 暂停键触发，复用现有 _paused 机制，不暂停整棵树以免按钮失灵）----
+func _on_pause_requested() -> void:
+	if not GameState.running or _paused:
+		return
+	_paused = true
+	Events.run_paused.emit(true)
+
+func _on_resume_requested() -> void:
+	_paused = false
+	Events.run_paused.emit(false)
+
+# 退出到标题：放弃本局（不写存档），回收场上实体，交还控制权给 TitleScreen
+func _on_quit_to_title() -> void:
+	set_physics_process(false)
+	_paused = false
+	GameState.running = false
+	for e in _enemies:
+		e.recycle()
+	for b in _bullets:
+		b.recycle()
+	if _pickups != null:
+		_pickups.clear()
+	Events.run_paused.emit(false)
 
 # 一局结束的统一收尾：把成绩写进存档（解锁判定也在这里触发）
 func _finish_run(won: bool) -> void:

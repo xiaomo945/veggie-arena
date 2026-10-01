@@ -28,6 +28,7 @@ var _wok_last_tier := 0
 var _toss_btn: Button
 var _unlock_queue: Array = []    # 待展示的解锁提示（一次一條，避免刷屏）
 var _unlock_t := 0.0
+var _pause_btn: Button
 
 func _ready() -> void:
 	layer = 20
@@ -119,6 +120,26 @@ func _ready() -> void:
 	_wave_len = float(Data.wave_cfg().get("length", 20))
 	_on_weapons()
 	_refresh()
+
+	# 暂停按钮：右上角，游戏中显示，暂停/结算时隐藏
+	_pause_btn = Button.new()
+	_pause_btn.custom_minimum_size = Vector2(48, 48)
+	_pause_btn.size = Vector2(48, 48)
+	_pause_btn.position = Vector2(540 - 56, 16)
+	var iv := Art.ui_icon("pause")
+	if iv != null:
+		_pause_btn.icon = iv
+	else:
+		_pause_btn.text = "II"
+	_pause_btn.add_theme_font_size_override("font_size", 18)
+	_pause_btn.pressed.connect(_on_pause_pressed)
+	add_child(_pause_btn)
+	_pause_btn.visible = false
+
+	Events.run_started.connect(_show_pause)
+	Events.player_died.connect(_hide_pause)
+	Events.run_won.connect(_hide_pause)
+	Events.run_paused.connect(_on_run_paused)
 
 func _mk_label(pos: Vector2, size: int, c: Color) -> Label:
 	var l := Label.new()
@@ -222,6 +243,18 @@ func _tick_unlock(delta: float) -> void:
 	var name := str(def.get("en", def.get("zh", key)))
 	_unlock.text = "UNLOCKED: %s!" % name.to_upper()
 	_unlock_t = 2.2
+
+func _on_pause_pressed() -> void:
+	Events.pause_requested.emit()
+
+func _show_pause() -> void:
+	_pause_btn.visible = true
+
+func _hide_pause() -> void:
+	_pause_btn.visible = false
+
+func _on_run_paused(paused: bool) -> void:
+	_pause_btn.visible = !paused and GameState.running
 
 func _process(delta: float) -> void:
 	if _banner_t > 0.0:

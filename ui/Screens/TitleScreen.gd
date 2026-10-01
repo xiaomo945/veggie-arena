@@ -13,6 +13,7 @@ func _ready() -> void:
 	layer = 50
 	_build()
 	Events.run_requested.connect(_on_run_requested)
+	Events.quit_to_title_requested.connect(_on_quit_to_title)
 
 func _build() -> void:
 	_root = Control.new()
@@ -140,3 +141,7 @@ func _on_start() -> void:
 func _on_run_requested() -> void:
 	# 死亡页"再来一局"也会发这个；标题页本就隐藏，无需再处理
 	_root.visible = false
+
+func _on_quit_to_title() -> void:
+	# 从暂停菜单退出：重新显示标题页（游戏进行中标题页是隐藏的）
+	_root.visible = true

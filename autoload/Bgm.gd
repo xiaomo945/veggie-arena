@@ -43,6 +43,12 @@ func _ready() -> void:
 func play(track: String) -> void:
 	if not _players.has(track):
 		return
+	# 音乐关：只把该曲压静音、不实际播放（省资源）
+	if not Settings.music_enabled():
+		var silent := _players[track] as AudioStreamPlayer
+		if silent != null:
+			silent.volume_db = -80.0
+		return
 	if _current == track:
 		var cur := _players[track] as AudioStreamPlayer
 		if cur != null and not cur.playing:
@@ -89,3 +95,18 @@ func _on_died() -> void:
 
 func _on_won() -> void:
 	play("menu")
+
+# 设置改变后重读音乐开关：当前曲恢复音量/重播，非当前曲压静音
+func refresh() -> void:
+	var on := Settings.music_enabled()
+	for k in _players.keys():
+		var p := _players[k] as AudioStreamPlayer
+		if p == null:
+			continue
+		if k == _current and on:
+			if not p.playing:
+				p.volume_db = -60.0
+				p.play()
+			_fade_in(k)
+		else:
+			p.volume_db = -80.0

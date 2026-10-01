@@ -67,3 +67,9 @@ signal shop_opened()
 signal shop_closed()
 # 标题页"开始"/死亡页"再来一局"都发这个，由 Main 统一接管开跑/重开
 signal run_requested()
+# 暂停：HUD 暂停键发出 → Game 真正暂停；PauseScreen 监听 run_paused 显隐自己
+signal pause_requested()
+signal resume_requested()
+signal run_paused(paused: bool)
+# 暂停菜单"退出到标题" → Game 复位本局 + TitleScreen 重新显示
+signal quit_to_title_requested()

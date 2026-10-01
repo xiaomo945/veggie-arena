@@ -19,6 +19,7 @@ func _ready() -> void:
 	_make("hurt",  _synth(220, 80, 0.16, 0.42, 0.4))
 	_make("over",  _synth(520, 110, 0.7, 0.42, 0.2))
 	_make("wok",   _synth(180, 760, 0.30, 0.46, 0.25))
+	_make("button",_synth(1200, 1500, 0.04, 0.25, 0.0))
 
 	Events.weapon_fired.connect(_on_shoot)
 	Events.damage_dealt.connect(_on_hit)
@@ -29,6 +30,8 @@ func _ready() -> void:
 	Events.player_hp_changed.connect(_on_hp)
 	Events.player_died.connect(_on_died)
 	Events.wok_tossed.connect(_on_wok)
+	# 按设置应用音量（音效开关/总静音）；设置变了也由 PauseScreen 回调重调
+	apply_volume()
 
 # 合成一段单声道 16bit PCM 的 AudioStreamWAV
 # f0->f1 频率滑音，dur 秒，vol 音量，noise 噪声占比（0=纯音）
@@ -98,3 +101,18 @@ func _on_died() -> void:
 
 func _on_wok() -> void:
 	_play("wok", 120)
+
+# 按 Settings 把每个播放器压到静音或恢复（音效开关/总静音变化时由 PauseScreen 调）
+func apply_volume() -> void:
+	var on := Settings.sfx_enabled()
+	for p in _players.values():
+		var ap := p as AudioStreamPlayer
+		if ap != null:
+			if on:
+				ap.volume_db = 0.0
+			else:
+				ap.volume_db = -80.0
+
+# UI 按钮点击音（暂停菜单/通用按钮）
+func ui_click() -> void:
+	_play("button", 10)

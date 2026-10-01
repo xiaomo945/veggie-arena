@@ -45,6 +45,18 @@ func has_sprite(name: String) -> bool:
 func has_icon(name: String) -> bool:
 	return FileAccess.file_exists(icon_path(name))
 
+# ---- UI 图标：放在 art/ui/ 子目录，与角色/敌人立绘（art/sprite_*）区分开 ----
+const UI_DIR := "res://art/ui/"
+
+static func ui_icon_path(name: String) -> String:
+	return UI_DIR + ICON_PREFIX + normalize(name) + EXT
+
+func ui_icon(name: String) -> Texture2D:
+	return _cached_load(ui_icon_path(name))
+
+func has_ui_icon(name: String) -> bool:
+	return FileAccess.file_exists(ui_icon_path(name))
+
 # 换皮 / 热重载贴图时用：清掉缓存，下一次访问重新读磁盘
 func clear_cache() -> void:
 	_cache.clear()
