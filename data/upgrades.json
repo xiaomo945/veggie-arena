@@ -3,7 +3,7 @@
     "zh": "最大生命 +15",
     "stat": "max_hp",
     "value": 15,
-    "cost": 14,
+    "cost": 12,
     "tip": "血条更长，立刻补满这 15 点",
     "tip_en": "Longer health bar, refills +15 now.",
     "en": "Max HP +15"
@@ -21,7 +21,7 @@
     "zh": "伤害 +10%",
     "stat": "dmg_pct",
     "value": 0.1,
-    "cost": 16,
+    "cost": 14,
     "tip": "所有武器伤害一起提升",
     "tip_en": "All weapons hit harder.",
     "en": "Damage +10%"
@@ -30,7 +30,7 @@
     "zh": "攻速 +8%",
     "stat": "rate_pct",
     "value": 0.08,
-    "cost": 16,
+    "cost": 14,
     "tip": "所有武器射速一起提升",
     "tip_en": "All weapons fire faster.",
     "en": "Fire Rate +8%"
@@ -39,7 +39,7 @@
     "zh": "护甲 +2",
     "stat": "armor",
     "value": 2,
-    "cost": 18,
+    "cost": 16,
     "tip": "每次被撞到的伤害 -2",
     "tip_en": "-2 damage per hit taken.",
     "en": "Armor +2"

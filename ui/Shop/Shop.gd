@@ -149,8 +149,10 @@ func _buy(index: int) -> void:
 	var o: Dictionary = _offers[index]
 	var cost := int(o.get("cost", 0))
 	if not Economy.can_buy(GameState.gold, cost):
+		_flash_card(index, false)   # 金币不足：红闪提示
 		return
 	GameState.spend_gold(cost)
+	var bought := true
 	if str(o.get("kind", "")) == "weapon":
 		# merge_or_add 是原地修改数组并返回"是否成功"，不是返回新数组
 		var cfg := Data.shop_cfg()
@@ -160,10 +162,23 @@ func _buy(index: int) -> void:
 			Events.weapons_changed.emit(GameState.weapons)
 		else:
 			GameState.add_gold(cost)   # 买不了就把钱退回去，别白扣
+			bought = false
 	else:
 		GameState.buy_upgrade(str(o.get("key", "")))
-	_sold[index] = true
+	_sold[index] = bought
 	_refresh()
+	_flash_card(index, bought)     # 买入成功绿闪 / 失败红闪
+
+# 买入反馈：卡片短暂染色后恢复（绿=成功，红=失败/金币不足）
+func _flash_card(index: int, ok: bool) -> void:
+	if index < 0 or index >= _cards.size():
+		return
+	var b: Button = _cards[index]
+	if b == null:
+		return
+	b.modulate = Color(0.45, 1.0, 0.55) if ok else Color(1.0, 0.45, 0.45)
+	var tw := create_tween()
+	tw.tween_property(b, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.4)
 
 func _reroll_bought() -> void:
 	var cfg := Data.shop_cfg()

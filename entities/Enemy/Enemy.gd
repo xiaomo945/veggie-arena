@@ -27,6 +27,13 @@ var elite := false
 var _flash := 0.0
 var _phase := 0.0
 var _kb := Vector2.ZERO          # 受击击退脉冲（由 EnemySystem 施加/衰减）
+# Boss 多阶段 / 冲锋技能（仅 etype=="boss" 生效）
+var _boss_phase := 1
+var _base_speed := 0.0
+var _base_dmg := 0.0
+var _charge_cd := 0.0
+var _charge_t := 0.0
+const Shake := preload("res://entities/effects/Shake.gd")
 
 func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	etype = str(stats.get("type", "grunt"))
@@ -40,6 +47,12 @@ func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	tint = Color(str(stats.get("color", "#e0605f")))
 	flight = bool(stats.get("flight", false))
 	elite = bool(stats.get("elite", false))
+	if etype == "boss":
+		_boss_phase = 1
+		_base_speed = speed
+		_base_dmg = dmg
+		_charge_cd = 3.5
+		_charge_t = 0.0
 	global_position = pos
 	alive = true
 	_flash = 0.0
@@ -71,6 +84,36 @@ func tick(delta: float) -> void:
 		_flash -= delta
 		if _flash <= 0.0:
 			queue_redraw()
+	if etype == "boss":
+		_tick_boss(delta)
+
+# Boss：按血量阈值切阶段（提速+加伤），并周期朝玩家冲锋。纯逻辑，靠 speed/dmg 字段驱动移动与接触伤害。
+func _tick_boss(delta: float) -> void:
+	if not alive:
+		return
+	var ratio := hp / max_hp
+	var target := 1
+	if ratio <= 0.33:
+		target = 3
+	elif ratio <= 0.66:
+		target = 2
+	if target > _boss_phase:
+		_boss_phase = target
+		speed = _base_speed * (1.0 + 0.25 * (_boss_phase - 1))
+		dmg = _base_dmg * (1.0 + 0.20 * (_boss_phase - 1))
+		_flash = FLASH_DUR
+		Shake.kick(7.0, 0.35)
+	_charge_cd -= delta
+	if _charge_t > 0.0:
+		_charge_t -= delta
+		if _charge_t <= 0.0:
+			speed = _base_speed * (1.0 + 0.25 * (_boss_phase - 1))   # 冲锋结束，回到本阶段速度
+	else:
+		if _charge_cd <= 0.0:
+			_charge_t = 0.5
+			_charge_cd = 3.6 - 0.6 * _boss_phase      # 阶段越高，冲锋越频繁
+			speed = _base_speed * 2.2                   # 冲锋：短暂极速猛冲
+			Shake.kick(4.0, 0.18)
 
 func _draw() -> void:
 	if not alive:

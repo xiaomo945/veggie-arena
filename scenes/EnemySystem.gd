@@ -226,6 +226,9 @@ func damage_enemy(e, amount: float) -> void:
 				GameState.add_gold(ov)
 		# 击杀爆环（Boss 的环更大）
 		Events.enemy_killed.emit(str(e.etype), epos)
+		# 终局 Boss（第 20 波）被击杀 = 直接通关，不必再熬计时
+		if e.etype == "boss" and GameState.is_last_wave() and GameState.running:
+			Events.run_won.emit()
 		# 击杀回血（lifesteal 强化：续航流玩法）
 		# ⚠️ 必须概率触发：按击杀固定回血时，一局 1300+ 杀能回几千血，
 		#    实测"站着不动"都能满血通关，难度被彻底抵消

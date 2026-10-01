@@ -8,16 +8,16 @@
     "touch_cooldown": 0.7
   },
   "wave": {
-    "length": 20,
+    "length": 18,
     "total": 20,
     "heal_percent": 0.10,
     "bonus_base": 10,
     "bonus_per_wave": 4
   },
   "spawn": {
-    "base_rate": 0.55,
-    "per_wave": 0.22,
-    "cap": 4.5,
+    "base_rate": 0.5,
+    "per_wave": 0.26,
+    "cap": 6.0,
     "max_alive": 44,
     "warn_time": 0.45,
     "edge_offset": 20,
