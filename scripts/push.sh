@@ -86,10 +86,17 @@ echo ""
 echo "=== 3. 网络自愈（沙箱休眠会重置 hosts）==="
 probe() {
 	curl -sS --max-time 12 -o /dev/null -w '%{http_code}' \
-		"https://api.github.com/rate_limit" 2>/dev/null
+		"https://api.github.com/" 2>/dev/null
+}
+# 判定标准只看"连没连上"：TLS 握手失败时 curl 写 000；拿到任何 HTTP 状态码
+# （200 / 301 / 401 / 403 ...）都说明链路是通的，只是这个 URL 的语义不同。
+reachable() {
+	local c
+	c="$(probe)"
+	[ -n "$c" ] && [ "$c" != "000" ] && [ "$c" != "" ]
 }
 code="$(probe)"
-if [ "$code" = "200" ] || [ "$code" = "401" ] || [ "$code" = "403" ]; then
+if [ "$code" != "000" ] && [ -n "$code" ]; then
 	say "  ✅ GitHub 可达（HTTP $code）"
 else
 	say "  ⚠ GitHub 不可达（curl 返回 [$code]）—— 重新解析 DNS"
@@ -104,19 +111,43 @@ else
 	[ -n "$IP_API" ] || IP_API="$IP_GH"
 	say "  ✅ 解析结果：github.com=$IP_GH  api.github.com=$IP_API"
 
-	LINE_GH="$IP_GH github.com"
-	LINE_API="$IP_API api.github.com"
+	# 用 python 重写（原子、能正确去重）：直接 grep + mv 在 /etc/hosts 上会静默失败，
+	# 结果留下多条重复记录，反而更难排查。
+	PYBIN="$(command -v python3.11 || command -v python3)"
 	for f in "$HOSTS" "$USER_HOSTS"; do
-		[ -f "$f" ] || touch "$f" 2>/dev/null || continue
-		grep -vE '[[:space:]](github\.com|api\.github\.com)([[:space:]]|$)' "$f" > "${f}.tmp" 2>/dev/null
-		mv "${f}.tmp" "$f" 2>/dev/null
-		printf '%s\n%s\n' "$LINE_GH" "$LINE_API" >> "$f" 2>/dev/null \
-			&& say "  ✅ 已写入 $f" \
-			|| say "  ⚠ 写入 $f 失败（无权限？继续尝试直连）"
+		if [ -f "$f" ] || [ "$f" = "$USER_HOSTS" ]; then
+			out=$("$PYBIN" - "$f" "$IP_GH" "$IP_API" <<'PY'
+import sys
+path, gh, api = sys.argv[1], sys.argv[2], sys.argv[3]
+keep = []
+try:
+    with open(path, encoding='utf-8', errors='ignore') as fh:
+        for ln in fh:
+            parts = ln.split()
+            if len(parts) >= 2 and parts[1] in ('github.com', 'api.github.com'):
+                continue
+            keep.append(ln.rstrip('\n'))
+except FileNotFoundError:
+    pass
+keep += ['%s github.com' % gh, '%s api.github.com' % api]
+try:
+    with open(path, 'w', encoding='utf-8') as fh:
+        fh.write('\n'.join(keep) + '\n')
+    print('ok')
+except Exception as e:
+    print('fail: %s' % e)
+PY
+)
+			if [ "$out" = "ok" ]; then
+				say "  ✅ 已写入 $f"
+			else
+				say "  ⚠ 写入 $f 失败（$out）—— 继续尝试直连"
+			fi
+		fi
 	done
 	code="$(probe)"
-	[ "$code" = "200" ] || [ "$code" = "401" ] || [ "$code" = "403" ] \
-		|| die "修完 hosts 仍连不上 GitHub（HTTP [$code]）—— 先解决网络再推"
+	[ "$code" != "000" ] && [ -n "$code" ] \
+		|| die "修完 hosts 仍连不上 GitHub（curl 返回 [$code]）—— 先解决网络再推"
 	say "  ✅ 自愈后 GitHub 可达（HTTP $code）"
 fi
 
