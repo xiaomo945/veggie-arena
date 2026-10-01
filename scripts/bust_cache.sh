@@ -150,6 +150,53 @@ if BILINGUAL_MARK not in s:
     else:
         print("WARN: 未找到 Godot 缺特性提示原文，双语化跳过")
 
+# ---- 5) 失败覆盖层可关闭：修复“首屏遮挡、关不掉” ----
+# 启动失败（缺 WebGL2 / 运行时崩溃）都走 displayFailureNotice，原实现只显示文字、
+# 覆盖层永不移除、无关闭按钮 => 用户被死死挡住。改为可关闭卡片（× / 关闭 / 重试）。
+FAIL_MARK='tt-fail-card'
+if FAIL_MARK not in s:
+    # CSS：错误卡片样式
+    fail_css = '/* TT-FAIL-CARD */\n'
+    fail_css += '#status { background:#11131a; color:#fff; }\n'
+    fail_css += '#status-notice { color:#fff; white-space:pre-wrap; line-height:1.55; font-size:15px; padding:0 14px; }\n'
+    fail_css += '.tt-fail-card { margin-top:20px; text-align:center; position:relative; }\n'
+    fail_css += '.tt-fail-card button { font-size:16px; padding:11px 20px; margin:6px; border:none; border-radius:10px; cursor:pointer; color:#fff; }\n'
+    fail_css += '.tt-fail-close { position:absolute; top:-26px; right:-4px; background:transparent; font-size:30px; line-height:1; padding:4px 10px; }\n'
+    fail_css += '.tt-fail-retry { background:#ff7043; }\n'
+    fail_css += '.tt-fail-dismiss { background:#394150; }\n'
+    s = s.replace('</style>', fail_css + '</style>')
+    # JS：替换 displayFailureNotice，注入可关闭卡片
+    old_fn = re.search(r"function displayFailureNotice\(err\) \{.*?\n\t\}", s, re.DOTALL)
+    if old_fn:
+        new_fn = (
+            "function displayFailureNotice(err) {\n"
+            "\tconsole.error(err);\n"
+            "\tvar msg;\n"
+            "\tif (err instanceof Error) { msg = err.message; }\n"
+            "\telse if (typeof err === 'string') { msg = err; }\n"
+            "\telse { msg = 'An unknown error occured'; }\n"
+            "\tsetStatusNotice(msg);\n"
+            "\tvar splash = document.getElementById('status-splash');\n"
+            "\tif (splash) { splash.style.display = 'none'; }\n"
+            "\tvar card = document.createElement('div');\n"
+            "\tcard.className = 'tt-fail-card';\n"
+            "\tcard.innerHTML = '<button class=\"tt-fail-close\" aria-label=\"关闭\">×</button>'"
+            " + '<div class=\"tt-fail-actions\"><button class=\"tt-fail-retry\">重试</button>'"
+            " + '<button class=\"tt-fail-dismiss\">关闭</button></div>';\n"
+            "\tdocument.getElementById('status-notice').appendChild(card);\n"
+            "\tfunction dismiss() { var o = document.getElementById('status'); if (o) { o.remove(); } }\n"
+            "\tfunction retry() { location.reload(); }\n"
+            "\tcard.querySelector('.tt-fail-close').addEventListener('click', dismiss);\n"
+            "\tcard.querySelector('.tt-fail-dismiss').addEventListener('click', dismiss);\n"
+            "\tcard.querySelector('.tt-fail-retry').addEventListener('click', retry);\n"
+            "\tsetStatusMode('notice');\n"
+            "\tinitializing = false;\n"
+            "}\n"
+        )
+        s = s[:old_fn.start()] + new_fn + s[old_fn.end():]
+    else:
+        print("WARN: 未找到 displayFailureNotice，可关闭卡片注入跳过")
+
 open(p,'w',encoding='utf-8').write(s)
-print("cache-bust -> index.%s （原文件保留兜底 + 移动端手势锁 + 清理旧哈希）"%h)
+print("cache-bust -> index.%s （原文件保留兜底 + 移动端手势锁 + 清理旧哈希 + 失败覆盖层可关闭）"%h)
 PY
