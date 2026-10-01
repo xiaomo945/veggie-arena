@@ -9,7 +9,8 @@
   未挂载时**全部方法 no-op**，游戏在任何环境都不崩。
 - `steam_appid.txt`：占位 `0`，上线前改成你的真实 AppID。
 - `scenes/Game.gd` 的 `_finish_run()` 已调用 `Steam.record_run(wave, kills, gold, won)`，
-  通关自动解锁 `first_clear` 成就、写入 `max_wave` / `total_kills` / `total_gold` 统计。
+  通关自动解锁 `first_clear` 成就、写入 `best_wave` / `total_kills` / `total_gold` / `wins` 统计
+  （均为跨局累计值，取自 `SaveMgr.data`，与 `unlocks.json` 进度对齐）。
 - `scripts/build_steam.sh`：桌面导出骨架（Linux/Windows），自动把 `steam_appid.txt` 带进包根。
 - `web/store-assets/`：已生成的商店图（capsule / header / 5 张 screenshot / background）。
 
@@ -35,7 +36,9 @@
 5. **在 Steamworks 后台定义 Achievements / Stats**
    至少建：
    - Achievement `first_clear`（首次通关）
-   - Stat `max_wave`（int）、`total_kills`（int）、`total_gold`（int）
+   - Stat `best_wave`（int）、`total_kills`（int）、`total_gold`（int）、`wins`（int）
+     （名字需与 `Steam.gd` 里 `setStatInt` 的调用一致；`best_wave` 对应本地进度的 `best_wave`，
+      `wins` 对应 `unlocks.json` 的 `wins` 类型，避免成就条件永不触发）
    名字需与 `Steam.gd` 里的调用一致（如有差异，改 `Steam.gd` 即可，已用 `has_method` 保护）。
 
 6. **上传商店素材**

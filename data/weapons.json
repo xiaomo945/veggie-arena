@@ -12,6 +12,7 @@
     "cost": 12,
     "color": "#f7d24e",
     "tip": "稳定的单体输出，开局自带",
+    "tip_en": "Steady single-target. Your starter.",
     "en": "Pistol"
   },
   "smg": {
@@ -27,6 +28,7 @@
     "cost": 18,
     "color": "#8fd482",
     "tip": "射速极快，清小怪",
+    "tip_en": "Fires fast, shreds small fry.",
     "en": "SMG"
   },
   "shotgun": {
@@ -42,6 +44,7 @@
     "cost": 20,
     "color": "#e79ada",
     "tip": "一次 4 发，贴脸伤害高",
+    "tip_en": "4 pellets up close, brutal.",
     "en": "Shotgun"
   },
   "bow": {
@@ -57,6 +60,7 @@
     "cost": 22,
     "color": "#6fa8e0",
     "tip": "穿透 2 个敌人，打直线",
+    "tip_en": "Pierces 2 foes in a line.",
     "en": "Long Bow"
   },
   "staff": {
@@ -72,6 +76,7 @@
     "cost": 26,
     "color": "#b0aad0",
     "tip": "命中炸开一片，群怪好用",
+    "tip_en": "Pops on hit, great vs crowds.",
     "en": "Magic Staff"
   },
   "rocket": {
@@ -87,6 +92,7 @@
     "cost": 34,
     "color": "#e06a6a",
     "tip": "大范围爆炸，慢但狠",
+    "tip_en": "Huge blast. Slow but mean.",
     "en": "Rocket"
   },
   "cleaver": {
@@ -102,6 +108,7 @@
     "cost": 22,
     "color": "#d8dee6",
     "tip": "射程短但砍得狠，贴身清怪",
+    "tip_en": "Short range, hits hard up close.",
     "en": "Cleaver"
   },
   "skewer": {
@@ -117,6 +124,7 @@
     "cost": 24,
     "color": "#d9b27c",
     "tip": "一串穿 3 个，排队来的怪最怕它",
+    "tip_en": "Impales 3 in a row.",
     "en": "Skewer"
   },
   "ladle": {
@@ -132,6 +140,7 @@
     "cost": 22,
     "color": "#8ec7d2",
     "tip": "舀一勺泼出去，小范围溅伤",
+    "tip_en": "Splashes a small puddle.",
     "en": "Ladle"
   },
   "teapot": {
@@ -147,6 +156,7 @@
     "cost": 26,
     "color": "#c9a27e",
     "tip": "一次泼出 5 道水柱，扇形覆盖",
+    "tip_en": "Fans out 5 streams.",
     "en": "Teapot"
   },
   "chili": {
@@ -162,6 +172,7 @@
     "cost": 20,
     "color": "#e04b3a",
     "tip": "射速快到发烫，单发轻但持续输出高",
+    "tip_en": "Red-hot fire rate, light hits.",
     "en": "Chili Cannon"
   },
   "blender": {
@@ -177,6 +188,7 @@
     "cost": 30,
     "color": "#7fc4a0",
     "tip": "双刀头高速搅碎，近身持续输出",
+    "tip_en": "Twin blades, close-range grind.",
     "en": "Blender"
   },
   "pan": {
@@ -192,6 +204,7 @@
     "cost": 24,
     "color": "#cfa46b",
     "tip": "贴脸一锅拍下去，小范围震伤",
+    "tip_en": "Slams a small shockwave.",
     "en": "Frying Pan"
   },
   "microwave": {
@@ -207,6 +220,7 @@
     "cost": 24,
     "color": "#b8c0c8",
     "tip": "穿透射线，直线清场",
+    "tip_en": "Piercing ray, clears lanes.",
     "en": "Microwave"
   },
   "fork": {
@@ -222,6 +236,7 @@
     "cost": 20,
     "color": "#d7dde6",
     "tip": "又快又长，连穿刺成串怪",
+    "tip_en": "Long and fast, skewers lines.",
     "en": "Fork"
   },
   "pepper": {
@@ -237,6 +252,7 @@
     "cost": 18,
     "color": "#9b3b2e",
     "tip": "一次撒三道，扇形覆盖近身",
+    "tip_en": "3 streams in a fan.",
     "en": "Pepper Shaker"
   },
   "whisk": {
@@ -252,6 +268,7 @@
     "cost": 22,
     "color": "#e8d39a",
     "tip": "双股搅打，近身持续输出",
+    "tip_en": "Twin whisks, close grind.",
     "en": "Whisk"
   },
   "grater": {
@@ -267,6 +284,7 @@
     "cost": 24,
     "color": "#c9b89a",
     "tip": "一擦一条线，穿透两三个",
+    "tip_en": "Shreds a line through foes.",
     "en": "Grater"
   }
 }

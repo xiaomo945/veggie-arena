@@ -5,6 +5,7 @@
     "value": 15,
     "cost": 14,
     "tip": "血条更长，立刻补满这 15 点",
+    "tip_en": "Longer health bar, refills +15 now.",
     "en": "Max HP +15"
   },
   "spd": {
@@ -13,6 +14,7 @@
     "value": 0.1,
     "cost": 12,
     "tip": "跑得快 = 更难被围住",
+    "tip_en": "Faster = harder to corner.",
     "en": "Move Speed +10%"
   },
   "dmg": {
@@ -21,6 +23,7 @@
     "value": 0.1,
     "cost": 16,
     "tip": "所有武器伤害一起提升",
+    "tip_en": "All weapons hit harder.",
     "en": "Damage +10%"
   },
   "rate": {
@@ -29,6 +32,7 @@
     "value": 0.08,
     "cost": 16,
     "tip": "所有武器射速一起提升",
+    "tip_en": "All weapons fire faster.",
     "en": "Fire Rate +8%"
   },
   "arm": {
@@ -37,6 +41,7 @@
     "value": 2,
     "cost": 18,
     "tip": "每次被撞到的伤害 -2",
+    "tip_en": "-2 damage per hit taken.",
     "en": "Armor +2"
   },
   "pick": {
@@ -45,6 +50,7 @@
     "value": 0.3,
     "cost": 8,
     "tip": "金币自动吸过来的范围变大",
+    "tip_en": "Gold drifts to you from farther.",
     "en": "Pickup +30%"
   },
   "heal": {
@@ -53,6 +59,7 @@
     "value": 40,
     "cost": 10,
     "tip": "残血时的救命稻草",
+    "tip_en": "Emergency +40 HP now.",
     "en": "Heal 40 HP"
   },
   "hp2": {
@@ -61,6 +68,7 @@
     "value": 30,
     "cost": 26,
     "tip": "后期堆血，容错更高",
+    "tip_en": "Stack HP late for safety.",
     "en": "Max HP +30"
   },
   "dmg2": {
@@ -69,6 +77,7 @@
     "value": 0.18,
     "cost": 30,
     "tip": "伤害大头，后期必拿",
+    "tip_en": "Big damage, grab late.",
     "en": "Damage +18%"
   },
   "rate2": {
@@ -77,6 +86,7 @@
     "value": 0.15,
     "cost": 30,
     "tip": "射速翻倍靠它堆",
+    "tip_en": "Double down on fire rate.",
     "en": "Fire Rate +15%"
   },
   "lifesteal": {
@@ -85,6 +95,7 @@
     "value": 3,
     "cost": 26,
     "tip": "每次击杀有 8% 概率回 3 点血，续航靠它",
+    "tip_en": "8% chance: +3 HP on kill.",
     "en": "8% chance: +3 HP on kill"
   },
   "wokgain": {
@@ -93,6 +104,7 @@
     "value": 0.25,
     "cost": 18,
     "tip": "火候攒得更快，颠勺来得更勤",
+    "tip_en": "Build Wok Heat faster.",
     "en": "Wok Heat gain +25%"
   }
 }

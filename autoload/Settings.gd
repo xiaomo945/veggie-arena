@@ -26,6 +26,8 @@ var fps_target: int = 0
 # 音量 0..100（默认满）
 var music_volume: int = 100
 var sfx_volume: int = 100
+# 语言偏好："en"（默认，出海目标语言）/ "zh"
+var language: String = "en"
 
 func _ready() -> void:
 	_load()
@@ -46,6 +48,7 @@ func get_setting(key: String, default: Variant = null) -> Variant:
 		"fps_target": return fps_target
 		"music_volume": return music_volume
 		"sfx_volume": return sfx_volume
+		"language": return language
 		_:
 			var v = super.get(key)
 			if v == null:
@@ -71,6 +74,9 @@ func _load() -> void:
 		fps_target = int(d.get("fps_target", 0))
 		music_volume = int(d.get("music_volume", 100))
 		sfx_volume = int(d.get("sfx_volume", 100))
+		language = str(d.get("language", "en"))
+		if language != "en" and language != "zh":
+			language = "en"
 
 func _save() -> void:
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
@@ -87,6 +93,7 @@ func _save() -> void:
 		"fps_target": fps_target,
 		"music_volume": music_volume,
 		"sfx_volume": sfx_volume,
+		"language": language,
 	}))
 	f.close()
 
@@ -140,6 +147,16 @@ func set_music_volume(v: int) -> void:
 func set_sfx_volume(v: int) -> void:
 	sfx_volume = clampi(v, 0, 100)
 	apply_audio()
+	_save()
+
+# ---- 语言偏好 ----
+func get_language() -> String:
+	return language
+
+func set_language(code: String) -> void:
+	if code != "en" and code != "zh":
+		return
+	language = code
 	_save()
 
 # 帧率目标应用到引擎（0 = 引擎默认）

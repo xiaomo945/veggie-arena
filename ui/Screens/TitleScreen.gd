@@ -8,6 +8,13 @@ const CharacterPickerScript := preload("res://ui/Screens/CharacterPicker.gd")
 const Save := preload("res://core/Save.gd")
 
 var _root: Control
+var _sub_lbl: Label
+var _tag_lbl: Label
+var _best_lbl: Label
+var _next_lbl: Label
+var _how_lbl: Label
+var _pick_lbl: Label
+var _start_btn: Button
 
 func _ready() -> void:
 	layer = 50
@@ -51,59 +58,66 @@ func _build() -> void:
 	star_ico.set_position(Vector2(256, 152))
 	_root.add_child(star_ico)
 
-	# 中文品牌副标
+	# 中文品牌副标（仅中文环境显示，英文环境留白）
 	var sub := Label.new()
-	sub.text = "萝 卜 突 围"
+	var sub_txt := I18n.t("title_sub")
+	sub.text = sub_txt
+	sub.visible = not sub_txt.is_empty()
 	sub.add_theme_font_size_override("font_size", 26)
 	sub.add_theme_color_override("font_color", Color(0.92, 0.94, 0.96))
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.set_position(Vector2(0, 258))
 	sub.set_size(Vector2(540, 40))
+	_sub_lbl = sub
 	_root.add_child(sub)
 
 	# 一句话定位
 	var tag := Label.new()
-	tag.text = "Survive the veggie apocalypse"
+	tag.text = I18n.t("title_tag")
 	tag.add_theme_font_size_override("font_size", 16)
 	tag.add_theme_color_override("font_color", Color(0.70, 0.74, 0.80))
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag.set_position(Vector2(0, 304))
 	tag.set_size(Vector2(540, 28))
+	_tag_lbl = tag
 	_root.add_child(tag)
 
 	# 历史最佳 + 下一个解锁目标：给玩家一个"再来一局"的具体理由
 	var best := Label.new()
 	var bs := SaveMgr.best_score()
-	best.text = "BEST %d  ·  WAVE %d" % [bs, SaveMgr.best_wave()] if bs > 0 else "FIRST RUN — GOOD LUCK"
+	best.text = (I18n.t("title_best") % [bs, SaveMgr.best_wave()]) if bs > 0 else I18n.t("title_first")
 	best.add_theme_font_size_override("font_size", 14)
 	best.add_theme_color_override("font_color", Color(0.95, 0.82, 0.38))
 	best.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	best.set_position(Vector2(0, 332))
 	best.set_size(Vector2(540, 22))
+	_best_lbl = best
 	_root.add_child(best)
 
 	var nx := SaveMgr.next_unlock()
 	if not nx.is_empty():
 		var nd := Data.weapon(str(nx["key"]))
-		var wname := str(nd.get("en", nd.get("zh", nx["key"])))
+		var wname := I18n.pick(nd)
 		var next := Label.new()
-		next.text = "NEXT UNLOCK: %s — %d more %s" % [
-			wname.to_upper(), int(nx["left"]), Save.stat_label_for(str(nx["type"]))]
+		next.text = I18n.t("title_next") % [
+			wname.to_upper(), int(nx["left"]), I18n.stat_label(str(nx["type"]))]
 		next.add_theme_font_size_override("font_size", 13)
 		next.add_theme_color_override("font_color", Color(0.66, 0.70, 0.78))
 		next.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		next.set_position(Vector2(0, 732))
 		next.set_size(Vector2(540, 22))
+		_next_lbl = next
 		_root.add_child(next)
 
 	# 玩法说明
 	var how := Label.new()
-	how.text = "Drag the joystick to move\nWeapons fire on their own\nClear waves · grab gold · get stronger"
+	how.text = I18n.t("title_how")
 	how.add_theme_font_size_override("font_size", 17)
 	how.add_theme_color_override("font_color", Color(0.82, 0.85, 0.90))
 	how.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	how.set_position(Vector2(0, 386))
 	how.set_size(Vector2(540, 96))
+	_how_lbl = how
 	_root.add_child(how)
 
 	# 角色选择：4 张卡片横排，点一下换人（换的是属性加成 + 外观）
@@ -113,17 +127,18 @@ func _build() -> void:
 	_root.add_child(picker)
 
 	var pick_hint := Label.new()
-	pick_hint.text = "CHOOSE YOUR VEG"
+	pick_hint.text = I18n.t("title_pick")
 	pick_hint.add_theme_font_size_override("font_size", 13)
 	pick_hint.add_theme_color_override("font_color", Color(0.60, 0.64, 0.72))
 	pick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pick_hint.set_position(Vector2(0, 476))
 	pick_hint.set_size(Vector2(540, 20))
+	_pick_lbl = pick_hint
 	_root.add_child(pick_hint)
 
 	# 开始按钮
 	var btn := Button.new()
-	btn.text = "START"
+	btn.text = I18n.t("title_start")
 	btn.set_size(Vector2(280, 78))
 	btn.set_position(Vector2((540 - 280) * 0.5, 646))
 	btn.add_theme_font_size_override("font_size", 28)
@@ -137,7 +152,9 @@ func _build() -> void:
 	hov.bg_color = Color(1.0, 0.94, 0.50)
 	btn.add_theme_stylebox_override("hover", hov)
 	btn.pressed.connect(_on_start)
+	_start_btn = btn
 	_root.add_child(btn)
+	I18n.locale_changed.connect(_on_locale_changed)
 
 func _on_start() -> void:
 	# 存档里记过上次的角色就默认选它（省得每次重选）
@@ -154,3 +171,19 @@ func _on_run_requested() -> void:
 func _on_quit_to_title() -> void:
 	# 从暂停菜单退出：重新显示标题页（游戏进行中标题页是隐藏的）
 	_root.visible = true
+
+func _on_locale_changed(_l: String = "") -> void:
+	var sub_txt := I18n.t("title_sub")
+	_sub_lbl.text = sub_txt
+	_sub_lbl.visible = not sub_txt.is_empty()
+	_tag_lbl.text = I18n.t("title_tag")
+	var bs := SaveMgr.best_score()
+	_best_lbl.text = (I18n.t("title_best") % [bs, SaveMgr.best_wave()]) if bs > 0 else I18n.t("title_first")
+	if _next_lbl != null:
+		var nx := SaveMgr.next_unlock()
+		if not nx.is_empty():
+			var wname := I18n.pick(Data.weapon(str(nx["key"])))
+			_next_lbl.text = I18n.t("title_next") % [wname.to_upper(), int(nx["left"]), I18n.stat_label(str(nx["type"]))]
+	_how_lbl.text = I18n.t("title_how")
+	_pick_lbl.text = I18n.t("title_pick")
+	_start_btn.text = I18n.t("title_start")

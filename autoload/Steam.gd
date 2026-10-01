@@ -24,14 +24,21 @@ func is_ready() -> bool:
 	return _ok
 
 # 一局结束：把成绩写进 Steam 统计，通关解锁首通成就
+# ⚠️ 写入的是存档里的【累计】统计，不是本局值：Steam 的 setStatInt 不会自动累加，
+#    若直接写本局 wave/kills/gold 会每局覆盖成单局值，导致统计与 unlocks.json 进度错位、
+#    依赖累计值的成就/统计永不触发。SaveMgr.record_run 已在 Game._finish_run 里先跑过，
+#    这里读到的 data 已经是本局累加后的最新值。
+#    统计 id 刻意与 Save.gd FIELDS / unlocks.json 的 progression type 对齐（best_wave 而非 max_wave）。
 func record_run(wave: int, kills: int, gold: int, won: bool) -> void:
 	if not _ok:
 		return
 	var s = Engine.get_singleton("Steam")
+	var save_data: Dictionary = SaveMgr.data
 	if s.has_method("setStatInt"):
-		s.setStatInt("max_wave", int(wave))
-		s.setStatInt("total_kills", int(kills))
-		s.setStatInt("total_gold", int(gold))
+		s.setStatInt("best_wave", int(save_data.get("best_wave", 0)))
+		s.setStatInt("total_kills", int(save_data.get("total_kills", 0)))
+		s.setStatInt("total_gold", int(save_data.get("total_gold", 0)))
+		s.setStatInt("wins", int(save_data.get("wins", 0)))
 	if won and s.has_method("setAchievement"):
 		s.setAchievement("first_clear")
 	if s.has_method("storeStats"):

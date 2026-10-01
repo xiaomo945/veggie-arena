@@ -26,6 +26,7 @@ func _ready() -> void:
 	_build()
 	_root.visible = false
 	Events.shop_opened.connect(_open)
+	I18n.locale_changed.connect(_on_locale_changed)
 
 func _build() -> void:
 	_root = Control.new()
@@ -44,7 +45,7 @@ func _build() -> void:
 	_root.add_child(panel)
 
 	var title := Label.new()
-	title.text = "SHOP"
+	title.text = I18n.t("shop_title")
 	title.set_position(Vector2(20, 14))
 	title.add_theme_font_size_override("font_size", 24)
 	panel.add_child(title)
@@ -93,7 +94,7 @@ func _build() -> void:
 	_next_btn = Button.new()
 	_next_btn.set_size(Vector2(262, 58))
 	_next_btn.set_position(Vector2(228, y + 6))
-	_next_btn.text = "NEXT WAVE →"
+	_next_btn.text = I18n.t("shop_next")
 	_next_btn.add_theme_font_size_override("font_size", 19)
 	_next_btn.pressed.connect(_next_wave)
 	panel.add_child(_next_btn)
@@ -102,6 +103,9 @@ func _open() -> void:
 	_reroll_times = 0
 	_roll()
 	_root.visible = true
+
+func _on_locale_changed(_l: String = "") -> void:
+	_refresh()
 
 func _roll() -> void:
 	var cfg := Data.shop_cfg()
@@ -116,7 +120,7 @@ func _roll() -> void:
 	_refresh()
 
 func _refresh() -> void:
-	_gold_lbl.text = "GOLD %d" % GameState.gold
+	_gold_lbl.text = I18n.t("shop_gold") % GameState.gold
 	var cfg := Data.shop_cfg()
 	for i in _cards.size():
 		var b: Button = _cards[i]
@@ -126,17 +130,17 @@ func _refresh() -> void:
 		b.visible = true
 		var o: Dictionary = _offers[i]
 		var cost := int(o.get("cost", 0))
-		var name := str(o.get("en", o.get("zh", o.get("key", ""))))
-		var tip := str(o.get("tip", ""))
+		var name := I18n.pick(o)
+		var tip := I18n.tip(o)
 		var kind := str(o.get("kind", ""))
-		var tag := "WEAPON" if kind == "weapon" else "UPGRADE"
+		var tag := I18n.t("shop_weapon") if kind == "weapon" else I18n.t("shop_upgrade")
 		if _sold[i]:
-			b.text = "[%s] %s\nSOLD" % [tag, name]
+			b.text = "[%s] %s\n%s" % [tag, name, I18n.t("shop_sold")]
 			b.disabled = true
 			continue
-		b.text = "[%s] %s\n%s\n%d Gold" % [tag, name, tip, cost]
+		b.text = "[%s] %s\n%s\n%d %s" % [tag, name, tip, cost, I18n.t("shop_gold_unit")]
 		b.disabled = not Economy.can_buy(GameState.gold, cost)
-	_reroll_btn.text = "REROLL (%d)" % Economy.reroll_cost(_reroll_times, cfg)
+	_reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, cfg)
 	_reroll_btn.disabled = not Economy.can_buy(GameState.gold, Economy.reroll_cost(_reroll_times, cfg))
 
 func _buy(index: int) -> void:

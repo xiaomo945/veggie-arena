@@ -16,6 +16,7 @@ func _ready() -> void:
 	_build()
 	_root.visible = false
 	Events.run_won.connect(_show)
+	I18n.locale_changed.connect(_on_locale_changed)
 
 func _build() -> void:
 	_root = Control.new()
@@ -28,7 +29,7 @@ func _build() -> void:
 	_root.add_child(shade)
 
 	_title = Label.new()
-	_title.text = "VICTORY!"
+	_title.text = I18n.t("victory_title")
 	_title.add_theme_font_size_override("font_size", 42)
 	_title.add_theme_color_override("font_color", Color(0.95, 0.86, 0.45))
 	_title.set_position(Vector2(160, 290))
@@ -49,7 +50,7 @@ func _build() -> void:
 	_root.add_child(_stat)
 
 	_btn = Button.new()
-	_btn.text = "PLAY AGAIN"
+	_btn.text = I18n.t("victory_again")
 	_btn.set_size(Vector2(300, 74))
 	_btn.set_position(Vector2(120, 470))
 	_btn.add_theme_font_size_override("font_size", 24)
@@ -58,9 +59,16 @@ func _build() -> void:
 
 func _show() -> void:
 	var sc := Run.score(GameState.kills, GameState.gold, GameState.wave)
-	_stat.text = "Cleared Wave %d\n%d Kills  ·  %d Gold\nSCORE %d" % [
+	_stat.text = I18n.t("victory_stat") % [
 		GameState.wave, GameState.kills, GameState.gold, sc]
 	_root.visible = true
+
+func _on_locale_changed(_l: String = "") -> void:
+	_title.text = I18n.t("victory_title")
+	_btn.text = I18n.t("victory_again")
+	# 若结算页正显示，顺带刷新统计文案
+	if _root != null and _root.visible:
+		_show()
 
 func _restart() -> void:
 	_root.visible = false

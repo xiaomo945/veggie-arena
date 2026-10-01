@@ -10,7 +10,9 @@
     "radius": 14,
     "gold": 1,
     "color": "#e0605f",
-    "en": "Grunt"
+    "en": "Grunt",
+    "tip": "基础蔬菜僵尸",
+    "tip_en": "Basic veggie zombie."
   },
   "fast": {
     "zh": "冲刺兵",
@@ -23,7 +25,9 @@
     "radius": 11,
     "gold": 1,
     "color": "#ef9a4a",
-    "en": "Rusher"
+    "en": "Rusher",
+    "tip": "直冲过来的快兵",
+    "tip_en": "Rushes you down."
   },
   "tank": {
     "zh": "重甲兵",
@@ -36,7 +40,9 @@
     "radius": 23,
     "gold": 3,
     "color": "#9a7ad0",
-    "en": "Tank"
+    "en": "Tank",
+    "tip": "厚实耐揍的蔬菜墙",
+    "tip_en": "A tanky wall of veg."
   },
   "fly": {
     "zh": "飞虫",
@@ -50,6 +56,8 @@
     "gold": 2,
     "color": "#56cfe0",
     "en": "Flyer",
+    "tip": "嗡嗡乱飞的飞虫",
+    "tip_en": "Buzzes around the field.",
     "flight": true
   },
   "boss": {
@@ -63,7 +71,9 @@
     "radius": 40,
     "gold": 25,
     "color": "#e0507a",
-    "en": "Boss"
+    "en": "Boss",
+    "tip": "主厨首领",
+    "tip_en": "The head chef boss."
   },
   "swarm": {
     "zh": "虫群",
@@ -76,7 +86,9 @@
     "radius": 7,
     "gold": 1,
     "color": "#c8e06a",
-    "en": "Swarm"
+    "en": "Swarm",
+    "tip": "成群结队涌来",
+    "tip_en": "Swarms in numbers."
   },
   "brute": {
     "zh": "蛮兵",
@@ -89,7 +101,9 @@
     "radius": 27,
     "gold": 5,
     "color": "#7a5ac0",
-    "en": "Brute"
+    "en": "Brute",
+    "tip": "大开大合的蛮兵",
+    "tip_en": "A heavy-hitting brute."
   },
   "shambler": {
     "zh": "蹒跚者",
@@ -102,6 +116,8 @@
     "radius": 24,
     "gold": 4,
     "color": "#5a8a4a",
-    "en": "Shambler"
+    "en": "Shambler",
+    "tip": "慢吞吞却顽固",
+    "tip_en": "Slow but stubborn."
   }
 }

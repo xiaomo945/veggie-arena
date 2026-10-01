@@ -24,10 +24,14 @@ func _ready() -> void:
 	var total := n * CARD_W + maxf(0.0, n - 1.0) * GAP
 	size = Vector2(total, CARD_H)
 	Events.character_changed.connect(_on_changed)
+	I18n.locale_changed.connect(_on_locale_changed)
 	queue_redraw()
 
 func _on_changed(key: String) -> void:
 	_selected = key
+	queue_redraw()
+
+func _on_locale_changed(_l: String = "") -> void:
 	queue_redraw()
 
 func _key_at(p: Vector2) -> String:
@@ -102,11 +106,11 @@ func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 		draw_circle(c, icon_r * 0.8, accent)
 		draw_arc(c, icon_r * 0.8, 0.0, TAU, 24, Color(1, 1, 1, 0.35), 2.0, true)
 
-	# 名字（英文，出海）
+	# 名字（按当前语言切换）
 	var fs := ThemeDB.fallback_font
 	if fs == null:
 		return
-	var name := str(entry.get("en", key))
+	var name := I18n.pick(entry)
 	var nw := fs.get_string_size(name, HORIZONTAL_ALIGNMENT_CENTER, -1, 15)
 	draw_string(fs, Vector2(c.x - nw.x * 0.5, r.position.y + 78.0), name,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
@@ -115,7 +119,7 @@ func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 	# 属性摘要：有加成才显示，纯基准角色显示 "BASE"
 	var desc := Character.describe(entry)
 	if desc.is_empty() or entry.get("stats", {}).is_empty():
-		desc = "BASE"
+		desc = I18n.t("char_base")
 	var dw := fs.get_string_size(desc, HORIZONTAL_ALIGNMENT_CENTER, -1, 11)
 	draw_string(fs, Vector2(c.x - dw.x * 0.5, r.position.y + 96.0), desc,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 11,

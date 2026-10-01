@@ -8,8 +8,13 @@ extends CanvasLayer
 const SettingsMenuScript := preload("res://ui/SettingsMenu.gd")
 
 var _root: Control
+var _title_lbl: Label
 var _sfx_btn: Button
 var _music_btn: Button
+var _resume_btn: Button
+var _settings_btn: Button
+var _restart_btn: Button
+var _quit_btn: Button
 var _settings: CanvasLayer
 
 func _ready() -> void:
@@ -25,6 +30,7 @@ func _ready() -> void:
 	p.add_child(_settings)
 	_settings.back_pressed = _on_settings_back
 	_settings.hide_menu()
+	I18n.locale_changed.connect(_on_locale_changed)
 
 func _build() -> void:
 	_root = Control.new()
@@ -37,18 +43,19 @@ func _build() -> void:
 	_root.add_child(shade)
 
 	var t := Label.new()
-	t.text = "PAUSED"
+	t.text = I18n.t("pause_title")
 	t.add_theme_font_size_override("font_size", 38)
 	t.add_theme_color_override("font_color", Color(0.98, 0.86, 0.32))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t.set_position(Vector2(0, 170))
 	t.set_size(Vector2(540, 50))
+	_title_lbl = t
 	_root.add_child(t)
 
-	_mk_btn("RESUME", 240, _on_resume, "play")
-	_mk_btn("SETTINGS", 320, _on_open_settings, "settings")
-	_mk_btn("RESTART", 400, _on_restart)
-	_mk_btn("QUIT TO TITLE", 480, _on_quit)
+	_resume_btn = _mk_btn(I18n.t("pause_resume"), 240, _on_resume, "play")
+	_settings_btn = _mk_btn(I18n.t("pause_settings"), 320, _on_open_settings, "settings")
+	_restart_btn = _mk_btn(I18n.t("pause_restart"), 400, _on_restart)
+	_quit_btn = _mk_btn(I18n.t("pause_quit"), 480, _on_quit)
 
 	_sfx_btn = _mk_toggle(560, _on_sfx)
 	_music_btn = _mk_toggle(620, _on_music)
@@ -79,7 +86,7 @@ func _mk_toggle(y: float, cb: Callable) -> Button:
 
 func _refresh_toggles() -> void:
 	if _sfx_btn != null:
-		_sfx_btn.text = "SFX   " + ("ON" if Settings.sfx_enabled() else "OFF")
+		_sfx_btn.text = I18n.t("pause_sfx") + (I18n.t("on") if Settings.sfx_enabled() else I18n.t("off"))
 		if Art.has_ui_icon("volume_on") and Art.has_ui_icon("volume_off"):
 			if Settings.sfx_enabled():
 				_sfx_btn.icon = Art.ui_icon("volume_on")
@@ -87,7 +94,7 @@ func _refresh_toggles() -> void:
 				_sfx_btn.icon = Art.ui_icon("volume_off")
 			_sfx_btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if _music_btn != null:
-		_music_btn.text = "MUSIC " + ("ON" if Settings.music_enabled() else "OFF")
+		_music_btn.text = I18n.t("pause_music") + (I18n.t("on") if Settings.music_enabled() else I18n.t("off"))
 		if Art.has_ui_icon("music_on") and Art.has_ui_icon("music_off"):
 			if Settings.music_enabled():
 				_music_btn.icon = Art.ui_icon("music_on")
@@ -99,6 +106,19 @@ func _on_paused(p: bool) -> void:
 	_root.visible = p
 	if p:
 		_refresh_toggles()
+
+func _on_locale_changed(_l: String = "") -> void:
+	if _title_lbl != null:
+		_title_lbl.text = I18n.t("pause_title")
+	if _resume_btn != null:
+		_resume_btn.text = I18n.t("pause_resume")
+	if _settings_btn != null:
+		_settings_btn.text = I18n.t("pause_settings")
+	if _restart_btn != null:
+		_restart_btn.text = I18n.t("pause_restart")
+	if _quit_btn != null:
+		_quit_btn.text = I18n.t("pause_quit")
+	_refresh_toggles()
 
 func _on_resume() -> void:
 	Sfx.ui_click()

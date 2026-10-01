@@ -101,7 +101,7 @@ func _draw_wok() -> void:
 			Color(1.0, 0.6, 0.4, 0.5), false, 2.0)
 	# 百分比文字：直接在条上写，玩家一眼看到火候涨到多少
 	var pct := int(round(r * 100.0))
-	var txt := "WOK HEAT  %d%%" % pct
+	var txt := I18n.t("hud_wok_heat") % pct
 	draw_string(ThemeDB.fallback_font, Vector2(WOK_X + 6.0, WOK_Y + WOK_H - 3.0),
 		txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 1.0, 1.0, 0.92))
 

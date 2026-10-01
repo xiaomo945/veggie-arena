@@ -90,7 +90,7 @@ func _ready() -> void:
 	_toss_btn.add_theme_stylebox_override("pressed", sbp)
 	_toss_btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
 	_toss_btn.add_theme_font_size_override("font_size", 22)
-	_toss_btn.text = "WOK\nTOSS"
+	_toss_btn.text = I18n.t("hud_toss")
 	_toss_btn.visible = false
 	_toss_btn.pressed.connect(_on_toss_pressed)
 	add_child(_toss_btn)
@@ -163,6 +163,9 @@ func _ready() -> void:
 	Events.run_won.connect(_hide_pause)
 	Events.run_paused.connect(_on_run_paused)
 
+	# 语言切换时刷新静态文案（颠勺按钮文本等）
+	I18n.locale_changed.connect(_on_locale_changed)
+
 	# 竖屏安全区：全部 HUD 元素整体下移，避开刘海 / 状态栏（必须在所有子节点建好后）
 	_apply_safe_area()
 
@@ -192,7 +195,7 @@ func _on_hp(hp: int, max_hp: int) -> void:
 	_bars.queue_redraw()
 
 func _on_gold(gold: int) -> void:
-	_gold.text = "GOLD %d" % gold
+	_gold.text = I18n.t("hud_gold") % gold
 
 func _on_wave_started(wave: int) -> void:
 	_refresh()
@@ -201,11 +204,11 @@ func _on_wave_progress(elapsed: float, length: float) -> void:
 	_bars.set("wave_progress", elapsed / maxf(0.001, length))
 	_bars.queue_redraw()
 	# 击杀数每帧跟着刷新（省一个信号，反正波次进度也是每帧发）
-	_kill.text = "KILLS %d" % GameState.kills
+	_kill.text = I18n.t("hud_kills") % GameState.kills
 	_bars.set("run_wave", GameState.wave)
-	var wtxt := "WAVE %d/%d" % [GameState.wave, _run_total]
+	var wtxt := I18n.t("hud_wave") % [GameState.wave, _run_total]
 	if GameState.is_last_wave():
-		wtxt += " · FINAL"
+		wtxt += I18n.t("hud_final")
 	_wave.text = wtxt
 
 func _on_weapons(_ignored: Array = []) -> void:
@@ -220,15 +223,15 @@ func _on_weapons(_ignored: Array = []) -> void:
 			"key": str(w.get("key", "")),
 			"lv": int(w.get("lv", 1)),
 			"color": Color(str(def.get("color", "#ffffff"))),
-			"zh": str(def.get("en", def.get("zh", ""))),
+			"name": I18n.pick(def),
 		})
 	_bars.set("slots", slots)
 	_bars.queue_redraw()
 
 func _refresh() -> void:
-	var wtxt := "WAVE %d/%d" % [GameState.wave, _run_total]
+	var wtxt := I18n.t("hud_wave") % [GameState.wave, _run_total]
 	if GameState.is_last_wave():
-		wtxt += " · FINAL"
+		wtxt += I18n.t("hud_final")
 	_wave.text = wtxt
 	_kill.text = "KILLS %d" % GameState.kills
 	_bars.set("run_wave", GameState.wave)
@@ -237,9 +240,9 @@ func _refresh() -> void:
 
 func _on_boss_wave(wave: int) -> void:
 	if GameState.is_last_wave():
-		_banner.text = "FINAL WAVE %d" % wave
+		_banner.text = I18n.t("hud_final_wave") % wave
 	else:
-		_banner.text = "BOSS WAVE %d" % wave
+		_banner.text = I18n.t("hud_boss_wave") % wave
 	_banner_t = 2.6
 
 func _on_wok_heat(value: float, tier: int) -> void:
@@ -250,15 +253,18 @@ func _on_wok_heat(value: float, tier: int) -> void:
 	if tier != _wok_last_tier:
 		_wok_last_tier = tier
 		if tier >= 2:
-			_pop_wok("BLAZING! DMG+SPD", Color(1.0, 0.5, 0.3))
+			_pop_wok(I18n.t("hud_wok_tier2"), Color(1.0, 0.5, 0.3))
 		elif tier >= 1:
-			_pop_wok("STIR-FRY! SPD UP", Color(1.0, 0.82, 0.42))
+			_pop_wok(I18n.t("hud_wok_tier1"), Color(1.0, 0.82, 0.42))
 
 func _on_wok_ready(ready: bool) -> void:
 	_toss_btn.visible = ready
 
 func _on_toss_pressed() -> void:
 	Events.wok_toss_requested.emit()
+
+func _on_locale_changed(_l: String = "") -> void:
+	_toss_btn.text = I18n.t("hud_toss")
 
 func _pop_wok(text: String, c: Color) -> void:
 	_wok_banner.text = text
@@ -282,8 +288,8 @@ func _tick_unlock(delta: float) -> void:
 		return
 	var key := str(_unlock_queue.pop_front())
 	var def := Data.weapon(key)
-	var name := str(def.get("en", def.get("zh", key)))
-	_unlock.text = "UNLOCKED: %s!" % name.to_upper()
+	var name := I18n.pick(def)
+	_unlock.text = I18n.t("hud_unlocked") % name.to_upper()
 	_unlock_t = 2.2
 
 func _on_pause_pressed() -> void:
@@ -322,7 +328,7 @@ func _process(delta: float) -> void:
 		if _combo_t <= 0.0:
 			_combo = 0
 	if _combo >= 2:
-		_combo_label.text = "COMBO x%d" % _combo
+		_combo_label.text = I18n.t("hud_combo") % _combo
 	else:
 		_combo_label.text = ""
 
