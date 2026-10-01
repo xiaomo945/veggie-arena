@@ -79,6 +79,19 @@ else
 fi
 
 echo ""
+echo "=== 1.7 架构守卫（硬失败：存量只降不升，新增违规一律拦下）==="
+# 规则见 scripts/arch_guard.py：R1 单文件行数 / R2 core 层纯度 / R3 跨模块读私有字段。
+# 存量违规登记为基线（棘轮），所以今天就能硬生效，不必先重构完历史代码。
+if [ -f scripts/arch_guard.py ]; then
+  PY2=$(command -v python3.11 || command -v python3)
+  if ! "$PY2" scripts/arch_guard.py; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/arch_guard.py，跳过"
+fi
+
+echo ""
 echo "=== 2. 单元测试（headless） ==="
 if [ -f tests/run_tests.gd ]; then
   "$GODOT" --headless --path . --script res://tests/run_tests.gd
@@ -89,12 +102,8 @@ else
 fi
 
 echo ""
-echo "=== 3. 行数检查（单文件 > 300 行必须拆） ==="
-while IFS= read -r f; do
-  c=$(wc -l < "$f")
-  if [ "$c" -gt 300 ]; then echo "  ⚠ 超过 300 行: $f ($c 行)"; fi
-done < <(find . -name "*.gd" -not -path "./.godot/*")
-echo "  检查完成"
+echo "=== 3. 说明 ==="
+echo "  单文件 >300 行的检查已并入 1.7 架构守卫（硬失败，不再是只告警不拦人）"
 
 echo ""
 if [ "$fail" -eq 0 ] && [ "$tfail" -eq 0 ]; then
