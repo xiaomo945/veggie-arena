@@ -100,6 +100,26 @@ func apply_slow(factor: float, dur: float) -> void:
 	_slow_factor = maxf(_slow_factor, clampf(factor, 0.0, 0.95))
 	_slow_t = maxf(_slow_t, dur)
 
+# ---- 给 EnemySystem 的公开读写接口 ----
+# 这些状态由 EnemySystem 每帧驱动（移动摆动 / 击退衰减 / 减速读数），但**只有 Enemy
+# 能改内部字段**：对外只给访问器，避免"谁都能直接改 _kb"这种跨模块写私有字段。
+
+# 飞行蛇形摆动：推进相位并返回当前相位（EnemySystem 用它算左右摆动的偏移）
+func wobble(delta: float) -> float:
+	_phase += delta * 7.0
+	return _phase
+
+# 当前击退脉冲速度（EnemySystem 每帧读一次、衰减一次）
+func knockback() -> Vector2:
+	return _kb
+
+func set_knockback(v: Vector2) -> void:
+	_kb = v
+
+# 当前减速强度（0=不减速，0.5=移速减半）
+func slow_factor() -> float:
+	return _slow_factor
+
 # Boss：按血量阈值切阶段（提速+加伤），并周期朝玩家冲锋。纯逻辑，靠 speed/dmg 字段驱动移动与接触伤害。
 func _tick_boss(delta: float) -> void:
 	if not alive:

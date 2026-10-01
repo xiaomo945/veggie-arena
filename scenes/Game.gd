@@ -1,7 +1,12 @@
 extends Node2D
 
 # 战斗协调器：生命周期、暂停、波次推进、金币磁吸、刷怪节奏。
-# 敌人移动 / 子弹命中结算 / 颠勺等重逻辑已抽到 scenes/EnemySystem.gd（本节点的子节点）。
+# 敌人移动 / 子弹命中结算 / 颠勺等重逻辑在 scenes/EnemySystem.gd（本节点的子节点）。
+#
+# 【状态放哪】本节点只留"场景编排"相关的状态（player 引用、_paused、刷怪累计）。
+#   敌人池 / 子弹池 / 随机源 / 竞技场 / 每帧暂存数组 / 诊断计数器全部移到
+#   scenes/BattleWorld.gd —— 那是 EnemySystem 也要用的一份共享契约。
+#   跨模块读写 game._xxx 是本项目曾经的头号耦合源，现已清零。
 
 const BulletScene := preload("res://entities/Bullet/Bullet.tscn")
 const EnemyScene := preload("res://entities/Enemy/Enemy.tscn")
@@ -16,49 +21,26 @@ const Economy := preload("res://core/Economy.gd")
 const Spawner := preload("res://core/Spawner.gd")
 const Run := preload("res://core/Run.gd")
 const EnemySystem := preload("res://scenes/EnemySystem.gd")
+const BattleWorld := preload("res://scenes/BattleWorld.gd")
 
-const MAX_BULLETS := 90
-const MAX_ENEMIES := 110
-
+# 共享战斗状态（池 / rng / 竞技场 / 诊断计数），EnemySystem 拿的是同一个对象
+var world := BattleWorld.new()
 var player: Node2D = null
-var _paused := false
-# 本局累计捡到的金币（诊断用：与 GameState.gold 的区别是不会被商店花掉）
-var gold_picked := 0
 var enemy_system: Node = null          # 战斗子系统（刷怪/敌人/子弹/颠勺），_ready 里注入
-
-var _pickups: Node2D = null       # 金币场地（自建池，Game 只调三个方法）
-var _bullets: Array = []
-var _enemies: Array = []
-var _rng := RandomNumberGenerator.new()
-var _arena := Rect2()
+var _paused := false
 var _spawn_acc := 0.0
-var _next_id := 1
-var _bullet_cursor := 0
-var _enemy_cursor := 0
-# 复用数组，避免每帧新建对象产生 GC 压力
-var _bdata: Array = []
-var _edata: Array = []
-var _neighbors: Array = []
-# 颠勺冲击波动画：_shock_t<0 表示不在播放；>=0 表示从触发起经过的秒数
-var _shock_t := -1.0
-var _shock_pos := Vector2.ZERO
-var _shock_max := 280.0
-var _shock_dur := 0.38
-
-# 诊断计数器（Main 调试面板读取）
-var shots_fired := 0
-var hits_landed := 0
 
 func _ready() -> void:
-	_rng.randomize()
+	world.rng.randomize()
 	var a := Data.arena()
-	_arena = Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
+	world.arena = Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
 		float(a.get("w", 540)), float(a.get("h", 900)))
-	_pickups = PickupFieldScene.instantiate()
-	add_child(_pickups)
+	world.pickups = PickupFieldScene.instantiate()
+	add_child(world.pickups)
 	_build_pools()
-	# 战斗子系统：接手刷怪 / 敌人移动 / 子弹命中 / 颠勺
+	# 战斗子系统：接手刷怪 / 敌人移动 / 子弹命中 / 颠勺（状态通过 world 共享）
 	enemy_system = EnemySystem.new()
+	enemy_system.world = world
 	add_child(enemy_system)
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.player_died.connect(_on_player_died)
@@ -77,16 +59,29 @@ func _ready() -> void:
 	Events.quit_to_title_requested.connect(_on_quit_to_title)
 	Events.wok_toss_requested.connect(_on_wok_toss_requested)
 
+# 注入玩家节点：同时挂到 world 上，让 EnemySystem 也拿得到（只有这一个入口，
+# 不会出现"Game.player 换了、EnemySystem 还指着旧的"）
+func set_player(p: Node2D) -> void:
+	player = p
+	world.player = p
+
+func is_paused() -> bool:
+	return _paused
+
+# 手动推进一帧物理（模拟 / 调试用；正常游戏由引擎调 _physics_process）
+func step(delta: float) -> void:
+	_physics_process(delta)
+
 # 由标题页/死亡页的 run_requested 触发。回收场上所有敌人/子弹，重置状态，正式开跑。
 func start_run() -> void:
-	for e in _enemies:
+	for e in world.enemies:
 		e.recycle()
-	for b in _bullets:
+	for b in world.bullets:
 		b.recycle()
-	if _pickups != null:
-		_pickups.clear()
+	if world.pickups != null:
+		world.pickups.clear()
+	world.reset_run()
 	_spawn_acc = 0.0
-	_next_id = 1
 	GameState.reset()
 	_paused = false
 	GameState.paused = false
@@ -94,16 +89,16 @@ func start_run() -> void:
 	Events.run_started.emit()
 
 func _build_pools() -> void:
-	for i in MAX_BULLETS:
+	for i in BattleWorld.MAX_BULLETS:
 		var b = BulletScene.instantiate()
 		b.recycle()
 		add_child(b)
-		_bullets.append(b)
-	for i in MAX_ENEMIES:
+		world.bullets.append(b)
+	for i in BattleWorld.MAX_ENEMIES:
 		var e = EnemyScene.instantiate()
 		e.recycle()
 		add_child(e)
-		_enemies.append(e)
+		world.enemies.append(e)
 
 func _on_player_died() -> void:
 	set_physics_process(false)
@@ -133,12 +128,12 @@ func _on_quit_to_title() -> void:
 	_paused = false
 	GameState.paused = false
 	GameState.running = false
-	for e in _enemies:
+	for e in world.enemies:
 		e.recycle()
-	for b in _bullets:
+	for b in world.bullets:
 		b.recycle()
-	if _pickups != null:
-		_pickups.clear()
+	if world.pickups != null:
+		world.pickups.clear()
 	Events.run_paused.emit(false)
 
 # 一局结束的统一收尾：把成绩写进存档（解锁判定也在这里触发）
@@ -151,10 +146,10 @@ func _finish_run(won: bool) -> void:
 
 # 地上还没被捡走的金币面额（诊断/HUD 用）
 func ground_gold() -> int:
-	return enemy_system.ground_gold()
+	return world.ground_gold()
 
 func alive_enemy_count() -> int:
-	return enemy_system.alive_enemy_count()
+	return world.alive_enemy_count()
 
 # ---- 主循环 ----
 func _physics_process(delta: float) -> void:
@@ -164,8 +159,8 @@ func _physics_process(delta: float) -> void:
 	# 锅气自然衰减：停手不刷怪就凉下来，逼你保持进攻节奏
 	GameState.decay_wok(delta)
 	# 颠勺冲击波动画推进
-	if _shock_t >= 0.0:
-		_shock_t += delta
+	if world.shock_t >= 0.0:
+		world.shock_t += delta
 
 	# 刷怪：Boss 波降低普通刷怪速率，把注意力留给首领
 	var cfg := Data.spawn_cfg()
@@ -176,7 +171,7 @@ func _physics_process(delta: float) -> void:
 	var cap := int(cfg.get("max_alive", 88))
 	while _spawn_acc >= 1.0:
 		_spawn_acc -= 1.0
-		if enemy_system.alive_enemy_count() < cap:
+		if world.alive_enemy_count() < cap:
 			enemy_system.spawn_one()
 
 	# 敌人移动 + 互相分离 + 不要贴玩家脸
@@ -187,13 +182,13 @@ func _physics_process(delta: float) -> void:
 
 	# 开火（武器自动瞄准最近目标）
 	if player.has_method("auto_fire"):
-		player.auto_fire(_edata, delta)
+		player.auto_fire(world.edata, delta)
 
 	# 子弹追踪：飞行中轻微朝当前最近存活怪转向
 	enemy_system.home_bullets(delta)
 
 	# 子弹飞行
-	for b in _bullets:
+	for b in world.bullets:
 		b.advance(delta)
 
 	# 命中结算
@@ -208,22 +203,22 @@ func _physics_process(delta: float) -> void:
 
 # 每帧推进金币磁吸，把吃到的钱记进 GameState
 func _collect_pickups(delta: float) -> void:
-	if _pickups == null:
+	if world.pickups == null:
 		return
 	# 磁吸半径用真实值（含自动拾取/拾取范围强化），不再把 pickup_pct 当半径传（旧 bug：半径≈0）
-	var got: int = _pickups.update(delta, player.global_position,
+	var got: int = world.pickups.update(delta, player.global_position,
 		GameState.pickup_magnet(), false)
 	if got > 0:
-		gold_picked += got
+		world.gold_picked += got
 		GameState.add_gold(got)
 
 func _end_wave() -> void:
 	# 波末清场：地上没捡的钱自动入袋，但按损耗比例扣减（"部分损耗落袋"）。
-	# 全屏自动拾取(wokcharge→fullauto)=0 损耗，自动拾取减半，其余按 wave_end_loss。
-	if _pickups != null:
-		var swept: int = _pickups.collect_all(player.global_position)
+	# 全屏自动拾取(fullauto)=0 损耗，自动拾取减半，其余按 wave_end_loss。
+	if world.pickups != null:
+		var swept: int = world.pickups.collect_all(player.global_position)
 		if swept > 0:
-			gold_picked += swept
+			world.gold_picked += swept
 			var kept: int = int(float(swept) * (1.0 - GameState.gold_sweep_loss()))
 			if kept > 0:
 				GameState.add_gold(kept)
@@ -253,10 +248,10 @@ func _on_wok_toss_requested() -> void:
 	enemy_system.on_wok_toss()
 
 func _draw() -> void:
-	if _shock_t < 0.0 or _shock_t > _shock_dur:
+	if world.shock_t < 0.0 or world.shock_t > world.shock_dur:
 		return
-	var k := clampf(_shock_t / _shock_dur, 0.0, 1.0)
-	var r := _shock_max * k
+	var k := clampf(world.shock_t / world.shock_dur, 0.0, 1.0)
+	var r := world.shock_max * k
 	var a := 1.0 - k
-	draw_arc(_shock_pos, r, 0.0, TAU, 36, Color(1.0, 0.78, 0.42, a), 7.0, true)
-	draw_arc(_shock_pos, r * 0.7, 0.0, TAU, 36, Color(1.0, 0.92, 0.7, a * 0.7), 4.0, true)
+	draw_arc(world.shock_pos, r, 0.0, TAU, 36, Color(1.0, 0.78, 0.42, a), 7.0, true)
+	draw_arc(world.shock_pos, r * 0.7, 0.0, TAU, 36, Color(1.0, 0.92, 0.7, a * 0.7), 4.0, true)

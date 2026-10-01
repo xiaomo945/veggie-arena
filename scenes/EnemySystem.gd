@@ -1,8 +1,13 @@
 extends Node
 
 # 战斗子系统：刷怪、敌人移动、子弹追踪、命中结算、颠勺。
-# 由 Game 持有（game 子节点），共享 Game 的对象池与状态字段。
-# GDScript 无真私有，本脚本通过 game._xxx 直接读写 Game 的实例字段。
+# 由 Game 持有（game 子节点），战斗状态通过 scenes/BattleWorld.gd 共享。
+#
+# 【依赖边界】
+#   world —— 全部战斗状态（对象池 / rng / 竞技场 / 暂存数组 / 计数器）。公开契约。
+#   game  —— 只用来挂特效节点（add_child）和注册震屏，**不读它的任何状态字段**。
+#   以前本文件通过 game._xxx 读写 Game 的私有字段 64 处，是全项目头号耦合源；
+#   现在那些字段全部搬进 BattleWorld，两边各取所需、互不掀对方盖子。
 
 const Spawner := preload("res://core/Spawner.gd")
 const Hit := preload("res://core/Hit.gd")
@@ -10,15 +15,15 @@ const Movement := preload("res://core/Movement.gd")
 const DamageLabel := preload("res://entities/effects/DamageLabel.gd")
 const HitSpark := preload("res://entities/effects/HitSpark.gd")
 const Shake := preload("res://entities/effects/Shake.gd")
+const BattleWorld := preload("res://scenes/BattleWorld.gd")
 
-const MAX_BULLETS := 90
-const MAX_ENEMIES := 110
 const LIFESTEAL_CHANCE := 0.08
 const SEPARATION_FORCE := 90.0
 const KB_IMPULSE := 120.0        # 命中击退脉冲（克制，约 14px 位移）
 const KB_DECEL := 520.0          # 击退衰减（/s），短促
 
-var game: Node2D = null          # 注入：持有 _enemies / _bullets / _arena / _rng / player / _pickups 等
+var world: BattleWorld = null    # 注入：战斗状态（池 / rng / arena / 暂存数组）
+var game: Node2D = null          # 仅用于挂特效节点与注册震屏
 
 func _ready() -> void:
 	game = get_parent()
@@ -30,50 +35,39 @@ func boss_wave() -> bool:
 	return every > 0 and GameState.wave % every == 0
 
 func spawn_one() -> void:
-	var e = game._enemies[game._enemy_cursor]
-	game._enemy_cursor = (game._enemy_cursor + 1) % MAX_ENEMIES
-	var side: int = game._rng.randi_range(0, 3)
-	var pos := Spawner.edge_position(side, Data.arena(), game._rng.randf(), game._rng.randf())
-	var type := Spawner.pick_type(GameState.wave, game._rng.randf(), Data.spawn_cfg())
+	var e = world.enemies[world.enemy_cursor]
+	world.enemy_cursor = (world.enemy_cursor + 1) % BattleWorld.MAX_ENEMIES
+	var side: int = world.rng.randi_range(0, 3)
+	var pos := Spawner.edge_position(side, Data.arena(), world.rng.randf(), world.rng.randf())
+	var type := Spawner.pick_type(GameState.wave, world.rng.randf(), Data.spawn_cfg())
 	# Boss 波里，普通怪有一定概率是"精英版"（更厚更大更值钱）
 	var elite := false
-	if boss_wave() and game._rng.randf() < float(Data.spawn_cfg().get("elite_chance", 0.3)):
+	if boss_wave() and world.rng.randf() < float(Data.spawn_cfg().get("elite_chance", 0.3)):
 		elite = true
 	var stats := Spawner.stats_for(type, GameState.wave, Data.enemies, elite)
 	if stats.is_empty():
 		return
-	e.spawn(pos, stats, game._next_id)
-	game._next_id += 1
+	e.spawn(pos, stats, world.next_id)
+	world.next_id += 1
 
 # Boss 波开局额外刷一只首领：慢、大、硬、疼，但金币丰厚
 func spawn_boss() -> void:
-	var e = game._enemies[game._enemy_cursor]
-	game._enemy_cursor = (game._enemy_cursor + 1) % MAX_ENEMIES
-	var side: int = game._rng.randi_range(0, 3)
-	var pos := Spawner.edge_position(side, Data.arena(), game._rng.randf(), game._rng.randf())
+	var e = world.enemies[world.enemy_cursor]
+	world.enemy_cursor = (world.enemy_cursor + 1) % BattleWorld.MAX_ENEMIES
+	var side: int = world.rng.randi_range(0, 3)
+	var pos := Spawner.edge_position(side, Data.arena(), world.rng.randf(), world.rng.randf())
 	var stats := Spawner.stats_for("boss", GameState.wave, Data.enemies)
 	if stats.is_empty():
 		return
-	e.spawn(pos, stats, game._next_id)
-	game._next_id += 1
+	e.spawn(pos, stats, world.next_id)
+	world.next_id += 1
 	# Boss 出场轻微震屏
 	Shake.kick(9.0, 0.4)
 
-# 地上还没被捡走的金币面额（诊断/HUD 用）
-func ground_gold() -> int:
-	return game._pickups.ground_value() if game._pickups != null else 0
-
-func alive_enemy_count() -> int:
-	var n := 0
-	for e in game._enemies:
-		if e.alive:
-			n += 1
-	return n
-
 func update_enemies(delta: float) -> void:
-	var pp: Vector2 = game.player.global_position
-	for i in game._enemies.size():
-		var e = game._enemies[i]
+	var pp: Vector2 = world.player.global_position
+	for i in world.enemies.size():
+		var e = world.enemies[i]
 		if not e.alive:
 			continue
 		var pos: Vector2 = e.global_position
@@ -83,50 +77,49 @@ func update_enemies(delta: float) -> void:
 			var dir: Vector2 = to_p.normalized()
 			# 飞行兵：在朝玩家的方向上叠加左右蛇形摆动，更难被预判/击中
 			if e.flight:
-				e._phase += delta * 7.0
 				var perp := Vector2(-dir.y, dir.x)
-				dir = (dir + perp * sin(e._phase) * 0.7).normalized()
+				dir = (dir + perp * sin(e.wobble(delta)) * 0.7).normalized()
 			# 颠勺减速：临时降低移动速度（factor 由道具决定，倍率叠加在基础速度上）
-			var spd: float = e.speed * (1.0 - e._slow_factor)
+			var spd: float = e.speed * (1.0 - e.slow_factor())
 			pos += dir * spd * delta
 		# 分离：只算附近的，避免 O(n^2) 在满怪时拖慢手机
-		game._neighbors.clear()
-		for j in game._enemies.size():
+		world.neighbors.clear()
+		for j in world.enemies.size():
 			if j == i:
 				continue
-			var o = game._enemies[j]
+			var o = world.enemies[j]
 			if not o.alive:
 				continue
 			if pos.distance_squared_to(o.global_position) < 3600.0:  # 60px 内才算
-				game._neighbors.append({"pos": o.global_position, "radius": o.radius})
-		pos += Hit.separation(pos, game._neighbors, e.radius) * SEPARATION_FORCE * delta
+				world.neighbors.append({"pos": o.global_position, "radius": o.radius})
+		pos += Hit.separation(pos, world.neighbors, e.radius) * SEPARATION_FORCE * delta
 		# 别叠在玩家身上
 		pos += Hit.keep_distance(pos, pp, e.radius + float(Data.player_cfg().get("radius", 16)))
 		# 受击击退脉冲：随帧快速衰减，位移克制不影响手感
-		var kb: Vector2 = e._kb
+		var kb: Vector2 = e.knockback()
 		if kb.length_squared() > 0.01:
 			pos += kb * delta
-			e._kb = kb.move_toward(Vector2.ZERO, KB_DECEL * delta)
-		e.global_position = Movement.clamp_to_arena(pos, game._arena, e.radius)
+			e.set_knockback(kb.move_toward(Vector2.ZERO, KB_DECEL * delta))
+		e.global_position = Movement.clamp_to_arena(pos, world.arena, e.radius)
 		e.tick(delta)
 		# 接触玩家 → 造成伤害
 		if pos.distance_to(pp) <= e.radius + float(Data.player_cfg().get("radius", 16)) + 2.0:
-			if game.player.has_method("take_hit"):
-				game.player.take_hit(e.dmg)
+			if world.player.has_method("take_hit"):
+				world.player.take_hit(e.dmg)
 				# 挨打掉火候（被摸一下 = 锅被泼了冷水）；封顶 8 点，避免首领一巴掌把火候清零
 				GameState.cool_wok(minf(e.dmg, 8.0))
 
 # 先收集敌人数组（含本帧位置/速度），供开火与子弹追踪共用
 func collect_enemy_data() -> void:
-	game._edata.clear()
-	for e in game._enemies:
+	world.edata.clear()
+	for e in world.enemies:
 		if e.alive:
 			# 敌人基本朝玩家追，用"朝玩家方向 × 速度"近似速度，给自动瞄准打提前量
 			var vel := Vector2.ZERO
-			var to_p: Vector2 = game.player.global_position - e.global_position
+			var to_p: Vector2 = world.player.global_position - e.global_position
 			if to_p.length() > 0.001:
 				vel = to_p.normalized() * float(e.speed)
-			game._edata.append({"pos": e.global_position, "radius": e.radius,
+			world.edata.append({"pos": e.global_position, "radius": e.radius,
 				"vel": vel, "alive": true, "ref": e})
 
 # 子弹追踪：每帧把每颗激活子弹的方向，朝"当前最近的存活怪"最多转 homing_turn*delta 弧度。
@@ -138,13 +131,13 @@ func home_bullets(delta: float) -> void:
 		return
 	var hr := float(cfg.get("homing_range", 360))
 	var max_turn := turn * delta
-	for b in game._bullets:
+	for b in world.bullets:
 		if not b.active:
 			continue
 		var best := -1
 		var best_d := INF
-		for k in game._edata.size():
-			var e: Dictionary = game._edata[k]
+		for k in world.edata.size():
+			var e: Dictionary = world.edata[k]
 			if not bool(e.get("alive", false)):
 				continue
 			var d: float = b.global_position.distance_to(e.get("pos", Vector2.ZERO))
@@ -153,7 +146,7 @@ func home_bullets(delta: float) -> void:
 				best = int(k)
 		if best < 0 or best_d > hr:
 			continue
-		var ep: Vector2 = game._edata[best].get("pos", Vector2.ZERO)
+		var ep: Vector2 = world.edata[best].get("pos", Vector2.ZERO)
 		var desired: Vector2 = (ep - b.global_position).normalized()
 		var cur: Vector2 = b.dir.normalized()
 		var ang := cur.angle_to(desired)
@@ -162,21 +155,21 @@ func home_bullets(delta: float) -> void:
 		b.rotation = b.dir.angle()
 
 func resolve_hits() -> void:
-	game._bdata.clear()
-	for b in game._bullets:
+	world.bdata.clear()
+	for b in world.bullets:
 		if b.active:
-			game._bdata.append({"pos": b.global_position, "radius": b.radius, "active": true, "ref": b})
-	if game._bdata.is_empty() or game._edata.is_empty():
+			world.bdata.append({"pos": b.global_position, "radius": b.radius, "active": true, "ref": b})
+	if world.bdata.is_empty() or world.edata.is_empty():
 		return
-	for h: Dictionary in Hit.find_hits(game._bdata, game._edata):
-		var b = game._bdata[int(h["bullet"])]["ref"]
-		var e = game._edata[int(h["enemy"])]["ref"]
+	for h: Dictionary in Hit.find_hits(world.bdata, world.edata):
+		var b = world.bdata[int(h["bullet"])]["ref"]
+		var e = world.edata[int(h["enemy"])]["ref"]
 		if not b.active or not e.alive:
 			continue
 		if b.hit_ids.has(e.eid):
 			continue          # 同一发子弹不重复打同一个敌人
 		b.hit_ids[e.eid] = true
-		game.hits_landed += 1
+		world.hits_landed += 1
 		# 命中微量攒锅气（主要靠击杀，命中只是让"没空档"也能维持火候）
 		GameState.add_wok(float(Data.wok_cfg().get("hit_heat", 0.5)))
 		damage_enemy(e, b.dmg)
@@ -192,7 +185,7 @@ func resolve_hits() -> void:
 
 func _explode(b, center_enemy) -> void:
 	var c: Vector2 = center_enemy.global_position
-	for d in game._edata:
+	for d in world.edata:
 		var e = d["ref"]
 		if not e.alive or e == center_enemy:
 			continue
@@ -221,11 +214,10 @@ func damage_enemy(e, amount: float) -> void:
 			spark.init(epos, e.etype == "boss")
 		# 钱掉在地上（不是直接入账）：玩家要走进磁吸圈才收得到
 		# drop 的返回值 = 池满时被直接结算的金额（钱不会凭空蒸发）
-		if game._pickups != null:
-			var ov: int = int(game._pickups.drop(epos, e.gold))
-			if ov > 0:
-				game.gold_picked += ov
-				GameState.add_gold(ov)
+		var ov: int = world.pickups.drop(epos, e.gold)
+		if ov > 0:
+			world.gold_picked += ov
+			GameState.add_gold(ov)
 		# 击杀爆环（Boss 的环更大）
 		Events.enemy_killed.emit(str(e.etype), epos)
 		# 终局 Boss（第 20 波）被击杀 = 直接通关，不必再熬计时
@@ -235,7 +227,7 @@ func damage_enemy(e, amount: float) -> void:
 		# ⚠️ 必须概率触发：按击杀固定回血时，一局 1300+ 杀能回几千血，
 		#    实测"站着不动"都能满血通关，难度被彻底抵消
 		var ls: float = GameState.stat_value("lifesteal")
-		if ls > 0.0 and game._rng.randf() < LIFESTEAL_CHANCE:
+		if ls > 0.0 and world.rng.randf() < LIFESTEAL_CHANCE:
 			GameState.heal(int(ls))
 		# 击杀按金币攒锅气：普通怪一点点，Boss 一大口，火候涨得有节奏
 		# 再乘上 wok_pct 强化（锅气获取 +X%）
@@ -244,10 +236,10 @@ func damage_enemy(e, amount: float) -> void:
 		GameState.add_wok(heat)
 
 func on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) -> void:
-	game.shots_fired += 1
-	for attempt in MAX_BULLETS:
-		var b = game._bullets[game._bullet_cursor]
-		game._bullet_cursor = (game._bullet_cursor + 1) % MAX_BULLETS
+	world.shots_fired += 1
+	for attempt in BattleWorld.MAX_BULLETS:
+		var b = world.bullets[world.bullet_cursor]
+		world.bullet_cursor = (world.bullet_cursor + 1) % BattleWorld.MAX_BULLETS
 		if not b.active:
 			b.launch(pos, dir, stats, c)
 			return
@@ -258,7 +250,7 @@ func on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) ->
 func on_wok_toss() -> void:
 	if not GameState.wok_ready():
 		return
-	var pp: Vector2 = game.player.global_position
+	var pp: Vector2 = world.player.global_position
 	var w := Data.wok_cfg()
 	# 伤害/击退倍率受道具加成（wok_dmg_pct / wok_knock_pct 是 0~1 的加成比例）
 	var dmg_mult := float(w.get("toss_dmg_mult", 0.6)) * (1.0 + GameState.stat_value("wok_dmg_pct"))
@@ -269,7 +261,7 @@ func on_wok_toss() -> void:
 	if GameState.stat_value("wok_slow") > 0.0:
 		slow_factor = float(w.get("toss_slow_pct", 0.5))
 		slow_dur = float(w.get("toss_slow", 1.5))
-	for e in game._enemies:
+	for e in world.enemies:
 		if not e.alive:
 			continue
 		var dir: Vector2 = e.global_position - pp
@@ -279,11 +271,10 @@ func on_wok_toss() -> void:
 		damage_enemy(e, e.max_hp * dmg_mult + 25.0)
 		# 甩飞：沿远离玩家方向推开，营造"颠勺"的爆开感（受 wokknock 加成）
 		var np: Vector2 = e.global_position + dir.normalized() * knock
-		e.global_position = Movement.clamp_to_arena(np, game._arena, e.radius)
+		e.global_position = Movement.clamp_to_arena(np, world.arena, e.radius)
 		if slow_factor > 0.0 and e.has_method("apply_slow"):
 			e.apply_slow(slow_factor, slow_dur)
 	# 冲击波视觉
-	game._shock_pos = pp
-	game._shock_t = 0.0
+	world.kick_shock(pp)
 	GameState.toss_wok()
 	Events.wok_tossed.emit()

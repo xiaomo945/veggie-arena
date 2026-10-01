@@ -32,7 +32,7 @@ func _ready() -> void:
 
 	# 战斗管理器（刷怪/子弹/命中/波次）
 	game = GameScene.instantiate()
-	game.player = player
+	game.set_player(player)
 	add_child(game)
 
 	add_child(JoystickScene.instantiate())
@@ -103,7 +103,7 @@ func _dodge_dir(sense: float = 160.0, jitter: float = 0.35) -> Vector2:
 	var pp := player.global_position
 	var nearest: Node2D = null
 	var nd := 99999.0
-	for e in game._enemies:
+	for e in game.world.enemies:
 		if not e.alive:
 			continue
 		var d := pp.distance_to(e.global_position)
@@ -145,7 +145,7 @@ var _threats := 0
 
 func _threat_close(dist: float = 70.0) -> bool:
 	var pp := player.global_position
-	for e in game._enemies:
+	for e in game.world.enemies:
 		if e.alive and e.global_position.distance_to(pp) < dist:
 			return true
 	return false
@@ -184,10 +184,10 @@ func _run_simulation(seconds: float) -> void:
 		if use_dash and (i % 120 == 0 or _threat_close(140.0)):
 			_threats += 1
 			Events.dash_requested.emit()
-		player._physics_process(1.0 / 60.0)
-		game._physics_process(1.0 / 60.0)
+		player.step(1.0 / 60.0)
+		game.step(1.0 / 60.0)
 		# 波次结束：自动逛补给站（买得起的全买，验证购买运行期路径不崩），再开下一波
-		if game._paused:
+		if game.is_paused():
 			_auto_shop()
 			Events.shop_closed.emit()
 		var n := int(game.alive_enemy_count())
@@ -196,7 +196,7 @@ func _run_simulation(seconds: float) -> void:
 		survived = i + 1
 		if _trace and i >= 200 and i < 215:
 			var tb = null
-			for b in game._bullets:
+			for b in game.world.bullets:
 				if b.active and b.life < 0.05:
 					tb = b
 					break
@@ -204,7 +204,7 @@ func _run_simulation(seconds: float) -> void:
 				continue
 			var ne := Vector2.ZERO
 			var nd := 99999.0
-			for e in game._enemies:
+			for e in game.world.enemies:
 				if e.alive:
 					var dd: float = tb.global_position.distance_to(e.global_position)
 					if dd < nd:
@@ -214,12 +214,12 @@ func _run_simulation(seconds: float) -> void:
 				tb.global_position, tb.dir, tb.radius, tb.life, ne, nd])
 		if (i + 1) % 60 == 0 and OS.get_cmdline_user_args().has("--verbose"):
 			var nb := 0
-			for b in game._bullets:
+			for b in game.world.bullets:
 				if b.active:
 					nb += 1
 			print("  [%.0fs] 敌%d 弹%d 射%d 中%d 血%d" % [
 				float(i + 1) / 60.0, int(game.alive_enemy_count()), nb,
-				game.shots_fired, game.hits_landed, GameState.hp])
+				game.world.shots_fired, game.world.hits_landed, GameState.hp])
 		if not GameState.running:
 			break
 	print("")
@@ -231,10 +231,10 @@ func _run_simulation(seconds: float) -> void:
 	print("  场上敌人峰值: %d" % peak_alive)
 	print("  累计击杀    : %d" % GameState.kills)
 	print("  开火/命中   : %d / %d（命中率 %.0f%%）" % [
-		game.shots_fired, game.hits_landed,
-		100.0 * float(game.hits_landed) / maxf(1.0, float(game.shots_fired))])
+		game.world.shots_fired, game.world.hits_landed,
+		100.0 * float(game.world.hits_landed) / maxf(1.0, float(game.world.shots_fired))])
 	print("  金币        : 持有 %d / 累计捡到 %d / 地上待捡 %d" % [
-		GameState.gold, game.gold_picked, game.ground_gold()])
+		GameState.gold, game.world.gold_picked, game.ground_gold()])
 	print("  玩家血量    : %d / %d" % [GameState.hp, GameState.max_hp])
 	print("  挨打        : %d 次 / 累计 %d 伤害（净掉血看上一条）" % [
 		int(player.hits_taken), int(player.damage_taken)])

@@ -28,13 +28,14 @@ MAX_LINES = 300
 ALLOW_LINES = {}
 # core/ 纯度基线（当前实测 0，保持为空即"零容忍"）
 ALLOW_CORE = {}
-# 跨模块读私有字段基线（实测存量，只降不升）
-ALLOW_PRIVATE = {
-    "scenes/EnemySystem.gd": 64,              # game._* 池/状态 + e._phase/_kb/_slow_factor
-    "entities/Player/PlayerVisual.gd": 12,    # player._bob/_ifr/_dash/_radius/_dir/_weapons
-    "ui/Screens/Main.gd": 8,                  # 调试面板读 game._enemies/_bullets/_paused
-    "tests/test_pickup.gd": 1,                # field._ready()：测试里手动建池，有注释说明
-}
+# R3 已清零，零容忍：跨模块读私有字段一律硬失败（不再有任何存量豁免）。
+# 清零路径（留给后来人看当时是怎么拆的）：
+#   EnemySystem 64 处 game._* → 抽出 scenes/BattleWorld.gd 共享战斗状态；
+#                  e._phase/_kb/_slow_factor → Enemy 加 wobble()/knockback()/slow_factor()
+#   PlayerVisual 12 处 player._* → Player 加只读访问器 bob_phase()/ifr_left()/...
+#   Main       8 处  game._*  → game.world.* / game.step() / game.is_paused()
+#   test_pickup 1 处 field._ready() → PickupField 加公开 build_pool()
+ALLOW_PRIVATE = {}
 
 AUTOLOADS = ["Art", "Data", "Events", "GameState", "Settings", "Steam",
              "SaveMgr", "Sfx", "Bgm", "Gamepad", "I18n"]

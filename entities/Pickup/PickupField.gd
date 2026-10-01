@@ -22,6 +22,12 @@ var _max_pieces := 4
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+	build_pool()
+
+# 建池：公开方法而不是让调用方去调 _ready()。
+# 单测里节点不进树、_ready 不会自动跑，以前测试只能手动 field._ready()；
+# 现在测试（和任何想脱离场景树用这块逻辑的地方）直接调 build_pool()。
+func build_pool() -> void:
 	_rng.randomize()
 	var raw: Dictionary = {}
 	if Data.balance.has("pickup"):

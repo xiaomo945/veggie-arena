@@ -1,7 +1,9 @@
 extends Node2D
 
 # 玩家外观层：承接 Player 的全部手绘/贴图绘制，与物理逻辑解耦。
-# 通过 player 引用读取实时状态（GDScript 无真私有，player._xxx 可直接访问）。
+# 通过 player 引用读取实时状态，且只走 Player 暴露的只读访问器
+# （bob_phase() / ifr_left() / dash_state() / radius() / move_dir() / ...），
+# 不直接读 player._xxx —— 谁能改这些状态，只有 Player 自己说了算。
 # 本节点 position 默认(0,0)、无旋转缩放，其局部坐标系与 Player 自身一致，
 # 因此 draw_* 画出来的位置与原 Player._draw 完全重合。
 
@@ -23,16 +25,16 @@ func _ready() -> void:
 
 func _draw() -> void:
 	_draw_trails()
-	var squash := 1.0 + 0.05 * sin(player._bob)
+	var squash := 1.0 + 0.05 * sin(player.bob_phase())
 	var stretch := 1.0 / squash
 	# 受伤闪烁：i-frames 期间快速明灭，提示"刚挨打且无敌"
 	var alpha := 1.0
-	if player._ifr > 0.0:
-		alpha = 0.35 + 0.45 * (0.5 + 0.5 * sin(player._ifr * 40.0))
+	if player.ifr_left() > 0.0:
+		alpha = 0.35 + 0.45 * (0.5 + 0.5 * sin(player.ifr_left() * 40.0))
 	var tex := _skin_texture()
 	# 冲刺瞬间沿冲刺方向拉长（速度感），武器图标不跟着变形，所以画完马上复位
-	if player.Dash.active(player._dash):
-		var ang: float = (player._dash["dir"] as Vector2).angle()
+	if player.Dash.active(player.dash_state()):
+		var ang: float = (player.dash_state()["dir"] as Vector2).angle()
 		draw_set_transform(Vector2.ZERO, ang, Vector2(1.45, 0.72))
 		if tex != null:
 			_draw_sprite(tex, 1.0, 1.0, 1.0)
@@ -49,8 +51,8 @@ func _draw() -> void:
 
 # 贴图版：squash/stretch 一样作用到贴图上，保证"贴图一接入，动画不会消失"
 func _draw_sprite(tex: Texture2D, squash: float, stretch: float, alpha: float) -> void:
-	var w: float = player._radius * SPRITE_SCALE * stretch
-	var h: float = player._radius * SPRITE_SCALE * squash
+	var w: float = player.radius() * SPRITE_SCALE * stretch
+	var h: float = player.radius() * SPRITE_SCALE * squash
 	draw_texture_rect_region(tex, Rect2(-w * 0.5, -h * 0.5, w, h),
 		Rect2(Vector2.ZERO, tex.get_size()), Color(1, 1, 1, alpha))
 
@@ -72,7 +74,7 @@ func _draw_body(squash: float, stretch: float, alpha: float) -> void:
 		Vector2(13 * stretch, -10 * squash),
 		Vector2(13 * stretch, -4 * squash),
 		Vector2(-13 * stretch, -4 * squash)]), Color(SHADE.r, SHADE.g, SHADE.b, alpha))
-	var look: Vector2 = player._dir
+	var look: Vector2 = player.move_dir()
 	if look == Vector2.ZERO:
 		look = Vector2(0, -1)
 	else:
@@ -91,21 +93,21 @@ func _skin_texture() -> Texture2D:
 
 # 冲刺残影：只画几个半透明的淡影，位置存的是世界坐标（画的时候转回局部）
 func _draw_trails() -> void:
-	for item in player._dash_trail:
+	for item in player.dash_trail():
 		var t: Dictionary = item as Dictionary
 		var k := clampf(float(t.get("t", 0.0)) / 0.22, 0.0, 1.0)
 		var lp: Vector2 = to_local(t.get("w", global_position) as Vector2)
-		draw_circle(lp, player._radius * 0.85 * (0.6 + 0.4 * k),
+		draw_circle(lp, player.radius() * 0.85 * (0.6 + 0.4 * k),
 			Color(0.98, 0.98, 1.0, 0.30 * k))
 
 # 武器图标绕着角色站位（位置由 core/Weapon.mount_position 算，跟开火点是同一个）
 # 缺图时退化成一个色点，玩家至少能看出"我带了几把武器"
 func _draw_mounts() -> void:
-	var n: int = player._weapons.size()
+	var n: int = player.weapon_caches().size()
 	if n == 0:
 		return
 	for i in n:
-		var w: Dictionary = player._weapons[i]
+		var w: Dictionary = player.weapon_caches()[i]
 		var p := Weapon.mount_position(Vector2.ZERO, i, n, MOUNT_RADIUS)
 		var s := MOUNT_ICON
 		var tex := Art.icon("weapon_" + str(w["key"]))

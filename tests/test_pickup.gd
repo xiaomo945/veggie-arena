@@ -125,8 +125,8 @@ func run(data = null) -> Dictionary:
 		chk(false, "PickupField.tscn 可加载")
 		return {"pass": _p, "fail": _f, "failures": _failures}
 	var field = field_scene.instantiate()
-	# ⚠️ 测试里没有把节点挂进树，_ready 不会跑（池是空的），手动建池
-	field._ready()
+	# 测试里没有把节点挂进树，_ready 不会自动跑（池是空的），手动建池
+	field.build_pool()
 	var pool_n: int = field.alive_count()   # 建池后是 0 枚激活
 	chk(pool_n == 0, "建池后场上没有金币")
 	var dropped := 0

@@ -231,3 +231,31 @@ func take_hit(amount: float) -> void:
 func _on_character_changed(_key: String) -> void:
 	# 属性加成变了（生命上限 / 移速 / 伤害 / 攻速都读 stat_value），重建缓存即可
 	_rebuild_weapons()
+
+# 手动推进一帧（模拟 / 调试用；正常游戏由引擎调 _physics_process）
+func step(delta: float) -> void:
+	_physics_process(delta)
+
+# ---- 给外观层（PlayerVisual）的只读接口 ----
+# PlayerVisual 是 Player 自己的绘制层，每帧要读这些状态。走访问器而不是让它直接
+# 摸 player._xxx：谁能改仍然收口在 Player 内部，外部只有读权限。
+func bob_phase() -> float:
+	return _bob
+
+func ifr_left() -> float:
+	return _ifr
+
+func dash_state() -> Dictionary:
+	return _dash
+
+func radius() -> float:
+	return _radius
+
+func move_dir() -> Vector2:
+	return _dir
+
+func dash_trail() -> Array:
+	return _dash_trail
+
+func weapon_caches() -> Array:
+	return _weapons
