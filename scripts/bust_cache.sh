@@ -135,6 +135,21 @@ if HEAL_MARK not in s:
 """
     s=s.replace('</body>', heal + '</body>')
 
+# ---- 4) 缺特性报错双语化：缺 WebGL2 等特性时给中文指引（否则用户只看到英文报错=“打不开/闪退”）----
+BILINGUAL_MARK='无法启动'
+if BILINGUAL_MARK not in s:
+    old_msg = "const missingMsg = 'Error\\nThe following features required to run Godot projects on the Web are missing:\\n';"
+    new_msg = ("const missingMsg = '无法启动游戏 / Cannot start\\n"
+               "你的浏览器缺少运行本游戏需要的特性（最常见：缺 WebGL2 硬件加速）。\\n"
+               "请按顺序尝试：1) 复制本页链接，用系统浏览器打开（安卓用 Chrome，苹果用 Safari），"
+               "不要在微信/QQ/其他 App 内置浏览器里打开；2) Chrome 菜单 → 打开新的无痕标签页再访问；"
+               "3) 关掉省流/轻量模式；4) 仍不行请把本页英文文字截图发给开发者。\\n"
+               "Missing features (technical info):\\n';")
+    if old_msg in s:
+        s = s.replace(old_msg, new_msg)
+    else:
+        print("WARN: 未找到 Godot 缺特性提示原文，双语化跳过")
+
 open(p,'w',encoding='utf-8').write(s)
 print("cache-bust -> index.%s （原文件保留兜底 + 移动端手势锁 + 清理旧哈希）"%h)
 PY
