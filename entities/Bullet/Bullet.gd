@@ -9,6 +9,7 @@ var speed := 560.0
 var dmg := 0.0
 var pierce_left := 0
 var aoe_radius := 0.0
+var bounce_left := 0    # 剩余撞墙反弹次数（"弹墙"道具）
 var radius := 5.0
 var life := 0.0
 var max_life := 1.0
@@ -22,6 +23,7 @@ func launch(pos: Vector2, direction: Vector2, stats: Dictionary, c: Color) -> vo
 	dmg = float(stats.get("dmg", 1))
 	pierce_left = int(stats.get("pierce", 0))
 	aoe_radius = float(stats.get("aoe", 0))
+	bounce_left = int(stats.get("bounce", 0))
 	max_life = float(stats.get("range", 300)) / maxf(speed, 1.0)
 	life = 0.0
 	radius = 4.0 if aoe_radius <= 0.0 else 7.0

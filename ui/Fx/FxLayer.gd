@@ -18,14 +18,18 @@ const FLOAT_LIFE := 0.62
 const FLOAT_RISE := 46.0
 
 var _rings: Array = []
+var _arcs: Array = []
 var _floats: Array = []
 var _pool: Array = []
 var _ring_view: Node2D
+var _arc_view: Node2D
 var _hurt: ColorRect
 var _gold: ColorRect
 var _hurt_t := 0.0
 var _gold_t := 0.0
 var _last_hp := -1
+
+const MELEE_LIFE := 0.16
 
 func _ready() -> void:
 	layer = 15          # 在世界之上、HUD(20) 之下
@@ -39,6 +43,13 @@ func _ready() -> void:
 	_ring_view.name = "Rings"
 	add_child(_ring_view)
 
+	# 近战挥砍扇形：同样的套路，独立的数组 + 独立 Node2D
+	_arc_view = Node2D.new()
+	_arc_view.set_script(preload("res://ui/Fx/MeleeArc.gd"))
+	_arc_view.set("arcs", _arcs)
+	_arc_view.name = "MeleeArcs"
+	add_child(_arc_view)
+
 	_hurt = _mk_flash(Color(1.0, 0.12, 0.18))
 	_gold = _mk_flash(Color(1.0, 0.78, 0.32))
 
@@ -46,6 +57,7 @@ func _ready() -> void:
 	Events.enemy_killed.connect(_on_killed)
 	Events.player_hp_changed.connect(_on_hp)
 	Events.wok_tossed.connect(_on_toss)
+	Events.melee_visual.connect(_on_melee)
 
 func _mk_flash(c: Color) -> ColorRect:
 	var r := ColorRect.new()
@@ -86,6 +98,13 @@ func _on_hp(hp: int, _max_hp: int) -> void:
 func _on_toss() -> void:
 	_gold_t = 0.42
 
+# ---- 信号：近战扇形 ----
+func _on_melee(origin: Vector2, dir: Vector2, reach: float, half_arc: float, color: Color) -> void:
+	if _arcs.size() >= 12:
+		return          # 多武器高频挥砍时宁可少画几刀，也不拖帧
+	_arcs.append({"origin": origin, "dir": dir, "reach": reach,
+		"half": half_arc, "color": color, "t": 0.0, "life": MELEE_LIFE})
+
 func _process(delta: float) -> void:
 	# 飘字：上飘 + 后段淡出
 	var i := 0
@@ -114,6 +133,18 @@ func _process(delta: float) -> void:
 		else:
 			j += 1
 	_ring_view.queue_redraw()
+
+	# 近战扇形推进
+	var m := 0
+	while m < _arcs.size():
+		var ar: Dictionary = _arcs[m]
+		var at: float = float(ar.get("t", 0.0)) + delta
+		ar["t"] = at
+		if at >= float(ar.get("life", MELEE_LIFE)):
+			_arcs.remove_at(m)
+		else:
+			m += 1
+	_arc_view.queue_redraw()
 
 	# 全屏闪光
 	if _hurt_t > 0.0:

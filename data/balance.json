@@ -2,7 +2,7 @@
   "arena": { "x": 12, "y": 74, "w": 516, "h": 756 },
   "player": {
     "max_hp": 100,
-    "speed": 240,
+    "speed": 340,
     "radius": 16,
     "ifr_seconds": 0.38,
     "touch_cooldown": 0.7
@@ -10,14 +10,14 @@
   "wave": {
     "length": 60,
     "total": 20,
-    "heal_percent": 0.10,
-    "bonus_base": 10,
-    "bonus_per_wave": 4
+    "heal_percent": 0.12,
+    "bonus_base": 14,
+    "bonus_per_wave": 6
   },
   "spawn": {
-    "base_rate": 0.5,
-    "per_wave": 0.26,
-    "cap": 6.0,
+    "base_rate": 0.28,
+    "per_wave": 0.24,
+    "cap": 5.0,
     "max_alive": 44,
     "warn_time": 0.45,
     "edge_offset": 20,
@@ -31,7 +31,7 @@
     "fly_chance": 0.20,
     "boss_every": 5,
     "boss_rate_mult": 0.55,
-    "elite_chance": 0.30,
+    "elite_chance": 0.22,
     "swarm_from_wave": 5,
     "swarm_chance": 0.10,
     "brute_from_wave": 4,
@@ -72,10 +72,16 @@
     "tier2_fire": 0.65,
     "tier2_dmg": 0.30,
     "toss_dmg_mult": 0.6,
+    "toss_flat": 25,
     "toss_knock": 130,
-    "toss_slow": 1.5,
-    "toss_slow_pct": 0.5
-  },
+    "toss_slow_pct": 0.5,
+    "toss_poison_dur": 3.0,
+    "toss_burn_dur": 2.5,
+ "toss_shred_dur": 3.0,
+ "toss_explode_radius": 70,
+ "toss_chain_dmg": 12,
+ "frenzy_mult": 1.6
+},
   "bullet": {
     "homing_turn": 4.0,
     "homing_range": 360

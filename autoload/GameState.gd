@@ -29,6 +29,7 @@ var upgrades: Dictionary = {}
 # 纯逻辑在 core/Wok.gd（可单测），这里只持有状态 + 发信号。
 const Wok := preload("res://core/Wok.gd")
 const Run := preload("res://core/Run.gd")
+const Inventory := preload("res://core/Inventory.gd")
 var wok: Dictionary = {}
 var wok_heat: float = 0.0
 var _wok_tier: int = 0
@@ -64,6 +65,9 @@ func reset() -> void:
 	wok_heat = 0.0
 	_wok_tier = 0
 	_wok_ready_emitted = false
+	shield = 0
+	frenzy_left = 0.0
+	Events.shield_changed.emit(shield)
 	# 开局自带手枪 + 冲锋枪：双武器起步，前期清怪有手感、锅气攒得快
 	weapons.append({"key": "pistol", "lv": 1})
 	weapons.append({"key": "smg", "lv": 1})
@@ -106,7 +110,8 @@ func heal_percent(pct: float) -> int:
 
 # ---- 金币 ----
 func add_gold(amount: int) -> void:
-	gold += amount
+	# 金币加成道具（gold_pct）在这里统一结算：所有进账都吃，包括波末奖励和爆金币
+	gold += int(round(float(amount) * (1.0 + stat_value("gold_pct"))))
 	Events.gold_changed.emit(gold)
 
 func spend_gold(amount: int) -> bool:
@@ -170,13 +175,41 @@ func buy_upgrade(key: String) -> void:
 	Events.weapons_changed.emit(weapons)
 
 # 某个属性的总加成值（如 dmg_pct、speed_pct）
+# 同时支持单属性道具（stat/value）与多属性道具（stats 字典），见 core/Inventory。
 func stat_value(stat: String) -> float:
 	var total := _char_stat(stat)
 	for k in upgrades:
-		var up := Data.upgrade(k)
-		if str(up.get("stat", "")) == stat:
-			total += float(up.get("value", 0)) * int(upgrades[k])
+		var n := int(upgrades[k])
+		for en in Inventory.stat_entries(Data.upgrade(k)):
+			if str(en.get("stat", "")) == stat:
+				total += float(en.get("value", 0)) * n
 	return total
+
+# ---- 颠勺附带的两条全局状态：护盾 / 狂暴 ----
+# 这俩不是"属性"，是有时限的战斗状态，只能挂在 GameState 上：
+# Player（挨打扣血）和 PlayerWeapons（开火频率）都要读同一个倒计时。
+var shield: int = 0              # 护盾：挨打先扣它，扣完才掉血
+var frenzy_left: float = 0.0     # 狂暴剩余秒数（攻速 + 移速）
+
+# 每帧推进狂暴倒计时。放在这里而不是 Player，是因为开火端（PlayerWeapons）
+# 和移动端（Player）都要读，各自推进就会对不上。
+func tick_buff(delta: float) -> void:
+	if frenzy_left > 0.0:
+		frenzy_left = maxf(0.0, frenzy_left - delta)
+
+func add_shield(amount: int) -> void:
+	if amount <= 0:
+		return
+	shield += amount
+	Events.shield_changed.emit(shield)
+
+func start_frenzy(seconds: float) -> void:
+	if seconds <= 0.0:
+		return
+	frenzy_left = maxf(frenzy_left, seconds)
+
+func frenzy_mult() -> float:
+	return float(Data.wok_cfg().get("frenzy_mult", 1.6)) if frenzy_left > 0.0 else 1.0
 
 # ---- 锅气 Wok Heat ----
 # 下面这些方法都是对 core/Wok.gd 纯逻辑的薄封装：改状态 + 同步公开字段 + 发信号。

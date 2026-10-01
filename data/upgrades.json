@@ -3,162 +3,528 @@
     "zh": "最大生命 +15",
     "stat": "max_hp",
     "value": 15,
-    "cost": 12,
+    "cost": 10,
     "tip": "血条更长，立刻补满这 15 点",
     "tip_en": "Longer health bar, refills +15 now.",
-    "en": "Max HP +15"
+    "en": "Max HP +15",
+    "cat": "passive",
+    "rarity": 1
   },
   "spd": {
     "zh": "移动速度 +10%",
     "stat": "speed_pct",
     "value": 0.1,
-    "cost": 12,
+    "cost": 10,
     "tip": "跑得快 = 更难被围住",
     "tip_en": "Faster = harder to corner.",
-    "en": "Move Speed +10%"
+    "en": "Move Speed +10%",
+    "cat": "passive",
+    "rarity": 1
   },
   "dmg": {
     "zh": "伤害 +10%",
     "stat": "dmg_pct",
     "value": 0.1,
-    "cost": 14,
+    "cost": 11,
     "tip": "所有武器伤害一起提升",
     "tip_en": "All weapons hit harder.",
-    "en": "Damage +10%"
+    "en": "Damage +10%",
+    "cat": "weapon",
+    "rarity": 1
   },
   "rate": {
     "zh": "攻速 +8%",
     "stat": "rate_pct",
     "value": 0.08,
-    "cost": 14,
+    "cost": 11,
     "tip": "所有武器射速一起提升",
     "tip_en": "All weapons fire faster.",
-    "en": "Fire Rate +8%"
+    "en": "Fire Rate +8%",
+    "cat": "weapon",
+    "rarity": 1
   },
   "arm": {
     "zh": "护甲 +2",
     "stat": "armor",
     "value": 2,
-    "cost": 16,
+    "cost": 13,
     "tip": "每次被撞到的伤害 -2",
     "tip_en": "-2 damage per hit taken.",
-    "en": "Armor +2"
+    "en": "Armor +2",
+    "cat": "passive",
+    "rarity": 1
   },
   "pick": {
     "zh": "拾取范围 +30%",
     "stat": "pickup_pct",
     "value": 0.3,
-    "cost": 8,
+    "cost": 6,
     "tip": "金币自动吸过来的范围变大",
     "tip_en": "Gold drifts to you from farther.",
-    "en": "Pickup +30%"
+    "en": "Pickup +30%",
+    "cat": "passive",
+    "rarity": 1
   },
   "heal": {
     "zh": "立刻回复 40 生命",
     "stat": "heal_now",
     "value": 40,
-    "cost": 10,
+    "cost": 8,
     "tip": "残血时的救命稻草",
     "tip_en": "Emergency +40 HP now.",
-    "en": "Heal 40 HP"
+    "en": "Heal 40 HP",
+    "cat": "passive",
+    "rarity": 1
   },
   "hp2": {
     "zh": "最大生命 +30",
     "stat": "max_hp",
     "value": 30,
-    "cost": 26,
+    "cost": 21,
     "tip": "后期堆血，容错更高",
     "tip_en": "Stack HP late for safety.",
-    "en": "Max HP +30"
+    "en": "Max HP +30",
+    "cat": "passive",
+    "rarity": 2
   },
   "dmg2": {
     "zh": "伤害 +18%",
     "stat": "dmg_pct",
     "value": 0.18,
-    "cost": 30,
+    "cost": 24,
     "tip": "伤害大头，后期必拿",
     "tip_en": "Big damage, grab late.",
-    "en": "Damage +18%"
+    "en": "Damage +18%",
+    "cat": "weapon",
+    "rarity": 2
   },
   "rate2": {
     "zh": "攻速 +15%",
     "stat": "rate_pct",
     "value": 0.15,
-    "cost": 30,
+    "cost": 24,
     "tip": "射速翻倍靠它堆",
     "tip_en": "Double down on fire rate.",
-    "en": "Fire Rate +15%"
+    "en": "Fire Rate +15%",
+    "cat": "weapon",
+    "rarity": 2
   },
   "lifesteal": {
     "zh": "击杀有几率回血 3 点",
     "stat": "lifesteal",
     "value": 3,
-    "cost": 26,
+    "cost": 21,
     "tip": "每次击杀有 8% 概率回 3 点血，续航靠它",
     "tip_en": "8% chance: +3 HP on kill.",
-    "en": "8% chance: +3 HP on kill"
+    "en": "8% chance: +3 HP on kill",
+    "cat": "passive",
+    "rarity": 2
   },
   "wokgain": {
     "zh": "锅气获取 +25%",
     "stat": "wok_pct",
     "value": 0.25,
-    "cost": 18,
+    "cost": 14,
     "tip": "火候攒得更快，颠勺来得更勤",
     "tip_en": "Build Wok Heat faster.",
-    "en": "Wok Heat gain +25%"
+    "en": "Wok Heat gain +25%",
+    "cat": "wok",
+    "rarity": 2
   },
   "autopick": {
     "zh": "自动拾取",
     "stat": "autopick",
     "value": 1,
-    "cost": 14,
+    "cost": 11,
     "tip": "开启被动磁吸，金币在较大范围内自动飞向你（波末散落损耗减半）",
     "tip_en": "Passive magnet pulls gold from a wide radius (halves wave-end loss).",
-    "en": "Auto Pickup"
+    "en": "Auto Pickup",
+    "cat": "passive",
+    "rarity": 3
   },
   "fullauto": {
     "zh": "全屏自动拾取",
     "stat": "fullauto",
     "value": 1,
-    "cost": 40,
+    "cost": 32,
     "tip": "屏内金币全收，波末散落零损耗。强但要花大钱，围绕它配一套收钱流",
     "tip_en": "Collect all on-screen gold, zero wave-end loss. Pricey but complete.",
-    "en": "Full-Screen Auto Pickup"
+    "en": "Full-Screen Auto Pickup",
+    "cat": "passive",
+    "rarity": 3
   },
   "wokdmg": {
     "zh": "颠勺伤害 +30%",
     "stat": "wok_dmg_pct",
     "value": 0.3,
-    "cost": 22,
+    "cost": 18,
     "tip": "锅气全屏重伤提高 30%，Boss 也削一大块",
     "tip_en": "Wok toss deals +30% damage to all enemies.",
-    "en": "Wok Damage +30%"
+    "en": "Wok Damage +30%",
+    "cat": "wok",
+    "rarity": 2
   },
   "wokknock": {
     "zh": "颠勺击退 +50%",
     "stat": "wok_knock_pct",
     "value": 0.5,
-    "cost": 20,
+    "cost": 16,
     "tip": "锅气把怪物甩飞得更远，危急时弹开一片空间",
     "tip_en": "Wok toss knocks enemies 50% farther.",
-    "en": "Wok Knockback +50%"
+    "en": "Wok Knockback +50%",
+    "cat": "wok",
+    "rarity": 2
   },
   "wokslow": {
     "zh": "颠勺附带减速",
     "stat": "wok_slow",
     "value": 1.5,
-    "cost": 24,
+    "cost": 19,
     "tip": "颠勺时全场敌人减速，争取喘息/走位时间",
     "tip_en": "Wok toss also slows all enemies for a moment.",
-    "en": "Wok Slows Enemies"
+    "en": "Wok Slows Enemies",
+    "cat": "wok",
+    "rarity": 2
   },
   "wokcharge": {
     "zh": "锅气上限 +1",
     "stat": "wok_charges",
     "value": 1,
-    "cost": 28,
+    "cost": 22,
     "tip": "最多可存住的颠勺充能 +1，手里多留几个救急",
     "tip_en": "Raise max banked Wok charges by 1.",
-    "en": "Max Wok Charges +1"
+    "en": "Max Wok Charges +1",
+    "cat": "wok",
+    "rarity": 3
+  },
+  "wokfreeze": {
+    "zh": "颠勺·冻结",
+    "en": "Wok Freeze",
+    "stat": "wok_freeze",
+    "value": 1.2,
+    "cost": 29,
+    "tip": "颠勺把全场敌人冻住，动弹不得",
+    "tip_en": "Toss freezes every enemy in place.",
+    "cat": "wok",
+    "rarity": 3
+  },
+  "wokpoison": {
+    "zh": "颠勺·下毒",
+    "en": "Wok Poison",
+    "stat": "wok_poison",
+    "value": 0.05,
+    "cost": 24,
+    "tip": "颠勺后全场中毒，持续掉血",
+    "tip_en": "Toss poisons everything: damage over time.",
+    "cat": "wok",
+    "rarity": 3
+  },
+  "wokburn": {
+    "zh": "颠勺·爆炒",
+    "en": "Wok Burn",
+    "stat": "wok_burn",
+    "value": 14,
+    "cost": 22,
+    "tip": "颠勺后全场灼烧，烧得比毒快但短",
+    "tip_en": "Toss sets everything alight: fast burn, short life.",
+    "cat": "wok",
+    "rarity": 2
+  },
+  "wokshred": {
+    "zh": "颠勺·破甲",
+    "en": "Wok Shred",
+    "stat": "wok_shred",
+    "value": 0.3,
+    "cost": 21,
+    "tip": "颠勺后全场受伤加深，趁机输出",
+    "tip_en": "Toss shreds armor: they take extra damage.",
+    "cat": "wok",
+    "rarity": 2
+  },
+  "wokboom": {
+    "zh": "颠勺·连环爆",
+    "en": "Wok Chain Blast",
+    "stat": "wok_explode",
+    "value": 45,
+    "cost": 27,
+    "tip": "被颠勺打死的怪会炸到周围的同伴",
+    "tip_en": "Enemies killed by the toss explode on their friends.",
+    "cat": "wok",
+    "rarity": 3
+  },
+  "wokleech": {
+    "zh": "颠勺·回锅肉",
+    "en": "Wok Lifesteal",
+    "stat": "wok_lifesteal",
+    "value": 3,
+    "cost": 21,
+    "tip": "颠勺每波及一个敌人就回一点血",
+    "tip_en": "Heal for each enemy caught in the toss.",
+    "cat": "wok",
+    "rarity": 2
+  },
+  "wokgold": {
+    "zh": "颠勺·撒钱",
+    "en": "Wok Pays Out",
+    "stat": "wok_gold",
+    "value": 1,
+    "cost": 18,
+    "tip": "颠勺每波及一个敌人就掉一枚金币",
+    "tip_en": "Each enemy caught in the toss drops gold.",
+    "cat": "wok",
+    "rarity": 2
+  },
+  "wokrefund": {
+    "zh": "颠勺·余温",
+    "en": "Wok Afterheat",
+    "stat": "wok_refund",
+    "value": 0.45,
+    "cost": 24,
+    "tip": "放完颠勺还留一截火候，更快攒出下一发",
+    "tip_en": "Tossing refunds part of the heat bar.",
+    "cat": "wok",
+    "rarity": 3
+  },
+  "wokbig": {
+    "zh": "颠勺·猛火",
+    "en": "Wok Blaze",
+    "stat": "wok_dmg_pct",
+    "value": 0.9,
+    "cost": 34,
+    "tip": "颠勺伤害大幅提升",
+    "tip_en": "Much heavier toss damage.",
+    "cat": "wok",
+    "rarity": 3
+  },
+  "wokfast": {
+    "zh": "锅气·猛灶",
+    "en": "Wok Stoke",
+    "stat": "wok_pct",
+    "value": 0.5,
+    "cost": 27,
+    "tip": "击杀攒的锅气大幅提升",
+    "tip_en": "Kills feed the wok much faster.",
+    "cat": "wok",
+    "rarity": 3
+  },
+  "wokkeep": {
+    "zh": "锅气·多备一勺",
+    "en": "Wok Extra Charge",
+    "stat": "wok_charges",
+    "value": 1,
+    "cost": 32,
+    "tip": "再多存一个颠勺充能，手里更从容",
+    "tip_en": "Bank one more toss charge.",
+    "cat": "wok",
+    "rarity": 3
+  },
+  "crit": {
+    "zh": "暴击率",
+    "en": "Crit Chance",
+    "stat": "crit_chance",
+    "value": 0.08,
+    "cost": 18,
+    "tip": "每颗弹丸都可能暴击",
+    "tip_en": "Every pellet can crit.",
+    "cat": "weapon",
+    "rarity": 2
+  },
+  "critdmg": {
+    "zh": "暴击伤害",
+    "en": "Crit Damage",
+    "stat": "crit_mult",
+    "value": 0.7,
+    "cost": 21,
+    "tip": "暴击打得更疼",
+    "tip_en": "Crits hit much harder.",
+    "cat": "weapon",
+    "rarity": 2
+  },
+  "pierce": {
+    "zh": "穿透",
+    "en": "Pierce",
+    "stat": "pierce_add",
+    "value": 1,
+    "cost": 26,
+    "tip": "子弹多穿一个敌人才消失",
+    "tip_en": "Shots punch through one more enemy.",
+    "cat": "weapon",
+    "rarity": 3
+  },
+  "aoe": {
+    "zh": "溅射范围",
+    "en": "Blast Radius",
+    "stat": "aoe_add",
+    "value": 20,
+    "cost": 21,
+    "tip": "所有武器的爆炸范围变大",
+    "tip_en": "Every blast covers more ground.",
+    "cat": "weapon",
+    "rarity": 2
+  },
+  "pellets": {
+    "zh": "多一发",
+    "en": "Extra Pellet",
+    "stat": "pellets_add",
+    "value": 1,
+    "cost": 30,
+    "tip": "每次开火多打一发",
+    "tip_en": "One more pellet per shot.",
+    "cat": "weapon",
+    "rarity": 3
+  },
+  "rangeup": {
+    "zh": "射程",
+    "en": "Range",
+    "stat": "range_pct",
+    "value": 0.25,
+    "cost": 13,
+    "tip": "打得更远，敌人还没贴脸就开始掉血",
+    "tip_en": "Reach further, start shooting sooner.",
+    "cat": "weapon",
+    "rarity": 1
+  },
+  "bspeed": {
+    "zh": "弹速",
+    "en": "Bullet Speed",
+    "stat": "bullet_speed_pct",
+    "value": 0.35,
+    "cost": 11,
+    "tip": "子弹飞得更快，更好命中",
+    "tip_en": "Faster bullets, easier hits.",
+    "cat": "weapon",
+    "rarity": 1
+  },
+  "spdfast": {
+    "zh": "疾风步",
+    "en": "Swift Feet",
+    "stat": "speed_pct",
+    "value": 0.18,
+    "cost": 22,
+    "tip": "跑得更快，围不住你",
+    "tip_en": "Move much faster: harder to corner.",
+    "cat": "passive",
+    "rarity": 2
+  },
+  "armbig": {
+    "zh": "铁布衫",
+    "en": "Iron Skin",
+    "stat": "armor",
+    "value": 5,
+    "cost": 27,
+    "tip": "大量减伤，硬吃几下也不慌",
+    "tip_en": "Heavy damage reduction.",
+    "cat": "passive",
+    "rarity": 2
+  },
+  "regen": {
+    "zh": "回血",
+    "en": "Regeneration",
+    "stat": "regen",
+    "value": 1.0,
+    "cost": 19,
+    "tip": "每秒回一点血",
+    "tip_en": "Slowly heal every second.",
+    "cat": "passive",
+    "rarity": 2
+  },
+  "regen2": {
+    "zh": "快速愈合",
+    "en": "Fast Healing",
+    "stat": "regen",
+    "value": 2.5,
+    "cost": 34,
+    "tip": "每秒回更多血",
+    "tip_en": "Heal much faster.",
+    "cat": "passive",
+    "rarity": 3
+  },
+  "dodge": {
+    "zh": "闪避",
+    "en": "Dodge",
+    "stat": "dodge",
+    "value": 0.07,
+    "cost": 24,
+    "tip": "有机会完全躲掉一次伤害",
+    "tip_en": "A chance to ignore a hit entirely.",
+    "cat": "passive",
+    "rarity": 3
+  },
+  "gold": {
+    "zh": "招财",
+    "en": "Greed",
+    "stat": "gold_pct",
+    "value": 0.2,
+    "cost": 16,
+    "tip": "所有金币收入提升",
+    "tip_en": "All gold income increased.",
+    "cat": "passive",
+    "rarity": 2
+  },
+  "gold2": {
+    "zh": "暴富",
+    "en": "Big Score",
+    "stat": "gold_pct",
+    "value": 0.45,
+    "cost": 30,
+    "tip": "金币收入大幅提升",
+    "tip_en": "Much more gold from everything.",
+    "cat": "passive",
+    "rarity": 3
+  },
+  "dashcd": {
+    "zh": "身法",
+    "en": "Quick Step",
+    "stat": "dash_cd_pct",
+    "value": 0.25,
+    "cost": 18,
+    "tip": "冲刺冷却缩短",
+    "tip_en": "Dash comes back sooner.",
+    "cat": "passive",
+    "rarity": 2
+  },
+  "dashfar": {
+    "zh": "纵身",
+    "en": "Long Dash",
+    "stat": "dash_dist_pct",
+    "value": 0.35,
+    "cost": 14,
+    "tip": "冲刺距离变长",
+    "tip_en": "Dash covers more ground.",
+    "cat": "passive",
+    "rarity": 2
+  },
+  "iframe": {
+    "zh": "金身",
+    "en": "Longer Mercy",
+    "stat": "ifr_pct",
+    "value": 0.3,
+    "cost": 16,
+    "tip": "受伤后的无敌时间变长",
+    "tip_en": "Longer invulnerability after a hit.",
+    "cat": "passive",
+    "rarity": 2
+  },
+  "hpbig": {
+    "zh": "硬汉",
+    "en": "Tough Body",
+    "stat": "max_hp",
+    "value": 60,
+    "cost": 35,
+    "tip": "生命上限大幅提升",
+    "tip_en": "Much bigger health pool.",
+    "cat": "passive",
+    "rarity": 3
+  },
+  "dmgbig": {
+    "zh": "狂暴",
+    "en": "Berserk",
+    "stat": "dmg_pct",
+    "value": 0.35,
+    "cost": 37,
+    "tip": "伤害大幅提升",
+    "tip_en": "Much higher damage.",
+    "cat": "passive",
+    "rarity": 3
   }
 }

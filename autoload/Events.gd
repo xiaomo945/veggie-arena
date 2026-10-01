@@ -10,6 +10,8 @@ signal player_died()
 signal enemy_spawned(enemy: Node)
 signal enemy_killed(type: String, pos: Vector2)
 signal damage_dealt(amount: int, pos: Vector2, critical: bool)
+# 闪避成功（被动道具 dodge）：整次伤害被免掉，用于飘"MISS"字/音效
+signal player_dodged(pos: Vector2)
 
 # ---- 波次 ----
 signal wave_started(wave: int)
@@ -23,6 +25,7 @@ signal wok_tier_changed(tier: int)
 signal wok_ready_changed(ready: bool)
 signal wok_charges_changed(charges: int)
 signal wok_tossed()
+signal shield_changed(value: int)
 # HUD 颠勺按钮 / Joystick 避让区点按发出，由 Game 真正执行
 signal wok_toss_requested()
 
@@ -48,6 +51,15 @@ signal weapon_merged(key: String, level: int)
 # Player 只发信号说"我要往这个方向打一发"，不认识子弹、也不认识敌人列表
 signal weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, color: Color)
 
+# ---- 近战挥砍 ----
+# PlayerWeapons 在冷却到点、瞄准最近敌人后发出；真正结算（伤害漏斗/击退/视觉）
+# 由 EnemySystem 完成。dir=挥砍朝向，reach=弧半径，half_arc=半角（弧度），
+# dmg=已含暴击与全局加成的单跳伤害，knockback=击退脉冲（0 表示不击退）。
+signal melee_swung(origin: Vector2, dir: Vector2, reach: float, half_arc: float,
+	dmg: float, crit: bool, knockback: float, color: Color)
+# 纯视觉：Fx 层画一个短命扇形。和伤害结算解耦（删掉 Fx 游戏照样能打）。
+signal melee_visual(origin: Vector2, dir: Vector2, reach: float, half_arc: float, color: Color)
+
 # ---- 操作输入 ----
 # 摇杆只发信号，不认识 Player；Player 只收信号，不认识摇杆。
 signal stick_dir_changed(dir: Vector2)
@@ -58,6 +70,9 @@ signal dash_requested()
 signal dash_state_changed(ratio: float, ready: bool)
 # 冲刺起步的视觉反馈（残影/尘土），纯表现层订阅
 signal dash_started(pos: Vector2, dir: Vector2)
+
+# 快进（2 倍速）开关：HUD 快进按钮按下发出，由 Game 真正改战斗倍率
+signal fast_forward_toggled(on: bool)
 
 # ---- 流程 ----
 signal run_started()

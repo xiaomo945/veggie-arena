@@ -6,6 +6,19 @@ extends RefCounted
 
 const MAX_PELLETS := 12  # 安全上限，防止数据表填错把手机卡死
 
+# 近战扇形：以玩家为圆心、range 为半径、约 120° 的挥砍弧（半角 60°）。
+# 100~140° 的区间都算合理，取 120° 居中。
+const MELEE_ARC_DEG := 120.0
+
+# 这把武器是不是近战（缺省 "ranged"，保持对 18 把老武器的兼容）
+static func is_melee(def: Dictionary) -> bool:
+	return str(def.get("type", "ranged")) == "melee"
+
+# 近战挥砍的半角（弧度）。data 里可加 "arc" 字段覆盖（单位：度）。
+static func melee_half_arc(def: Dictionary) -> float:
+	var deg := float(def.get("arc", MELEE_ARC_DEG))
+	return deg_to_rad(deg) * 0.5
+
 # 合成后的属性：Lv1 原样，之后每级 dmg ×1.30、cd ×0.93（系数来自 balance.json）
 static func merged_stats(def: Dictionary, level: int, cfg: Dictionary) -> Dictionary:
 	var dm := float(cfg.get("merge_dmg_multiplier", 1.30))

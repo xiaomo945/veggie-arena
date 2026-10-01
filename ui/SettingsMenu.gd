@@ -4,24 +4,25 @@ extends CanvasLayer
 # 竖屏 540x900，内容留安全区内边距（顶部避开刘海，底部避开圆角/手势条）。
 # 画质选"低"时自动关粒子 / 震屏（降级）并禁用对应开关。
 # 多语言：所有文案经 I18n.t；底部"语言"切换（中文 / English）实时生效并持久化。
+#
+# ⚠️ 布局用 _y 游标而不是手写 "TOP_INSET + N"：以前在中间插一行就得把后面
+# 十几个坐标全部加一遍，改一次错一次。现在插/删一行只影响它自己。
 
 # 帧率选项：0 = 引擎默认
 const FPS_OPTIONS := [0, 30, 60, 120]
+# 控件工厂（纯造控件，不含文案/业务）：拆出去才能守住 300 行红线
+const Widgets := preload("res://ui/SettingsWidgets.gd")
 # 安全区内边距（设计坐标）
 const TOP_INSET := 40.0
 const BOTTOM_INSET := 28.0
 
 var _root: Control
 var _title_lbl: Label
-var _music_lbl: Label
-var _sfx_lbl: Label
-var _quality_lbl: Label
-var _shake_lbl: Label
-var _particle_lbl: Label
-var _fps_lbl: Label
-var _lang_lbl: Label
+# 各行标题按名字存，避免为每个标签声明一个成员变量（新增一行 = 加一个 key）
+var _labels: Dictionary = {}
 var _music_slider: HSlider
 var _sfx_slider: HSlider
+var _move_slider: HSlider
 var _quality_btns: Array = []      # [{btn, val}]
 var _shake_btn: Button
 var _particle_btn: Button
@@ -30,6 +31,8 @@ var _lang_btns: Array = []          # [{btn, val}] 0=中文 1=English
 var _back_btn: Button
 # 低画质强制降级标记：离开低画质时把被强制关的开关恢复为开
 var _forced_low := false
+# 纵向布局游标（见文件头说明）
+var _y := 0.0
 
 # 返回暂停菜单的回调（由 PauseScreen 注入）
 var back_pressed: Callable = Callable()
@@ -38,6 +41,11 @@ func _ready() -> void:
 	layer = 35
 	_build()
 	_root.visible = false
+
+# 游标往下推 gap 像素，返回新的 y
+func _advance(gap: float) -> float:
+	_y += gap
+	return _y
 
 func _build() -> void:
 	_root = Control.new()
@@ -49,64 +57,57 @@ func _build() -> void:
 	shade.color = Color(0.03, 0.04, 0.07, 0.92)
 	_root.add_child(shade)
 
-	_title_lbl = _mk_label(TOP_INSET, 34, 0.98, 0.86, 0.32)
+	_y = TOP_INSET
+	_title_lbl = Widgets.label(_root, _y, 34, Color(0.98, 0.86, 0.32))
 
 	# 音乐音量
-	_music_lbl = _mk_label(TOP_INSET + 52, 16, 0.85, 0.88, 0.92)
-	_music_slider = _mk_slider(TOP_INSET + 80)
+	_labels["music"] = Widgets.label(_root, _advance(52.0), 16, Color(0.85, 0.88, 0.92))
+	_music_slider = Widgets.slider(_root, _advance(28.0))
 	_music_slider.value = float(Settings.music_volume)
 	_music_slider.value_changed.connect(_on_music_vol)
 
 	# 音效音量
-	_sfx_lbl = _mk_label(TOP_INSET + 120, 16, 0.85, 0.88, 0.92)
-	_sfx_slider = _mk_slider(TOP_INSET + 148)
+	_labels["sfx"] = Widgets.label(_root, _advance(40.0), 16, Color(0.85, 0.88, 0.92))
+	_sfx_slider = Widgets.slider(_root, _advance(28.0))
 	_sfx_slider.value = float(Settings.sfx_volume)
 	_sfx_slider.value_changed.connect(_on_sfx_vol)
 
-	# 画质档
-	_quality_lbl = _mk_label(TOP_INSET + 192, 16, 0.85, 0.88, 0.92)
-	var qw := 100.0
-	var qgap := 10.0
-	var qstart := (540.0 - (3.0 * qw + 2.0 * qgap)) * 0.5
-	for i in 3:
-		var b := Button.new()
-		b.set_size(Vector2(qw, 56))
-		b.set_position(Vector2(qstart + float(i) * (qw + qgap), TOP_INSET + 222))
-		b.add_theme_font_size_override("font_size", 20)
-		b.pressed.connect(_on_quality.bind(i))
-		_root.add_child(b)
-		_quality_btns.append({"btn": b, "val": i})
+	# 移动速度手感（70%~180%）：手感是主观的，与其反复改数值重新出包，
+	# 不如让玩家自己拧到舒服为止 —— 范围上限 180% 足够"飞起来"试手感
+	_labels["move"] = Widgets.label(_root, _advance(40.0), 16, Color(0.85, 0.88, 0.92))
+	_move_slider = Widgets.slider(_root, _advance(28.0))
+	_move_slider.min_value = 70.0
+	_move_slider.max_value = 180.0
+	_move_slider.step = 5.0
+	_move_slider.value = float(Settings.move_scale)
+	_move_slider.value_changed.connect(_on_move_scale)
+
+	# 画质档 / 语言：三选一、二选一的按钮行
+	_labels["quality"] = Widgets.label(_root, _advance(44.0), 16, Color(0.85, 0.88, 0.92))
+	_quality_btns = Widgets.button_row(_root, 3, _advance(30.0), _on_quality)
 
 	# 震屏开关
-	_shake_lbl = _mk_label(TOP_INSET + 302, 16, 0.85, 0.88, 0.92)
-	_shake_btn = _mk_toggle(TOP_INSET + 332)
+	_labels["shake"] = Widgets.label(_root, _advance(80.0), 16, Color(0.85, 0.88, 0.92))
+	_shake_btn = Widgets.toggle(_root, _advance(30.0))
 	_shake_btn.pressed.connect(_on_shake)
 
 	# 粒子开关
-	_particle_lbl = _mk_label(TOP_INSET + 392, 16, 0.85, 0.88, 0.92)
-	_particle_btn = _mk_toggle(TOP_INSET + 422)
+	_labels["particles"] = Widgets.label(_root, _advance(60.0), 16, Color(0.85, 0.88, 0.92))
+	_particle_btn = Widgets.toggle(_root, _advance(28.0))
 	_particle_btn.pressed.connect(_on_particle)
 
 	# 帧率目标
-	_fps_lbl = _mk_label(TOP_INSET + 502, 16, 0.85, 0.88, 0.92)
+	_labels["fps"] = Widgets.label(_root, _advance(82.0), 16, Color(0.85, 0.88, 0.92))
 	_fps_option = OptionButton.new()
 	_fps_option.set_size(Vector2(300, 50))
-	_fps_option.set_position(Vector2((540 - 300) * 0.5, TOP_INSET + 532))
+	_fps_option.set_position(Vector2((540 - 300) * 0.5, _advance(30.0)))
 	_fps_option.add_theme_font_size_override("font_size", 18)
 	_fps_option.item_selected.connect(_on_fps)
 	_root.add_child(_fps_option)
 
 	# 语言切换（中文 / English）
-	_lang_lbl = _mk_label(TOP_INSET + 592, 16, 0.85, 0.88, 0.92)
-	var lstart := (540.0 - (2.0 * qw + qgap)) * 0.5
-	for i in 2:
-		var b := Button.new()
-		b.set_size(Vector2(qw, 56))
-		b.set_position(Vector2(lstart + float(i) * (qw + qgap), TOP_INSET + 622))
-		b.add_theme_font_size_override("font_size", 20)
-		b.pressed.connect(_on_lang.bind(i))
-		_root.add_child(b)
-		_lang_btns.append({"btn": b, "val": i})
+	_labels["lang"] = Widgets.label(_root, _advance(60.0), 16, Color(0.85, 0.88, 0.92))
+	_lang_btns = Widgets.button_row(_root, 2, _advance(30.0), _on_lang)
 
 	# 返回：回到暂停菜单
 	_back_btn = Button.new()
@@ -120,38 +121,6 @@ func _build() -> void:
 	_refresh_texts()
 	_refresh_from_settings()
 
-# 居中标签（无文字，由调用方填 I18n 文案），返回引用供后续刷新
-func _mk_label(y: float, size: int, r: float, g: float, b: float) -> Label:
-	var l := Label.new()
-	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", Color(r, g, b))
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.set_position(Vector2(0, y))
-	l.set_size(Vector2(540, 26))
-	_root.add_child(l)
-	return l
-
-func _mk_slider(y: float) -> HSlider:
-	var s := HSlider.new()
-	s.min_value = 0.0
-	s.max_value = 100.0
-	s.step = 1.0
-	s.custom_minimum_size = Vector2(360, 30)
-	s.size = Vector2(360, 30)
-	s.position = Vector2((540 - 360) * 0.5, y)
-	s.add_theme_font_size_override("font_size", 14)
-	_root.add_child(s)
-	return s
-
-func _mk_toggle(y: float) -> Button:
-	var b := Button.new()
-	b.set_size(Vector2(300, 52))
-	b.set_position(Vector2((540 - 300) * 0.5, y))
-	b.add_theme_font_size_override("font_size", 18)
-	# 具体回调在 _build 里按用途分别连接（震屏 / 粒子 / 语言）
-	_root.add_child(b)
-	return b
-
 # 帧率选项文本（首个为"默认"，其余 N FPS）
 func _fps_label(i: int) -> String:
 	if i == 0:
@@ -161,13 +130,14 @@ func _fps_label(i: int) -> String:
 # 写入所有随语言变化的文案
 func _refresh_texts() -> void:
 	_title_lbl.text = I18n.t("settings_title")
-	_music_lbl.text = I18n.t("settings_music")
-	_sfx_lbl.text = I18n.t("settings_sfx")
-	_quality_lbl.text = I18n.t("settings_quality")
-	_shake_lbl.text = I18n.t("settings_shake")
-	_particle_lbl.text = I18n.t("settings_particles")
-	_fps_lbl.text = I18n.t("settings_fps")
-	_lang_lbl.text = I18n.t("settings_language")
+	_labels["music"].text = I18n.t("settings_music")
+	_labels["sfx"].text = I18n.t("settings_sfx")
+	_labels["quality"].text = I18n.t("settings_quality")
+	_labels["shake"].text = I18n.t("settings_shake")
+	_labels["particles"].text = I18n.t("settings_particles")
+	_labels["fps"].text = I18n.t("settings_fps")
+	_labels["lang"].text = I18n.t("settings_language")
+	_refresh_move_label()
 	_back_btn.text = I18n.t("settings_back")
 	var qnames := [I18n.t("quality_low"), I18n.t("quality_mid"), I18n.t("quality_high")]
 	for e in _quality_btns:
@@ -186,15 +156,21 @@ func _refresh_texts() -> void:
 	for i in FPS_OPTIONS.size():
 		_fps_option.add_item(_fps_label(i), FPS_OPTIONS[i])
 
+# 移动速度标题带实时百分比（滑块拖动时要跟着变）
+func _refresh_move_label() -> void:
+	_labels["move"].text = "%s  %d%%" % [I18n.t("settings_move"), Settings.move_scale]
+
 # 用当前 Settings 刷新所有控件状态（含随状态变化的开关文案 / 选中高亮）
 func _refresh_from_settings() -> void:
 	_music_slider.value = float(Settings.music_volume)
 	_sfx_slider.value = float(Settings.sfx_volume)
+	_move_slider.value = float(Settings.move_scale)
+	_refresh_move_label()
 	for e in _quality_btns:
 		var d := e as Dictionary
 		var b := d.get("btn") as Button
 		var v := int(d.get("val", 1))
-		_set_btn_active(b, v == Settings.quality)
+		Widgets.set_active(b, v == Settings.quality)
 	_shake_btn.text = I18n.t("settings_shake") + "   " + (I18n.t("on") if Settings.screenshake_enabled else I18n.t("off"))
 	_particle_btn.text = I18n.t("settings_particles") + "   " + (I18n.t("on") if Settings.particles_enabled else I18n.t("off"))
 	_shake_btn.disabled = (Settings.quality == 0)
@@ -205,29 +181,13 @@ func _refresh_from_settings() -> void:
 		var b := d.get("btn") as Button
 		var v := int(d.get("val", 0))
 		var code := "zh" if v == 0 else "en"
-		_set_btn_active(b, code == Settings.language)
+		Widgets.set_active(b, code == Settings.language)
 	var idx := 0
 	for i in FPS_OPTIONS.size():
 		if FPS_OPTIONS[i] == Settings.fps_target:
 			idx = i
 			break
 	_fps_option.select(idx)
-
-func _set_btn_active(b: Button, on: bool) -> void:
-	if b == null:
-		return
-	var sb := StyleBoxFlat.new()
-	if on:
-		sb.bg_color = Color(0.92, 0.42, 0.26, 0.35)
-		sb.border_color = Color(1.0, 0.72, 0.42, 1.0)
-	else:
-		sb.bg_color = Color(0.2, 0.22, 0.28, 0.6)
-		sb.border_color = Color(0.4, 0.45, 0.55, 0.8)
-	sb.set_border_width_all(2)
-	b.add_theme_stylebox_override("normal", sb)
-	var sbp := sb.duplicate()
-	sbp.bg_color = Color(1.0, 0.6, 0.4, 0.5)
-	b.add_theme_stylebox_override("pressed", sbp)
 
 func show_menu() -> void:
 	_refresh_texts()
@@ -242,6 +202,12 @@ func _on_music_vol(v: float) -> void:
 
 func _on_sfx_vol(v: float) -> void:
 	Settings.set_sfx_volume(int(v))
+
+# 移动速度手感：写设置 + 立刻刷新百分比。实际速度由 Player 每帧读 Settings 重算，
+# 所以不用重建角色 —— 拧一下滑块马上就能感觉到。
+func _on_move_scale(v: float) -> void:
+	Settings.set_move_scale(int(v))
+	_refresh_move_label()
 
 func _on_quality(v: int) -> void:
 	Settings.set_quality(v)

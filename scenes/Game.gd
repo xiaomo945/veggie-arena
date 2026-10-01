@@ -29,6 +29,9 @@ var player: Node2D = null
 var enemy_system: Node = null          # 战斗子系统（刷怪/敌人/子弹/颠勺），_ready 里注入
 var _paused := false
 var _spawn_acc := 0.0
+# 战斗倍率（快进按钮）：1=正常，2=2 倍速。用"每物理帧多跑一次世界步进"
+# 而不是 Engine.time_scale —— 这样 UI/补间/震屏仍按真实时间走，不会乱。
+var _sim_speed := 1
 
 func _ready() -> void:
 	world.rng.randomize()
@@ -43,6 +46,8 @@ func _ready() -> void:
 	enemy_system.world = world
 	add_child(enemy_system)
 	Events.weapon_fired.connect(_on_weapon_fired)
+	Events.melee_swung.connect(_on_melee_swung)
+	Events.fast_forward_toggled.connect(_on_fast_forward)
 	Events.player_died.connect(_on_player_died)
 	Events.run_won.connect(_on_run_won)
 	# ⚠️ 不再这里 reset —— 一局由标题页"开始"或死亡页"再来一局"触发 start_run()
@@ -85,6 +90,8 @@ func start_run() -> void:
 	GameState.reset()
 	_paused = false
 	GameState.paused = false
+	_sim_speed = 1
+	Events.fast_forward_toggled.emit(false)
 	set_physics_process(true)
 	Events.run_started.emit()
 
@@ -155,9 +162,16 @@ func alive_enemy_count() -> int:
 func _physics_process(delta: float) -> void:
 	if player == null or not GameState.running or _paused:
 		return
+	# 快进：每物理帧把世界步进多次（UI/补间/震屏按真实时间，不受影响）
+	for _i in _sim_speed:
+		_step_world(delta)
+
+# 一帧的世界推进（被快进循环复用）。所有"随时间推进"的玩法逻辑都在这里。
+func _step_world(delta: float) -> void:
 	GameState.tick_wave(delta)
 	# 锅气自然衰减：停手不刷怪就凉下来，逼你保持进攻节奏
 	GameState.decay_wok(delta)
+	GameState.tick_buff(delta)
 	# 颠勺冲击波动画推进
 	if world.shock_t >= 0.0:
 		world.shock_t += delta
@@ -180,7 +194,7 @@ func _physics_process(delta: float) -> void:
 	# 先收集敌人数组（含本帧位置/速度），供开火与子弹追踪共用
 	enemy_system.collect_enemy_data()
 
-	# 开火（武器自动瞄准最近目标）
+	# 开火（武器自动瞄准最近目标；近战在此走 melee_swung 漏斗）
 	if player.has_method("auto_fire"):
 		player.auto_fire(world.edata, delta)
 
@@ -224,6 +238,10 @@ func _end_wave() -> void:
 				GameState.add_gold(kept)
 	GameState.add_gold(Economy.wave_bonus(GameState.wave, Data.wave_cfg()))
 	GameState.heal_percent(float(Data.wave_cfg().get("heal_percent", 0.12)))
+	# 波末回血（wave_heal）：固定值，与上面的百分比回血叠加，是"续航流"的核心
+	var wh := int(round(GameState.stat_value("wave_heal")))
+	if wh > 0:
+		GameState.heal(wh)
 	# 最后一波结束 = 通关：停跑并弹胜利页，不再开补给站
 	if GameState.is_last_wave():
 		GameState.running = false
@@ -242,6 +260,14 @@ func _on_shop_closed() -> void:
 
 func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) -> void:
 	enemy_system.on_weapon_fired(pos, dir, stats, c)
+
+func _on_melee_swung(origin: Vector2, dir: Vector2, reach: float, half_arc: float,
+		dmg: float, crit: bool, knockback: float, c: Color) -> void:
+	enemy_system.on_melee_swung(origin, dir, reach, half_arc, dmg, crit, knockback, c)
+
+# ---- 快进倍率（2 倍速开关）----
+func _on_fast_forward(on: bool) -> void:
+	_sim_speed = 2 if on else 1
 
 # ---- 颠勺（满锅气终极）----
 func _on_wok_toss_requested() -> void:

@@ -100,10 +100,15 @@ func run() -> Dictionary:
 
 	# 7) 守卫：数据表里每个强化的 stat 都必须被游戏某处处理
 	#    （曾经出过 upgrades.json 写 heal_now、代码却匹配 heal 的静默失效 bug）
-	#    战斗/角色属性走 Inventory，经济/锅气属性走 GameState/EnemySystem。
-	var known: Array = ["max_hp", "heal_now", "speed_pct", "dmg_pct", "rate_pct",
-		"armor", "pickup_pct", "lifesteal", "wok_pct",
-		"autopick", "fullauto", "wok_dmg_pct", "wok_knock_pct", "wok_slow", "wok_charges"]
+	#
+	#    ⚠️ 原来是硬编码一份 known 列表，结果"加一个道具就要改一次测试"，
+	#    而且改漏了就静默放过。现在直接扫源码里有没有出现这个字符串 ——
+	#    加道具不用碰测试，反过来漏处理就一定会被拦下。
+	#    连"扫哪些文件"都不硬编码 —— 之前写成固定列表，结果一拆文件
+	#    （Player → PlayerWeapons）就把新文件漏掉、误报。现在全项目扫 .gd，
+	#    只排掉 tests/ 与 addons/，以后怎么拆都不会再误报。
+	var code := _source_corpus()
+	chk(code.length() > 20000, "能读到用于校验 stat 的源码（防止路径写错导致假通过，实际 %d 字符）" % code.length())
 	# 直接读 JSON：本测试的 run() 不接收 data 参数，自己读最稳
 	var ups: Dictionary = {}
 	var f := FileAccess.open("res://data/upgrades.json", FileAccess.READ)
@@ -116,9 +121,43 @@ func run() -> Dictionary:
 	for k in ups:
 		var d: Dictionary = ups[k] as Dictionary
 		var s := str(d.get("stat", ""))
-		if not known.has(s):
+		# 必须在源码里以字符串字面量的形式出现过（"wok_dmg_pct" 这种）
+		if not code.contains('"%s"' % s):
 			bad.append("%s:%s" % [k, s])
-	chk(bad.is_empty(), "upgrades.json 的 stat 都被游戏处理（Inventory/GameState/EnemySystem）" +
-		("" if bad.is_empty() else "（未知 stat: %s）" % str(bad)))
+	chk(bad.is_empty(), "upgrades.json 的每个 stat 都在源码里被处理（全项目扫 .gd）" +
+		("" if bad.is_empty() else "（没找到处理的 stat: %s）" % str(bad)))
 
 	return {"pass": _p, "fail": _f, "failures": _failures}
+
+# 把全项目的 GDScript 源码拼成一个大字符串，用于"stat 有没有被处理"这类文本扫描。
+# 递归遍历 res://，跳过 tests/（否则测试自己提到某个 stat 就会假通过）与 addons/。
+func _source_corpus() -> String:
+	var out := ""
+	var n := 0
+	var stack: Array = ["res://"]
+	while not stack.is_empty():
+		var dir: String = stack.pop_back()
+		var d := DirAccess.open(dir)
+		if d == null:
+			continue
+		d.list_dir_begin()
+		var name := d.get_next()
+		while name != "":
+			if name.begins_with("."):
+				name = d.get_next()
+				continue
+			var full: String = dir if dir == "res://" else dir + "/"
+			full += name
+			if d.current_is_dir():
+				if name != "tests" and name != "addons" and name != "web" and name != ".godot":
+					stack.append(full)
+			else:
+				if name.ends_with(".gd"):
+					var sf := FileAccess.open(full, FileAccess.READ)
+					if sf != null:
+						out += sf.get_as_text()
+						sf.close()
+						n += 1
+			name = d.get_next()
+		d.list_dir_end()
+	return out

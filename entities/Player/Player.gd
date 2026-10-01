@@ -9,6 +9,7 @@ const Movement := preload("res://core/Movement.gd")
 const Weapon := preload("res://core/Weapon.gd")
 const Dash := preload("res://core/Dash.gd")
 const Shake := preload("res://entities/effects/Shake.gd")
+const PlayerWeapons := preload("res://entities/Player/PlayerWeapons.gd")
 
 const MOUNT_RADIUS := 42.0
 
@@ -22,7 +23,7 @@ var _k_reverse := 110.0
 var _arena := Rect2()
 var _bob := 0.0
 
-var _weapons: Array = []          # [{key, level, stats, timer}]
+var arms: PlayerWeapons = null    # 武器组（缓存/冷却/开火，见 PlayerWeapons.gd）
 var _rng := RandomNumberGenerator.new()
 var _hp := 100
 var _max_hp := 100
@@ -30,6 +31,12 @@ var _ifr := 0.0
 # 冲刺闪避状态（core/Dash 的字典，纯函数推进）
 var _dash: Dictionary = {}
 var _dash_cfg: Dictionary = {}
+# 由道具驱动的派生属性（每次重建武器时刷新一次，别在每帧里重复读升级表）
+var _regen := 0.0          # 每秒回血（被动道具 regen）
+var _regen_acc := 0.0
+var _dodge := 0.0          # 闪避率（被动道具 dodge）
+var _ifr_pct := 0.0        # 无敌帧时长加成
+var _boost_left := 0.0     # 受击后的短暂加速剩余秒数（被动道具 hit_boost）
 var _face := Vector2(0, -1)      # 面朝方向：没推摇杆时冲刺默认朝这边
 var _dash_trail: Array = []      # 冲刺残影 [{pos, t}]
 var dash_count := 0            # 本局冲刺次数（诊断/HUD 用）
@@ -55,6 +62,11 @@ func _ready() -> void:
 		float(a.get("w", 540)), float(a.get("h", 900)))
 	_rng.randomize()
 	_dash_cfg = Dash.cfg(Data.dash_cfg())
+	# 冲刺类道具：冷却按"减少比例"叠（最多减 80%，否则无限冲刺会破坏节奏）
+	_dash_cfg["cooldown"] = float(_dash_cfg.get("cooldown", 1.8)) \
+		* (1.0 - clampf(GameState.stat_value("dash_cd_pct"), 0.0, 0.8))
+	_dash_cfg["distance"] = float(_dash_cfg.get("distance", 96)) \
+		* (1.0 + GameState.stat_value("dash_dist_pct"))
 	_dash = Dash.make()
 	# 外观层：承接全部绘制，与物理解耦
 	visual = preload("res://entities/Player/PlayerVisual.gd").new()
@@ -75,6 +87,7 @@ func _ready() -> void:
 	Events.dash_requested.connect(_on_dash_requested)
 	Events.character_changed.connect(_on_character_changed)
 	Events.weapons_changed.connect(_rebuild_weapons)
+	arms = PlayerWeapons.new(self)
 	_rebuild_weapons()
 
 func _on_dir(d: Vector2) -> void:
@@ -104,39 +117,22 @@ func set_move_dir(d: Vector2) -> void:
 
 # 武器列表变化（买了/合成）时重建缓存，避免每帧读 JSON
 # 参数来自 weapons_changed 信号，本函数直接读 GameState，故忽略它（命名避开成员 _weapons）
+# 属性/道具变了就重建：武器缓存交给武器组，这里只刷玩家自己的派生属性
 func _rebuild_weapons(_ignored: Array = []) -> void:
-	_weapons = []
-	var cfg := Data.combat_cfg()
-	# 强化加成在这里一次性算进武器属性，开火时不再重复计算
-	var dmg_pct := GameState.stat_value("dmg_pct")
-	var rate_pct := GameState.stat_value("rate_pct")
+	_regen = GameState.stat_value("regen")
+	_dodge = clampf(GameState.stat_value("dodge"), 0.0, 0.6)
+	_ifr_pct = GameState.stat_value("ifr_pct")
 	# 血量上限以 GameState 为准（角色加成 + 强化加成都已并进去，这里不要再加一遍）
 	_max_hp = GameState.max_hp
-	_speed = float(Data.player_cfg().get("speed", 180)) * (1.0 + GameState.stat_value("speed_pct"))
-	for w in GameState.weapons:
-		if not (w is Dictionary):
-			continue
-		var key := str(w.get("key", ""))
-		# 字段必须是 "lv"（与 core/Inventory 一致），写成 "level" 合成会静默失效
-		var lv := int(w.get("lv", 1))
-		var def := Data.weapon(key)
-		if def.is_empty():
-			continue
-		var st := Weapon.merged_stats(def, lv, cfg)
-		st["dmg"] = float(st.get("dmg", 0)) * (1.0 + dmg_pct)
-		st["cd"] = float(st.get("cd", 1.0)) / maxf(0.05, 1.0 + rate_pct)
-		_weapons.append({
-			"key": key,
-			"level": lv,
-			"stats": st,
-			"color": Color(str(def.get("color", "#ffffff"))),
-			# ⚠️ timer 初值必须是 cd（表示"冷却已满，可立即开火"）。
-			#    填成很大的数会导致 timer-cd 永远为正 → 每帧都开火（实测 876 发/17 秒）
-			"timer": float(st.get("cd", 1.0)),
-		})
+	_refresh_speed()
+	arms.rebuild()
 	visual.queue_redraw()
 
 func _physics_process(delta: float) -> void:
+	_refresh_speed()
+	if _boost_left > 0.0:
+		_boost_left = maxf(0.0, _boost_left - delta)
+	_tick_regen(delta)
 	Dash.step(_dash, delta)
 	if Dash.active(_dash):
 		# 冲刺中：直接以冲刺速度位移，不走加速度（这就是"窜出去"的爆发感来源）
@@ -178,46 +174,31 @@ func _age_trails(delta: float) -> void:
 			_dash_trail.remove_at(i)
 
 # 由 Game 每帧调用：传入敌人列表（含 pos），自动瞄准最近目标开火
+# 由 Game 每帧调用：武器冷却 + 自动瞄准开火全部在武器组里
 func auto_fire(enemies: Array, delta: float) -> void:
-	# 锅气档位加成：爆炒档攻速最快、还加伤害（"热锅炒菜更猛"）
-	var fire_mult := GameState.wok_fire_mult()
-	var dmg_mult := GameState.wok_dmg_mult()
-	for i in _weapons.size():
-		var w: Dictionary = _weapons[i]
-		var st: Dictionary = w["stats"]
-		w["timer"] = float(w["timer"]) + delta
-		var cd := float(st.get("cd", 1.0)) / maxf(0.05, fire_mult)
-		if not Weapon.can_fire(float(w["timer"]), cd):
-			continue
-		var ti := Weapon.nearest_target(global_position, enemies, float(st.get("range", 300)))
-		if ti < 0:
-			continue
-		var e: Dictionary = enemies[ti]
-		# 自动瞄准打提前量：按子弹飞行时间，预判敌人会移到哪
-		var epos: Vector2 = e.get("pos", global_position)
-		var vel: Vector2 = e.get("vel", Vector2.ZERO)
-		var bs := float(st.get("bullet_speed", 600))
-		var t := global_position.distance_to(epos) / maxf(bs, 1.0)
-		var aim := epos + vel * t
-		var base_dir: Vector2 = (aim - global_position).normalized()
-		var dirs := Weapon.pellet_directions(base_dir,
-			int(st.get("pellets", 1)), float(st.get("spread", 0.0)), _rng)
-		var mpos := Weapon.mount_position(global_position, i, _weapons.size(), MOUNT_RADIUS)
-		# 锅气伤害加成：复制一份 stats 改 dmg，不污染缓存（st 被多把武器共享引用）
-		var est := st.duplicate()
-		est["dmg"] = float(st.get("dmg", 0)) * dmg_mult
-		for d in dirs:
-			Events.weapon_fired.emit(mpos, d, est, w["color"] as Color)
-		w["timer"] = Weapon.next_cooldown(float(w["timer"]), cd)
+	arms.tick(enemies, delta)
 
-# 血量只存在 GameState 一处，Player 只负责无敌帧与受击表现
 func take_hit(amount: float) -> void:
 	if _ifr > 0.0:
 		return
-	_ifr = float(Data.player_cfg().get("ifr_seconds", 0.38))
+	# 闪避：整次伤害免掉（不是减伤）。命中判定在这里做，玩家能直观感到"这下没掉血"
+	if _dodge > 0.0 and _rng.randf() < _dodge:
+		Events.player_dodged.emit(global_position)
+		return
+	_ifr = float(Data.player_cfg().get("ifr_seconds", 0.38)) * (1.0 + _ifr_pct)
+	# 挨打先扣护盾（颠勺"护盾"道具给的），扣完才掉血 —— 让大招也能当保命手段
+	var remain := int(amount)
+	if GameState.shield > 0:
+		var absorbed: int = mini(GameState.shield, remain)
+		GameState.shield -= absorbed
+		remain -= absorbed
+		Events.shield_changed.emit(GameState.shield)
+	# 受击加速（hit_boost）：被摸一下就窜出去一截，给"被打后拉开距离"的操作空间
+	if remain > 0:
+		_boost_left = float(Data.player_cfg().get("hit_boost_sec", 1.2))
 	hits_taken += 1
-	damage_taken += int(amount)
-	GameState.take_damage(int(amount))
+	damage_taken += remain
+	GameState.take_damage(remain)
 	# 受击红屏闪烁
 	if _hurt_rect != null:
 		_hurt_rect.color = Color(1, 0, 0, 0.35)
@@ -235,6 +216,31 @@ func _on_character_changed(_key: String) -> void:
 # 手动推进一帧（模拟 / 调试用；正常游戏由引擎调 _physics_process）
 func step(delta: float) -> void:
 	_physics_process(delta)
+
+# 每秒回血：不足 1 点的零头要攒着（_regen_acc），否则 1.5/s 会被砍成 1/s
+func _tick_regen(delta: float) -> void:
+	if _regen <= 0.0:
+		return
+	_regen_acc += _regen * delta
+	if _regen_acc >= 1.0:
+		var n := int(_regen_acc)
+		_regen_acc -= float(n)
+		GameState.heal(n)
+
+# 速度 = 基准 × 道具加成(Speed%) × 玩家自调手感倍率(Settings.move_scale)。
+# 每帧重算而不是只在 rebuild 时算一次：设置里拧滑块要立刻生效，
+# 而 stat_value 只是遍历十几个升级项，每帧算一次的开销可以忽略。
+func _refresh_speed() -> void:
+	var mult := 1.0
+	# 颠勺"狂暴"期间攻速移速一起涨（GameState 统一倒计时，武器端读同一个值）
+	if GameState.frenzy_left > 0.0:
+		mult *= GameState.frenzy_mult()
+	# 刚挨过打：短暂加速，好让玩家有机会拉开距离而不是被黏着磨死
+	if _boost_left > 0.0:
+		mult *= 1.0 + GameState.stat_value("hit_boost")
+	_speed = float(Data.player_cfg().get("speed", 180)) \
+		* (1.0 + GameState.stat_value("speed_pct")) \
+		* (float(Settings.move_scale) / 100.0) * mult
 
 # ---- 给外观层（PlayerVisual）的只读接口 ----
 # PlayerVisual 是 Player 自己的绘制层，每帧要读这些状态。走访问器而不是让它直接
@@ -258,4 +264,4 @@ func dash_trail() -> Array:
 	return _dash_trail
 
 func weapon_caches() -> Array:
-	return _weapons
+	return arms.caches()

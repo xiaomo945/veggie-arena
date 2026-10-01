@@ -27,8 +27,15 @@ var elite := false
 var _flash := 0.0
 var _phase := 0.0
 var _kb := Vector2.ZERO          # 受击击退脉冲（由 EnemySystem 施加/衰减）
-var _slow_t := 0.0               # 减速剩余秒数（颠勺减速道具施加）
-var _slow_factor := 0.0          # 当前减速强度（0=不减速，0.5=移速减半）
+# 状态效果统一表：{效果名: {"v": 强度, "t": 剩余秒}}
+#   用一张表而不是给每种效果各加两个成员变量：加新效果（中毒/灼烧/破甲…）
+#   只多一个名字，不动结构。已支持：
+#     slow   减速   v=移速折扣(0.5→减半)
+#     freeze 冻结   v=任意>0 即完全定住
+#     poison 中毒   v=每秒伤害（按最大生命%结算，见 EnemySystem 施加处）
+#     burn   灼烧   v=每秒固定伤害
+#     shred  破甲   v=受到伤害加成比例
+var _fx: Dictionary = {}
 # Boss 多阶段 / 冲锋技能（仅 etype=="boss" 生效）
 var _boss_phase := 1
 var _base_speed := 0.0
@@ -59,12 +66,14 @@ func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	alive = true
 	_flash = 0.0
 	_phase = 0.0
+	_fx.clear()      # 对象池复用：上一只怪身上的毒/冰不能带到下一只身上
 	visible = true
 	queue_redraw()
 
 func recycle() -> void:
 	alive = false
 	visible = false
+	_fx.clear()
 
 # 返回 true 表示这一击打死了它
 func hurt(amount: float) -> bool:
@@ -86,19 +95,56 @@ func tick(delta: float) -> void:
 		_flash -= delta
 		if _flash <= 0.0:
 			queue_redraw()
-	# 减速计时：到点清零，移速恢复
-	if _slow_t > 0.0:
-		_slow_t -= delta
-		if _slow_t <= 0.0:
-			_slow_t = 0.0
-			_slow_factor = 0.0
 	if etype == "boss":
 		_tick_boss(delta)
 
-# 颠勺减速：factor=移速折扣(0.5→减半)，dur=持续秒数。取更强/更久者，不叠加。
+# 施加一个状态效果。同种效果取"更强 + 更久"，不叠乘 —— 叠乘会让数值失控，
+# 也让玩家很难预估自己的强度。
+func apply_fx(name: String, value: float, dur: float) -> void:
+	if dur <= 0.0 or value <= 0.0:
+		return
+	var cur: Dictionary = _fx.get(name, {})
+	_fx[name] = {
+		"v": maxf(float(cur.get("v", 0.0)), value),
+		"t": maxf(float(cur.get("t", 0.0)), dur),
+	}
+
+# 当前效果强度；没有或已过期返回 0
+func fx(name: String) -> float:
+	var d: Dictionary = _fx.get(name, {})
+	if float(d.get("t", 0.0)) <= 0.0:
+		return 0.0
+	return float(d.get("v", 0.0))
+
+func has_fx(name: String) -> bool:
+	return fx(name) > 0.0
+
+# 推进所有效果的计时，返回本帧应结算的持续伤害（毒/灼烧）。
+# 伤害由 EnemySystem 走 damage_enemy 统一结算 —— 只有那边才知道击杀/掉金/锅气。
+func tick_fx(delta: float) -> float:
+	if _fx.is_empty():
+		return 0.0
+	var dot := 0.0
+	for k in _fx.keys():
+		var d: Dictionary = _fx[k]
+		var t := float(d.get("t", 0.0)) - delta
+		if t <= 0.0:
+			_fx.erase(k)
+			continue
+		d["t"] = t
+		if k == "poison" or k == "burn":
+			dot += float(d.get("v", 0.0)) * delta
+	return dot
+
+# 本帧实际移动速度：冻结优先（完全定住），其次是减速
+func move_speed() -> float:
+	if fx("freeze") > 0.0:
+		return 0.0
+	return speed * (1.0 - clampf(fx("slow"), 0.0, 0.95))
+
+# 颠勺减速（历史接口，保留兼容）：factor=移速折扣(0.5→减半)，dur=持续秒数
 func apply_slow(factor: float, dur: float) -> void:
-	_slow_factor = maxf(_slow_factor, clampf(factor, 0.0, 0.95))
-	_slow_t = maxf(_slow_t, dur)
+	apply_fx("slow", factor, dur)
 
 # ---- 给 EnemySystem 的公开读写接口 ----
 # 这些状态由 EnemySystem 每帧驱动（移动摆动 / 击退衰减 / 减速读数），但**只有 Enemy
@@ -118,7 +164,7 @@ func set_knockback(v: Vector2) -> void:
 
 # 当前减速强度（0=不减速，0.5=移速减半）
 func slow_factor() -> float:
-	return _slow_factor
+	return fx("slow")
 
 # Boss：按血量阈值切阶段（提速+加伤），并周期朝玩家冲锋。纯逻辑，靠 speed/dmg 字段驱动移动与接触伤害。
 func _tick_boss(delta: float) -> void:

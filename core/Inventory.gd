@@ -45,9 +45,33 @@ static func merge_or_add(weapons: Array, def: Dictionary, max_slot: int, max_lv:
 	return true
 
 # 把强化应用到属性表（stat 字段决定加到哪）
+#
+# 两种写法：
+#   {"stat": "dmg_pct", "value": 0.2}                 —— 单属性，绝大多数道具
+#   {"stats": {"dmg_pct": 0.5, "max_hp": -30}}        —— 多属性，用于"有取舍"的道具
+#
+# 为什么要多属性：只有单属性就做不出「玻璃大炮（伤害 +50%、血上限 -30）」
+# 这类"拿好处要付代价"的道具，而这类道具才是构筑里真正让人纠结的东西。
 static func apply_upgrade(stats: Dictionary, up: Dictionary) -> Dictionary:
-	var stat := str(up.get("stat", ""))
-	var value = up.get("value", 0)
+	var multi = up.get("stats", null)
+	if multi is Dictionary:
+		for k in (multi as Dictionary):
+			stats = _add_one(stats, str(k), (multi as Dictionary)[k])
+		return stats
+	return _add_one(stats, str(up.get("stat", "")), up.get("value", 0))
+
+# 取出一个道具的全部属性条目（单属性 / 多属性统一成 [{"stat","value"}]）
+static func stat_entries(up: Dictionary) -> Array:
+	var out: Array = []
+	var multi = up.get("stats", null)
+	if multi is Dictionary:
+		for k in (multi as Dictionary):
+			out.append({"stat": str(k), "value": (multi as Dictionary)[k]})
+	elif str(up.get("stat", "")) != "":
+		out.append({"stat": str(up.get("stat", "")), "value": up.get("value", 0)})
+	return out
+
+static func _add_one(stats: Dictionary, stat: String, value) -> Dictionary:
 	match stat:
 		"max_hp":
 			stats["max_hp"] = float(stats.get("max_hp", 0)) + float(value)

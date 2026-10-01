@@ -1,6 +1,6 @@
 {
   "_comment": "武器解锁：开局只开放 6 把基础武器，其余靠累计成就解锁。目的是给玩家一个长期的'再来一局'理由，同时不让新手被 12 把武器淹没。",
-  "start_weapons": ["pistol", "smg", "shotgun", "bow", "staff", "rocket"],
+  "start_weapons": ["pistol", "smg", "shotgun", "bow", "staff", "rocket", "spatula"],
   "weapons": {
     "cleaver": { "type": "total_kills", "need": 100, "en": "Reach 100 total kills" },
     "skewer": { "type": "best_wave", "need": 5, "en": "Reach wave 5" },
@@ -13,6 +13,7 @@
     "microwave": { "type": "total_kills", "need": 600, "en": "Reach 600 total kills" },
     "fork": { "type": "best_wave", "need": 7, "en": "Reach wave 7" },
     "whisk": { "type": "best_wave", "need": 12, "en": "Reach wave 12" },
-    "grater": { "type": "total_gold", "need": 5000, "en": "Collect 5000 total gold" }
+    "grater": { "type": "total_gold", "need": 5000, "en": "Collect 5000 total gold" },
+    "rolling_pin": { "type": "total_kills", "need": 50, "en": "Reach 50 total kills" }
   }
 }

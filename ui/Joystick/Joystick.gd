@@ -1,23 +1,35 @@
 extends CanvasLayer
 
-# 虚拟摇杆：全屏任意位置按下即出现（不用先瞄准某个固定圈）。
+# 虚拟摇杆：固定底盘在左下角 + 左下 generous 区域任意落指都算摇杆触点。
 #
-# 核心是"浮点摇杆"：手指推出半径后，原点被拖着一起走。
-# 好处：变向时手指不用先回到中心再推，直接往新方向划就是满舵 ——
-#       实测变向响应 83ms → 33ms。逻辑在 core/Movement.follow_origin。
+# 多指触控：本摇杆只认领"落在左下移动区、且还没被别的控件占用的那根手指"，
+# 记住它的 touch index；按钮（锅气/冲刺/快进）各自认领自己矩形内的手指。
+# 两根手指互不干扰 —— 左手按住摇杆的同时，右手点任意按钮都生效。
+#
+# 桌面鼠标：仍走 _index == -1 的路径，落点不决定底盘位置（底盘固定），
+# 方向按"按下点 → 当前点"的相对拖拽算，手感与手机一致，不回归。
 
 const Movement := preload("res://core/Movement.gd")
 
-var _radius := 52.0
-var _deadzone := 3.0
+# 固定底盘位置（屏幕坐标，左下角）。不随落点漂移。
+const FIXED_BASE := Vector2(118, 786)
+# 底盘半径（满舵距离）与死区：默认从手感配置读，这里给兜底值
+const RADIUS := 54.0
+const DEADZONE := 4.0
+
+# 左下 generous 移动区：左 ~46% 宽、y 在下半屏。右侧按钮（锅气/冲刺/快进）都
+# 在 x>MOVE_ZONE_W 的区外，互不抢指。
+const MOVE_ZONE_W := 250.0
+const MOVE_ZONE_Y := 400.0
+
 var _active := false
 var _index := -1
-var _origin := Vector2.ZERO
-var _finger := Vector2.ZERO
-# 固定左下移动区：只有这块区域按下才启动摇杆，避免误触右侧按钮 / 顶部 HUD。
-# 设计空间 540x900；左 ~52% 宽、下 ~50% 高。颠勺/冲刺/暂停按钮都在区外，由各自排除逻辑处理。
-const MOVE_ZONE_W := 280.0
-const MOVE_ZONE_Y := 450.0
+var _radius := RADIUS
+var _deadzone := DEADZONE
+# 本次按压的"起点"（相对拖拽参考点）：方向 = 当前点 - 起点，钳制到 _radius。
+# 这样底盘固定、但 generous 区域里随便哪落指都能推，不会一按就满舵。
+var _anchor := Vector2.ZERO
+var _knob := Vector2.ZERO   # 绘制用：FIXED_BASE + 钳制后的偏移
 
 @onready var _view: Node2D = $StickView
 
@@ -26,75 +38,59 @@ func _ready() -> void:
 	_radius = float(f["radius"])
 	_deadzone = float(f["deadzone"])
 	_view.radius = _radius
-	# 手机竖屏下，跟随手指的摇杆底盘会挡住下方视野。
-	# 设为 false 时彻底不画摇杆（控制依旧是"按哪走哪"的浮点拖拽，手感不变），
-	# 玩家靠角色响应方向来感知操作，不再被一个圈挡住视线。
+	_view.base = FIXED_BASE
 	_view.visible = bool(f.get("joystick_visible", true))
 
 func _input(event: InputEvent) -> void:
-	# 只有真正在"一局进行中"才接管触摸：标题页 / 暂停 / 死亡 / 通关结算页
-	# 都不再响应，避免遮挡层下的萝卜被手指误操控（之前"标题背后萝卜在动"就是这原因）
+	# 只有"一局进行中"才接管触摸：标题页 / 暂停 / 死亡 / 通关页都不响应
 	if not GameState.running or GameState.paused:
 		return
 	# 触屏（手机真机）
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch
 		if t.pressed:
-			if not _active:
+			if _index == -1 and _in_zone(t.position):
 				_start(t.index, t.position)
 		elif t.index == _index:
 			_release()
 		return
-
 	if event is InputEventScreenDrag:
 		var d := event as InputEventScreenDrag
 		if d.index == _index:
 			_move(d.position)
 		return
-
 	# 鼠标（桌面调试用，手机上不会走到这里）
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
-			if mb.pressed and not _active:
+			if mb.pressed and _index == -1 and _in_zone(mb.position):
 				_start(-1, mb.position)
 			elif not mb.pressed and _index == -1:
 				_release()
 		return
-
 	if event is InputEventMouseMotion:
 		if _index == -1 and _active:
 			_move((event as InputEventMouseMotion).position)
 		return
 
+# 左下 generous 区域：左 56% 宽、下（900-400=500px）高
+func _in_zone(pos: Vector2) -> bool:
+	return pos.x <= MOVE_ZONE_W and pos.y >= MOVE_ZONE_Y
+
 func _start(index: int, pos: Vector2) -> void:
-	# 暂停按钮区域：戳这里只暂停，不开始移动（避免"想暂停却走位"）
-	if GameState.pause_rect.has_point(pos):
-		return
-	# 满锅气时点颠勺按钮区域：只触发颠勺，不开始移动（避免"想甩锅却走位"）
-	if GameState.wok_ready() and GameState.wok_toss_rect.has_point(pos):
-		Events.wok_toss_requested.emit()
-		return
-	# 冲刺按钮区域：戳这里只冲刺，不当成走位拖拽
-	if GameState.dash_rect.has_point(pos):
-		Events.dash_requested.emit()
-		return
-	# 固定左下移动区以外（右侧按钮 / 顶部 HUD / 中部空白）不启动摇杆 → 消除误触
-	if pos.x > MOVE_ZONE_W or pos.y < MOVE_ZONE_Y:
-		return
 	_active = true
 	_index = index
-	_origin = pos          # 摇杆在手指按下的位置生成
-	_finger = pos
+	_anchor = pos
+	_knob = FIXED_BASE
 	Events.stick_dir_changed.emit(Vector2.ZERO)
 	_sync()
 
 func _move(pos: Vector2) -> void:
-	_finger = pos
-	# 先让原点跟随（可能不动），再算方向
-	_origin = Movement.follow_origin(_origin.x, _origin.y, _finger.x, _finger.y, _radius)
-	var dir := Movement.stick_direction(
-		_finger.x - _origin.x, _finger.y - _origin.y, _deadzone)
+	var off := pos - _anchor
+	if off.length() > _radius:
+		off = off.normalized() * _radius
+	_knob = FIXED_BASE + off
+	var dir := Movement.stick_direction(off.x, off.y, _deadzone)
 	Events.stick_dir_changed.emit(dir)
 	_sync()
 
@@ -108,6 +104,5 @@ func _release() -> void:
 
 func _sync() -> void:
 	_view.active = _active
-	_view.origin = _origin
-	_view.finger = _finger
+	_view.knob = _knob
 	_view.queue_redraw()

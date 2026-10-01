@@ -1,87 +1,69 @@
 extends Control
 
-# HUD 底部按钮区：颠勺（全屏甩锅）/ 冲刺。
+# HUD 底部 / 右侧技能按钮区：锅气（大号，带充能进度环）/ 冲刺 / 快进 2 倍速。
 #
-# 职责边界：
-#   - 只管"按钮长什么样、在哪个矩形里"；点击后的语义交给 Events 广播。
-#   - 两个按钮的屏幕矩形通过 toss_rect() / dash_rect() 共享给 Joystick，
-#     让摇杆知道"这块地盘不是走位用的"。容器被安全区平移后矩形必须跟着变，
-#     所以这里一律返回 容器位置 + 按钮局部位置。
+# 布局用 slots 数组描述，方便老板以后把"锅气技能拆成多个按钮" —— 直接往里加一项即可，
+# 右侧矩形自动避让摇杆（见 Joystick 的 MOVE_ZONE_W）。每个按钮是独立的 SkillButton，
+# 各自认领自己矩形内的那根手指，与左侧摇杆互不抢指。
 #
-# 冲刺按钮位置：右下角，避开中间的颠勺按钮（210..330）与左下拇指区。
-# 颠勺按钮：中心 (270, 766)，在火候条上方。
+# 锅气按钮常驻可见（有充能显示 x{n}，没充能显示"锅气"+ 火候进度环）。
 
-const DashButtonScript := preload("res://ui/HUD/DashButton.gd")
+const SkillButtonScript := preload("res://ui/HUD/SkillButton.gd")
 
-const TOSS_POS := Vector2(210, 706)
-const TOSS_SIZE := Vector2(120, 120)
-const DASH_POS := Vector2(398, 748)
-const DASH_SIZE := 96.0
+# 按钮槽：local_center 是相对本容器的局部中心（容器会被安全区上移，矩形自动跟随）
+# 顺序即绘制顺序；锅气放最右下方（王者荣耀式大按钮），冲刺在它左下方，快进在右上角。
+const SLOTS := [
+	{"type": "ff",   "center": Vector2(468, 284)},
+	{"type": "wok",  "center": Vector2(440, 806)},
+	{"type": "dash", "center": Vector2(310, 852)},
+]
 
-var _toss_btn: Button
-var _dash_btn: Control
-var _charges := 0          # 当前已存颠勺充能数（按钮常驻显示用）
+var _btns: Array = []          # [{type, node}]
+var _wok_btn = null
+var _dash_btn = null
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
 	size = Vector2(540.0, 900.0)
-
-	_toss_btn = Button.new()
-	_toss_btn.custom_minimum_size = TOSS_SIZE
-	_toss_btn.size = TOSS_SIZE
-	_toss_btn.position = TOSS_POS
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.92, 0.42, 0.26, 0.28)
-	sb.border_color = Color(1.0, 0.72, 0.42, 0.95)
-	sb.set_border_width_all(3)
-	sb.corner_radius_top_left = 60
-	sb.corner_radius_top_right = 60
-	sb.corner_radius_bottom_left = 60
-	sb.corner_radius_bottom_right = 60
-	_toss_btn.add_theme_stylebox_override("normal", sb)
-	var sbp := sb.duplicate()
-	sbp.bg_color = Color(1.0, 0.6, 0.4, 0.5)
-	_toss_btn.add_theme_stylebox_override("pressed", sbp)
-	_toss_btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
-	_toss_btn.add_theme_font_size_override("font_size", 22)
-	_toss_btn.text = I18n.t("hud_toss")
-	_toss_btn.visible = false
-	_toss_btn.pressed.connect(_on_toss_pressed)
-	add_child(_toss_btn)
-
-	_dash_btn = DashButtonScript.new()
-	_dash_btn.position = DASH_POS
-	add_child(_dash_btn)
+	for s in SLOTS:
+		var b = SkillButtonScript.new()
+		b.btn_type = s["type"]
+		var sz: Vector2 = b.size
+		b.position = (s["center"] as Vector2) - sz * 0.5
+		add_child(b)
+		if s["type"] == "wok":
+			_wok_btn = b
+		elif s["type"] == "dash":
+			_dash_btn = b
+		_btns.append({"type": s["type"], "node": b})
 
 # ---- 对外接口（由 HUD.gd 调用）----
 
-# 颠勺按钮常驻：只要有充能就一直可见（不再"攒满闪一下又消失"）。
-# 充能 >1 时显示 "颠勺 x{n}"，提示玩家手里存了好几个，危险时连放。
+# 锅气充能数（HUD 转发；SkillButton 自己也已订阅信号，这里再保险地同步一次）
 func set_charges(n: int) -> void:
-	_charges = n
-	_refresh()
+	if _wok_btn != null:
+		_wok_btn.set_charges(n)
 
-func _refresh() -> void:
-	_toss_btn.visible = _charges > 0
-	if _charges > 1:
-		_toss_btn.text = "%s x%d" % [I18n.t("hud_toss"), _charges]
-	else:
-		_toss_btn.text = I18n.t("hud_toss")
-
+# 锅气按钮矩形（共享给其它模块；本作摇杆已用固定移动区，这里主要供兼容）
 func toss_rect() -> Rect2:
-	return Rect2(position + _toss_btn.position, TOSS_SIZE)
+	if _wok_btn != null:
+		return _wok_btn.get_global_rect()
+	return Rect2()
 
 func dash_rect() -> Rect2:
-	return Rect2(position + _dash_btn.position, Vector2(DASH_SIZE, DASH_SIZE))
+	if _dash_btn != null:
+		return _dash_btn.get_global_rect()
+	return Rect2()
 
-# 颠勺按钮有充能时呼吸闪烁，提示玩家"戳这里放颠勺"
+# 预留：以后"锅气技能拆成多个按钮"，直接从这里取第 n 个技能按钮的矩形
+func slot_rect(index: int) -> Rect2:
+	if index >= 0 and index < _btns.size():
+		return (_btns[index]["node"] as Control).get_global_rect()
+	return Rect2()
+
 func tick(_delta: float) -> void:
-	if _toss_btn.visible:
-		_toss_btn.modulate.a = 0.65 + 0.35 * sin(Time.get_ticks_msec() / 110.0)
+	pass   # 各按钮自行绘制，无需统一脉动
 
 # 竖屏安全区：底部按钮上移，避开全面屏手势条 / Home Indicator。
 func apply_safe_area(bottom: float) -> void:
 	position -= Vector2(0.0, bottom)
-
-func _on_toss_pressed() -> void:
-	Events.wok_toss_requested.emit()

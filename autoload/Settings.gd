@@ -26,6 +26,9 @@ var fps_target: int = 0
 # 音量 0..100（默认满）
 var music_volume: int = 100
 var sfx_volume: int = 100
+# 移动速度手感倍率（百分比，100 = 基准）。手感是主观的，与其反复改数值重新出包，
+# 不如让玩家自己拧：范围 70%~180%，实时生效（下一帧重建速度）。
+var move_scale: int = 100
 # 语言偏好："en"（出海默认）/ "zh"（中文）。首次启动跟随系统语言自动选，
 # 之后以 Settings 持久化值为准。开发者用中文设备测试时自动进中文，方便。
 var language: String = "en"
@@ -49,6 +52,7 @@ func get_setting(key: String, default: Variant = null) -> Variant:
 		"fps_target": return fps_target
 		"music_volume": return music_volume
 		"sfx_volume": return sfx_volume
+		"move_scale": return move_scale
 		"language": return language
 		_:
 			var v = super.get(key)
@@ -77,6 +81,7 @@ func _load() -> void:
 		fps_target = int(d.get("fps_target", 0))
 		music_volume = int(d.get("music_volume", 100))
 		sfx_volume = int(d.get("sfx_volume", 100))
+		move_scale = clampi(int(d.get("move_scale", 100)), 70, 180)
 		language = str(d.get("language", "en"))
 		if language != "en" and language != "zh":
 			language = "en"
@@ -96,6 +101,7 @@ func _save() -> void:
 		"fps_target": fps_target,
 		"music_volume": music_volume,
 		"sfx_volume": sfx_volume,
+		"move_scale": move_scale,
 		"language": language,
 	}))
 	f.close()
@@ -150,6 +156,11 @@ func set_music_volume(v: int) -> void:
 func set_sfx_volume(v: int) -> void:
 	sfx_volume = clampi(v, 0, 100)
 	apply_audio()
+	_save()
+
+# 移动速度手感：70%~180%。只存值，实际速度由 Player 每次重建时读取。
+func set_move_scale(v: int) -> void:
+	move_scale = clampi(v, 70, 180)
 	_save()
 
 # ---- 语言偏好 ----

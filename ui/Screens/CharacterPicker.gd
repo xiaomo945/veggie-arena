@@ -108,11 +108,6 @@ func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 	var border := accent if selected else Color(0.35, 0.38, 0.45, 0.8)
 	draw_rect(r, border, false, 3.0 * _k if selected else 1.5 * _k)
 
-	# 装饰：角色边框点缀（透明中心，叠在卡面之上不挡文字）
-	var frame := Art.ui_icon("role_frame")
-	if frame != null:
-		draw_texture_rect(frame, r, false)
-
 	# 立绘：优先 char_<key>；缺图退化成一个主色圆点，玩家仍能分辨
 	var tex := Art.sprite("char_" + key)
 	var icon_r := 30.0 * _k

@@ -132,12 +132,29 @@ func run(data) -> Dictionary:
 	var ps20 := float(g20.get("speed", 0))
 	var ps1 := float(g1.get("speed", 0))
 	var fs10 := float(f10.get("speed", 0))
-	chk(ps1 <= pspeed * 0.60,
-		"第1波小兵 %.0f ≤ 玩家 %.0f 的 60%%（开局能轻松拉开）" % [ps1, pspeed])
-	chk(ps20 >= pspeed * 0.70,
-		"第20波小兵 %.0f ≥ 玩家 %.0f 的 70%%（后期无脑绕圈躲不掉）" % [ps20, pspeed])
-	chk(fs10 >= pspeed * 0.85,
-		"第10波冲刺兵 %.0f ≥ 玩家 %.0f 的 85%%（快兵必须靠冲刺/预判）" % [fs10, pspeed])
+	chk(ps1 <= pspeed * 0.45,
+		"第1波小兵 %.0f ≤ 玩家 %.0f 的 45%%（开局能轻松拉开）" % [ps1, pspeed])
+	chk(ps20 >= pspeed * 0.55,
+		"第20波小兵 %.0f ≥ 玩家 %.0f 的 55%%（后期无脑绕圈躲不掉）" % [ps20, pspeed])
+	chk(fs10 >= pspeed * 0.55,
+		"第10波冲刺兵 %.0f ≥ 玩家 %.0f 的 55%%（快兵必须靠冲刺/预判）" % [fs10, pspeed])
+
+	# 12b) ⚠️ 这条是踩过坑才补的：上面只保证"敌人追得上玩家"，却没保证
+	# "玩家跑得掉"。旧数值下第20波冲刺兵 300 > 玩家 240 —— 后期玩家比怪还慢，
+	# 无论怎么走位都逃不掉，手感上就表现为"移动不跟手、很黏"。
+	# 手机触屏的走位精度远不如鼠标，玩家必须留出明显的速度余量。
+	var fastest_late := 0.0
+	var fastest_name := ""
+	for k in ["grunt", "fast", "tank", "fly", "swarm", "brute", "shambler"]:
+		if not data.enemies.has(k):
+			continue
+		var sp := float(Spawner.stats_for(k, 20, data.enemies).get("speed", 0))
+		if sp > fastest_late:
+			fastest_late = sp
+			fastest_name = k
+	chk(fastest_late <= pspeed * 0.90,
+		"第20波最快敌人 %s=%.0f ≤ 玩家 %.0f 的 90%%（后期还能拉开，不是被黏死）"
+		% [fastest_name, fastest_late, pspeed])
 
 	# 13) 敌人要活得够久，能走到玩家跟前（出生点在边缘，离中心 250px 以上）
 	# 存活时间太短 = 出生即死 = 玩家永远看不到怪贴脸

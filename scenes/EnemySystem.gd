@@ -16,6 +16,8 @@ const DamageLabel := preload("res://entities/effects/DamageLabel.gd")
 const HitSpark := preload("res://entities/effects/HitSpark.gd")
 const Shake := preload("res://entities/effects/Shake.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
+const WokToss := preload("res://scenes/WokToss.gd")
+const BulletSystem := preload("res://scenes/BulletSystem.gd")
 
 const LIFESTEAL_CHANCE := 0.08
 const SEPARATION_FORCE := 90.0
@@ -23,7 +25,10 @@ const KB_IMPULSE := 120.0        # 命中击退脉冲（克制，约 14px 位移
 const KB_DECEL := 520.0          # 击退衰减（/s），短促
 
 var world: BattleWorld = null    # 注入：战斗状态（池 / rng / arena / 暂存数组）
+var _toss: WokToss = null        # 锅气大招（独立部件，见 scenes/WokToss.gd）
+var _bullets: BulletSystem = null # 子弹（独立部件，见 scenes/BulletSystem.gd）
 var game: Node2D = null          # 仅用于挂特效节点与注册震屏
+var _contact := 0.0              # 荆棘伤害（contact_dmg），每帧缓存一次
 
 func _ready() -> void:
 	game = get_parent()
@@ -66,6 +71,8 @@ func spawn_boss() -> void:
 
 func update_enemies(delta: float) -> void:
 	var pp: Vector2 = world.player.global_position
+	# 每帧读一次荆棘伤害（道具统计，别在 O(n²) 里反复算）
+	_contact = GameState.stat_value("contact_dmg")
 	for i in world.enemies.size():
 		var e = world.enemies[i]
 		if not e.alive:
@@ -80,7 +87,7 @@ func update_enemies(delta: float) -> void:
 				var perp := Vector2(-dir.y, dir.x)
 				dir = (dir + perp * sin(e.wobble(delta)) * 0.7).normalized()
 			# 颠勺减速：临时降低移动速度（factor 由道具决定，倍率叠加在基础速度上）
-			var spd: float = e.speed * (1.0 - e.slow_factor())
+			var spd: float = e.move_speed()
 			pos += dir * spd * delta
 		# 分离：只算附近的，避免 O(n^2) 在满怪时拖慢手机
 		world.neighbors.clear()
@@ -102,12 +109,21 @@ func update_enemies(delta: float) -> void:
 			e.set_knockback(kb.move_toward(Vector2.ZERO, KB_DECEL * delta))
 		e.global_position = Movement.clamp_to_arena(pos, world.arena, e.radius)
 		e.tick(delta)
+		# 持续伤害（中毒 / 灼烧）：必须走 damage_enemy 统一结算，
+		# 否则击杀不计数、不掉金币、也不涨锅气 —— 毒杀变成"白杀"
+		var dot: float = e.tick_fx(delta)
+		if dot > 0.0:
+			damage_enemy(e, dot)
 		# 接触玩家 → 造成伤害
 		if pos.distance_to(pp) <= e.radius + float(Data.player_cfg().get("radius", 16)) + 2.0:
 			if world.player.has_method("take_hit"):
 				world.player.take_hit(e.dmg)
 				# 挨打掉火候（被摸一下 = 锅被泼了冷水）；封顶 8 点，避免首领一巴掌把火候清零
 				GameState.cool_wok(minf(e.dmg, 8.0))
+				# 荆棘（contact_dmg）：贴上来就得挨烫。让"挨打"不再是纯亏，
+				# 也是"站桩流"能成立的前提
+				if _contact > 0.0:
+					damage_enemy(e, _contact)
 
 # 先收集敌人数组（含本帧位置/速度），供开火与子弹追踪共用
 func collect_enemy_data() -> void:
@@ -122,77 +138,29 @@ func collect_enemy_data() -> void:
 			world.edata.append({"pos": e.global_position, "radius": e.radius,
 				"vel": vel, "alive": true, "ref": e})
 
-# 子弹追踪：每帧把每颗激活子弹的方向，朝"当前最近的存活怪"最多转 homing_turn*delta 弧度。
-# 幅度克制（约 4 rad/s），只修正发射后怪的绕走/多怪时的误判，不会瞬转成"导航弹"。
+# ---- 子弹：追踪 / 弹墙 / 命中结算全在 scenes/BulletSystem.gd ----
+# 这里只做转发，并把伤害结算（damage_enemy）注入进去 —— 子弹自己不知道
+# 什么叫"击杀"，只有 EnemySystem 知道（击杀计数 / 掉金币 / 涨锅气都在那）。
 func home_bullets(delta: float) -> void:
-	var cfg := Data.bullet_cfg()
-	var turn := float(cfg.get("homing_turn", 0.0))
-	if turn <= 0.0:
-		return
-	var hr := float(cfg.get("homing_range", 360))
-	var max_turn := turn * delta
-	for b in world.bullets:
-		if not b.active:
-			continue
-		var best := -1
-		var best_d := INF
-		for k in world.edata.size():
-			var e: Dictionary = world.edata[k]
-			if not bool(e.get("alive", false)):
-				continue
-			var d: float = b.global_position.distance_to(e.get("pos", Vector2.ZERO))
-			if d < best_d:
-				best_d = d
-				best = int(k)
-		if best < 0 or best_d > hr:
-			continue
-		var ep: Vector2 = world.edata[best].get("pos", Vector2.ZERO)
-		var desired: Vector2 = (ep - b.global_position).normalized()
-		var cur: Vector2 = b.dir.normalized()
-		var ang := cur.angle_to(desired)
-		ang = clampf(ang, -max_turn, max_turn)
-		b.dir = cur.rotated(ang)
-		b.rotation = b.dir.angle()
+	_bind_bullets()
+	_bullets.home(delta)
+	_bullets.bounce()
 
 func resolve_hits() -> void:
-	world.bdata.clear()
-	for b in world.bullets:
-		if b.active:
-			world.bdata.append({"pos": b.global_position, "radius": b.radius, "active": true, "ref": b})
-	if world.bdata.is_empty() or world.edata.is_empty():
-		return
-	for h: Dictionary in Hit.find_hits(world.bdata, world.edata):
-		var b = world.bdata[int(h["bullet"])]["ref"]
-		var e = world.edata[int(h["enemy"])]["ref"]
-		if not b.active or not e.alive:
-			continue
-		if b.hit_ids.has(e.eid):
-			continue          # 同一发子弹不重复打同一个敌人
-		b.hit_ids[e.eid] = true
-		world.hits_landed += 1
-		# 命中微量攒锅气（主要靠击杀，命中只是让"没空档"也能维持火候）
-		GameState.add_wok(float(Data.wok_cfg().get("hit_heat", 0.5)))
-		damage_enemy(e, b.dmg)
-		# 命中小幅击退：沿子弹方向把敌人推开一瞬
-		if e.alive:
-			e.apply_knockback(b.dir.normalized(), KB_IMPULSE)
-		if b.aoe_radius > 0.0:
-			_explode(b, e)
-		if b.pierce_left > 0:
-			b.pierce_left -= 1
-		else:
-			b.recycle()
+	_bind_bullets()
+	_bullets.resolve()
 
-func _explode(b, center_enemy) -> void:
-	var c: Vector2 = center_enemy.global_position
-	for d in world.edata:
-		var e = d["ref"]
-		if not e.alive or e == center_enemy:
-			continue
-		if (e.global_position as Vector2).distance_to(c) <= b.aoe_radius:
-			damage_enemy(e, b.dmg * 0.6)   # 溅射伤害打 6 折
+# 懒构造 + 每次重新注入：world 可能在重开一局后被换掉，缓存会指向旧状态
+func _bind_bullets() -> void:
+	if _bullets == null:
+		_bullets = BulletSystem.new()
+	_bullets.world = world
+	_bullets.damage_fn = damage_enemy
 
-func damage_enemy(e, amount: float) -> void:
+func damage_enemy(e, amount: float) -> bool:
+	# 破甲：受伤加深。放在这里而不是各伤害来源里 —— 所有伤害都吃这个加成，
+	# 以后加新伤害类型也不用记着乘一遍
+	amount *= 1.0 + e.fx("shred")
 	# 先取位置：hurt() 触发死亡后会 recycle，之后再取坐标就不稳了
 	var epos: Vector2 = e.global_position
 	# 伤害飘字（纯表现，受粒子开关控制）
@@ -234,6 +202,8 @@ func damage_enemy(e, amount: float) -> void:
 		var heat: float = float(Data.wok_cfg().get("kill_heat", 9)) * (1.0 + 0.2 * float(e.gold))
 		heat *= 1.0 + GameState.stat_value("wok_pct")
 		GameState.add_wok(heat)
+		return true
+	return false
 
 func on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) -> void:
 	world.shots_fired += 1
@@ -244,37 +214,49 @@ func on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) ->
 			b.launch(pos, dir, stats, c)
 			return
 
-# ---- 颠勺（满锅气终极）----
-# 由 HUD 颠勺按钮 / Joystick 避让区点按触发：全屏击退+重伤（道具可加全屏减速）。
-# 效果受强化影响：wokdmg=伤害+% / wokknock=击退+% / wokslow=附加减速。
-func on_wok_toss() -> void:
-	if not GameState.wok_ready():
-		return
-	var pp: Vector2 = world.player.global_position
-	var w := Data.wok_cfg()
-	# 伤害/击退倍率受道具加成（wok_dmg_pct / wok_knock_pct 是 0~1 的加成比例）
-	var dmg_mult := float(w.get("toss_dmg_mult", 0.6)) * (1.0 + GameState.stat_value("wok_dmg_pct"))
-	var knock := float(w.get("toss_knock", 130)) * (1.0 + GameState.stat_value("wok_knock_pct"))
-	# 减速：仅买了 wokslow 才附加；强度= toss_slow_pct，时长= wok_slow 的秒数
-	var slow_factor := 0.0
-	var slow_dur := 0.0
-	if GameState.stat_value("wok_slow") > 0.0:
-		slow_factor = float(w.get("toss_slow_pct", 0.5))
-		slow_dur = float(w.get("toss_slow", 1.5))
-	for e in world.enemies:
-		if not e.alive:
+# 近战扇形挥砍：命中"以 origin 为圆心、reach 为半径、朝向 dir 半角 half_arc 内"
+# 的全部存活敌人，伤害统一走 damage_enemy 漏斗（击杀/掉金/锅气/破甲都生效）。
+# knockback>0 时对存活敌人施加朝向其外侧的击退脉冲。视觉交给 melee_visual 信号。
+func on_melee_swung(origin: Vector2, dir_in: Vector2, reach: float, half_arc: float,
+		dmg: float, crit: bool, knockback: float, c: Color) -> void:
+	world.shots_fired += 1
+	var base := dir_in.normalized()
+	for e in world.edata:
+		if not bool(e.get("alive", false)):
 			continue
-		var dir: Vector2 = e.global_position - pp
-		if dir.length() < 0.001:
-			dir = Vector2(0, 1)
-		# 重伤：按敌人当前最大血量比例结算，Boss 也削一大块（受 wokdmg 加成）
-		damage_enemy(e, e.max_hp * dmg_mult + 25.0)
-		# 甩飞：沿远离玩家方向推开，营造"颠勺"的爆开感（受 wokknock 加成）
-		var np: Vector2 = e.global_position + dir.normalized() * knock
-		e.global_position = Movement.clamp_to_arena(np, world.arena, e.radius)
-		if slow_factor > 0.0 and e.has_method("apply_slow"):
-			e.apply_slow(slow_factor, slow_dur)
-	# 冲击波视觉
-	world.kick_shock(pp)
-	GameState.toss_wok()
-	Events.wok_tossed.emit()
+		var epos: Vector2 = e.get("pos", Vector2.ZERO)
+		var d: Vector2 = epos - origin
+		var dist: float = d.length()
+		if dist > reach:
+			continue
+		var ang: float = 0.0
+		if dist > 0.001:
+			ang = abs(base.angle_to(d.normalized()))
+		if ang > half_arc:
+			continue
+		var en = e.get("ref")
+		if en == null or not en.alive:
+			continue
+		# 命中走漏斗：击杀计数 / 掉金币 / 涨锅气 / 破甲全在 damage_enemy 里
+		damage_enemy(en, dmg)
+		world.hits_landed += 1
+		# 命中微量攒锅气（与子弹一致：主要靠击杀，命中只维持火候）
+		GameState.add_wok(float(Data.wok_cfg().get("hit_heat", 0.5)))
+		if knockback > 0.0 and en.alive:
+			var kdir: Vector2 = (d.normalized() if dist > 0.001 else base)
+			en.apply_knockback(kdir, knockback)
+	# 视觉：短命扇形（纯表现，删掉也不影响伤害）
+	Events.melee_visual.emit(origin, base, reach, half_arc, c)
+
+# ---- 颠勺（满锅气终极）----
+# 由 HUD 颠勺按钮 / Joystick 避让区点按触发：全屏重伤 + 击退，
+# 附加什么效果（减速/冻结/中毒/灼烧/破甲/连环爆/吸血/掉金/返火）由已买道具决定。
+# 施放细节全在 scenes/WokToss.gd —— 这里只把它接上伤害结算与战斗状态。
+func on_wok_toss() -> void:
+	# 懒构造：world / damage_fn 必须每次重新注入，避免拿到过期的战斗状态
+	if _toss == null:
+		_toss = WokToss.new()
+	_toss.world = world
+	_toss.damage_fn = damage_enemy
+	_toss.execute()
+
