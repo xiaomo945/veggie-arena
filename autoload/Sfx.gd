@@ -11,15 +11,20 @@ var _last_hp := 999
 var _last_at: Dictionary = {}   # 每种音效上次播放的毫秒时间，用于节流
 
 func _ready() -> void:
-	_make("shoot", _synth(900, 240, 0.07, 0.22, 0.55))
-	_make("hit",   _synth(1300, 620, 0.045, 0.28, 0.0))
-	_make("kill",  _synth(420, 940, 0.10, 0.30, 0.0))
-	_make("pickup",_synth(880, 1340, 0.12, 0.34, 0.0))
-	_make("wave",  _synth(300, 760, 0.35, 0.30, 0.0))
-	_make("hurt",  _synth(220, 80, 0.16, 0.42, 0.4))
-	_make("over",  _synth(520, 110, 0.7, 0.42, 0.2))
-	_make("wok",   _synth(180, 760, 0.30, 0.46, 0.25))
-	_make("button",_synth(1200, 1500, 0.04, 0.25, 0.0))
+	# 音效全部用子 Agent 合成的程序化 Ogg（art/sfx/），质量比内联 _synth 更好；
+	# 缺文件时 push_warning 静默，不崩游戏。hurt 复用命中音（无专门受伤音）。
+	_load("shoot", "res://art/sfx/sfx_shoot.ogg")
+	_load("hit", "res://art/sfx/sfx_hit.ogg")
+	_load("kill", "res://art/sfx/sfx_kill.ogg")
+	_load("pickup", "res://art/sfx/sfx_coin.ogg")
+	_load("wave", "res://art/sfx/sfx_levelup.ogg")
+	_load("hurt", "res://art/sfx/sfx_hit.ogg")
+	_load("over", "res://art/sfx/sfx_defeat.ogg")
+	_load("wok", "res://art/sfx/sfx_wok.ogg")
+	_load("button", "res://art/sfx/sfx_button.ogg")
+	_load("dash", "res://art/sfx/sfx_dash.ogg")
+	_load("unlock", "res://art/sfx/sfx_unlock.ogg")
+	_load("victory", "res://art/sfx/sfx_victory.ogg")
 
 	Events.weapon_fired.connect(_on_shoot)
 	Events.damage_dealt.connect(_on_hit)
@@ -30,38 +35,20 @@ func _ready() -> void:
 	Events.player_hp_changed.connect(_on_hp)
 	Events.player_died.connect(_on_died)
 	Events.wok_tossed.connect(_on_wok)
+	Events.dash_started.connect(_on_dash)
+	Events.unlocked.connect(_on_unlock)
+	Events.run_won.connect(_on_victory)
 	# 按设置应用音量（音效开关/总静音）；设置变了也由 PauseScreen 回调重调
 	apply_volume()
 
-# 合成一段单声道 16bit PCM 的 AudioStreamWAV
-# f0->f1 频率滑音，dur 秒，vol 音量，noise 噪声占比（0=纯音）
-func _synth(f0: float, f1: float, dur: float, vol: float, noise: float) -> AudioStreamWAV:
-	var rate := 44100
-	var n := int(rate * dur)
-	var data := PackedByteArray()
-	for i in n:
-		var t := float(i) / float(rate)
-		var p := t / dur
-		var freq := f0 + (f1 - f0) * p
-		var env := (1.0 - p)
-		env = env * env              # 更陡的衰减，听感更"短促"
-		var s := sin(2.0 * PI * freq * t)
-		if noise > 0.0:
-			s = s * (1.0 - noise) + (randf() * 2.0 - 1.0) * noise
-		var v := s * env * vol
-		var pcm := int(clampf(v, -1.0, 1.0) * 32767.0)
-		data.append(pcm & 0xFF)
-		data.append((pcm >> 8) & 0xFF)
-	var wav := AudioStreamWAV.new()
-	wav.format = AudioStreamWAV.FORMAT_16_BITS
-	wav.mix_rate = rate
-	wav.stereo = false
-	wav.data = data
-	return wav
-
-func _make(key: String, stream: AudioStreamWAV) -> void:
+# 加载一个音效 Ogg（子 Agent 合成），放进播放器池；缺文件则静默跳过
+func _load(key: String, path: String) -> void:
+	var s := load(path) as AudioStream
+	if s == null:
+		push_warning("Sfx: 缺少音效资源 %s，该音效将静默" % path)
+		return
 	var p := AudioStreamPlayer.new()
-	p.stream = stream
+	p.stream = s
 	p.bus = "Master"
 	add_child(p)
 	_players[key] = p
@@ -116,3 +103,12 @@ func apply_volume() -> void:
 # UI 按钮点击音（暂停菜单/通用按钮）
 func ui_click() -> void:
 	_play("button", 10)
+
+func _on_dash() -> void:
+	_play("dash", 50)
+
+func _on_unlock(_key: String) -> void:
+	_play("unlock", 0)
+
+func _on_victory() -> void:
+	_play("victory", 0)
