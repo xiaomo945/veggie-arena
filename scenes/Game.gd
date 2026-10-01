@@ -142,6 +142,8 @@ func _finish_run(won: bool) -> void:
 	GameState.won = won
 	SaveMgr.record_run(GameState.wave, GameState.kills, GameState.gold,
 		GameState.run_score(), won)
+	# Steam 统计/成就（未挂载 GodotSteam 时自动 no-op，不影响游戏）
+	Steam.record_run(GameState.wave, GameState.kills, GameState.gold, won)
 
 # 地上还没被捡走的金币面额（诊断/HUD 用）
 func ground_gold() -> int:
