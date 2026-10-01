@@ -170,7 +170,7 @@ veggie-arena/
 └── scripts/               # check.sh 等工程脚本
 ```
 
-文档索引 / Docs: [`docs/01_需求文档.md`](docs/01_需求文档.md) · [`02_工程约束与规范.md`](docs/02_工程约束与规范.md) · [`03_权限与环境清单.md`](docs/03_权限与环境清单.md) · [`04_模块结构与路线图.md`](docs/04_模块结构与路线图.md) · [`05_架构守卫与推送规则.md`](docs/05_架构守卫与推送规则.md) · [`docs/steam_store.md`](docs/steam_store.md)（Steam 文案）
+文档索引 / Docs: [`docs/01_需求文档.md`](docs/01_需求文档.md) · [`02_工程约束与规范.md`](docs/02_工程约束与规范.md) · [`03_权限与环境清单.md`](docs/03_权限与环境清单.md) · [`04_模块结构与路线图.md`](docs/04_模块结构与路线图.md) · [`05_架构守卫与推送规则.md`](docs/05_架构守卫与推送规则.md) · [`06_下一步方向与验证计划.md`](docs/06_下一步方向与验证计划.md) · [`docs/steam_store.md`](docs/steam_store.md)（Steam 文案）
 
 ---
 
