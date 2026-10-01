@@ -16,6 +16,12 @@ var won: bool = false        # 本局是不是打通关了（区分"阵亡"与"�
 # 当前选择的角色（data/characters.json 的键）。角色自带属性加成，与强化叠加。
 var character: String = "turnip"
 
+# 开局自选的初始武器（data/weapons.json 的键）。在标题页"选武器页"落地。
+# 空串 = 未选，reset() 退回默认的 pistol+smg 双武器起步（保证 headless 模拟等
+# 不走选武器页的路径行为不变）。选了则"所选 1 把 + 手枪保底"，手枪永远在，
+# 避免新手只拿一把近战被围死。
+var start_weapon: String = ""
+
 # 装备：元素形如 {"key": "pistol", "lv": 1}
 # ⚠️ 字段名必须是 "lv"（core/Inventory 里就用这个），写成 "level" 会让合成静默失效
 var weapons: Array = []
@@ -68,9 +74,15 @@ func reset() -> void:
 	shield = 0
 	frenzy_left = 0.0
 	Events.shield_changed.emit(shield)
-	# 开局自带手枪 + 冲锋枪：双武器起步，前期清怪有手感、锅气攒得快
+	# 开局武器：标题页"选武器页"选的 1 把 + 手枪保底（手枪永远在，避免只拿一把近战被围死）。
+	# 没走过选武器页（如 headless 模拟 / 死亡页"再来一局"复用上次选择前的默认）则退回
+	# 原 piston+smg 双武器起步，保证旧路径数值表现不变。
+	weapons = []
+	if start_weapon != "" and start_weapon != "pistol":
+		weapons.append({"key": start_weapon, "lv": 1})
 	weapons.append({"key": "pistol", "lv": 1})
-	weapons.append({"key": "smg", "lv": 1})
+	if start_weapon == "":
+		weapons.append({"key": "smg", "lv": 1})
 
 # ---- 角色 ----
 func set_character(key: String) -> void:

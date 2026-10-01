@@ -94,6 +94,21 @@ const UI := {
   # ---- 角色选择 ----
   "char_base": {"en": "BASE", "zh": "基础"},
 
+  # ---- 开局选武器 ----
+  "pick_weapon_title": {"en": "CHOOSE YOUR WEAPON", "zh": "选择初始武器"},
+  "pick_weapon_hint": {"en": "Pick ONE starter. Pistol stays as your backup.",
+                       "zh": "选 1 把开局武器 · 手枪作为保底一同携带"},
+  "pick_weapon_confirm": {"en": "GO!", "zh": "出发！"},
+  "pick_weapon_back": {"en": "BACK", "zh": "返回"},
+  "pick_weapon_sel": {"en": "SELECTED", "zh": "已选"},
+  "pick_weapon_loadout": {"en": "LOADOUT: %s + Pistol", "zh": "本局阵容：%s + 手枪"},
+
+  # ---- 商店（补全标签）----
+  "shop_new": {"en": "NEW", "zh": "新武器"},
+  "shop_merge": {"en": "MERGE +1", "zh": "合成 +1"},
+  "shop_full": {"en": "SLOTS FULL", "zh": "槽位已满"},
+  "shop_rarity": {"en": "RARITY", "zh": "稀有度"},
+
   # ---- 统计名（解锁进度） ----
   "stat_kills": {"en": "kills", "zh": "击杀"},
   "stat_gold": {"en": "gold", "zh": "金币"},

@@ -18,6 +18,11 @@ web/build*/
 .DS_Store
 Thumbs.db
 
+# Godot/系统崩溃转储（core.<pid>，体积可达 GB 级，绝不进 git）
+core
+core.*
+*.core
+
 # 本地密钥（绝不提交）
 *.token
 .env

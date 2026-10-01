@@ -5,9 +5,12 @@ extends CanvasLayer
 # 出海游戏，主文案用英文；"萝卜突围"作中文品牌副标（项目已嵌 CJK 字体，能正常显示）。
 
 const CharacterPickerScript := preload("res://ui/Screens/CharacterPicker.gd")
+const WeaponPickerScript := preload("res://ui/Screens/WeaponPicker.gd")
 const Save := preload("res://core/Save.gd")
 
 var _root: Control
+var _picker_layer: CanvasLayer
+var _picker
 var _sub_lbl: Label
 var _tag_lbl: Label
 var _best_lbl: Label
@@ -169,21 +172,42 @@ func _build() -> void:
 	_root.add_child(btn)
 	I18n.locale_changed.connect(_on_locale_changed)
 
+	# 开局选武器页：包进 layer=45 的 CanvasLayer，压在 HUD(20) 之上、标题(50)之下。
+	# 标题隐藏时它才可见，负责"角色选完 → 选武器 → 开打"的最后一步。
+	_picker_layer = CanvasLayer.new()
+	_picker_layer.layer = 45
+	_picker = WeaponPickerScript.new()
+	_picker_layer.add_child(_picker)
+	_picker.set_back(_on_picker_back)
+	get_parent().add_child(_picker_layer)
+	_picker_layer.visible = false
+
 func _on_start() -> void:
 	# 存档里记过上次的角色就默认选它（省得每次重选）
 	var last := SaveMgr.last_character()
 	if not last.is_empty() and Data.characters.has(last):
 		GameState.set_character(last)
 	_root.visible = false
-	Events.run_requested.emit()
+	# 进入"选初始武器"页（角色选完 → 选武器 → 开打）。死亡页"再来一局"走
+	# run_requested 直接开打、不复用此页，因此仍保留上次选择的初始武器。
+	_picker_layer.visible = true
+
+func _on_picker_back() -> void:
+	# 从选武器页返回标题：重新显示标题，隐藏选武器页
+	_picker_layer.visible = false
+	_root.visible = true
 
 func _on_run_requested() -> void:
-	# 死亡页"再来一局"也会发这个；标题页本就隐藏，无需再处理
+	# 死亡页"再来一局"也会发这个；标题页本就隐藏，选武器页也要一并收起
 	_root.visible = false
+	if _picker_layer != null:
+		_picker_layer.visible = false
 
 func _on_quit_to_title() -> void:
 	# 从暂停菜单退出：重新显示标题页（游戏进行中标题页是隐藏的）
 	_root.visible = true
+	if _picker_layer != null:
+		_picker_layer.visible = false
 
 func _on_locale_changed(_l: String = "") -> void:
 	var sub_txt := I18n.t("title_sub")

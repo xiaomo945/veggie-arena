@@ -32,7 +32,9 @@ func _build() -> void:
 	_title.text = I18n.t("victory_title")
 	_title.add_theme_font_size_override("font_size", 42)
 	_title.add_theme_color_override("font_color", Color(0.95, 0.86, 0.45))
-	_title.set_position(Vector2(160, 290))
+	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title.set_size(Vector2(540, 50))
+	_title.set_position(Vector2(0, 290))
 	_root.add_child(_title)
 
 	# 装饰：标题上方居中的 "胜利" 图标
@@ -46,7 +48,9 @@ func _build() -> void:
 
 	_stat = Label.new()
 	_stat.add_theme_font_size_override("font_size", 20)
-	_stat.set_position(Vector2(150, 366))
+	_stat.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stat.set_size(Vector2(540, 120))
+	_stat.set_position(Vector2(0, 366))
 	_root.add_child(_stat)
 
 	_btn = Button.new()

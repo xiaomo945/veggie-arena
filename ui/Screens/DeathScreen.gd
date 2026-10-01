@@ -32,7 +32,9 @@ func _build() -> void:
 	_title.text = I18n.t("death_title")
 	_title.add_theme_font_size_override("font_size", 40)
 	_title.add_theme_color_override("font_color", Color(0.96, 0.55, 0.45))
-	_title.set_position(Vector2(150, 300))
+	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title.set_size(Vector2(540, 50))
+	_title.set_position(Vector2(0, 300))
 	_root.add_child(_title)
 
 	# 装饰：标题上方居中的 "失败" 图标
@@ -46,7 +48,9 @@ func _build() -> void:
 
 	_stat = Label.new()
 	_stat.add_theme_font_size_override("font_size", 20)
-	_stat.set_position(Vector2(150, 372))
+	_stat.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stat.set_size(Vector2(540, 120))
+	_stat.set_position(Vector2(0, 372))
 	_root.add_child(_stat)
 
 	_btn = Button.new()

@@ -1,9 +1,9 @@
 {
   "arena": { "x": 12, "y": 74, "w": 516, "h": 756 },
   "player": {
-    "max_hp": 100,
-    "speed": 340,
-    "radius": 16,
+ "max_hp": 100,
+ "speed": 300,
+ "radius": 16,
     "ifr_seconds": 0.38,
     "touch_cooldown": 0.7
   },
@@ -15,10 +15,10 @@
     "bonus_per_wave": 6
   },
   "spawn": {
-    "base_rate": 0.28,
-    "per_wave": 0.24,
-    "cap": 5.0,
-    "max_alive": 44,
+ "base_rate": 0.55,
+ "per_wave": 0.40,
+ "cap": 8.0,
+ "max_alive": 60,
     "warn_time": 0.45,
     "edge_offset": 20,
     "fast_from_wave": 2,

@@ -80,7 +80,7 @@
     "hp_base": 5,
     "hp_per_wave": 2.73,
     "speed_base": 160,
-    "speed_per_wave": 5.5,
+    "speed_per_wave": 5.0,
     "dmg_base": 2,
     "dmg_per_wave": 0.203,
     "radius": 7,
