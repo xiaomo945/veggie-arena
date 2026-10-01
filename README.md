@@ -74,7 +74,7 @@ It's **free, plays instantly in the browser**, and is coming to Steam (controlle
 
 主打卖点 / Key hooks：
 - 🥕 中式厨房幽默 + 明亮卡通蔬菜画风 / Chinese-kitchen humor, bright cartoon-veggie art
-- 🔪 12 种厨具武器（菜刀/签子/汤勺/茶壶/搅拌机/高压锅…）/ 12 kitchen weapons
+- 🔪 12 种厨具武器（菜刀/签子/汤勺/茶壶/搅拌机…）/ 12 kitchen weapons
 - 💨 冲刺闪避（按钮 / 手柄 A / RT，带无敌帧）/ Dash dodge with i-frames
 - 🍳 招牌「颠勺」全屏翻盘 / Signature Wok Toss screen-clear
 - 🥔 4 个可选角色（萝卜/土豆/番茄/辣椒），各有取舍 / 4 trade-off characters
