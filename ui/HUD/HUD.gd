@@ -29,6 +29,10 @@ var _toss_btn: Button
 var _unlock_queue: Array = []    # 待展示的解锁提示（一次一條，避免刷屏）
 var _unlock_t := 0.0
 var _pause_btn: Button
+var _combo := 0                  # 连击数（短时间连续击杀累加）
+var _combo_t := 0.0              # 连击剩余有效时间
+var _combo_label: Label
+var _run_total := 20             # 总波次（来自 balance.json）
 
 func _ready() -> void:
 	layer = 20
@@ -124,8 +128,20 @@ func _ready() -> void:
 	add_child(_unlock)
 
 	_wave_len = float(Data.wave_cfg().get("length", 20))
+	_run_total = int(Data.wave_cfg().get("total", 20))
+	_bars.set("run_wave", GameState.wave)
+	_bars.set("run_total", _run_total)
 	_on_weapons()
 	_refresh()
+
+	# 连击显示（基于击杀信号，短时间内连续击杀累加）
+	_combo_label = Label.new()
+	_combo_label.position = Vector2(300, 62)
+	_combo_label.add_theme_font_size_override("font_size", 12)
+	_combo_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.3))
+	_combo_label.text = ""
+	add_child(_combo_label)
+	Events.enemy_killed.connect(_on_killed)
 
 	# 暂停按钮：右上角，游戏中显示，暂停/结算时隐藏
 	_pause_btn = Button.new()
@@ -146,6 +162,9 @@ func _ready() -> void:
 	Events.player_died.connect(_hide_pause)
 	Events.run_won.connect(_hide_pause)
 	Events.run_paused.connect(_on_run_paused)
+
+	# 竖屏安全区：全部 HUD 元素整体下移，避开刘海 / 状态栏（必须在所有子节点建好后）
+	_apply_safe_area()
 
 func _mk_label(pos: Vector2, size: int, c: Color) -> Label:
 	var l := Label.new()
@@ -183,7 +202,8 @@ func _on_wave_progress(elapsed: float, length: float) -> void:
 	_bars.queue_redraw()
 	# 击杀数每帧跟着刷新（省一个信号，反正波次进度也是每帧发）
 	_kill.text = "KILLS %d" % GameState.kills
-	var wtxt := "WAVE %d" % GameState.wave
+	_bars.set("run_wave", GameState.wave)
+	var wtxt := "WAVE %d/%d" % [GameState.wave, _run_total]
 	if GameState.is_last_wave():
 		wtxt += " · FINAL"
 	_wave.text = wtxt
@@ -206,11 +226,14 @@ func _on_weapons(_ignored: Array = []) -> void:
 	_bars.queue_redraw()
 
 func _refresh() -> void:
-	var wtxt := "WAVE %d" % GameState.wave
+	var wtxt := "WAVE %d/%d" % [GameState.wave, _run_total]
 	if GameState.is_last_wave():
 		wtxt += " · FINAL"
 	_wave.text = wtxt
 	_kill.text = "KILLS %d" % GameState.kills
+	_bars.set("run_wave", GameState.wave)
+	_bars.set("run_total", _run_total)
+	_bars.queue_redraw()
 
 func _on_boss_wave(wave: int) -> void:
 	if GameState.is_last_wave():
@@ -293,3 +316,30 @@ func _process(delta: float) -> void:
 	if _toss_btn.visible:
 		_toss_btn.modulate.a = 0.65 + 0.35 * sin(Time.get_ticks_msec() / 110.0)
 	_tick_unlock(delta)
+	# 连击：超时归零，>=2 才显示
+	if _combo_t > 0.0:
+		_combo_t -= delta
+		if _combo_t <= 0.0:
+			_combo = 0
+	if _combo >= 2:
+		_combo_label.text = "COMBO x%d" % _combo
+	else:
+		_combo_label.text = ""
+
+# 击杀信号：累加连击并刷新有效计时
+func _on_killed(_type: String, _pos: Vector2) -> void:
+	_combo += 1
+	_combo_t = 2.5
+
+# 竖屏安全区：把全部 HUD 元素整体下移 TOP 像素，避开刘海 / 状态栏。
+# 顶部内容（血条 / 图标 / 波次）与底部按钮保持相对布局，仅整体避让。
+func _apply_safe_area() -> void:
+	const TOP := 12.0
+	for c in get_children():
+		var n2d := c as Node2D
+		if n2d != null:
+			n2d.position += Vector2(0.0, TOP)
+		else:
+			var ctrl := c as Control
+			if ctrl != null:
+				ctrl.position += Vector2(0.0, TOP)

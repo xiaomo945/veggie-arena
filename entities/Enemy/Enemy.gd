@@ -10,6 +10,7 @@ extends Node2D
 
 # 贴图绘制边长 = radius * 该系数（贴图里角色占画布约 90%，画出来跟手绘版体量一致）
 const SPRITE_SCALE := 2.2
+const FLASH_DUR := 0.16
 
 var alive := false
 var eid := 0
@@ -25,6 +26,7 @@ var flight := false
 var elite := false
 var _flash := 0.0
 var _phase := 0.0
+var _kb := Vector2.ZERO          # 受击击退脉冲（由 EnemySystem 施加/衰减）
 
 func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	etype = str(stats.get("type", "grunt"))
@@ -52,12 +54,17 @@ func recycle() -> void:
 # 返回 true 表示这一击打死了它
 func hurt(amount: float) -> bool:
 	hp -= amount
-	_flash = 0.12
+	_flash = FLASH_DUR
 	queue_redraw()
 	if hp <= 0.0:
 		recycle()
 		return true
 	return false
+
+# 受击击退：沿 dir 叠加一个快速衰减的速度脉冲（幅度由调用方克制）
+func apply_knockback(dir: Vector2, impulse: float) -> void:
+	var v: Vector2 = _kb + dir * impulse
+	_kb = v.limit_length(220.0)
 
 func tick(delta: float) -> void:
 	if _flash > 0.0:
@@ -70,7 +77,9 @@ func _draw() -> void:
 		return
 	var c := tint
 	if _flash > 0.0:
-		c = Color(1, 1, 1, 1).lerp(tint, 0.25)
+		var f: float = clampf(_flash / FLASH_DUR, 0.0, 1.0)
+		# 受击瞬间整体闪白，随受击时间衰减回原色
+		c = tint.lerp(Color(1, 1, 1, 1), f * 0.85)
 	var tex := Art.sprite("enemy_" + etype)
 	if tex != null:
 		_draw_sprite(tex, radius * SPRITE_SCALE, c)
@@ -81,6 +90,10 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, radius + 4.0, 0.0, TAU, 16, Color(1, 1, 1, 0.7), 2.5, true)
 		elif etype == "boss":
 			draw_arc(Vector2.ZERO, radius + 5.0, 0.0, TAU, 18, Color(1, 0.3, 0.4, 0.8), 3.5, true)
+	# 受击红色染色：覆盖一层随受击时间衰减的红色，强化"被打到了"
+	if _flash > 0.0:
+		var f: float = clampf(_flash / FLASH_DUR, 0.0, 1.0)
+		draw_circle(Vector2.ZERO, radius, Color(1.0, 0.25, 0.25, 0.35 * f))
 	_draw_hp_bar()
 
 # 缺图时的手绘造型（保留原顺序：先"看清敌人"，再谈美术）

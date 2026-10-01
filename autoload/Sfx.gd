@@ -25,6 +25,9 @@ func _ready() -> void:
 	_load("dash", "res://art/sfx/sfx_dash.ogg")
 	_load("unlock", "res://art/sfx/sfx_unlock.ogg")
 	_load("victory", "res://art/sfx/sfx_victory.ogg")
+	# 击杀/重击分层音（资源缺失则静默跳过，不影响既有调用方）
+	_load("hit_heavy", "res://art/sfx/sfx_hit_heavy.ogg")
+	_load("kill_boss", "res://art/sfx/sfx_kill_boss.ogg")
 
 	Events.weapon_fired.connect(_on_shoot)
 	Events.damage_dealt.connect(_on_hit)
@@ -39,7 +42,8 @@ func _ready() -> void:
 	Events.unlocked.connect(_on_unlock)
 	Events.run_won.connect(_on_victory)
 	# 按设置应用音量（音效开关/总静音）；设置变了也由 PauseScreen 回调重调
-	apply_volume()
+	# call_deferred：autoload 全局名在所有 _ready 跑完后才注册，此处延迟避免 Settings 仍是 Nil
+	call_deferred("apply_volume")
 
 # 加载一个音效 Ogg（子 Agent 合成），放进播放器池；缺文件则静默跳过
 func _load(key: String, path: String) -> void:
@@ -61,16 +65,45 @@ func _play(key: String, gap_ms: int) -> void:
 	_last_at[key] = now
 	var p: AudioStreamPlayer = _players.get(key)
 	if p != null:
+		p.pitch_scale = 1.0
+		p.play()
+
+# 带音高的播放（用于按伤害/敌人类型调制音色，制造层次）
+func _play_pitched(key: String, gap_ms: int, pitch: float) -> void:
+	var now := Time.get_ticks_msec()
+	if _last_at.has(key) and now - _last_at[key] < gap_ms:
+		return
+	_last_at[key] = now
+	var p: AudioStreamPlayer = _players.get(key)
+	if p != null:
+		p.pitch_scale = pitch
 		p.play()
 
 func _on_shoot(_a: Vector2, _b: Vector2, _c: Dictionary, _d: Color) -> void:
 	_play("shoot", 55)
 
-func _on_hit(_amount: int, _pos: Vector2, _crit: bool) -> void:
-	_play("hit", 45)
+func _on_hit(amount: int, _pos: Vector2, crit: bool) -> void:
+	# 伤害越大音调越低 → 重击更有"分量"；暴击提亮
+	var pitch: float = 1.0
+	if crit:
+		pitch = 1.3
+	else:
+		pitch = clampf(1.7 - float(amount) * 0.013, 0.7, 1.7)
+	_play_pitched("hit", 45, pitch)
+	# 大额伤害叠一层低频"闷响"（资源缺失则静默）
+	if amount >= 30:
+		_play_pitched("hit_heavy", 90, 0.8)
 
-func _on_kill(_type: String, _pos: Vector2) -> void:
-	_play("kill", 35)
+func _on_kill(type: String, _pos: Vector2) -> void:
+	# 按敌人类型调制击杀音色：Boss 更沉、重甲略低
+	var pitch: float = 1.0
+	if type == "boss":
+		pitch = 0.6
+	elif type == "tank":
+		pitch = 0.85
+	_play_pitched("kill", 35, pitch)
+	if type == "boss":
+		_play_pitched("kill_boss", 120, 1.0)
 
 func _on_pickup(_pos: Vector2, _value: int) -> void:
 	_play("pickup", 60)
@@ -91,7 +124,9 @@ func _on_wok() -> void:
 
 # 按 Settings 把每个播放器压到静音或恢复（音效开关/总静音变化时由 PauseScreen 调）
 func apply_volume() -> void:
-	var on := Settings.sfx_enabled()
+	var on := true
+	if Settings != null:
+		on = Settings.sfx_enabled()
 	for p in _players.values():
 		var ap := p as AudioStreamPlayer
 		if ap != null:

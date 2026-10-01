@@ -25,8 +25,10 @@ func _draw() -> void:
 	_draw_trails()
 	var squash := 1.0 + 0.05 * sin(player._bob)
 	var stretch := 1.0 / squash
-	# 受伤闪烁：无敌帧内半透明，让玩家知道"刚才挨打了"
-	var alpha := 1.0 if player._ifr <= 0.0 else 0.55
+	# 受伤闪烁：i-frames 期间快速明灭，提示"刚挨打且无敌"
+	var alpha := 1.0
+	if player._ifr > 0.0:
+		alpha = 0.35 + 0.45 * (0.5 + 0.5 * sin(player._ifr * 40.0))
 	var tex := _skin_texture()
 	# 冲刺瞬间沿冲刺方向拉长（速度感），武器图标不跟着变形，所以画完马上复位
 	if player.Dash.active(player._dash):

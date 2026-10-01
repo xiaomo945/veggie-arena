@@ -7,16 +7,22 @@ extends Node
 const Spawner := preload("res://core/Spawner.gd")
 const Hit := preload("res://core/Hit.gd")
 const Movement := preload("res://core/Movement.gd")
+const DamageLabel := preload("res://entities/effects/DamageLabel.gd")
+const HitSpark := preload("res://entities/effects/HitSpark.gd")
+const Shake := preload("res://entities/effects/Shake.gd")
 
 const MAX_BULLETS := 90
 const MAX_ENEMIES := 110
 const LIFESTEAL_CHANCE := 0.08
 const SEPARATION_FORCE := 90.0
+const KB_IMPULSE := 120.0        # 命中击退脉冲（克制，约 14px 位移）
+const KB_DECEL := 520.0          # 击退衰减（/s），短促
 
 var game: Node2D = null          # 注入：持有 _enemies / _bullets / _arena / _rng / player / _pickups 等
 
 func _ready() -> void:
 	game = get_parent()
+	Shake.register(game)
 
 # ---- 刷怪 ----
 func boss_wave() -> bool:
@@ -50,6 +56,8 @@ func spawn_boss() -> void:
 		return
 	e.spawn(pos, stats, game._next_id)
 	game._next_id += 1
+	# Boss 出场轻微震屏
+	Shake.kick(9.0, 0.4)
 
 # 地上还没被捡走的金币面额（诊断/HUD 用）
 func ground_gold() -> int:
@@ -92,6 +100,11 @@ func update_enemies(delta: float) -> void:
 		pos += Hit.separation(pos, game._neighbors, e.radius) * SEPARATION_FORCE * delta
 		# 别叠在玩家身上
 		pos += Hit.keep_distance(pos, pp, e.radius + float(Data.player_cfg().get("radius", 16)))
+		# 受击击退脉冲：随帧快速衰减，位移克制不影响手感
+		var kb: Vector2 = e._kb
+		if kb.length_squared() > 0.01:
+			pos += kb * delta
+			e._kb = kb.move_toward(Vector2.ZERO, KB_DECEL * delta)
 		e.global_position = Movement.clamp_to_arena(pos, game._arena, e.radius)
 		e.tick(delta)
 		# 接触玩家 → 造成伤害
@@ -165,6 +178,9 @@ func resolve_hits() -> void:
 		# 命中微量攒锅气（主要靠击杀，命中只是让"没空档"也能维持火候）
 		GameState.add_wok(float(Data.wok_cfg().get("hit_heat", 0.5)))
 		damage_enemy(e, b.dmg)
+		# 命中小幅击退：沿子弹方向把敌人推开一瞬
+		if e.alive:
+			e.apply_knockback(b.dir.normalized(), KB_IMPULSE)
 		if b.aoe_radius > 0.0:
 			_explode(b, e)
 		if b.pierce_left > 0:
@@ -184,10 +200,23 @@ func _explode(b, center_enemy) -> void:
 func damage_enemy(e, amount: float) -> void:
 	# 先取位置：hurt() 触发死亡后会 recycle，之后再取坐标就不稳了
 	var epos: Vector2 = e.global_position
+	# 伤害飘字（纯表现，受粒子开关控制）
+	if Settings.get_setting("particles_enabled", true):
+		var dl = DamageLabel.new()
+		game.add_child(dl)
+		dl.init(int(amount), false, epos)
+	# 单次大伤害轻微震屏
+	if amount >= 35.0:
+		Shake.kick(4.0, 0.16)
 	# 飘伤害数字（特效层订阅，纯表现）
 	Events.damage_dealt.emit(int(amount), epos, false)
 	if e.hurt(amount):
 		GameState.add_kill()
+		# 击杀碎屑 + 冲击波环（Boss 更大），粒子开关控制
+		if Settings.get_setting("particles_enabled", true):
+			var spark = HitSpark.new()
+			game.add_child(spark)
+			spark.init(epos, e.etype == "boss")
 		# 钱掉在地上（不是直接入账）：玩家要走进磁吸圈才收得到
 		# drop 的返回值 = 池满时被直接结算的金额（钱不会凭空蒸发）
 		if game._pickups != null:

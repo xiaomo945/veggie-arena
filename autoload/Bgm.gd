@@ -37,14 +37,15 @@ func _ready() -> void:
 	Events.player_died.connect(_on_died)
 	Events.run_won.connect(_on_won)
 	# 标题页菜单乐：桌面端立即响；Web 端等首次手势解锁后才响（正常）
-	play("menu")
+	# call_deferred：避免 _ready 阶段 Settings 全局名尚未注册（为 Nil）
+	call_deferred("play", "menu")
 
 # 切到指定曲；同曲已在播则忽略（不切断循环），避免重复触发时一顿一顿。
 func play(track: String) -> void:
 	if not _players.has(track):
 		return
 	# 音乐关：只把该曲压静音、不实际播放（省资源）
-	if not Settings.music_enabled():
+	if Settings == null or not Settings.music_enabled():
 		var silent := _players[track] as AudioStreamPlayer
 		if silent != null:
 			silent.volume_db = -80.0
@@ -98,7 +99,9 @@ func _on_won() -> void:
 
 # 设置改变后重读音乐开关：当前曲恢复音量/重播，非当前曲压静音
 func refresh() -> void:
-	var on := Settings.music_enabled()
+	var on := true
+	if Settings != null:
+		on = Settings.music_enabled()
 	for k in _players.keys():
 		var p := _players[k] as AudioStreamPlayer
 		if p == null:

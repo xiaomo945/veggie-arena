@@ -8,6 +8,7 @@ extends CharacterBody2D
 const Movement := preload("res://core/Movement.gd")
 const Weapon := preload("res://core/Weapon.gd")
 const Dash := preload("res://core/Dash.gd")
+const Shake := preload("res://entities/effects/Shake.gd")
 
 const MOUNT_RADIUS := 42.0
 
@@ -37,6 +38,9 @@ var damage_taken := 0          # 本局累计受到的伤害
 
 var visual: Node2D = null         # 外观层（PlayerVisual），_ready 里注入
 
+var _hurt_rect: ColorRect = null   # 受击红屏蒙版（屏幕空间，不随世界抖动）
+var _hurt_tween: Tween = null
+
 func _ready() -> void:
 	var pc := Data.player_cfg()
 	_radius = float(pc.get("radius", 16))
@@ -55,6 +59,14 @@ func _ready() -> void:
 	# 外观层：承接全部绘制，与物理解耦
 	visual = preload("res://entities/Player/PlayerVisual.gd").new()
 	add_child(visual)
+	# 受击红屏：独立的屏幕空间蒙版（CanvasLayer），不随世界抖动
+	var layer := CanvasLayer.new()
+	layer.layer = 128
+	add_child(layer)
+	_hurt_rect = ColorRect.new()
+	_hurt_rect.color = Color(1, 0, 0, 0)
+	_hurt_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(_hurt_rect)
 	Events.stick_dir_changed.connect(_on_dir)
 	Events.stick_released.connect(_on_release)
 	Events.dash_requested.connect(_on_dash_requested)
@@ -203,6 +215,15 @@ func take_hit(amount: float) -> void:
 	hits_taken += 1
 	damage_taken += int(amount)
 	GameState.take_damage(int(amount))
+	# 受击红屏闪烁
+	if _hurt_rect != null:
+		_hurt_rect.color = Color(1, 0, 0, 0.35)
+		if _hurt_tween != null and _hurt_tween.is_valid():
+			_hurt_tween.kill()
+		_hurt_tween = create_tween()
+		_hurt_tween.tween_property(_hurt_rect, "color:a", 0.0, 0.35)
+	# 受击轻微震屏
+	Shake.kick(7.0, 0.18)
 
 func _on_character_changed(_key: String) -> void:
 	# 属性加成变了（生命上限 / 移速 / 伤害 / 攻速都读 stat_value），重建缓存即可

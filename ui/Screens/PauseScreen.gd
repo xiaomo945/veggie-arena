@@ -1,18 +1,30 @@
 extends CanvasLayer
 
-# 暂停菜单：游戏中按右上角暂停键弹出。半透明遮罩 + 继续/重开/退出 + 音频开关。
+# 暂停菜单：游戏中按右上角暂停键弹出。半透明遮罩 + 继续/设置/重开/退出 + 音频开关。
 # 自己只负责显示与发声，所有"动作"都通过 Events 信号交给 Game/TitleScreen 处理。
 # 退出到标题由 Game 复位本局 + TitleScreen 重新显共同完成（见各自监听）。
+# 设置入口：从本菜单进入 SettingsMenu（独立 CanvasLayer，layer 更高）。
+
+const SettingsMenuScript := preload("res://ui/SettingsMenu.gd")
 
 var _root: Control
 var _sfx_btn: Button
 var _music_btn: Button
+var _settings: CanvasLayer
 
 func _ready() -> void:
 	layer = 30
 	_build()
 	_root.visible = false
 	Events.run_paused.connect(_on_paused)
+	# 设置菜单作为同级 CanvasLayer 挂到 Game 下（layer 35 > 本菜单 30）
+	var p := get_parent()
+	if p == null:
+		p = self
+	_settings = SettingsMenuScript.new()
+	p.add_child(_settings)
+	_settings.back_pressed = _on_settings_back
+	_settings.hide_menu()
 
 func _build() -> void:
 	_root = Control.new()
@@ -29,16 +41,17 @@ func _build() -> void:
 	t.add_theme_font_size_override("font_size", 38)
 	t.add_theme_color_override("font_color", Color(0.98, 0.86, 0.32))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.set_position(Vector2(0, 190))
+	t.set_position(Vector2(0, 170))
 	t.set_size(Vector2(540, 50))
 	_root.add_child(t)
 
-	_mk_btn("RESUME", 260, _on_resume, "play")
-	_mk_btn("RESTART", 338, _on_restart)
-	_mk_btn("QUIT TO TITLE", 416, _on_quit)
+	_mk_btn("RESUME", 240, _on_resume, "play")
+	_mk_btn("SETTINGS", 320, _on_open_settings, "settings")
+	_mk_btn("RESTART", 400, _on_restart)
+	_mk_btn("QUIT TO TITLE", 480, _on_quit)
 
-	_sfx_btn = _mk_toggle(484, _on_sfx)
-	_music_btn = _mk_toggle(544, _on_music)
+	_sfx_btn = _mk_toggle(560, _on_sfx)
+	_music_btn = _mk_toggle(620, _on_music)
 	_refresh_toggles()
 
 func _mk_btn(text: String, y: float, cb: Callable, icon_name := "") -> Button:
@@ -111,4 +124,15 @@ func _on_sfx() -> void:
 func _on_music() -> void:
 	Settings.toggle_music()
 	Bgm.refresh()
+	_refresh_toggles()
+
+# 进入设置菜单：隐藏本菜单，打开 SettingsMenu
+func _on_open_settings() -> void:
+	Sfx.ui_click()
+	_root.visible = false
+	_settings.show_menu()
+
+# 从设置菜单返回：重新显示本菜单并刷新开关
+func _on_settings_back() -> void:
+	_root.visible = true
 	_refresh_toggles()

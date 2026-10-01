@@ -8,6 +8,8 @@ var wave_progress := 0.0
 var slots: Array = []      # [{key, level, color, zh}]
 var wok_ratio := 0.0       # 0..1 火候
 var wok_tier := 0          # 0 微温 / 1 翻炒 / 2 爆炒
+var run_wave := 1          # 当前波次（用于总进度条）
+var run_total := 20        # 总波次
 
 const BAR_X := 40.0
 const BAR_Y := 8.0
@@ -24,10 +26,23 @@ const WOK_Y := 24.0
 const WOK_W := 486.0
 const WOK_H := 16.0
 
+# 总波次进度条（"这局打到第几波了"），贴最顶，全宽细条，避开刘海区
+const RUN_X := 8.0
+const RUN_Y := 4.0
+const RUN_W := 524.0
+const RUN_H := 3.0
+
 func _draw() -> void:
+	_draw_run_progress()
 	_draw_hp_bar()
 	_draw_slots()
 	_draw_wok()
+
+# 总波次进度：run_wave / run_total，一眼看出距离通关还有多远
+func _draw_run_progress() -> void:
+	draw_rect(Rect2(RUN_X, RUN_Y, RUN_W, RUN_H), Color(0, 0, 0, 0.5))
+	var frac := clampf(float(run_wave) / maxf(1.0, float(run_total)), 0.0, 1.0)
+	draw_rect(Rect2(RUN_X, RUN_Y, RUN_W * frac, RUN_H), Color(0.45, 0.78, 0.95, 0.9))
 
 func _draw_hp_bar() -> void:
 	# 底槽
