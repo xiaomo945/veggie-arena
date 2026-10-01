@@ -44,7 +44,14 @@ REPORT = "--report" in sys.argv
 
 
 def strip_code(text):
-    """去掉 GDScript 注释（保留行结构），避免把注释里的文件名当成真引用。"""
+    """去掉 GDScript 注释（保留行结构），避免把注释里的文件名当成真引用。
+
+    字符串**整体保留**（包括首尾引号）：只剥注释，不改字符串。
+    ⚠️ 这里踩过坑：早期实现把字符串的"闭合引号"也替换成了空格，于是
+       preload("res://core/Dash.gd") 被切成 preload("res://core/Dash.gd )，
+       所有依赖引号配对的正则（比如抓 preload 路径）全部静默失效 —— 表现为
+       "孤儿脚本"检测把整个 core/ 报成没人引用。字符串必须原样保留。
+    """
     out = []
     i, n = 0, len(text)
     state = None  # None=代码, '"'=双引号, "'"=单引号, '3'=三引号
@@ -57,20 +64,24 @@ def strip_code(text):
                 continue
             if c == '"':
                 if text.startswith('"""', i):
-                    state, i = '3', i + 3
-                    out.append('"""'); continue
+                    state = '3'
+                    out.append('"""')
+                    i += 3
+                    continue
                 state = '"'
             elif c == "'":
                 state = "'"
             out.append(c)
         else:
+            out.append(c)                     # 字符串内容原样保留
             if state == '3':
                 if text.startswith('"""', i):
-                    state, i = None, i + 3
-                    out.append('"""'); continue
+                    out.append('""')
+                    state = None
+                    i += 3
+                    continue
             elif c == state:
-                state = None
-            out.append(c if state else ' ')
+                state = None                  # 闭合引号已经 append 过了
         i += 1
     return ''.join(out)
 
