@@ -34,6 +34,15 @@ func _build() -> void:
 	_title.set_position(Vector2(160, 290))
 	_root.add_child(_title)
 
+	# 装饰：标题上方居中的 "胜利" 图标
+	var win_ico := TextureRect.new()
+	win_ico.texture = Art.ui_icon("win")
+	win_ico.custom_minimum_size = Vector2(28, 28)
+	win_ico.set_size(Vector2(28, 28))
+	win_ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	win_ico.set_position(Vector2(256, 242))
+	_root.add_child(win_ico)
+
 	_stat = Label.new()
 	_stat.add_theme_font_size_override("font_size", 20)
 	_stat.set_position(Vector2(150, 366))

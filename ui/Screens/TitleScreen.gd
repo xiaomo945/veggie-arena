@@ -42,6 +42,15 @@ func _build() -> void:
 	title.set_size(Vector2(540, 60))
 	_root.add_child(title)
 
+	# 装饰：标题上方居中一颗星
+	var star_ico := TextureRect.new()
+	star_ico.texture = Art.ui_icon("star")
+	star_ico.custom_minimum_size = Vector2(28, 28)
+	star_ico.set_size(Vector2(28, 28))
+	star_ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	star_ico.set_position(Vector2(256, 152))
+	_root.add_child(star_ico)
+
 	# 中文品牌副标
 	var sub := Label.new()
 	sub.text = "萝 卜 突 围"

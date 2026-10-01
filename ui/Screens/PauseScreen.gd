@@ -33,7 +33,7 @@ func _build() -> void:
 	t.set_size(Vector2(540, 50))
 	_root.add_child(t)
 
-	_mk_btn("RESUME", 260, _on_resume)
+	_mk_btn("RESUME", 260, _on_resume, "play")
 	_mk_btn("RESTART", 338, _on_restart)
 	_mk_btn("QUIT TO TITLE", 416, _on_quit)
 
@@ -41,12 +41,16 @@ func _build() -> void:
 	_music_btn = _mk_toggle(544, _on_music)
 	_refresh_toggles()
 
-func _mk_btn(text: String, y: float, cb: Callable) -> Button:
+func _mk_btn(text: String, y: float, cb: Callable, icon_name := "") -> Button:
 	var b := Button.new()
 	b.text = text
 	b.set_size(Vector2(300, 64))
 	b.set_position(Vector2((540 - 300) * 0.5, y))
 	b.add_theme_font_size_override("font_size", 22)
+	if icon_name != "":
+		if Art.has_ui_icon(icon_name):
+			b.icon = Art.ui_icon(icon_name)
+			b.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.pressed.connect(cb)
 	_root.add_child(b)
 	return b
@@ -63,8 +67,20 @@ func _mk_toggle(y: float, cb: Callable) -> Button:
 func _refresh_toggles() -> void:
 	if _sfx_btn != null:
 		_sfx_btn.text = "SFX   " + ("ON" if Settings.sfx_enabled() else "OFF")
+		if Art.has_ui_icon("volume_on") and Art.has_ui_icon("volume_off"):
+			if Settings.sfx_enabled():
+				_sfx_btn.icon = Art.ui_icon("volume_on")
+			else:
+				_sfx_btn.icon = Art.ui_icon("volume_off")
+			_sfx_btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if _music_btn != null:
 		_music_btn.text = "MUSIC " + ("ON" if Settings.music_enabled() else "OFF")
+		if Art.has_ui_icon("music_on") and Art.has_ui_icon("music_off"):
+			if Settings.music_enabled():
+				_music_btn.icon = Art.ui_icon("music_on")
+			else:
+				_music_btn.icon = Art.ui_icon("music_off")
+			_music_btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 func _on_paused(p: bool) -> void:
 	_root.visible = p

@@ -9,9 +9,9 @@ var slots: Array = []      # [{key, level, color, zh}]
 var wok_ratio := 0.0       # 0..1 火候
 var wok_tier := 0          # 0 微温 / 1 翻炒 / 2 爆炒
 
-const BAR_X := 14.0
+const BAR_X := 40.0
 const BAR_Y := 8.0
-const BAR_W := 512.0
+const BAR_W := 486.0
 const BAR_H := 14.0
 
 const SLOT_SIZE := 30.0
@@ -19,9 +19,9 @@ const SLOT_GAP := 6.0
 const SLOT_Y := 32.0
 
 # 锅气条放在顶部 HUD 区（与血条并排，全宽），手机底部会被浏览器底栏遮挡，不能放下面
-const WOK_X := 14.0
+const WOK_X := 40.0
 const WOK_Y := 24.0
-const WOK_W := 512.0
+const WOK_W := 486.0
 const WOK_H := 16.0
 
 func _draw() -> void:

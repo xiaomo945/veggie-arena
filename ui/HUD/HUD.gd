@@ -36,9 +36,15 @@ func _ready() -> void:
 	_bars.set_script(HudBarsScene)
 	add_child(_bars)
 
-	_wave = _mk_label(Vector2(14, 44), 16, Color(0.95, 0.95, 0.95))
-	_gold = _mk_label(Vector2(14, 62), 14, Color(0.98, 0.84, 0.35))
+	# 血条左侧红心图标（代表血量），血条已右移到 x=40 给图标腾出空间
+	_mk_icon("heart", Vector2(10, 4), 26)
+
+	_wave = _mk_label(Vector2(40, 44), 16, Color(0.95, 0.95, 0.95))
+	_gold = _mk_label(Vector2(40, 62), 14, Color(0.98, 0.84, 0.35))
 	_kill = _mk_label(Vector2(180, 62), 12, Color(0.75, 0.75, 0.78))
+
+	# 金币左侧金币图标，金币标签已右移到 x=40 避免遮挡
+	_mk_icon("coin", Vector2(12, 58), 22)
 
 	# Boss 波居中横幅
 	_banner = Label.new()
@@ -148,6 +154,19 @@ func _mk_label(pos: Vector2, size: int, c: Color) -> Label:
 	l.add_theme_color_override("font_color", c)
 	add_child(l)
 	return l
+
+# 在 HUD 上放一个小图标（TextureRect）。没图时（Art 兜底）直接跳过，不影响布局。
+func _mk_icon(name: String, pos: Vector2, sz: float) -> void:
+	if not Art.has_ui_icon(name):
+		return
+	var tex = TextureRect.new()
+	tex.texture = Art.ui_icon(name)
+	tex.custom_minimum_size = Vector2(sz, sz)
+	tex.size = Vector2(sz, sz)
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tex.position = pos
+	add_child(tex)
 
 func _on_hp(hp: int, max_hp: int) -> void:
 	_bars.set("hp_ratio", float(hp) / maxf(1.0, float(max_hp)))

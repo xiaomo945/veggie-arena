@@ -55,6 +55,15 @@ func _build() -> void:
 	_gold_lbl.add_theme_color_override("font_color", Color(0.98, 0.84, 0.35))
 	panel.add_child(_gold_lbl)
 
+	# 装饰：金币计数左侧的硬币图标
+	var gold_coin := TextureRect.new()
+	gold_coin.texture = Art.ui_icon("coin")
+	gold_coin.custom_minimum_size = Vector2(28, 28)
+	gold_coin.set_size(Vector2(24, 24))
+	gold_coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	gold_coin.set_position(Vector2(268, 19))
+	panel.add_child(gold_coin)
+
 	var y := 52.0
 	for i in 4:
 		var b := Button.new()
@@ -64,6 +73,14 @@ func _build() -> void:
 		b.pressed.connect(_buy.bind(i))
 		panel.add_child(b)
 		_cards.append(b)
+		# 装饰：卡片右下角价格数字旁的硬币图标
+		var coin := TextureRect.new()
+		coin.texture = Art.ui_icon("coin")
+		coin.custom_minimum_size = Vector2(28, 28)
+		coin.set_size(Vector2(26, 26))
+		coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		coin.set_position(Vector2(PANEL_W - 46, y + CARD_H - 34))
+		panel.add_child(coin)
 		y += CARD_H + CARD_GAP
 
 	_reroll_btn = Button.new()

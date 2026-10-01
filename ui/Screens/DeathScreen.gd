@@ -34,6 +34,15 @@ func _build() -> void:
 	_title.set_position(Vector2(150, 300))
 	_root.add_child(_title)
 
+	# 装饰：标题上方居中的 "失败" 图标
+	var lose_ico := TextureRect.new()
+	lose_ico.texture = Art.ui_icon("lose")
+	lose_ico.custom_minimum_size = Vector2(28, 28)
+	lose_ico.set_size(Vector2(28, 28))
+	lose_ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	lose_ico.set_position(Vector2(256, 252))
+	_root.add_child(lose_ico)
+
 	_stat = Label.new()
 	_stat.add_theme_font_size_override("font_size", 20)
 	_stat.set_position(Vector2(150, 372))
