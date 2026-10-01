@@ -23,9 +23,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_LINES = 300
 
 # 存量基线：{文件路径: 允许的违规数}。只允许下降，不允许上升。
-ALLOW_LINES = {
-    "ui/HUD/HUD.gd": 389,
-}
+# R1 已清零：HUD.gd 曾长到 389 行，拆成 HudTop / HudBanners / HudButtons
+# 三个子组件 + 189 行的编排器后归零。此后单文件超 300 行一律硬失败。
+ALLOW_LINES = {}
 # core/ 纯度基线（当前实测 0，保持为空即"零容忍"）
 ALLOW_CORE = {}
 # 跨模块读私有字段基线（实测存量，只降不升）
