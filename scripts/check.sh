@@ -46,24 +46,34 @@ echo "=== 1.6 字体中文覆盖检查（漏字会变豆腐块）==="
 # 校验 fonts/NotoSansSC-Subset.otf 是否覆盖项目当前用到的全部中文。
 # 若以后加了新中文文案/武器名却没重出字体，这里会直接报错，避免"豆腐块"上线。
 # 重出字体：python3 scripts/regen_font.py
+#
+# 只扫"会真的渲染到屏幕上"的中文：
+#   - 不扫 .md：文档里的中文永远不会进游戏画面，否则每写一行注释/文档就要重出字体；
+#   - .gd 先剥掉注释再扫（复用架构守卫的 strip_code），注释里的汉字同样不上屏。
 if [ -f fonts/NotoSansSC-Subset.otf ]; then
   PY=$(command -v python3.11 || command -v python3)
   miss=$("$PY" - "$ROOT" <<'PY'
 import os, re, sys
 from fontTools.ttLib import TTFont
 root = sys.argv[1]
+sys.path.insert(0, os.path.join(root, 'scripts'))
+from arch_guard import strip_code
 CJK = re.compile(r'[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]')
+SCAN = ('.gd', '.json', '.tscn', '.tres', '.cfg', '.csv', '.txt')
 used = set()
-for base,_,files in os.walk(root):
+for base, _, files in os.walk(root):
     if '/.git' in base or '/.godot' in base:
         continue
     for f in files:
-        if not f.endswith(('.gd','.json','.tres','.cfg','.md','.csv','.txt')):
+        if not f.endswith(SCAN):
             continue
-        for ch in open(os.path.join(base,f), encoding='utf-8', errors='ignore').read():
+        text = open(os.path.join(base, f), encoding='utf-8', errors='ignore').read()
+        if f.endswith('.gd'):
+            text = strip_code(text)
+        for ch in text:
             if CJK.match(ch):
                 used.add(ch)
-cm = TTFont(os.path.join(root,'fonts/NotoSansSC-Subset.otf')).getBestCmap()
+cm = TTFont(os.path.join(root, 'fonts/NotoSansSC-Subset.otf')).getBestCmap()
 print(''.join(sorted(c for c in used if ord(c) not in cm)))
 PY
 )
