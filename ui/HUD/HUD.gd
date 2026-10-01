@@ -157,6 +157,8 @@ func _ready() -> void:
 	_pause_btn.pressed.connect(_on_pause_pressed)
 	add_child(_pause_btn)
 	_pause_btn.visible = false
+	# 共享给 Joystick：戳暂停按钮区域只暂停，不当成走位拖拽
+	GameState.pause_rect = Rect2(_pause_btn.position, _pause_btn.size)
 
 	Events.run_started.connect(_show_pause)
 	Events.player_died.connect(_hide_pause)
@@ -337,15 +339,35 @@ func _on_killed(_type: String, _pos: Vector2) -> void:
 	_combo += 1
 	_combo_t = 2.5
 
-# 竖屏安全区：把全部 HUD 元素整体下移 TOP 像素，避开刘海 / 状态栏。
-# 顶部内容（血条 / 图标 / 波次）与底部按钮保持相对布局，仅整体避让。
+# 竖屏安全区 / 异屏适配：
+# - 顶部内容（血条 / 图标 / 波次）整体下移 TOP，避开刘海 / 状态栏；
+# - 底部按钮（颠勺、冲刺）上移 BOTTOM，避开全面屏手势条 / Home Indicator；
+# - 底部按钮上移后，同步更新共享给 Joystick 的避让区，避免"按钮挪走了摇杆还守旧坐标"。
 func _apply_safe_area() -> void:
-	const TOP := 12.0
+	const TOP := 34.0
+	const BOTTOM := 34.0
 	for c in get_children():
-		var n2d := c as Node2D
-		if n2d != null:
-			n2d.position += Vector2(0.0, TOP)
+		# 底部控制（颠勺 / 冲刺）：只上移 BOTTOM 避让手势条，不随顶部一起下移
+		if c == _toss_btn or c == _dash_btn:
+			var bc := c as Control
+			if bc != null:
+				bc.position -= Vector2(0.0, BOTTOM)
+			else:
+				var bn := c as Node2D
+				if bn != null:
+					bn.position -= Vector2(0.0, BOTTOM)
+			if c == _toss_btn:
+				GameState.wok_toss_rect = Rect2(_toss_btn.position, _toss_btn.size)
+			elif c == _dash_btn:
+				GameState.dash_rect = Rect2(_dash_btn.position, Vector2(DASH_SIZE, DASH_SIZE))
 		else:
-			var ctrl := c as Control
-			if ctrl != null:
-				ctrl.position += Vector2(0.0, TOP)
+			# 其余（顶部 HUD / 横幅等）：下移 TOP 避让刘海 / 状态栏
+			var n2d := c as Node2D
+			if n2d != null:
+				n2d.position += Vector2(0.0, TOP)
+			else:
+				var ctrl := c as Control
+				if ctrl != null:
+					ctrl.position += Vector2(0.0, TOP)
+	# 暂停按钮也被下移了，用移位后的坐标重算 Joystick 避让区
+	GameState.pause_rect = Rect2(_pause_btn.position, _pause_btn.size)

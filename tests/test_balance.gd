@@ -35,9 +35,10 @@ func run(data) -> Dictionary:
 	chk(out1 > h1 * 0.9,
 		"第1波能打完：手枪 %d 秒输出 %.0f vs 怪物总血 %.0f" % [int(length), out1, h1])
 
-	# 2) 怪物不能堆到打不完（第1波场上残留数要可控）
+	# 2) 怪物不能堆到打不完（第1波场上残留数要可控；随波次时长线性放宽）
 	var spawn_n1 := Spawner.wave_budget(1, spawn_cfg, length)
-	chk(spawn_n1 < 30, "第1波刷怪量 %.0f 只，不至于淹没玩家" % spawn_n1)
+	chk(spawn_n1 < 30.0 * (length / 20.0),
+		"第1波刷怪量 %.0f 只（≤%.0f），不至于淹没玩家" % [spawn_n1, 30.0 * (length / 20.0)])
 
 	# 3) 刷怪速率始终受 cap 限制
 	var bad := false

@@ -8,7 +8,7 @@
     "touch_cooldown": 0.7
   },
   "wave": {
-    "length": 18,
+    "length": 60,
     "total": 20,
     "heal_percent": 0.10,
     "bonus_base": 10,

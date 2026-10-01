@@ -36,6 +36,8 @@ var _wok_ready_emitted := false
 var wok_toss_rect := Rect2(0, 0, 0, 0)
 # 冲刺按钮占的屏幕区域（HUD 写入，Joystick 读取后避让：戳这块只冲刺、不走位）
 var dash_rect := Rect2(0, 0, 0, 0)
+# 暂停按钮占的屏幕区域（HUD 写入，Joystick 读取后避让：戳这块只暂停、不走位）
+var pause_rect := Rect2(0, 0, 0, 0)
 
 func _ready() -> void:
 	reset()

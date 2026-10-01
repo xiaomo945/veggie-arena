@@ -14,6 +14,10 @@ var _active := false
 var _index := -1
 var _origin := Vector2.ZERO
 var _finger := Vector2.ZERO
+# 固定左下移动区：只有这块区域按下才启动摇杆，避免误触右侧按钮 / 顶部 HUD。
+# 设计空间 540x900；左 ~52% 宽、下 ~50% 高。颠勺/冲刺/暂停按钮都在区外，由各自排除逻辑处理。
+const MOVE_ZONE_W := 280.0
+const MOVE_ZONE_Y := 450.0
 
 @onready var _view: Node2D = $StickView
 
@@ -60,6 +64,9 @@ func _input(event: InputEvent) -> void:
 		return
 
 func _start(index: int, pos: Vector2) -> void:
+	# 暂停按钮区域：戳这里只暂停，不开始移动（避免"想暂停却走位"）
+	if GameState.pause_rect.has_point(pos):
+		return
 	# 满锅气时点颠勺按钮区域：只触发颠勺，不开始移动（避免"想甩锅却走位"）
 	if GameState.wok_ready() and GameState.wok_toss_rect.has_point(pos):
 		Events.wok_toss_requested.emit()
@@ -67,6 +74,9 @@ func _start(index: int, pos: Vector2) -> void:
 	# 冲刺按钮区域：戳这里只冲刺，不当成走位拖拽
 	if GameState.dash_rect.has_point(pos):
 		Events.dash_requested.emit()
+		return
+	# 固定左下移动区以外（右侧按钮 / 顶部 HUD / 中部空白）不启动摇杆 → 消除误触
+	if pos.x > MOVE_ZONE_W or pos.y < MOVE_ZONE_Y:
 		return
 	_active = true
 	_index = index
