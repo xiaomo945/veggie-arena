@@ -102,6 +102,20 @@ else
 fi
 
 echo ""
+echo "=== 2.5 整局集成验证（重构安全网）==="
+# 单元测试跑在 --script 模式，那里不注册 autoload，所以 Game/EnemySystem 这类
+# 真正依赖 Data/Events/GameState 的模块没法被单测实例化。整条链路还通不通，
+# 只能靠真跑一局来验证：刷怪 → 开火 → 命中 → 掉钱 → 波次推进（含商店结算）。
+if [ -f scripts/run_sim.py ]; then
+  PY3=$(command -v python3.11 || command -v python3)
+  if ! "$PY3" scripts/run_sim.py 120; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/run_sim.py，跳过"
+fi
+
+echo ""
 echo "=== 3. 说明 ==="
 echo "  单文件 >300 行的检查已并入 1.7 架构守卫（硬失败，不再是只告警不拦人）"
 
