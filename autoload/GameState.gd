@@ -159,6 +159,11 @@ func buy_upgrade(key: String) -> void:
 		#    之前写 "heal" 导致买回血强化时静默不生效
 		"heal_now":
 			heal(int(val))
+		# 锅气上限 +N：直接抬高当前这局可存的颠勺充能上限
+		"wok_charges":
+			wok["max_charges"] = int(wok.get("max_charges", 3)) + int(val)
+			# 上限变动不影响已存充能数，但同步一下就绪/充能展示
+			Events.wok_charges_changed.emit(Wok.charges_of(wok))
 		_:
 			pass
 	# 伤害/攻速等加成通过武器重建生效
@@ -185,6 +190,8 @@ func _sync_wok() -> void:
 	if rd != _wok_ready_emitted:
 		_wok_ready_emitted = rd
 		Events.wok_ready_changed.emit(rd)
+	# 充能数变化（银行/释放/上限提升）都通知 HUD：按钮常驻 + 显示 x{n}
+	Events.wok_charges_changed.emit(Wok.charges_of(wok))
 	Events.wok_heat_changed.emit(wok_heat, _wok_tier)
 
 func add_wok(amount: float) -> void:
@@ -211,8 +218,35 @@ func wok_fire_mult() -> float:
 func wok_dmg_mult() -> float:
 	return Wok.dmg_mult(wok, Data.wok_cfg())
 
+func wok_charges() -> int:
+	return Wok.charges_of(wok)
+
 func toss_wok() -> bool:
 	var ok := Wok.toss(wok, Data.wok_cfg())
 	if ok:
 		_sync_wok()
 	return ok
+
+# ---- 金币拾取 ----
+# 当前磁吸半径（px）：全屏自动拾取=全屏；自动拾取=较大的固定半径×范围强化；
+# 否则仅贴近才捡（逼玩家走位收钱）。pickup_pct 来自升级 pick(拾取范围+30%)。
+func pickup_magnet() -> float:
+	var b: Dictionary = Data.balance.get("pickup", {}) as Dictionary
+	var pct := stat_value("pickup_pct")
+	if stat_value("fullauto") > 0.0:
+		return 9999.0
+	if stat_value("autopick") > 0.0:
+		return float(b.get("magnet_autopick", 120)) * (1.0 + pct)
+	return float(b.get("magnet_base", 30)) * (1.0 + pct * 0.4)
+
+# 波末散落金币未手动拾取时，自动入袋但"丢失"的比例。
+# 全屏自动拾取=0；自动拾取减半；其余按 wave_end_loss 基准，再随拾取范围小幅降低。
+func gold_sweep_loss() -> float:
+	var b: Dictionary = Data.balance.get("pickup", {}) as Dictionary
+	if stat_value("fullauto") > 0.0:
+		return 0.0
+	var loss := float(b.get("wave_end_loss", 0.25))
+	if stat_value("autopick") > 0.0:
+		loss *= 0.5
+	loss *= (1.0 - 0.2 * clampf(stat_value("pickup_pct"), 0.0, 1.0))
+	return clampf(loss, 0.0, 1.0)

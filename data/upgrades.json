@@ -106,5 +106,59 @@
     "tip": "火候攒得更快，颠勺来得更勤",
     "tip_en": "Build Wok Heat faster.",
     "en": "Wok Heat gain +25%"
+  },
+  "autopick": {
+    "zh": "自动拾取",
+    "stat": "autopick",
+    "value": 1,
+    "cost": 14,
+    "tip": "开启被动磁吸，金币在较大范围内自动飞向你（波末散落损耗减半）",
+    "tip_en": "Passive magnet pulls gold from a wide radius (halves wave-end loss).",
+    "en": "Auto Pickup"
+  },
+  "fullauto": {
+    "zh": "全屏自动拾取",
+    "stat": "fullauto",
+    "value": 1,
+    "cost": 40,
+    "tip": "屏内金币全收，波末散落零损耗。强但要花大钱，围绕它配一套收钱流",
+    "tip_en": "Collect all on-screen gold, zero wave-end loss. Pricey but complete.",
+    "en": "Full-Screen Auto Pickup"
+  },
+  "wokdmg": {
+    "zh": "颠勺伤害 +30%",
+    "stat": "wok_dmg_pct",
+    "value": 0.3,
+    "cost": 22,
+    "tip": "锅气全屏重伤提高 30%，Boss 也削一大块",
+    "tip_en": "Wok toss deals +30% damage to all enemies.",
+    "en": "Wok Damage +30%"
+  },
+  "wokknock": {
+    "zh": "颠勺击退 +50%",
+    "stat": "wok_knock_pct",
+    "value": 0.5,
+    "cost": 20,
+    "tip": "锅气把怪物甩飞得更远，危急时弹开一片空间",
+    "tip_en": "Wok toss knocks enemies 50% farther.",
+    "en": "Wok Knockback +50%"
+  },
+  "wokslow": {
+    "zh": "颠勺附带减速",
+    "stat": "wok_slow",
+    "value": 1.5,
+    "cost": 24,
+    "tip": "颠勺时全场敌人减速，争取喘息/走位时间",
+    "tip_en": "Wok toss also slows all enemies for a moment.",
+    "en": "Wok Slows Enemies"
+  },
+  "wokcharge": {
+    "zh": "锅气上限 +1",
+    "stat": "wok_charges",
+    "value": 1,
+    "cost": 28,
+    "tip": "最多可存住的颠勺充能 +1，手里多留几个救急",
+    "tip_en": "Raise max banked Wok charges by 1.",
+    "en": "Max Wok Charges +1"
   }
 }

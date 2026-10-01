@@ -21,6 +21,7 @@ signal boss_wave(wave: int)
 signal wok_heat_changed(value: float, tier: int)
 signal wok_tier_changed(tier: int)
 signal wok_ready_changed(ready: bool)
+signal wok_charges_changed(charges: int)
 signal wok_tossed()
 # HUD 颠勺按钮 / Joystick 避让区点按发出，由 Game 真正执行
 signal wok_toss_requested()

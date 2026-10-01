@@ -59,14 +59,15 @@ func drop(pos: Vector2, value: int) -> int:
 	return overflow
 
 # 每帧推进所有金币。返回本帧被吃掉的总价值（0 表示没吃到）。
+# magnet 是真实磁吸半径(px)，由 GameState.pickup_magnet() 算出（含自动拾取/拾取范围）。
 # force=true 时无视磁吸半径全速回收（波末/清场）。
-func update(delta: float, player_pos: Vector2, pickup_pct: float, force := false) -> int:
+func update(delta: float, player_pos: Vector2, magnet: float, force := false) -> int:
 	var got := 0
 	for item in _pool:
 		var p: Node2D = item as Node2D
 		if p == null or not p.active:
 			continue
-		var v: int = p.advance(delta, player_pos, pickup_pct, force)
+		var v: int = p.advance(delta, player_pos, magnet, force)
 		if v > 0:
 			got += v
 			Events.pickup_collected.emit(player_pos, v)

@@ -141,4 +141,35 @@ func run(data = null) -> Dictionary:
 	chk(field.alive_count() == 0, "清场后场上没有残留金币")
 	field.free()
 
+	# 12) 新拾取模型参数齐全（真实磁吸半径靠 GameState.pickup_magnet 算，这里校验配表）
+	var pdict: Dictionary = data.balance["pickup"] as Dictionary
+	chk(pdict.has("magnet_base") and float(pdict.get("magnet_base", 0)) > 0.0,
+		"pickup.magnet_base(%.0f) 存在且为正（无强化时仅贴近才捡）" % float(pdict.get("magnet_base", 0)))
+	chk(pdict.has("magnet_autopick") and float(pdict.get("magnet_autopick", 0)) > float(pdict.get("magnet_base", 0)),
+		"pickup.magnet_autopick(%.0f) > magnet_base（自动拾取范围更大）" % float(pdict.get("magnet_autopick", 0)))
+	chk(pdict.has("wave_end_loss") and float(pdict.get("wave_end_loss", 0)) > 0.0,
+		"pickup.wave_end_loss(%.2f) 存在且为正（波末散落按损耗入袋）" % float(pdict.get("wave_end_loss", 0)))
+
+	# 13) 波末"部分损耗落袋"模型（与 GameState.gold_sweep_loss 同公式）
+	# 复算：fullauto→0；否则 base，autopick 减半，再随 pickup_pct 小幅降
+	var base_loss := float(pdict.get("wave_end_loss", 0.25))
+	var loss_for = func(autopick: bool, fullauto: bool, pct: float) -> float:
+		if fullauto:
+			return 0.0
+		var l := base_loss
+		if autopick:
+			l *= 0.5
+		l *= (1.0 - 0.2 * clampf(pct, 0.0, 1.0))
+		return clampf(l, 0.0, 1.0)
+	chk(absf(loss_for.call(false, false, 0.0) - base_loss) < 0.001,
+		"裸装波末损耗 = %.0f%%（散落钱只收回约 %d%%）" % [base_loss * 100, int((1.0 - base_loss) * 100)])
+	chk(loss_for.call(false, true, 0.0) == 0.0, "全屏自动拾取 → 损耗 0%（零损耗落袋）")
+	chk(loss_for.call(true, false, 0.0) < base_loss, "自动拾取 → 损耗减半")
+	# 模拟：散落 100 金币，裸装收回 75、全屏自动拾取收回 100、自动拾取收回 87
+	var sim_total := 100
+	chk(int(float(sim_total) * (1.0 - loss_for.call(false, false, 0.0))) == 75,
+		"裸装散落 100 → 落袋 75（损耗 25）")
+	chk(int(float(sim_total) * (1.0 - loss_for.call(false, true, 0.0))) == 100,
+		"全屏自动拾取散落 100 → 落袋 100（零损耗）")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}

@@ -60,6 +60,7 @@
   },
   "wok": {
     "max": 100,
+    "max_charges": 3,
     "stir_from": 28,
     "wokhei_from": 58,
     "ready": 100,
@@ -72,7 +73,8 @@
     "tier2_dmg": 0.30,
     "toss_dmg_mult": 0.6,
     "toss_knock": 130,
-    "toss_reset": 25
+    "toss_slow": 1.5,
+    "toss_slow_pct": 0.5
   },
   "bullet": {
     "homing_turn": 4.0,
@@ -87,6 +89,9 @@
   },
   "pickup": {
     "magnet": 92,
+    "magnet_base": 30,
+    "magnet_autopick": 120,
+    "wave_end_loss": 0.25,
     "pull_speed": 430,
     "collect_radius": 18,
     "spread": 26,

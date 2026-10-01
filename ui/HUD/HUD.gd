@@ -25,6 +25,7 @@ var _banner_t := 0.0
 var _wok_banner: Label
 var _wok_banner_t := 0.0
 var _wok_last_tier := 0
+var _wok_charges_n := 0        # 当前已存颠勺充能数（按钮常驻显示用）
 var _toss_btn: Button
 var _unlock_queue: Array = []    # 待展示的解锁提示（一次一條，避免刷屏）
 var _unlock_t := 0.0
@@ -114,6 +115,7 @@ func _ready() -> void:
 	Events.boss_wave.connect(_on_boss_wave)
 	Events.wok_heat_changed.connect(_on_wok_heat)
 	Events.wok_ready_changed.connect(_on_wok_ready)
+	Events.wok_charges_changed.connect(_on_wok_charges)
 	Events.unlocked.connect(_on_unlocked)
 
 	# 解锁横幅（复用 Boss 横幅的位置与渐隐逻辑，另开一个 Label）
@@ -260,13 +262,27 @@ func _on_wok_heat(value: float, tier: int) -> void:
 			_pop_wok(I18n.t("hud_wok_tier1"), Color(1.0, 0.82, 0.42))
 
 func _on_wok_ready(ready: bool) -> void:
-	_toss_btn.visible = ready
+	# 就绪仅代表"有充能可放"；按钮常驻可见，文本由充能数决定
+	_refresh_toss_btn()
+
+func _on_wok_charges(n: int) -> void:
+	_wok_charges_n = n
+	_refresh_toss_btn()
+
+# 颠勺按钮常驻：只要有充能就一直可见（不再"攒满闪一下又消失"）。
+# 充能 >1 时显示 "颠勺 x{n}"，提示玩家手里存了好几个，危险时连放。
+func _refresh_toss_btn() -> void:
+	_toss_btn.visible = _wok_charges_n > 0
+	if _wok_charges_n > 1:
+		_toss_btn.text = "%s x%d" % [I18n.t("hud_toss"), _wok_charges_n]
+	else:
+		_toss_btn.text = I18n.t("hud_toss")
 
 func _on_toss_pressed() -> void:
 	Events.wok_toss_requested.emit()
 
 func _on_locale_changed(_l: String = "") -> void:
-	_toss_btn.text = I18n.t("hud_toss")
+	_refresh_toss_btn()
 
 func _pop_wok(text: String, c: Color) -> void:
 	_wok_banner.text = text

@@ -98,10 +98,12 @@ func run() -> Dictionary:
 	chk(abs(float(st2.get("lifesteal", 0)) - 6.0) < 0.001,
 		"lifesteal 可叠加（实际 %s）" % st2.get("lifesteal"))
 
-	# 7) 守卫：数据表里每个强化的 stat 都必须是 Inventory 支持的
+	# 7) 守卫：数据表里每个强化的 stat 都必须被游戏某处处理
 	#    （曾经出过 upgrades.json 写 heal_now、代码却匹配 heal 的静默失效 bug）
+	#    战斗/角色属性走 Inventory，经济/锅气属性走 GameState/EnemySystem。
 	var known: Array = ["max_hp", "heal_now", "speed_pct", "dmg_pct", "rate_pct",
-		"armor", "pickup_pct", "lifesteal", "wok_pct"]
+		"armor", "pickup_pct", "lifesteal", "wok_pct",
+		"autopick", "fullauto", "wok_dmg_pct", "wok_knock_pct", "wok_slow", "wok_charges"]
 	# 直接读 JSON：本测试的 run() 不接收 data 参数，自己读最稳
 	var ups: Dictionary = {}
 	var f := FileAccess.open("res://data/upgrades.json", FileAccess.READ)
@@ -116,7 +118,7 @@ func run() -> Dictionary:
 		var s := str(d.get("stat", ""))
 		if not known.has(s):
 			bad.append("%s:%s" % [k, s])
-	chk(bad.is_empty(), "upgrades.json 的 stat 都被 Inventory 支持" +
+	chk(bad.is_empty(), "upgrades.json 的 stat 都被游戏处理（Inventory/GameState/EnemySystem）" +
 		("" if bad.is_empty() else "（未知 stat: %s）" % str(bad)))
 
 	return {"pass": _p, "fail": _f, "failures": _failures}

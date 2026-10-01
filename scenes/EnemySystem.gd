@@ -86,7 +86,9 @@ func update_enemies(delta: float) -> void:
 				e._phase += delta * 7.0
 				var perp := Vector2(-dir.y, dir.x)
 				dir = (dir + perp * sin(e._phase) * 0.7).normalized()
-			pos += dir * e.speed * delta
+			# 颠勺减速：临时降低移动速度（factor 由道具决定，倍率叠加在基础速度上）
+			var spd: float = e.speed * (1.0 - e._slow_factor)
+			pos += dir * spd * delta
 		# 分离：只算附近的，避免 O(n^2) 在满怪时拖慢手机
 		game._neighbors.clear()
 		for j in game._enemies.size():
@@ -251,25 +253,35 @@ func on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) ->
 			return
 
 # ---- 颠勺（满锅气终极）----
-# 由 HUD 颠勺按钮 / Joystick 避让区点按触发：全屏击退+重伤，火候回落。
+# 由 HUD 颠勺按钮 / Joystick 避让区点按触发：全屏击退+重伤（道具可加全屏减速）。
+# 效果受强化影响：wokdmg=伤害+% / wokknock=击退+% / wokslow=附加减速。
 func on_wok_toss() -> void:
 	if not GameState.wok_ready():
 		return
 	var pp: Vector2 = game.player.global_position
 	var w := Data.wok_cfg()
-	var dmg_mult := float(w.get("toss_dmg_mult", 0.6))
-	var knock := float(w.get("toss_knock", 130))
+	# 伤害/击退倍率受道具加成（wok_dmg_pct / wok_knock_pct 是 0~1 的加成比例）
+	var dmg_mult := float(w.get("toss_dmg_mult", 0.6)) * (1.0 + GameState.stat_value("wok_dmg_pct"))
+	var knock := float(w.get("toss_knock", 130)) * (1.0 + GameState.stat_value("wok_knock_pct"))
+	# 减速：仅买了 wokslow 才附加；强度= toss_slow_pct，时长= wok_slow 的秒数
+	var slow_factor := 0.0
+	var slow_dur := 0.0
+	if GameState.stat_value("wok_slow") > 0.0:
+		slow_factor = float(w.get("toss_slow_pct", 0.5))
+		slow_dur = float(w.get("toss_slow", 1.5))
 	for e in game._enemies:
 		if not e.alive:
 			continue
 		var dir: Vector2 = e.global_position - pp
 		if dir.length() < 0.001:
 			dir = Vector2(0, 1)
-		# 重伤：按敌人当前最大血量比例结算，Boss 也削一大块
+		# 重伤：按敌人当前最大血量比例结算，Boss 也削一大块（受 wokdmg 加成）
 		damage_enemy(e, e.max_hp * dmg_mult + 25.0)
-		# 甩飞：沿远离玩家方向推开，营造"颠勺"的爆开感
+		# 甩飞：沿远离玩家方向推开，营造"颠勺"的爆开感（受 wokknock 加成）
 		var np: Vector2 = e.global_position + dir.normalized() * knock
 		e.global_position = Movement.clamp_to_arena(np, game._arena, e.radius)
+		if slow_factor > 0.0 and e.has_method("apply_slow"):
+			e.apply_slow(slow_factor, slow_dur)
 	# 冲击波视觉
 	game._shock_pos = pp
 	game._shock_t = 0.0

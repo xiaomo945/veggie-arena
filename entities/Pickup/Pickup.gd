@@ -54,18 +54,19 @@ func recycle() -> void:
 
 # 每帧推进。返回本帧吃到的价值（0 = 没吃到）。
 # ⚠️ 回收会把 value 清零，所以必须在 recycle 之前把价值存下来再返回。
+# magnet 是真实磁吸半径(px)，由调用方算好（含自动拾取/拾取范围等强化）；
 # force 为 true 时无视距离全吸（波末清场用）。
-func advance(delta: float, player_pos: Vector2, pickup_pct: float, force := false) -> int:
+func advance(delta: float, player_pos: Vector2, magnet: float, force := false) -> int:
 	if not active:
 		return 0
 	_age += delta
 	if _life > 0.0 and _age >= _life:
 		recycle()
 		return 0
-	var magnet := Pickup.magnet_range(_magnet, pickup_pct)
+	var m := magnet
 	if force:
-		magnet = 100000.0
-	var res := Pickup.step(global_position, player_pos, magnet,
+		m = 100000.0
+	var res := Pickup.step(global_position, player_pos, m,
 		_pull, _collect, delta)
 	global_position = res["pos"] as Vector2
 	_pulled = bool(res.get("pulled", false))

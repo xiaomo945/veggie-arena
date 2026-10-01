@@ -144,4 +144,20 @@ func run(data) -> Dictionary:
 	var g20_hp := float(g20.get("hp", 0))
 	chk(g20_hp >= 150.0, "第20波小兵血量 %.0f ≥ 150（不至于出场即蒸发）" % g20_hp)
 
+	# 14) 本轮新增的"多种玩法"道具齐全（商店经济中枢 + 道具改变可玩性）
+	var req_up := ["autopick", "fullauto", "wokdmg", "wokknock", "wokslow", "wokcharge"]
+	var missing_up := []
+	for k in req_up:
+		if not data.upgrades.has(k):
+			missing_up.append(k)
+	chk(missing_up.is_empty(), "新增玩法道具齐全（自动拾取/全屏拾取/颠勺伤害/击退/减速/锅气上限）" + ("" if missing_up.is_empty() else " 缺: " + str(missing_up)))
+	# wok 充能上限字段存在（颠勺可存多个充能、按钮常驻）
+	chk(data.wok_cfg().has("max_charges"), "wok.max_charges 存在（颠勺可存充能）")
+	# 各类新道具 cost > 0，能被买得起（不会白送）
+	var cheap_ok := true
+	for k in req_up:
+		if int(data.upgrade(k).get("cost", 0)) <= 0:
+			cheap_ok = false
+	chk(cheap_ok, "新道具价格均为正（进商店经济循环）")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}

@@ -27,6 +27,8 @@ var elite := false
 var _flash := 0.0
 var _phase := 0.0
 var _kb := Vector2.ZERO          # 受击击退脉冲（由 EnemySystem 施加/衰减）
+var _slow_t := 0.0               # 减速剩余秒数（颠勺减速道具施加）
+var _slow_factor := 0.0          # 当前减速强度（0=不减速，0.5=移速减半）
 # Boss 多阶段 / 冲锋技能（仅 etype=="boss" 生效）
 var _boss_phase := 1
 var _base_speed := 0.0
@@ -84,8 +86,19 @@ func tick(delta: float) -> void:
 		_flash -= delta
 		if _flash <= 0.0:
 			queue_redraw()
+	# 减速计时：到点清零，移速恢复
+	if _slow_t > 0.0:
+		_slow_t -= delta
+		if _slow_t <= 0.0:
+			_slow_t = 0.0
+			_slow_factor = 0.0
 	if etype == "boss":
 		_tick_boss(delta)
+
+# 颠勺减速：factor=移速折扣(0.5→减半)，dur=持续秒数。取更强/更久者，不叠加。
+func apply_slow(factor: float, dur: float) -> void:
+	_slow_factor = maxf(_slow_factor, clampf(factor, 0.0, 0.95))
+	_slow_t = maxf(_slow_t, dur)
 
 # Boss：按血量阈值切阶段（提速+加伤），并周期朝玩家冲锋。纯逻辑，靠 speed/dmg 字段驱动移动与接触伤害。
 func _tick_boss(delta: float) -> void:

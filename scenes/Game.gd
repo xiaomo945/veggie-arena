@@ -210,19 +210,23 @@ func _physics_process(delta: float) -> void:
 func _collect_pickups(delta: float) -> void:
 	if _pickups == null:
 		return
+	# 磁吸半径用真实值（含自动拾取/拾取范围强化），不再把 pickup_pct 当半径传（旧 bug：半径≈0）
 	var got: int = _pickups.update(delta, player.global_position,
-		GameState.stat_value("pickup_pct"), false)
+		GameState.pickup_magnet(), false)
 	if got > 0:
 		gold_picked += got
 		GameState.add_gold(got)
 
 func _end_wave() -> void:
-	# 波末清场：地上没捡的钱一次性收回，不惩罚玩家"打太散"
+	# 波末清场：地上没捡的钱自动入袋，但按损耗比例扣减（"部分损耗落袋"）。
+	# 全屏自动拾取(wokcharge→fullauto)=0 损耗，自动拾取减半，其余按 wave_end_loss。
 	if _pickups != null:
 		var swept: int = _pickups.collect_all(player.global_position)
 		if swept > 0:
 			gold_picked += swept
-			GameState.add_gold(swept)
+			var kept: int = int(float(swept) * (1.0 - GameState.gold_sweep_loss()))
+			if kept > 0:
+				GameState.add_gold(kept)
 	GameState.add_gold(Economy.wave_bonus(GameState.wave, Data.wave_cfg()))
 	GameState.heal_percent(float(Data.wave_cfg().get("heal_percent", 0.12)))
 	# 最后一波结束 = 通关：停跑并弹胜利页，不再开补给站
