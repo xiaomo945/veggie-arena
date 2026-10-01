@@ -26,7 +26,8 @@ var fps_target: int = 0
 # 音量 0..100（默认满）
 var music_volume: int = 100
 var sfx_volume: int = 100
-# 语言偏好："en"（默认，出海目标语言）/ "zh"
+# 语言偏好："en"（出海默认）/ "zh"（中文）。首次启动跟随系统语言自动选，
+# 之后以 Settings 持久化值为准。开发者用中文设备测试时自动进中文，方便。
 var language: String = "en"
 
 func _ready() -> void:
@@ -57,6 +58,8 @@ func get_setting(key: String, default: Variant = null) -> Variant:
 
 func _load() -> void:
 	if not FileAccess.file_exists(PATH):
+		# 首次启动：跟随系统语言（中文设备→中文，方便国内玩家与开发者测试；其余→英文出海）
+		language = _auto_locale()
 		return
 	var f := FileAccess.open(PATH, FileAccess.READ)
 	if f == null:
@@ -150,6 +153,13 @@ func set_sfx_volume(v: int) -> void:
 	_save()
 
 # ---- 语言偏好 ----
+# 跟随系统语言决定默认语言：中文（zh/zh-CN/zh-TW 等）→ 中文，其余 → 英文
+func _auto_locale() -> String:
+	var l := OS.get_locale_language()
+	if l == "zh":
+		return "zh"
+	return "en"
+
 func get_language() -> String:
 	return language
 

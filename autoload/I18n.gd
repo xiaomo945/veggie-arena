@@ -1,7 +1,8 @@
 extends Node
 
 # 多语言单例（方案 B：自定义字典映射，与 data/*.json 的 en/zh 内联字段完全一致）。
-# 默认语言英文（出海目标语言）。
+# 默认语言跟随系统：中文设备→中文（方便国内玩家与开发者测试），其余→英文（出海）。
+# 首次启动后由 Settings 持久化语言偏好，_settings 菜单可随时手动切换 zh/en。
 #   I18n.t(key)            -> UI 静态文案（zh/en 字典）
 #   I18n.pick(d, ...)      -> 数据条目的名称字段（武器/角色/敌人/强化：en/zh）
 #   I18n.tip(d)            -> 数据条目的描述字段（tip_en / tip）
@@ -99,7 +100,10 @@ const UI := {
 
 func _ready() -> void:
   # autoload 顺序保证 Settings 已 _ready；这里直接读已加载的语言偏好
-  locale = Settings.get_language()
+  if Settings != null:
+    locale = Settings.get_language()
+  else:
+    locale = "en"
 
 # UI 静态文案
 func t(key: String) -> String:
