@@ -170,7 +170,7 @@ veggie-arena/
 └── scripts/               # check.sh 等工程脚本
 ```
 
-文档索引 / Docs: [`docs/01_需求文档.md`](docs/01_需求文档.md) · [`02_工程约束与规范.md`](docs/02_工程约束与规范.md) · [`03_权限与环境清单.md`](docs/03_权限与环境清单.md) · [`04_模块结构与路线图.md`](docs/04_模块结构与路线图.md) · [`docs/steam_store.md`](docs/steam_store.md)（Steam 文案）
+文档索引 / Docs: [`docs/01_需求文档.md`](docs/01_需求文档.md) · [`02_工程约束与规范.md`](docs/02_工程约束与规范.md) · [`03_权限与环境清单.md`](docs/03_权限与环境清单.md) · [`04_模块结构与路线图.md`](docs/04_模块结构与路线图.md) · [`05_架构守卫与推送规则.md`](docs/05_架构守卫与推送规则.md) · [`docs/steam_store.md`](docs/steam_store.md)（Steam 文案）
 
 ---
 
@@ -181,5 +181,10 @@ veggie-arena/
 3. 一次只做一个功能，完成后跑 `bash scripts/check.sh` / One feature at a time; run `bash scripts/check.sh`.
 4. `core/` 不得引用任何画面相关代码，保证可自动测试 / `core/` must stay render-free for testability.
 5. 提交前确认 `web/build/` 不进 git（已在 `.gitignore`）/ Keep `web/build/` out of git (see `.gitignore`).
+6. 架构规则由 `scripts/arch_guard.py` 机器强制（单文件 ≤300 行 / `core/` 零 autoload /
+   禁止跨模块读私有字段），详见 [05_架构守卫与推送规则](docs/05_架构守卫与推送规则.md)。
+7. **推送一律走 `bash scripts/push.sh`，不要直接 `git push`** —— 它会自检、修 DNS、
+   验令牌、推完比对远端 HEAD。沙箱休眠会重置 `/etc/hosts`，直接推会卡在 TLS 握手，
+   报错看不出是网络问题 / Always push via `bash scripts/push.sh`.
 
-详见 [02_工程约束与规范](docs/02_工程约束与规范.md)。
+详见 [02_工程约束与规范](docs/02_工程约束与规范.md) 与 [05_架构守卫与推送规则](docs/05_架构守卫与推送规则.md)。
