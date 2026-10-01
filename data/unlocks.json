@@ -7,6 +7,12 @@
     "ladle": { "type": "total_kills", "need": 300, "en": "Reach 300 total kills" },
     "teapot": { "type": "best_wave", "need": 10, "en": "Reach wave 10" },
     "chili": { "type": "total_gold", "need": 2000, "en": "Collect 2000 total gold" },
-    "blender": { "type": "wins", "need": 1, "en": "Clear the game once" }
+    "blender": { "type": "wins", "need": 1, "en": "Clear the game once" },
+    "pan": { "type": "total_kills", "need": 250, "en": "Reach 250 total kills" },
+    "pepper": { "type": "total_kills", "need": 150, "en": "Reach 150 total kills" },
+    "microwave": { "type": "total_kills", "need": 600, "en": "Reach 600 total kills" },
+    "fork": { "type": "best_wave", "need": 7, "en": "Reach wave 7" },
+    "whisk": { "type": "best_wave", "need": 12, "en": "Reach wave 12" },
+    "grater": { "type": "total_gold", "need": 5000, "en": "Collect 5000 total gold" }
   }
 }

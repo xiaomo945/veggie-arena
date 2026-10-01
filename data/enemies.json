@@ -64,5 +64,44 @@
     "gold": 25,
     "color": "#e0507a",
     "en": "Boss"
+  },
+  "swarm": {
+    "zh": "虫群",
+    "hp_base": 5,
+    "hp_per_wave": 4.2,
+    "speed_base": 188,
+    "speed_per_wave": 7.0,
+    "dmg_base": 2,
+    "dmg_per_wave": 0.35,
+    "radius": 7,
+    "gold": 1,
+    "color": "#c8e06a",
+    "en": "Swarm"
+  },
+  "brute": {
+    "zh": "蛮兵",
+    "hp_base": 80,
+    "hp_per_wave": 40.0,
+    "speed_base": 40,
+    "speed_per_wave": 1.8,
+    "dmg_base": 12,
+    "dmg_per_wave": 1.9,
+    "radius": 27,
+    "gold": 5,
+    "color": "#7a5ac0",
+    "en": "Brute"
+  },
+  "shambler": {
+    "zh": "蹒跚者",
+    "hp_base": 60,
+    "hp_per_wave": 32.0,
+    "speed_base": 34,
+    "speed_per_wave": 1.5,
+    "dmg_base": 8,
+    "dmg_per_wave": 1.2,
+    "radius": 24,
+    "gold": 4,
+    "color": "#5a8a4a",
+    "en": "Shambler"
   }
 }

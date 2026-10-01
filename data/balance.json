@@ -31,7 +31,13 @@
     "fly_chance": 0.20,
     "boss_every": 5,
     "boss_rate_mult": 0.55,
-    "elite_chance": 0.30
+    "elite_chance": 0.30,
+    "swarm_from_wave": 5,
+    "swarm_chance": 0.10,
+    "brute_from_wave": 4,
+    "brute_chance": 0.10,
+    "shambler_from_wave": 7,
+    "shambler_chance": 0.08
   },
   "shop": {
     "offer_count": 4,

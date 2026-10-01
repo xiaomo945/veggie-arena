@@ -15,11 +15,14 @@ static func wave_budget(wave: int, cfg: Dictionary, length: float) -> float:
 	return spawn_rate(wave, cfg) * length
 
 # 按概率挑敌人类型，r ∈ [0,1)
-# 概率带（按 r 从小到大）：fast → fly → grunt(中段) → [tank 在尾部]
+# 概率带（按 r 从小到大）：fast → fly → swarm → brute → shambler → grunt(中段) → [tank 在尾部]
 static func pick_type(wave: int, r: float, cfg: Dictionary) -> String:
 	var fast_chance := 0.0
 	var fly_chance := 0.0
 	var tank_chance := 0.0
+	var swarm_chance := 0.0
+	var brute_chance := 0.0
+	var shambler_chance := 0.0
 	if wave >= int(cfg.get("fast_from_wave", 2)):
 		fast_chance = float(cfg.get("fast_chance", 0.28))
 	if wave >= int(cfg.get("fly_from_wave", 4)):
@@ -28,10 +31,23 @@ static func pick_type(wave: int, r: float, cfg: Dictionary) -> String:
 		tank_chance = float(cfg.get("tank_chance", 0.12))
 	if wave >= int(cfg.get("tank_late_from_wave", 6)):
 		tank_chance = float(cfg.get("tank_chance_late", 0.18))
+	# 新增敌人：到对应波次才进概率带，避免前期过载
+	if wave >= int(cfg.get("swarm_from_wave", 5)):
+		swarm_chance = float(cfg.get("swarm_chance", 0.10))
+	if wave >= int(cfg.get("brute_from_wave", 4)):
+		brute_chance = float(cfg.get("brute_chance", 0.10))
+	if wave >= int(cfg.get("shambler_from_wave", 7)):
+		shambler_chance = float(cfg.get("shambler_chance", 0.08))
 	if r < fast_chance:
 		return "fast"
 	if r < fast_chance + fly_chance:
 		return "fly"
+	if r < fast_chance + fly_chance + swarm_chance:
+		return "swarm"
+	if r < fast_chance + fly_chance + swarm_chance + brute_chance:
+		return "brute"
+	if r < fast_chance + fly_chance + swarm_chance + brute_chance + shambler_chance:
+		return "shambler"
 	if r > 1.0 - tank_chance:
 		return "tank"
 	return "grunt"

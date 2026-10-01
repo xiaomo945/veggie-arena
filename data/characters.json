@@ -30,5 +30,21 @@
     "tip": "Speedster: +15% speed, -10% damage",
     "tip_zh": "灵活跑酷：移速 +15%，伤害 -10%",
     "stats": { "speed_pct": 0.15, "dmg_pct": -0.10 }
+  },
+  "eggplant": {
+    "zh": "茄子",
+    "en": "Eggplant",
+    "color": "#7b3f9e",
+    "tip": "Glass cannon: +22% damage, +12% speed, -25 HP",
+    "tip_zh": "紫皮炮台：伤害 +22%，移速 +12%，生命 -25",
+    "stats": { "dmg_pct": 0.22, "speed_pct": 0.12, "max_hp": -25 }
+  },
+  "corn": {
+    "zh": "玉米",
+    "en": "Corn",
+    "color": "#f2c84b",
+    "tip": "Gunner: +18% fire rate, +8% speed, -15 HP",
+    "tip_zh": "弹幕手：攻速 +18%，移速 +8%，生命 -15",
+    "stats": { "rate_pct": 0.18, "speed_pct": 0.08, "max_hp": -15 }
   }
 }

@@ -26,7 +26,7 @@ func boss_wave() -> bool:
 func spawn_one() -> void:
 	var e = game._enemies[game._enemy_cursor]
 	game._enemy_cursor = (game._enemy_cursor + 1) % MAX_ENEMIES
-	var side := game._rng.randi_range(0, 3)
+	var side: int = game._rng.randi_range(0, 3)
 	var pos := Spawner.edge_position(side, Data.arena(), game._rng.randf(), game._rng.randf())
 	var type := Spawner.pick_type(GameState.wave, game._rng.randf(), Data.spawn_cfg())
 	# Boss 波里，普通怪有一定概率是"精英版"（更厚更大更值钱）
@@ -43,7 +43,7 @@ func spawn_one() -> void:
 func spawn_boss() -> void:
 	var e = game._enemies[game._enemy_cursor]
 	game._enemy_cursor = (game._enemy_cursor + 1) % MAX_ENEMIES
-	var side := game._rng.randi_range(0, 3)
+	var side: int = game._rng.randi_range(0, 3)
 	var pos := Spawner.edge_position(side, Data.arena(), game._rng.randf(), game._rng.randf())
 	var stats := Spawner.stats_for("boss", GameState.wave, Data.enemies)
 	if stats.is_empty():
@@ -63,16 +63,16 @@ func alive_enemy_count() -> int:
 	return n
 
 func update_enemies(delta: float) -> void:
-	var pp := game.player.global_position
+	var pp: Vector2 = game.player.global_position
 	for i in game._enemies.size():
 		var e = game._enemies[i]
 		if not e.alive:
 			continue
 		var pos: Vector2 = e.global_position
 		# 朝玩家
-		var to_p := (pp - pos)
+		var to_p: Vector2 = (pp - pos)
 		if to_p.length() > 0.001:
-			var dir := to_p.normalized()
+			var dir: Vector2 = to_p.normalized()
 			# 飞行兵：在朝玩家的方向上叠加左右蛇形摆动，更难被预判/击中
 			if e.flight:
 				e._phase += delta * 7.0
@@ -153,7 +153,7 @@ func resolve_hits() -> void:
 			game._bdata.append({"pos": b.global_position, "radius": b.radius, "active": true, "ref": b})
 	if game._bdata.is_empty() or game._edata.is_empty():
 		return
-	for h in Hit.find_hits(game._bdata, game._edata):
+	for h: Dictionary in Hit.find_hits(game._bdata, game._edata):
 		var b = game._bdata[int(h["bullet"])]["ref"]
 		var e = game._edata[int(h["enemy"])]["ref"]
 		if not b.active or not e.alive:
@@ -223,7 +223,7 @@ func on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) ->
 func on_wok_toss() -> void:
 	if not GameState.wok_ready():
 		return
-	var pp := game.player.global_position
+	var pp: Vector2 = game.player.global_position
 	var w := Data.wok_cfg()
 	var dmg_mult := float(w.get("toss_dmg_mult", 0.6))
 	var knock := float(w.get("toss_knock", 130))

@@ -47,8 +47,8 @@ func _draw() -> void:
 
 # 贴图版：squash/stretch 一样作用到贴图上，保证"贴图一接入，动画不会消失"
 func _draw_sprite(tex: Texture2D, squash: float, stretch: float, alpha: float) -> void:
-	var w := player._radius * SPRITE_SCALE * stretch
-	var h := player._radius * SPRITE_SCALE * squash
+	var w: float = player._radius * SPRITE_SCALE * stretch
+	var h: float = player._radius * SPRITE_SCALE * squash
 	draw_texture_rect_region(tex, Rect2(-w * 0.5, -h * 0.5, w, h),
 		Rect2(Vector2.ZERO, tex.get_size()), Color(1, 1, 1, alpha))
 
@@ -70,7 +70,7 @@ func _draw_body(squash: float, stretch: float, alpha: float) -> void:
 		Vector2(13 * stretch, -10 * squash),
 		Vector2(13 * stretch, -4 * squash),
 		Vector2(-13 * stretch, -4 * squash)]), Color(SHADE.r, SHADE.g, SHADE.b, alpha))
-	var look := player._dir
+	var look: Vector2 = player._dir
 	if look == Vector2.ZERO:
 		look = Vector2(0, -1)
 	else:
@@ -99,7 +99,7 @@ func _draw_trails() -> void:
 # 武器图标绕着角色站位（位置由 core/Weapon.mount_position 算，跟开火点是同一个）
 # 缺图时退化成一个色点，玩家至少能看出"我带了几把武器"
 func _draw_mounts() -> void:
-	var n := player._weapons.size()
+	var n: int = player._weapons.size()
 	if n == 0:
 		return
 	for i in n:
