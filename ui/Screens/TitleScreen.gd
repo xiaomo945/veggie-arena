@@ -33,11 +33,22 @@ func _build() -> void:
 	shade.color = Color(0.05, 0.06, 0.09, 0.82)
 	_root.add_child(shade)
 
-	# 装饰：顶部一条细金线
-	var line := ColorRect.new()
-	line.set_anchors_preset(Control.PRESET_FULL_RECT)
-	line.color = Color(0.0, 0.0, 0.0, 0.0)
-	_root.add_child(line)
+	# 全屏"点任意处开始"热区：标题页本就为开始游戏存在，
+	# 玩家戳屏幕任意空白处即进入（符合"点一下就关掉标题"的直觉）。
+	# 放在遮罩之后、各文案/按钮之前：角色卡与 START 在它之上，仍各自响应自己的点击。
+	var catch := Button.new()
+	catch.set_anchors_preset(Control.PRESET_FULL_RECT)
+	catch.flat = true
+	catch.focus_mode = Control.FOCUS_NONE
+	catch.mouse_filter = Control.MOUSE_FILTER_STOP
+	var inv := StyleBoxFlat.new()
+	inv.bg_color = Color(0, 0, 0, 0)
+	catch.add_theme_stylebox_override("normal", inv)
+	catch.add_theme_stylebox_override("hover", inv)
+	catch.add_theme_stylebox_override("pressed", inv)
+	catch.add_theme_stylebox_override("focus", inv)
+	catch.pressed.connect(_on_start)
+	_root.add_child(catch)
 
 	# 游戏名（英文为主，海外玩家一眼看懂）
 	var title := Label.new()
@@ -120,11 +131,13 @@ func _build() -> void:
 	_how_lbl = how
 	_root.add_child(how)
 
-	# 角色选择：4 张卡片横排，点一下换人（换的是属性加成 + 外观）
+	# 角色选择：卡片横排，点一下换人（换的是属性加成 + 外观）
+	# ⚠️ 先 add_child 让 CharacterPicker._ready 算出真实宽度（卡数×卡宽），
+	#    再按真实宽度居中 —— 写死 4 卡宽（414px）会在角色变 5 个时把末尾卡挤出屏幕
 	var picker = Control.new()
 	picker.set_script(CharacterPickerScript)
-	picker.set_position(Vector2((540.0 - 414.0) * 0.5, 500.0))
 	_root.add_child(picker)
+	picker.set_position(Vector2((540.0 - picker.size.x) * 0.5, 500.0))
 
 	var pick_hint := Label.new()
 	pick_hint.text = I18n.t("title_pick")

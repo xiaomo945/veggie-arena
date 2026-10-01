@@ -89,6 +89,7 @@ func start_run() -> void:
 	_next_id = 1
 	GameState.reset()
 	_paused = false
+	GameState.paused = false
 	set_physics_process(true)
 	Events.run_started.emit()
 
@@ -118,16 +119,19 @@ func _on_pause_requested() -> void:
 	if not GameState.running or _paused:
 		return
 	_paused = true
+	GameState.paused = true
 	Events.run_paused.emit(true)
 
 func _on_resume_requested() -> void:
 	_paused = false
+	GameState.paused = false
 	Events.run_paused.emit(false)
 
 # 退出到标题：放弃本局（不写存档），回收场上实体，交还控制权给 TitleScreen
 func _on_quit_to_title() -> void:
 	set_physics_process(false)
 	_paused = false
+	GameState.paused = false
 	GameState.running = false
 	for e in _enemies:
 		e.recycle()

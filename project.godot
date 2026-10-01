@@ -38,7 +38,7 @@ pointing/emulate_touch_from_mouse=false
 
 [gui]
 
-theme/default_font="res://fonts/NotoSansSC-Subset.otf"
+theme/custom_font="res://fonts/NotoSansSC-Subset.otf"
 
 [rendering]
 

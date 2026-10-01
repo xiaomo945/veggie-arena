@@ -65,6 +65,9 @@ func _ready() -> void:
 	add_child(layer)
 	_hurt_rect = ColorRect.new()
 	_hurt_rect.color = Color(1, 0, 0, 0)
+	# ⚠️ 必须忽略鼠标：ColorRect 默认 STOP，这条全屏透明红屏在 layer=128（比标题/商店都高），
+	#    会吞掉整个屏幕的 GUI 点击 —— 之前"标题/结算页怎么点都关不掉"就是它挡的
+	_hurt_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hurt_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(_hurt_rect)
 	Events.stick_dir_changed.connect(_on_dir)

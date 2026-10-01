@@ -42,6 +42,43 @@ else
 fi
 
 echo ""
+echo "=== 1.6 字体中文覆盖检查（漏字会变豆腐块）==="
+# 校验 fonts/NotoSansSC-Subset.otf 是否覆盖项目当前用到的全部中文。
+# 若以后加了新中文文案/武器名却没重出字体，这里会直接报错，避免"豆腐块"上线。
+# 重出字体：python3 scripts/regen_font.py
+if [ -f fonts/NotoSansSC-Subset.otf ]; then
+  PY=$(command -v python3.11 || command -v python3)
+  miss=$("$PY" - "$ROOT" <<'PY'
+import os, re, sys
+from fontTools.ttLib import TTFont
+root = sys.argv[1]
+CJK = re.compile(r'[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]')
+used = set()
+for base,_,files in os.walk(root):
+    if '/.git' in base or '/.godot' in base:
+        continue
+    for f in files:
+        if not f.endswith(('.gd','.json','.tres','.cfg','.md','.csv','.txt')):
+            continue
+        for ch in open(os.path.join(base,f), encoding='utf-8', errors='ignore').read():
+            if CJK.match(ch):
+                used.add(ch)
+cm = TTFont(os.path.join(root,'fonts/NotoSansSC-Subset.otf')).getBestCmap()
+print(''.join(sorted(c for c in used if ord(c) not in cm)))
+PY
+)
+  if [ -n "$miss" ]; then
+    echo "  ❌ 字体缺字（会显示成豆腐块）: $miss"
+    echo "     修复：python3 scripts/regen_font.py  然后重新导出"
+    fail=$((fail+1))
+  else
+    echo "  ✅ 字体覆盖全部中文（无豆腐块风险）"
+  fi
+else
+  echo "  ⚠ 未找到 fonts/NotoSansSC-Subset.otf，跳过"
+fi
+
+echo ""
 echo "=== 2. 单元测试（headless） ==="
 if [ -f tests/run_tests.gd ]; then
   "$GODOT" --headless --path . --script res://tests/run_tests.gd

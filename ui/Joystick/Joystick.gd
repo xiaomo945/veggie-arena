@@ -32,6 +32,10 @@ func _ready() -> void:
 	_view.visible = bool(f.get("joystick_visible", true))
 
 func _input(event: InputEvent) -> void:
+	# 只有真正在"一局进行中"才接管触摸：标题页 / 暂停 / 死亡 / 通关结算页
+	# 都不再响应，避免遮挡层下的萝卜被手指误操控（之前"标题背后萝卜在动"就是这原因）
+	if not GameState.running or GameState.paused:
+		return
 	# 触屏（手机真机）
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch

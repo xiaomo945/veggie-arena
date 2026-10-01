@@ -10,6 +10,7 @@ var max_hp: int = 100
 var kills: int = 0
 var elapsed_in_wave: float = 0.0
 var running: bool = false
+var paused: bool = false     # 暂停菜单是否打开（Joystick 据此停止接管触摸，避免暂停时还在走位）
 var won: bool = false        # 本局是不是打通关了（区分"阵亡"与"通关"，结算页/自测报告都要用）
 
 # 当前选择的角色（data/characters.json 的键）。角色自带属性加成，与强化叠加。
@@ -41,6 +42,9 @@ var pause_rect := Rect2(0, 0, 0, 0)
 
 func _ready() -> void:
 	reset()
+	# ⚠️ reset() 会把 running 置 true（那是给"正式开跑"用的）。
+	#    启动时必须停下：否则标题页还没点，背后就已经在刷怪开打了。
+	running = false
 
 func reset() -> void:
 	var p := Data.player_cfg()
