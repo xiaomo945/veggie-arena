@@ -13,6 +13,7 @@ extends CanvasLayer
 const MAX_FLOATS := 28
 const MAX_RINGS := 18
 const MAX_CRACKS := 24
+const MAX_POPS := 24
 
 # 飘字：时长、上飘速度、横向抖动范围
 const FLOAT_LIFE := 0.62
@@ -21,11 +22,13 @@ const FLOAT_RISE := 46.0
 var _rings: Array = []
 var _arcs: Array = []
 var _cracks: Array = []
+var _pops: Array = []
 var _floats: Array = []
 var _pool: Array = []
 var _ring_view: Node2D
 var _arc_view: Node2D
 var _crack_view: Node2D
+var _pop_view: Node2D
 var _hurt: ColorRect
 var _gold: ColorRect
 var _hurt_t := 0.0
@@ -62,6 +65,13 @@ func _ready() -> void:
 	_crack_view.name = "Cracks"
 	add_child(_crack_view)
 
+	# 命中迸溅 + 枪口火光：独立数组 + 独立 Node2D
+	_pop_view = Node2D.new()
+	_pop_view.set_script(preload("res://ui/Fx/FxPops.gd"))
+	_pop_view.set("pops", _pops)
+	_pop_view.name = "Pops"
+	add_child(_pop_view)
+
 	_hurt = _mk_flash(Color(1.0, 0.12, 0.18))
 	_gold = _mk_flash(Color(1.0, 0.78, 0.32))
 
@@ -70,6 +80,7 @@ func _ready() -> void:
 	Events.player_hp_changed.connect(_on_hp)
 	Events.wok_tossed.connect(_on_toss)
 	Events.melee_visual.connect(_on_melee)
+	Events.weapon_fired.connect(_on_fired)
 
 func _mk_flash(c: Color) -> ColorRect:
 	var r := ColorRect.new()
@@ -93,6 +104,18 @@ func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
 	lab.modulate = Color(1.0, 0.86, 0.35) if critical else Color(1.0, 1.0, 1.0)
 	lab.visible = true
 	_floats.append({"label": lab, "t": 0.0})
+	# 命中迸溅：和飘字一起冒，给每次打击一点卡通星芒
+	if _pops.size() < MAX_POPS:
+		var pc := Color(1.0, 0.86, 0.35) if critical else Color(1.0, 1.0, 1.0)
+		_pops.append({"pos": pos, "t": 0.0, "life": 0.18,
+			"kind": "impact", "color": pc})
+
+# ---- 信号：远程开火 → 枪口火光 ----
+func _on_fired(_pos: Vector2, _dir: Vector2, _stats: Dictionary, color: Color) -> void:
+	if _pops.size() >= MAX_POPS:
+		return
+	_pops.append({"pos": _pos, "t": 0.0, "life": 0.12,
+		"kind": "muzzle", "color": color})
 
 # ---- 信号：击杀爆环 ----
 func _on_killed(_type: String, pos: Vector2) -> void:
@@ -173,6 +196,18 @@ func _process(delta: float) -> void:
 		else:
 			cc += 1
 	_crack_view.queue_redraw()
+
+	# 命中迸溅 / 枪口火光推进
+	var pc2 := 0
+	while pc2 < _pops.size():
+		var po: Dictionary = _pops[pc2]
+		var pt: float = float(po.get("t", 0.0)) + delta
+		po["t"] = pt
+		if pt >= float(po.get("life", 0.18)):
+			_pops.remove_at(pc2)
+		else:
+			pc2 += 1
+	_pop_view.queue_redraw()
 
 	# 全屏闪光
 	if _hurt_t > 0.0:

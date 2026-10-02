@@ -50,9 +50,15 @@ func advance(delta: float) -> void:
 func _draw() -> void:
 	if not active:
 		return
-	# 拖尾让高速子弹看得清
-	draw_line(Vector2(-14, 0), Vector2(0, 0), Color(tint.r, tint.g, tint.b, 0.30), 4.0)
-	draw_circle(Vector2.ZERO, radius, tint)
+	var col := tint
+	# 拖尾让高速子弹看得清（卡通能量尾迹）
+	draw_line(Vector2(-14, 0), Vector2(0, 0), Color(col.r, col.g, col.b, 0.28), 4.0)
+	# 暗描边：小子弹也有卡通塑料轮廓
+	draw_circle(Vector2.ZERO, radius + 1.6, Color(0.06, 0.05, 0.09, 0.9))
+	# 本体（武器色）
+	draw_circle(Vector2.ZERO, radius, col)
+	# 高光点：塑料质感的小亮点
+	draw_circle(Vector2(-radius * 0.3, -radius * 0.32), radius * 0.38, Color(1, 1, 1, 0.92))
 	if aoe_radius > 0.0:
 		draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 16,
-			Color(tint.r, tint.g, tint.b, 0.55), 2.0, true)
+			Color(col.r, col.g, col.b, 0.55), 2.0, true)

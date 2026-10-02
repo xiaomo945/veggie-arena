@@ -38,4 +38,6 @@ func _draw() -> void:
 		for i in range(STEPS + 1):
 			var ang := a0 + (a1 - a0) * (float(i) / float(STEPS))
 			edge.append(origin + Vector2(cos(ang), sin(ang)) * reach)
-		draw_polyline(edge, Color(col.r, col.g, col.b, fade * 0.85), 3.0, true)
+		# 暗描边：卡通刀光的轮廓，让挥砍在花花绿绿的怪海里也跳得出来
+		draw_polyline(edge, Color(0.06, 0.05, 0.09, fade * 0.5), 6.0, true)
+		draw_polyline(edge, Color(col.r, col.g, col.b, fade * 0.9), 3.0, true)

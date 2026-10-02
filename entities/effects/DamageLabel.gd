@@ -9,6 +9,9 @@ func _ready() -> void:
 	_lbl = Label.new()
 	_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# 卡通描边：白字黑边，花花绿绿的怪海里也读得清
+	_lbl.add_theme_color_override("font_outline_color", Color(0.06, 0.05, 0.09, 1.0))
+	_lbl.add_theme_constant_override("outline_size", 4)
 	add_child(_lbl)
 
 # amount: 伤害值；crit: 是否暴击；pos: 世界坐标
