@@ -19,6 +19,13 @@ signal wave_started(wave: int)
 signal wave_ended(wave: int, pos: Vector2)
 signal wave_progress(elapsed: float, length: float)
 signal boss_wave(wave: int)
+# 终局 Boss 波：比 boss_wave 更有分量（HUD 横幅更大、BGM 也切 boss 曲）。
+# 与 boss_wave 互斥发出 —— 终局波只发这一个，避免两条横幅互相覆盖。
+signal final_boss_wave(wave: int)
+# 通关后选择"继续无尽"：由胜利页发出、Game 接管推进到 total+1 波
+signal endless_continue_requested()
+# 已进入无尽段（波次越过了最终波）
+signal endless_started(wave: int)
 
 # ---- 锅气 Wok Heat ----
 signal wok_heat_changed(value: float, tier: int)

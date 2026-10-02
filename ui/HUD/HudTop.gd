@@ -37,7 +37,8 @@ func _ready() -> void:
 	_combo_label.text = ""
 
 	# 金币左侧金币图标，金币标签已右移到 x=40 避免遮挡
-	_mk_icon("coin", Vector2(12, 58), 22)
+	# （用 Art.coin_icon 的卡通金饼替换旧的 48px 方块coin，缩小绘制走线性+mipmap）
+	_mk_icon("coin", Vector2(12, 58), 22, Art.coin_icon())
 
 	# 暂停按钮：右上角，游戏中显示，暂停 / 结算时隐藏
 	_pause_btn = Button.new()
@@ -63,11 +64,13 @@ func _mk_label(pos: Vector2, size: int, c: Color) -> Label:
 	return l
 
 # 在 HUD 上放一个小图标（TextureRect）。没图时（Art 兜底）直接跳过，不影响布局。
-func _mk_icon(name: String, pos: Vector2, sz: float) -> void:
-	if not Art.has_ui_icon(name):
+# override 传纹理时用它代替按名字查的图；HUD 图标都是大图缩小，统一走线性+mipmap。
+func _mk_icon(name: String, pos: Vector2, sz: float, override: Texture2D = null) -> void:
+	if override == null and not Art.has_ui_icon(name):
 		return
 	var tex = TextureRect.new()
-	tex.texture = Art.ui_icon(name)
+	tex.texture = override if override != null else Art.ui_icon(name)
+	tex.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	tex.custom_minimum_size = Vector2(sz, sz)
 	tex.size = Vector2(sz, sz)
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

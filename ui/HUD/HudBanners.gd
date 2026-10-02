@@ -47,8 +47,15 @@ func _mk(pos: Vector2, w: float, h: float, fs: int, c: Color) -> Label:
 # ---- 对外接口（由 HUD.gd 调用）----
 
 func pop_boss(text: String) -> void:
+	_banner.add_theme_font_size_override("font_size", 34)
 	_banner.text = text
 	_banner_t = BOSS_HOLD
+
+# 终局 Boss：字号更大、停留更久，配得上"这一局最后一道坎"
+func pop_final_boss(text: String) -> void:
+	_banner.add_theme_font_size_override("font_size", 44)
+	_banner.text = text
+	_banner_t = BOSS_HOLD * 1.6
 
 func pop_wok(text: String, c: Color) -> void:
 	_wok_banner.text = text

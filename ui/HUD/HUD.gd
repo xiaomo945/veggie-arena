@@ -51,6 +51,8 @@ func _ready() -> void:
 	Events.weapons_changed.connect(_on_weapons)
 	Events.run_started.connect(_on_weapons)
 	Events.boss_wave.connect(_on_boss_wave)
+	Events.final_boss_wave.connect(_on_final_boss_wave)
+	Events.endless_started.connect(_on_endless_started)
 	Events.wok_heat_changed.connect(_on_wok_heat)
 	Events.wok_ready_changed.connect(_on_wok_ready)
 	Events.wok_charges_changed.connect(_on_wok_charges)
@@ -113,6 +115,8 @@ func _refresh() -> void:
 	_top.set_bar("run_total", _run_total)
 
 func _wave_text() -> String:
+	if GameState.endless:
+		return I18n.t("hud_endless") % GameState.wave
 	var t := I18n.t("hud_wave") % [GameState.wave, _run_total]
 	if GameState.is_last_wave():
 		t += I18n.t("hud_final")
@@ -123,6 +127,12 @@ func _on_boss_wave(wave: int) -> void:
 		_banners.pop_boss(I18n.t("hud_final_wave") % wave)
 	else:
 		_banners.pop_boss(I18n.t("hud_boss_wave") % wave)
+
+func _on_final_boss_wave(_wave: int) -> void:
+	_banners.pop_final_boss(I18n.t("hud_final_boss"))
+
+func _on_endless_started(wave: int) -> void:
+	_banners.pop_boss(I18n.t("hud_endless") % wave)
 
 func _on_wok_heat(value: float, tier: int) -> void:
 	_top.set_bar("wok_ratio", clampf(value / 100.0, 0.0, 1.0))

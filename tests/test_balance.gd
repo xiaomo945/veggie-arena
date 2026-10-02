@@ -166,6 +166,39 @@ func run(data) -> Dictionary:
 	var g20_hp := float(g20.get("hp", 0))
 	chk(g20_hp >= 150.0, "第20波小兵血量 %.0f ≥ 150（不至于出场即蒸发）" % g20_hp)
 
+	# 13b) 终局 Boss 配置：明显强于普通 Boss，且数值只走 JSON
+	var fb: Dictionary = data.final_boss_cfg()
+	chk(bool(fb.get("enabled", false)), "final_boss 段已启用")
+	chk(float(fb.get("hp_mult", 0)) > 2.0, "终局 Boss 血量倍率 %.1f 远高于普通 Boss"
+		% float(fb.get("hp_mult", 0)))
+	chk(float(fb.get("radius_mult", 0)) > 1.2, "终局 Boss 体型倍率 %.2f 明显更大"
+		% float(fb.get("radius_mult", 0)))
+	chk(float(fb.get("dmg_mult", 0)) > 1.0, "终局 Boss 伤害倍率 %.2f 更高" % float(fb.get("dmg_mult", 0)))
+	chk(float(fb.get("gold_mult", 0)) > 2.0, "终局 Boss 金币倍率 %.1f 值得攒大招去打"
+		% float(fb.get("gold_mult", 0)))
+	chk(fb.has("phases"), "final_boss 有 phases 开关（是否分阶段走配置）")
+
+	# 13c) 无尽段配置：默认开启 + 成长参数齐全
+	chk(bool(wave_cfg.get("endless", false)), "wave.endless 默认开启（通关后可继续）")
+	var ec: Dictionary = data.endless_cfg()
+	var ec_miss := []
+	for f in ["hp_per_wave", "dmg_per_wave", "gold_per_wave", "rate_per_wave", "rate_cap"]:
+		if not ec.has(f):
+			ec_miss.append("endless." + f)
+	chk(ec_miss.is_empty(), "endless 段成长参数齐全"
+		+ ("" if ec_miss.is_empty() else " 缺: " + str(ec_miss)))
+	chk(float(ec.get("rate_cap", 0)) > float(spawn_cfg.get("cap", 0)),
+		"无尽段 rate_cap %.1f 高于常规 cap %.1f（能突破刷怪上限）"
+		% [float(ec.get("rate_cap", 0)), float(spawn_cfg.get("cap", 0))])
+	# 精英节奏：不再依赖 Boss 波
+	var sc2: Dictionary = data.spawn_cfg()
+	chk(int(sc2.get("elite_from_wave", 0)) < int(sc2.get("boss_every", 5)),
+		"精英从第 %d 波就开始出（早于第一个 Boss 波）" % int(sc2.get("elite_from_wave", 0)))
+	chk(Spawner.elite_chance(int(sc2.get("elite_from_wave", 1)), sc2) > 0.0,
+		"起始波就有精英概率")
+	chk(Spawner.elite_chance(1, sc2) == 0.0, "第 1 波不出精英（开局不被精英劝退）")
+	chk(Spawner.elite_chance(8, sc2) > 0.0, "第 8 波（非 Boss 波）也有精英轮")
+
 	# 14) 本轮新增的"多种玩法"道具齐全（商店经济中枢 + 道具改变可玩性）
 	var req_up := ["autopick", "fullauto", "wokdmg", "wokknock", "wokslow", "wokcharge"]
 	var missing_up := []

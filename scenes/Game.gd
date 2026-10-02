@@ -2,11 +2,9 @@ extends Node2D
 
 # 战斗协调器：生命周期、暂停、波次推进、金币磁吸、刷怪节奏。
 # 敌人移动 / 子弹命中结算 / 颠勺等重逻辑在 scenes/EnemySystem.gd（本节点的子节点）。
-#
-# 【状态放哪】本节点只留"场景编排"相关的状态（player 引用、_paused、刷怪累计）。
-#   敌人池 / 子弹池 / 随机源 / 竞技场 / 每帧暂存数组 / 诊断计数器全部移到
-#   scenes/BattleWorld.gd —— 那是 EnemySystem 也要用的一份共享契约。
-#   跨模块读写 game._xxx 是本项目曾经的头号耦合源，现已清零。
+# 【状态放哪】本节点只留"场景编排"相关的状态（player 引用、_paused、刷怪累计）；
+#   池 / rng / 竞技场 / 暂存数组 / 诊断计数全在 scenes/BattleWorld.gd —— 那份是
+#   EnemySystem 也要用的共享契约。跨模块读写 game._xxx 曾是头号耦合源，现已清零。
 
 const BulletScene := preload("res://entities/Bullet/Bullet.tscn")
 const EnemyScene := preload("res://entities/Enemy/Enemy.tscn")
@@ -29,8 +27,7 @@ var player: Node2D = null
 var enemy_system: Node = null          # 战斗子系统（刷怪/敌人/子弹/颠勺），_ready 里注入
 var _paused := false
 var _spawn_acc := 0.0
-# 战斗倍率（快进按钮）：1=正常，2=2 倍速。用"每物理帧多跑一次世界步进"
-# 而不是 Engine.time_scale —— 这样 UI/补间/震屏仍按真实时间走，不会乱。
+# 战斗倍率（快进）：每物理帧多跑一次世界步进，而不是改 time_scale
 var _sim_speed := 1
 
 func _ready() -> void:
@@ -62,9 +59,9 @@ func _ready() -> void:
 	Events.resume_requested.connect(_on_resume_requested)
 	Events.quit_to_title_requested.connect(_on_quit_to_title)
 	Events.wok_toss_requested.connect(_on_wok_toss_requested)
+	Events.endless_continue_requested.connect(_on_endless_continue)
 
-# 注入玩家节点：同时挂到 world 上，让 EnemySystem 也拿得到（只有这一个入口，
-# 不会出现"Game.player 换了、EnemySystem 还指着旧的"）
+# 注入玩家节点：同时挂到 world 上，EnemySystem 才拿得到（只留这一个入口）
 func set_player(p: Node2D) -> void:
 	player = p
 	world.player = p
@@ -72,11 +69,9 @@ func set_player(p: Node2D) -> void:
 func is_paused() -> bool:
 	return _paused
 
-# 手动推进一帧物理（模拟 / 调试用；正常游戏由引擎调 _physics_process）
 func step(delta: float) -> void:
 	_physics_process(delta)
 
-# 由标题页/死亡页的 run_requested 触发。回收场上所有敌人/子弹，重置状态，正式开跑。
 func start_run() -> void:
 	for e in world.enemies:
 		e.recycle()
@@ -109,14 +104,26 @@ func _build_pools() -> void:
 
 func _on_player_died() -> void:
 	set_physics_process(false)
+	# 已通关后继续无尽：胜利记过了，这里只刷新最佳波次/分数（一局不算两次）
+	if GameState.won:
+		SaveMgr.record_endless(GameState.wave, GameState.run_score())
+		return
 	_finish_run(false)
 
-# 通关（撑过最后一波）
+# 通关页"继续无尽"：恢复战斗并推进到 total+1 波（复用开波流程，场上残敌留着）
+func _on_endless_continue() -> void:
+	GameState.endless = true
+	GameState.running = true
+	GameState.paused = false
+	set_physics_process(true)
+	GameState.next_wave()
+	_begin_wave()
+	Events.endless_started.emit(GameState.wave)
+
 func _on_run_won() -> void:
 	set_physics_process(false)
 	_finish_run(true)
 
-# ---- 暂停（HUD 暂停键触发，复用现有 _paused 机制，不暂停整棵树以免按钮失灵）----
 func _on_pause_requested() -> void:
 	if not GameState.running or _paused:
 		return
@@ -143,7 +150,6 @@ func _on_quit_to_title() -> void:
 		world.pickups.clear()
 	Events.run_paused.emit(false)
 
-# 一局结束的统一收尾：把成绩写进存档（解锁判定也在这里触发）
 func _finish_run(won: bool) -> void:
 	GameState.won = won
 	SaveMgr.record_run(GameState.wave, GameState.kills, GameState.gold,
@@ -151,15 +157,13 @@ func _finish_run(won: bool) -> void:
 	# Steam 统计/成就（未挂载 GodotSteam 时自动 no-op，不影响游戏）
 	Steam.record_run(GameState.wave, GameState.kills, GameState.gold, won)
 
-# 地上还没被捡走的金币面额（诊断/HUD 用）
 func ground_gold() -> int:
 	return world.ground_gold()
 
 func alive_enemy_count() -> int:
 	return world.alive_enemy_count()
 
-# 每波开局先撒一批怪，避免"第一秒空场、子弹飞半天没目标"的空窗；
-# 数量随波次略增（spawn_burst + 波号），但不超 max_alive 上限。
+# 每波开局先撒一批怪（数量 = spawn_burst + 波号，不超 max_alive）
 func _spawn_wave_burst() -> void:
 	var cfg := Data.spawn_cfg()
 	var n := int(cfg.get("spawn_burst", 14)) + GameState.wave
@@ -169,7 +173,6 @@ func _spawn_wave_burst() -> void:
 			break
 		enemy_system.spawn_one()
 
-# ---- 主循环 ----
 func _physics_process(delta: float) -> void:
 	if player == null or not GameState.running or _paused:
 		return
@@ -177,7 +180,6 @@ func _physics_process(delta: float) -> void:
 	for _i in _sim_speed:
 		_step_world(delta)
 
-# 一帧的世界推进（被快进循环复用）。所有"随时间推进"的玩法逻辑都在这里。
 func _step_world(delta: float) -> void:
 	GameState.tick_wave(delta)
 	# 锅气自然衰减：停手不刷怪就凉下来，逼你保持进攻节奏
@@ -189,7 +191,8 @@ func _step_world(delta: float) -> void:
 
 	# 刷怪：Boss 波降低普通刷怪速率，把注意力留给首领
 	var cfg := Data.spawn_cfg()
-	var rate := Spawner.spawn_rate(GameState.wave, cfg)
+	var rate := Spawner.spawn_rate(GameState.wave, cfg,
+		Run.endless_over(GameState.wave, Data.wave_cfg()), Data.endless_cfg())
 	if enemy_system.boss_wave():
 		rate *= float(cfg.get("boss_rate_mult", 0.55))
 	_spawn_acc += rate * delta
@@ -212,7 +215,6 @@ func _step_world(delta: float) -> void:
 	# 子弹追踪：飞行中轻微朝当前最近存活怪转向
 	enemy_system.home_bullets(delta)
 
-	# 子弹飞行
 	for b in world.bullets:
 		b.advance(delta)
 
@@ -222,11 +224,9 @@ func _step_world(delta: float) -> void:
 	# 金币磁吸：走过去自动收钱，是本作最直接的走位正反馈
 	_collect_pickups(delta)
 
-	# 波次推进：暂停 → 开补给站 → 玩家买完再继续
 	if GameState.wave_finished():
 		_end_wave()
 
-# 每帧推进金币磁吸，把吃到的钱记进 GameState
 func _collect_pickups(delta: float) -> void:
 	if world.pickups == null:
 		return
@@ -238,8 +238,7 @@ func _collect_pickups(delta: float) -> void:
 		GameState.add_gold(got)
 
 func _end_wave() -> void:
-	# 波末清场：地上没捡的钱自动入袋，但按损耗比例扣减（"部分损耗落袋"）。
-	# 全屏自动拾取(fullauto)=0 损耗，自动拾取减半，其余按 wave_end_loss。
+	# 波末清场：地上没捡的钱自动入袋，但按 wave_end_loss 扣减（fullauto=0 损耗）
 	if world.pickups != null:
 		var swept: int = world.pickups.collect_all(player.global_position)
 		if swept > 0:
@@ -266,9 +265,15 @@ func _end_wave() -> void:
 func _on_shop_closed() -> void:
 	_paused = false
 	GameState.next_wave()
-	# 新的波次若是 Boss 波，开局刷一只首领并通知 HUD 弹横幅
+	_begin_wave()
+
+# 开一波：Boss 波开局刷首领并通知 HUD 弹横幅（终局波发专属信号），再撒一批怪
+func _begin_wave() -> void:
 	if enemy_system.boss_wave():
-		Events.boss_wave.emit(GameState.wave)
+		if enemy_system.final_wave():
+			Events.final_boss_wave.emit(GameState.wave)
+		else:
+			Events.boss_wave.emit(GameState.wave)
 		enemy_system.spawn_boss()
 	_spawn_wave_burst()
 

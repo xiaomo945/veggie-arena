@@ -34,6 +34,7 @@ func _ready() -> void:
 	Events.run_started.connect(_on_run_started)
 	Events.wave_started.connect(_on_wave_started)
 	Events.boss_wave.connect(_on_boss_wave)
+	Events.final_boss_wave.connect(_on_boss_wave)
 	Events.player_died.connect(_on_died)
 	Events.run_won.connect(_on_won)
 	# 标题页菜单乐：桌面端立即响；Web 端等首次手势解锁后才响（正常）

@@ -3,12 +3,32 @@ extends RefCounted
 # 刷怪逻辑 —— 纯逻辑，不引用任何 Node / 场景
 # 输入 wave（第几波）与配置，输出"刷什么、刷多快、刷在哪、属性多少"
 
-# 每秒刷怪数量：base + wave * per，不超过 cap
-static func spawn_rate(wave: int, cfg: Dictionary) -> float:
+# 每秒刷怪数量：base + wave * per，不超过 cap。
+# over>0 表示进入无尽段：允许突破常规 cap，在 cap 之上按 endless 段另加并封顶到 rate_cap。
+static func spawn_rate(wave: int, cfg: Dictionary, over: int = 0, ecfg: Dictionary = {}) -> float:
 	var base := float(cfg.get("base_rate", 0.5))
 	var per := float(cfg.get("per_wave", 0.3))
 	var cap := float(cfg.get("cap", 5.0))
-	return minf(cap, base + float(wave) * per)
+	var r := minf(cap, base + float(wave) * per)
+	if over > 0:
+		var ecap := float(ecfg.get("rate_cap", cap))
+		r = minf(ecap, r + float(ecfg.get("rate_per_wave", 0.0)) * float(over))
+	return r
+
+# 精英出场概率：第 elite_from_wave 波起，每隔 elite_every 波来一轮；
+# 轮内的概率 = elite_chance + elite_chance_per_wave * (wave - from)，封顶 elite_chance_cap。
+# 不在精英轮 → 0（普通波完全不出精英，保证"变强版"是稀缺的、有节奏的惊喜）。
+static func elite_chance(wave: int, cfg: Dictionary) -> float:
+	var from := int(cfg.get("elite_from_wave", 1))
+	if from <= 0 or wave < from:
+		return 0.0
+	var every := maxi(1, int(cfg.get("elite_every", 1)))
+	if (wave - from) % every != 0:
+		return 0.0
+	var base := float(cfg.get("elite_chance", 0.0))
+	var per := float(cfg.get("elite_chance_per_wave", 0.0))
+	var cap := float(cfg.get("elite_chance_cap", 1.0))
+	return clampf(base + per * float(wave - from), 0.0, cap)
 
 # 一整波预计刷出多少只（用于配平估算）
 static func wave_budget(wave: int, cfg: Dictionary, length: float) -> float:
@@ -72,7 +92,9 @@ static func edge_position(side: int, arena: Dictionary, r1: float, r2: float) ->
 
 # 某一波某种敌人的完整属性
 # elite=true 时把基础属性放大成"精英版"（血更厚、更大、更疼、金币更多）
-static func stats_for(type: String, wave: int, defs: Dictionary, elite: bool = false) -> Dictionary:
+# endless = {"hp":..,"dmg":..,"gold":..} 是 Run.endless_scales() 算好的无尽段倍率
+static func stats_for(type: String, wave: int, defs: Dictionary, elite: bool = false,
+		endless: Dictionary = {}) -> Dictionary:
 	var d: Dictionary = defs.get(type, {})
 	if d.is_empty():
 		return {}
@@ -95,6 +117,29 @@ static func stats_for(type: String, wave: int, defs: Dictionary, elite: bool = f
 		s["gold"] = int(s["gold"]) * 3
 		s["color"] = "#ffd24a"
 		s["elite"] = true
+	s["hp"] *= float(endless.get("hp", 1.0))
+	s["damage"] *= float(endless.get("dmg", 1.0))
+	s["gold"] = maxi(1, int(round(float(s["gold"]) * float(endless.get("gold", 1.0)))))
+	return s
+
+# 终局 Boss：在普通 boss 属性上叠加 final_boss 段的倍率（血量/体型/伤害/金币/速度），
+# 带 "final" 标记供 Enemy 换造型与阶段数。phases=false 时 phase_steps 为空 = 不分阶段。
+static func final_boss_stats(wave: int, defs: Dictionary, fb: Dictionary,
+		endless: Dictionary = {}) -> Dictionary:
+	var s := stats_for("boss", wave, defs, false, endless)
+	if s.is_empty() or not bool(fb.get("enabled", true)):
+		return s
+	s["hp"] *= float(fb.get("hp_mult", 1.0))
+	s["radius"] *= float(fb.get("radius_mult", 1.0))
+	s["damage"] *= float(fb.get("dmg_mult", 1.0))
+	s["speed"] *= float(fb.get("speed_mult", 1.0))
+	s["gold"] = maxi(1, int(round(float(s["gold"]) * float(fb.get("gold_mult", 1.0)))))
+	s["color"] = str(fb.get("color", s.get("color", "#e0507a")))
+	s["zh"] = str(fb.get("zh", s.get("zh", "boss")))
+	s["en"] = str(fb.get("en", s.get("en", "Boss")))
+	s["final"] = true
+	s["phase_steps"] = (fb.get("phase_steps", [0.66, 0.33]) if
+		bool(fb.get("phases", true)) else [])
 	return s
 
 # 一波的总血量（用于评估"这一波能不能打完"）

@@ -12,6 +12,7 @@ var elapsed_in_wave: float = 0.0
 var running: bool = false
 var paused: bool = false     # 暂停菜单是否打开（Joystick 据此停止接管触摸，避免暂停时还在走位）
 var won: bool = false        # 本局是不是打通关了（区分"阵亡"与"通关"，结算页/自测报告都要用）
+var endless: bool = false    # 是否已进入无尽段（通关后选了"继续"，波次越过 wave.total）
 
 # 当前选择的角色（data/characters.json 的键）。角色自带属性加成，与强化叠加。
 var character: String = "turnip"
@@ -29,10 +30,8 @@ var weapons: Array = []
 var upgrades: Dictionary = {}
 
 # ---- 锅气 Wok Heat（招牌机制）----
-# 0..max 的"火候"值。击杀/命中攒，停手衰减，挨打掉。
-# 档位：0 微温 / 1 翻炒(加攻速) / 2 爆炒(加攻速+伤害)。
-# 满锅气可"颠勺"：全屏击退+重伤，然后火候回落。
-# 纯逻辑在 core/Wok.gd（可单测），这里只持有状态 + 发信号。
+# 0..max 的"火候"值：击杀/命中攒、停手衰减、挨打掉，档位 0 微温/1 翻炒/2 爆炒。
+# 满锅气可"颠勺"：全屏击退+重伤，然后火候回落。纯逻辑在 core/Wok.gd。
 const Wok := preload("res://core/Wok.gd")
 const Run := preload("res://core/Run.gd")
 const Inventory := preload("res://core/Inventory.gd")
@@ -64,6 +63,7 @@ func reset() -> void:
 	elapsed_in_wave = 0.0
 	running = true
 	won = false
+	endless = false
 	weapons = []
 	upgrades = {}
 	# 锅气参数从 balance.json 读，避免数值写死在代码里
@@ -147,8 +147,10 @@ func wave_finished() -> bool:
 	return elapsed_in_wave >= float(Data.wave_cfg().get("length", 20))
 
 # 是否到了通关波（撑过这一波即胜利）。波数阈值走 balance.json 的 wave.total。
+# 无尽段（已越过最终波）不再算通关波 —— 否则第 21 波一结束又会弹一次胜利页。
 func is_last_wave() -> bool:
-	return Run.is_last_wave(wave, Data.wave_cfg())
+	var cfg := Data.wave_cfg()
+	return Run.is_last_wave(wave, cfg) and not Run.is_endless_wave(wave, cfg)
 
 # ---- 击杀 ----
 func add_kill() -> void:

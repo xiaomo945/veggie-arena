@@ -1,7 +1,8 @@
 extends Node2D
 
-# 敌人：造型一眼能分清（grunt 红圆 / fast 橙三角 / tank 紫六边 / fly 菱 / boss 星）。
-# 有 res://art/sprite_enemy_<类型>.png 就画贴图，否则走下面的凶萌手绘；闪白/血条共用。
+# 敌人：造型一眼能分清（grunt 红圆 / fast 橙三角 / tank 紫六边 / fly 菱 / boss 星；
+# 终局 Boss 再叠一圈金色尖刺）。有 res://art/sprite_enemy_<类型>.png 就画贴图，
+# 否则走下面的凶萌手绘；闪白/血条共用。
 
 const SPRITE_SCALE := 2.2   # 贴图边长 = radius * 系数（贴图角色约占画布 90%，与手绘体量一致）
 const FLASH_DUR := 0.16
@@ -18,12 +19,14 @@ var gold := 1
 var tint := Color(0.88, 0.38, 0.37)
 var flight := false
 var elite := false
+var final_boss := false             # 终局 Boss（第 total 波专属）：更大更红、多一个阶段
 var _flash := 0.0
 var _phase := 0.0
 var _kb := Vector2.ZERO          # 受击击退脉冲（由 EnemySystem 施加/衰减）
 # 状态效果统一表：{效果名: {"v": 强度, "t": 剩余秒}}。slow 减速 / freeze 冻结 / poison 中毒(按最大生命%结算) / burn 灼烧 / shred 破甲，加新效果只多一个名字。
 var _fx: Dictionary = {}
 # Boss 多阶段 / 冲锋技能（仅 etype=="boss" 生效）
+var _phase_steps: Array = []        # 阶段血量阈值（来自配置；空数组=不分阶段）
 var _boss_phase := 1
 var _base_speed := 0.0
 var _base_dmg := 0.0
@@ -43,8 +46,10 @@ func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	tint = Color(str(stats.get("color", "#e0605f")))
 	flight = bool(stats.get("flight", false))
 	elite = bool(stats.get("elite", false))
+	final_boss = bool(stats.get("final", false))
 	if etype == "boss":
 		_boss_phase = 1
+		_phase_steps = stats.get("phase_steps", [0.66, 0.33]) as Array
 		_base_speed = speed
 		_base_dmg = dmg
 		_charge_cd = 3.5
@@ -62,7 +67,6 @@ func recycle() -> void:
 	visible = false
 	_fx.clear()
 
-# 返回 true 表示这一击打死了它
 func hurt(amount: float) -> bool:
 	hp -= amount
 	_flash = FLASH_DUR
@@ -72,7 +76,6 @@ func hurt(amount: float) -> bool:
 		return true
 	return false
 
-# 受击击退：沿 dir 叠加一个快速衰减的速度脉冲（幅度由调用方克制）
 func apply_knockback(dir: Vector2, impulse: float) -> void:
 	var v: Vector2 = _kb + dir * impulse
 	_kb = v.limit_length(220.0)
@@ -85,8 +88,7 @@ func tick(delta: float) -> void:
 	if etype == "boss":
 		_tick_boss(delta)
 
-# 施加一个状态效果。同种效果取"更强 + 更久"，不叠乘 —— 叠乘会让数值失控，
-# 也让玩家很难预估自己的强度。
+# 施加一个状态效果。同种效果取"更强 + 更久"，不叠乘（叠乘会让数值失控）。
 func apply_fx(name: String, value: float, dur: float) -> void:
 	if dur <= 0.0 or value <= 0.0:
 		return
@@ -96,15 +98,11 @@ func apply_fx(name: String, value: float, dur: float) -> void:
 		"t": maxf(float(cur.get("t", 0.0)), dur),
 	}
 
-# 当前效果强度；没有或已过期返回 0
 func fx(name: String) -> float:
 	var d: Dictionary = _fx.get(name, {})
 	if float(d.get("t", 0.0)) <= 0.0:
 		return 0.0
 	return float(d.get("v", 0.0))
-
-func has_fx(name: String) -> bool:
-	return fx(name) > 0.0
 
 # 推进所有效果的计时，返回本帧应结算的持续伤害（毒/灼烧）。
 # 伤害由 EnemySystem 走 damage_enemy 统一结算 —— 只有那边才知道击杀/掉金/锅气。
@@ -129,40 +127,31 @@ func move_speed() -> float:
 		return 0.0
 	return speed * (1.0 - clampf(fx("slow"), 0.0, 0.95))
 
-# 颠勺减速（历史接口，保留兼容）：factor=移速折扣(0.5→减半)，dur=持续秒数
-func apply_slow(factor: float, dur: float) -> void:
-	apply_fx("slow", factor, dur)
-
 # ---- 给 EnemySystem 的公开读写接口 ----
-# 这些状态由 EnemySystem 每帧驱动（移动摆动 / 击退衰减 / 减速读数），但**只有 Enemy
-# 能改内部字段**：对外只给访问器，避免"谁都能直接改 _kb"这种跨模块写私有字段。
+# 这些状态由 EnemySystem 每帧驱动，但**只有 Enemy 能改内部字段**：对外只给访问器，
+# 避免"谁都能直接改 _kb"这种跨模块写私有字段。
 
 # 飞行蛇形摆动：推进相位并返回当前相位（EnemySystem 用它算左右摆动的偏移）
 func wobble(delta: float) -> float:
 	_phase += delta * 7.0
 	return _phase
 
-# 当前击退脉冲速度（EnemySystem 每帧读一次、衰减一次）
 func knockback() -> Vector2:
 	return _kb
 
 func set_knockback(v: Vector2) -> void:
 	_kb = v
 
-# 当前减速强度（0=不减速，0.5=移速减半）
-func slow_factor() -> float:
-	return fx("slow")
-
 # Boss：按血量阈值切阶段（提速+加伤），并周期朝玩家冲锋。纯逻辑，靠 speed/dmg 字段驱动移动与接触伤害。
 func _tick_boss(delta: float) -> void:
 	if not alive:
 		return
+	_phase += delta * 1.2          # 终局 Boss 装饰的缓慢旋转/脉动用（飞行兵才走 wobble）
 	var ratio := hp / max_hp
 	var target := 1
-	if ratio <= 0.33:
-		target = 3
-	elif ratio <= 0.66:
-		target = 2
+	for i in _phase_steps.size():
+		if ratio <= float(_phase_steps[i]):
+			target = i + 2
 	if target > _boss_phase:
 		_boss_phase = target
 		speed = _base_speed * (1.0 + 0.25 * (_boss_phase - 1))
@@ -203,9 +192,10 @@ func _draw() -> void:
 	if _flash > 0.0:
 		var f: float = clampf(_flash / FLASH_DUR, 0.0, 1.0)
 		draw_circle(Vector2.ZERO, radius, Color(1.0, 0.25, 0.25, 0.35 * f))
+	if final_boss:
+		_draw_final_decor(c)
 	_draw_hp_bar()
 
-# 带卡通描边的多边形：先画一圈放大的深色，再画本体
 func _draw_poly(pts: PackedVector2Array, c: Color) -> void:
 	var out := PackedVector2Array()
 	for p in pts:
@@ -281,7 +271,17 @@ func _draw_shape(c: Color) -> void:
 			_draw_poly(PackedVector2Array([Vector2(-radius,0), Vector2(radius,0), Vector2(radius*0.85,radius), Vector2(0,radius*1.15), Vector2(-radius*0.85,radius)]), c)
 			_angry_face(radius * 0.95, look, 1.0)
 
-# 贴图版本：modulate 直接吃闪白，血条照旧画在上面
+# 终局 Boss 装饰：金色尖刺环 + 双光环（缓慢旋转、外环脉动），隔半屏就认得出
+func _draw_final_decor(c: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in range(20):
+		var a := TAU * float(i) / 20.0 + _phase * 0.35
+		pts.append(Vector2(cos(a), sin(a)) * (radius + (19.0 if i % 2 == 0 else 9.0)))
+	draw_colored_polygon(pts, Color(1.0, 0.82, 0.28, 0.5))
+	draw_arc(Vector2.ZERO, radius + 7.0, 0.0, TAU, 28, c.lightened(0.4), 5.0, true)
+	draw_arc(Vector2.ZERO, radius + 19.0 + 2.5 * sin(_phase * 2.0), 0.0, TAU, 28,
+		Color(1.0, 0.8, 0.25, 0.55), 3.0, true)
+
 func _draw_sprite(tex: Texture2D, size: float, c: Color) -> void:
 	var half := size * 0.5
 	draw_texture_rect_region(tex, Rect2(-half, -half, size, size),

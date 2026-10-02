@@ -1,10 +1,8 @@
 extends CanvasLayer
 
 # 打击感特效层（Juice）
-#
-# 设计原则：只订阅 Events 信号做表现，不认识 Player / Game / Enemy，
-# 也不写回任何玩法状态。删掉这个文件，游戏照样能玩 —— 这就是验收标准。
-#
+# 只订阅 Events 做表现，不认识 Player/Game/Enemy，也不写回玩法状态。
+# 删掉这个文件游戏照样能玩 —— 这就是验收标准。
 # 四件事：飘伤害数字 / 击杀爆环 / 全屏晕染(挨打红·颠勺金) / 过关庆祝彩纸
 
 const MAX_FLOATS := 28
@@ -30,13 +28,13 @@ var _gold: Control
 var _hurt_t := 0.0
 var _gold_t := 0.0
 var _last_hp := -1
-# 过关庆祝：画在独立高层 CanvasLayer 上（商店是 30 层），否则彩纸会被面板挡住
+	# 过关庆祝：画在独立高层 CanvasLayer 上（商店是 30 层），否则彩纸会被面板挡住
 var _celeb_layer: CanvasLayer
 var _celeb_view: Node2D
 var _celeb: Array = []
+var _blast = null          # 颠勺全屏爆炸（屏幕空间，恒定居中于玩家）
 
 const MELEE_LIFE := 0.16
-
 const Shake := preload("res://entities/effects/Shake.gd")
 
 func _ready() -> void:
@@ -85,6 +83,12 @@ func _ready() -> void:
 	_celeb_view.name = "Celeb"
 	_celeb_layer.add_child(_celeb_view)
 
+	# 颠勺全屏爆炸（放在晕染之下，金色晕染仍盖在最上层）
+	_blast = Control.new()
+	_blast.set_script(preload("res://ui/Fx/FxBlast.gd"))
+	_blast.name = "Blast"
+	add_child(_blast)
+
 	_hurt = _mk_flash(Color(1.0, 0.12, 0.18))
 	_gold = _mk_flash(Color(1.0, 0.78, 0.32))
 
@@ -96,8 +100,8 @@ func _ready() -> void:
 	Events.weapon_fired.connect(_on_fired)
 	Events.wave_ended.connect(_on_wave_ended)
 
-# 全屏晕染（受伤红 / 颠勺金）。用 FxVignette 而不是 ColorRect：
-# 它会把控件撑到视口 3 倍，连手机 letterbox 黑边一起染上，避免"方块红框"的割裂感。
+# 全屏晕染：用 FxVignette（撑到视口 3 倍，把 letterbox 黑边也染上），
+# 而不是 ColorRect——后者只盖 540x900，在手机上就是个"方块红框"，很割裂。
 func _mk_flash(c: Color) -> Control:
 	var v := Control.new()
 	v.set_script(preload("res://ui/Fx/FxVignette.gd"))
@@ -165,16 +169,12 @@ func _on_wave_ended(_wave: int, _pos: Vector2) -> void:
 			"color": cols[i % cols.size()], "ang": TAU * float(i) / float(n),
 			"dist": randf_range(130.0, 270.0), "spin": randf_range(-7.0, 7.0)})
 
-# ---- 信号：颠勺大招 → 金闪 + 卡通冲击波 + 爆炒溅射 + 震屏 ----
-func _on_toss(pos: Vector2) -> void:
+# ---- 信号：颠勺大招 → 全屏卡通爆炸 + 金闪 + 震屏 ----
+# ⚠️ 爆炸不钉世界坐标（跑动中会被落在身后，显得"歪"），画屏幕中心=玩家。
+func _on_toss(_pos: Vector2) -> void:
 	_gold_t = 0.42
-	# 一圈大冲击波（比 Boss 环更大更久）
-	if _rings.size() < MAX_RINGS:
-		_rings.append({"pos": pos, "t": 0.0, "life": 0.5, "big": true, "maxr": 120.0})
-	# 爆炒火球
-	if _pops.size() < MAX_POPS:
-		_pops.append({"pos": pos, "t": 0.0, "life": 0.45,
-			"kind": "boom", "color": Color(1.0, 0.6, 0.28)})
+	if _blast != null:
+		_blast.fire()
 	# 震屏：颠勺是这游戏最重的一击
 	Shake.kick(9.0, 0.32)
 

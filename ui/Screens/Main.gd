@@ -165,12 +165,12 @@ func _run_simulation(seconds: float) -> void:
 	var peak_alive := 0
 	var survived := 0
 	var _trace := OS.get_cmdline_user_args().has("--trace")
-	# 模拟 AI 默认会"贴脸就冲刺"脱离——和真玩家一样（冲刺是核心脱困手段）。
-	# 之前的旧模拟从不冲刺，等于故意 handicap 自己，把难度估高了一截。
-	# --no-dash 可关掉，用来单独看"不冲刺硬扛"的 worst case。
+	# 模拟 AI 默认"贴脸就冲刺"脱离（和真玩家一样）；--no-dash 关掉看 worst case
 	var use_dash := not OS.get_cmdline_user_args().has("--no-dash")
 	# --human：模拟"普通玩家"（每 0.2s 才重新判断、视野更窄、12% 失误）；调难度以此档为准
 	var human := OS.get_cmdline_user_args().has("--human")
+	# --endless：通关后自动点"继续无尽"，把 21 波之后的那段也跑一遍（只续一次）
+	var auto_endless := OS.get_cmdline_user_args().has("--endless")
 	var dodge := Vector2.ZERO
 	var dodge_age := 0
 	_threats = 0
@@ -229,6 +229,9 @@ func _run_simulation(seconds: float) -> void:
 				float(i + 1) / 60.0, int(game.alive_enemy_count()), nb,
 				game.world.shots_fired, game.world.hits_landed, GameState.hp])
 		if not GameState.running:
+			if auto_endless and GameState.won and not GameState.endless:
+				Events.endless_continue_requested.emit()
+				continue
 			break
 	print("")
 	print("=== 战斗模拟 %.0f 秒（模拟 AI 自动跑位躲怪）===" % seconds)

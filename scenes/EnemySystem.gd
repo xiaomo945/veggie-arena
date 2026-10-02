@@ -3,13 +3,13 @@ extends Node
 # 战斗子系统：刷怪、敌人移动、子弹追踪、命中结算、颠勺。
 # 由 Game 持有（game 子节点），战斗状态通过 scenes/BattleWorld.gd 共享。
 #
-# 【依赖边界】
-#   world —— 全部战斗状态（对象池 / rng / 竞技场 / 暂存数组 / 计数器）。公开契约。
-#   game  —— 只用来挂特效节点（add_child）和注册震屏，**不读它的任何状态字段**。
+# 【依赖边界】world —— 全部战斗状态（对象池 / rng / 竞技场 / 暂存数组 / 计数器），公开契约。
+#   game —— 只用来挂特效节点（add_child）和注册震屏，**不读它的任何状态字段**。
 #   以前本文件通过 game._xxx 读写 Game 的私有字段 64 处，是全项目头号耦合源；
 #   现在那些字段全部搬进 BattleWorld，两边各取所需、互不掀对方盖子。
 
 const Spawner := preload("res://core/Spawner.gd")
+const Run := preload("res://core/Run.gd")
 const Hit := preload("res://core/Hit.gd")
 const Movement := preload("res://core/Movement.gd")
 const DamageLabel := preload("res://entities/effects/DamageLabel.gd")
@@ -38,9 +38,18 @@ func _ready() -> void:
 	Shake.register(game)
 
 # ---- 刷怪 ----
+# 终局 Boss 波（配置里的最后一波）：这一波的 boss 走 final_boss 段的强化属性
+func final_wave() -> bool:
+	return Run.is_final_wave(GameState.wave, Data.wave_cfg())
+
+# Boss 波：常规每 boss_every 波一只 + 终局波必定有（不依赖 boss_every 的整除）
 func boss_wave() -> bool:
 	var every := int(Data.spawn_cfg().get("boss_every", 5))
-	return every > 0 and GameState.wave % every == 0
+	return final_wave() or (every > 0 and GameState.wave % every == 0)
+
+# 无尽段的属性倍率（越过最终波后每波递增）；未进无尽段时全为 1
+func endless_scales() -> Dictionary:
+	return Run.endless_scales(GameState.wave, Data.wave_cfg(), Data.endless_cfg())
 
 func spawn_one() -> void:
 	var e = world.enemies[world.enemy_cursor]
@@ -52,11 +61,10 @@ func spawn_one() -> void:
 	var pos := pp + Vector2(cos(ang), sin(ang)) * 470.0
 	pos = Movement.clamp_to_arena(pos, world.arena, 16.0)
 	var type := Spawner.pick_type(GameState.wave, world.rng.randf(), Data.spawn_cfg())
-	# Boss 波里，普通怪有一定概率是"精英版"（更厚更大更值钱）
-	var elite := false
-	if boss_wave() and world.rng.randf() < float(Data.spawn_cfg().get("elite_chance", 0.3)):
-		elite = true
-	var stats := Spawner.stats_for(type, GameState.wave, Data.enemies, elite)
+	# 精英有自己的出场节奏（第 elite_from_wave 波起、每 elite_every 波一轮），
+	# 不再只在 Boss 波出现 —— 每隔几关就能撞见"变强版"，压力有起伏。
+	var elite := world.rng.randf() < Spawner.elite_chance(GameState.wave, Data.spawn_cfg())
+	var stats := Spawner.stats_for(type, GameState.wave, Data.enemies, elite, endless_scales())
 	if stats.is_empty():
 		return
 	e.spawn(pos, stats, world.next_id)
@@ -71,13 +79,21 @@ func spawn_boss() -> void:
 	var ang := world.rng.randf() * TAU
 	var pos := pp + Vector2(cos(ang), sin(ang)) * 480.0
 	pos = Movement.clamp_to_arena(pos, world.arena, 16.0)
-	var stats := Spawner.stats_for("boss", GameState.wave, Data.enemies)
+	var stats: Dictionary
+	if final_wave():
+		stats = Spawner.final_boss_stats(GameState.wave, Data.enemies,
+			Data.final_boss_cfg(), endless_scales())
+	else:
+		stats = Spawner.stats_for("boss", GameState.wave, Data.enemies, false, endless_scales())
 	if stats.is_empty():
 		return
 	e.spawn(pos, stats, world.next_id)
 	world.next_id += 1
-	# Boss 出场轻微震屏
-	Shake.kick(9.0, 0.4)
+	# Boss 出场轻微震屏（终局 Boss 更重，出场就有压迫感）
+	if bool(stats.get("final", false)):
+		Shake.kick(16.0, 0.6)
+	else:
+		Shake.kick(9.0, 0.4)
 
 func update_enemies(delta: float) -> void:
 	var pp: Vector2 = world.player.global_position

@@ -52,6 +52,14 @@ func wave_cfg() -> Dictionary:
 func spawn_cfg() -> Dictionary:
 	return balance.get("spawn", {})
 
+# 终局 Boss（第 total 波专属）的属性倍率
+func final_boss_cfg() -> Dictionary:
+	return balance.get("final_boss", {})
+
+# 无尽段（通关后继续）的成长参数
+func endless_cfg() -> Dictionary:
+	return balance.get("endless", {})
+
 func shop_cfg() -> Dictionary:
 	return balance.get("shop", {})
 

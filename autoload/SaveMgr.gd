@@ -58,6 +58,11 @@ func record_run(wave: int, kills: int, gold: int, score: int, won: bool) -> void
 		Events.unlocked.emit(str(k))
 	_last_unlocked = after
 
+# 无尽段续命后的收尾：只刷新最佳波次/分数（不重复计入 runs / 击杀 / 金币）
+func record_endless(wave: int, score: int) -> void:
+	Save.record_endless(data, {"wave": wave, "score": score})
+	flush()
+
 func unlocked_weapons() -> Array:
 	return Save.unlocked_weapons(data, Data.unlocks_cfg())
 

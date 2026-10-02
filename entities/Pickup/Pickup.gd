@@ -20,6 +20,7 @@ var _spread := 26.0
 var _life := 0.0
 var _age := 0.0
 var _phase := 0.0
+var _spin := 0.0
 var _pulled := false
 var _r := 5.5
 
@@ -38,9 +39,10 @@ func spawn(pos: Vector2, v: int, cfg: Dictionary) -> void:
 	_life = float(c["life"])
 	_age = 0.0
 	_phase = randf() * TAU
+	_spin = randf() * TAU
 	_pulled = false
-	# 面额越大画得越大：一眼能看出"这坨钱值"
-	_r = 5.0 if value <= 2 else (6.5 if value <= 5 else 8.0)
+	# 面额越大画得越大：一眼能看出"这坨钱值"（下限提到 6.5，萝卜印才读得出来）
+	_r = 6.5 if value <= 2 else (8.0 if value <= 5 else 9.5)
 	scale = Vector2.ONE
 	active = true
 	visible = true
@@ -70,13 +72,14 @@ func advance(delta: float, player_pos: Vector2, magnet: float, force := false) -
 		_pull, _collect, delta)
 	global_position = res["pos"] as Vector2
 	_pulled = bool(res.get("pulled", false))
-	# 飘动：地上时轻轻上下浮，被吸时放大一点（"吸住了"的反馈）
+	# 飘动全靠 transform（零重绘）：地上时 x 轻微挤压=硬币翻面自旋、
+	# y 一伸一缩=上下浮动；被吸时整体放大一点（"吸住了"的反馈）
 	if _pulled:
 		scale = Vector2(1.25, 1.25)
 	else:
-		_age += 0.0
+		_spin += delta * 3.0
 		_phase += delta * 3.4
-		scale = Vector2(1.0, 1.0 + 0.12 * sin(_phase))
+		scale = Vector2(0.74 + 0.26 * absf(cos(_spin)), 1.0 + 0.10 * sin(_phase))
 	if bool(res.get("collected", false)):
 		var v := value      # 先存，recycle 会把 value 清零
 		recycle()
@@ -89,16 +92,28 @@ func value_and_recycle() -> int:
 	recycle()
 	return v
 
+func _ready() -> void:
+	# 金币是"512 大图缩到十几 px"画的：默认 nearest 过滤会把采样点打歪，
+	# 看起来就是一颗小黄点 —— 缩小绘制一律走线性 + mipmap（配合 Art.coin_icon）
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+
 func _draw() -> void:
 	if not active:
 		return
-	var tex := Art.sprite("pickup_gold")
+	# 静态微光 + 落影：一次画好，之后零重绘
+	draw_circle(Vector2.ZERO, _r * 1.9, Color(1.0, 0.85, 0.3, 0.06))
+	draw_set_transform(Vector2(0, _r * 0.9), 0.0, Vector2(1.0, 0.42))
+	draw_circle(Vector2.ZERO, _r * 1.05, Color(0.0, 0.0, 0.0, 0.22))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# 卡通金币（萝卜印金饼，运行时缩好+mipmap，见 Art.coin_icon）
+	var tex := Art.coin_icon()
 	if tex != null:
 		var s := _r * 2.6
 		draw_texture_rect_region(tex, Rect2(-s * 0.5, -s * 0.5, s, s),
 			Rect2(Vector2.ZERO, tex.get_size()))
 		return
-	# 手绘金币：外圈深色描边 + 金色本体 + 左上高光
+	# 手绘兜底：深色描边 + 金色本体 + 内圈 + 左上高光
 	draw_circle(Vector2.ZERO, _r + 1.2, GOLD_D)
 	draw_circle(Vector2.ZERO, _r, GOLD)
+	draw_arc(Vector2.ZERO, _r * 0.62, 0, TAU, 24, GOLD_D, 1.4, true)
 	draw_circle(Vector2(-_r * 0.3, -_r * 0.32), _r * 0.34, GOLD_L)

@@ -139,7 +139,20 @@ func run(data = null) -> Dictionary:
 	var all := Save.unlocked_weapons(s5, unlocks)
 	chk(all.size() == start.size() + rules.size(), "全解锁后有 %d 把武器" % all.size())
 
-	# ---- 9) 商店只卖已解锁的武器 ----
+	# ---- 9) 无尽段续命：只刷新最佳波次/分数，不把一局算成两局 ----
+	var s6 := Save.defaults()
+	Save.record_run(s6, {"wave": 20, "kills": 300, "gold": 500, "score": 8000, "won": true})
+	chk(int(s6["runs"]) == 1 and int(s6["wins"]) == 1, "第 20 波通关只记一次（runs=1 wins=1）")
+	Save.record_endless(s6, {"wave": 27, "score": 12000})
+	chk(int(s6["best_wave"]) == 27, "无尽段最远波次刷新为 27")
+	chk(int(s6["best_score"]) == 12000, "无尽段最佳分数刷新为 12000")
+	chk(int(s6["runs"]) == 1, "无尽段不重复计入 runs")
+	chk(int(s6["wins"]) == 1, "无尽段不重复计入 wins")
+	chk(int(s6["total_kills"]) == 300, "无尽段不重复累加击杀")
+	Save.record_endless(s6, {"wave": 22, "score": 9000})
+	chk(int(s6["best_wave"]) == 27, "无尽段打得更差时最佳波次不回退")
+
+	# ---- 10) 商店只卖已解锁的武器 ----
 	if data != null:
 		var wd: Dictionary = data.weapons
 		var ud: Dictionary = data.upgrades

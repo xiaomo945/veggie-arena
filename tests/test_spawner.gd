@@ -107,4 +107,59 @@ func run() -> Dictionary:
 	var h5 := Spawner.wave_total_hp(5, CFG, DEFS, 20.0)
 	chk(h5 > h1 * 2, "第 5 波总血量是第 1 波的两倍以上（%.0f vs %.0f）" % [h5, h1])
 
+	# 7) 精英的独立出场节奏：起波前不出、非精英轮不出、概率随波次递增且封顶
+	var ecfg := {"elite_from_wave": 4, "elite_every": 2, "elite_chance": 0.10,
+		"elite_chance_per_wave": 0.015, "elite_chance_cap": 0.30}
+	chk(Spawner.elite_chance(1, ecfg) == 0.0, "第 1 波不出精英")
+	chk(Spawner.elite_chance(3, ecfg) == 0.0, "未到 elite_from_wave 不出精英")
+	chk(Spawner.elite_chance(4, ecfg) > 0.0, "第 4 波开始出精英")
+	chk(Spawner.elite_chance(5, ecfg) == 0.0, "第 5 波不是精英轮（隔一波来一轮）")
+	chk(Spawner.elite_chance(6, ecfg) > Spawner.elite_chance(4, ecfg), "精英概率随波次递增")
+	chk(abs(Spawner.elite_chance(40, ecfg) - 0.30) < 0.001, "精英概率封顶 0.30（实际 %.2f）"
+		% Spawner.elite_chance(40, ecfg))
+	# 精英不再依赖 Boss 波：非 5 的倍数的普通波也有精英轮
+	chk(Spawner.elite_chance(8, ecfg) > 0.0, "第 8 波（非 Boss 波）也出精英")
+
+	# 8) 终局 Boss：在普通 boss 上叠倍率，明显更硬更大更值钱
+	var fb := {"enabled": true, "hp_mult": 3.4, "radius_mult": 1.5, "dmg_mult": 1.25,
+		"gold_mult": 3.5, "speed_mult": 1.05, "phases": true,
+		"phase_steps": [0.75, 0.5, 0.25], "color": "#ff3b5c", "zh": "终局首领"}
+	var nb := Spawner.stats_for("boss", 20, DEFS)
+	var fin := Spawner.final_boss_stats(20, DEFS, fb)
+	chk(float(fin["hp"]) > float(nb["hp"]) * 3.0, "终局 Boss 血量是普通 Boss 的 3 倍以上（%.0f vs %.0f）"
+		% [float(fin["hp"]), float(nb["hp"])])
+	chk(float(fin["radius"]) > float(nb["radius"]), "终局 Boss 体型更大")
+	chk(float(fin["damage"]) > float(nb["damage"]), "终局 Boss 伤害更高")
+	chk(int(fin["gold"]) > int(nb["gold"]) * 3, "终局 Boss 金币是普通 Boss 的 3 倍以上")
+	chk(bool(fin.get("final", false)), "终局 Boss 带 final 标记（Enemy 据此换造型）")
+	chk(str(fin["color"]) == "#ff3b5c", "终局 Boss 换色（可区分）")
+	chk((fin["phase_steps"] as Array).size() == 3, "终局 Boss 分 4 个阶段（3 个阈值）")
+	chk(not bool(nb.get("final", false)), "普通 Boss 不带 final 标记")
+	# 关掉分阶段：阈值数组为空
+	var no_ph := {"enabled": true, "hp_mult": 2.0, "phases": false}
+	chk((Spawner.final_boss_stats(20, DEFS, no_ph)["phase_steps"] as Array).is_empty(),
+		"phases=false 时不分阶段")
+
+	# 9) 无尽段：刷怪速率突破常规 cap、属性按倍率放大
+	var rate_cap := float(CFG.get("cap", 5.0))
+	chk(abs(Spawner.spawn_rate(30, CFG, 0) - rate_cap) < 0.01, "常规段仍受 cap %.1f 限制" % rate_cap)
+	var endless_cfg := {"rate_per_wave": 0.6, "rate_cap": 16.0}
+	chk(Spawner.spawn_rate(21, CFG, 1, endless_cfg) > rate_cap,
+		"无尽段刷怪速率突破常规 cap（%.2f > %.1f）"
+		% [Spawner.spawn_rate(21, CFG, 1, endless_cfg), rate_cap])
+	chk(Spawner.spawn_rate(25, CFG, 5, endless_cfg) > Spawner.spawn_rate(21, CFG, 1, endless_cfg),
+		"无尽段刷怪速率随超出波数继续涨")
+	chk(Spawner.spawn_rate(999, CFG, 978, endless_cfg) <= 16.0 + 0.001, "无尽段速率封顶 rate_cap 16")
+	# 属性放大
+	var eg := Spawner.stats_for("grunt", 20, DEFS)
+	var eg25 := Spawner.stats_for("grunt", 25, DEFS, false, {"hp": 2.0, "dmg": 1.5, "gold": 2.0})
+	chk(float(eg25["hp"]) > float(eg["hp"]) * 1.9, "无尽段血量翻倍（%.0f vs %.0f）"
+		% [float(eg25["hp"]), float(eg["hp"])])
+	chk(float(eg25["damage"]) > float(eg["damage"]), "无尽段伤害更高")
+	chk(int(eg25["gold"]) > int(eg["gold"]), "无尽段金币更多（%.0f vs %.0f）"
+		% [float(eg25["gold"]), float(eg["gold"])])
+	# 精英 + 无尽叠加：精英标记仍在
+	chk(bool(Spawner.stats_for("grunt", 25, DEFS, true, {"hp": 2.0})["elite"]),
+		"精英与无尽倍率可以叠加")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}

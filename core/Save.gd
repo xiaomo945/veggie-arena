@@ -86,6 +86,18 @@ static func record_run(save: Dictionary, result: Dictionary) -> Dictionary:
 		save["character"] = c
 	return save
 
+# 无尽段续命（通关后继续、最终死在更高波次）：只刷新"最佳"统计 —— 波次与分数。
+# 不再累加 runs/击杀/金币，也不再重复加 wins：那些在第 total 波通关时已经记过了，
+# 否则一局会被算成两局。
+static func record_endless(save: Dictionary, result: Dictionary) -> Dictionary:
+	var wave := int(result.get("wave", 0))
+	if wave > int(save.get("best_wave", 0)):
+		save["best_wave"] = wave
+	var score := int(result.get("score", 0))
+	if score > int(save.get("best_score", 0)):
+		save["best_score"] = score
+	return save
+
 # 当前已解锁的武器列表 = 初始武器 + 达成条件的武器
 # unlocks 来自 data/unlocks.json
 static func unlocked_weapons(save: Dictionary, unlocks: Dictionary) -> Array:

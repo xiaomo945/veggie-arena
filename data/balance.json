@@ -15,9 +15,33 @@
   "wave": {
     "length": 60,
     "total": 20,
+    "endless": true,
     "heal_percent": 0.12,
     "bonus_base": 14,
     "bonus_per_wave": 6
+  },
+  "final_boss": {
+    "enabled": true,
+    "hp_mult": 3.4,
+    "radius_mult": 1.5,
+    "dmg_mult": 1.25,
+    "gold_mult": 3.5,
+    "speed_mult": 1.05,
+    "phases": true,
+    "phase_steps": [0.75, 0.5, 0.25],
+    "color": "#ff3b5c",
+    "zh": "终局首领",
+    "en": "Final Boss"
+  },
+  "endless": {
+    "hp_per_wave": 0.16,
+    "hp_cap": 4.0,
+    "dmg_per_wave": 0.06,
+    "dmg_cap": 2.2,
+    "gold_per_wave": 0.1,
+    "gold_cap": 3.0,
+    "rate_per_wave": 0.6,
+    "rate_cap": 16.0
   },
   "spawn": {
     "base_rate": 2.5,
@@ -36,7 +60,11 @@
     "fly_chance": 0.2,
     "boss_every": 5,
     "boss_rate_mult": 0.55,
-    "elite_chance": 0.22,
+    "elite_from_wave": 4,
+    "elite_every": 2,
+    "elite_chance": 0.1,
+    "elite_chance_per_wave": 0.015,
+    "elite_chance_cap": 0.3,
     "swarm_from_wave": 5,
     "swarm_chance": 0.1,
     "brute_from_wave": 4,
