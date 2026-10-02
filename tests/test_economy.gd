@@ -87,4 +87,13 @@ func run() -> Dictionary:
 	var inc := Economy.wave_income(1, 15, 1.0, WAVE_CFG)
 	chk(inc == 29, "第1波：15 杀 ×1 金币 + 14 奖励 = 29（实际 %d）" % inc)
 
+	# 7) 波次通胀：每过一关商店涨价，金币才有处可花（用户核心诉求：金币花不完）
+	var infl := 0.22
+	chk(Economy.price_of(100, 0.0, 1, infl) == 100, "首店(wave1)不通胀 = 100")
+	chk(Economy.price_of(100, 0.0, 2, infl) == 122, "第2家店涨价22%% = 122")
+	chk(Economy.price_of(100, 0.0, 5, infl) == 188, "第5家店涨价88%% = 188")
+	# 打折与通胀叠加：先通胀再打折
+	var both := int(round(100.0 * (1.0 + 2.0 * infl) * 0.5))
+	chk(Economy.price_of(100, 0.5, 3, infl) == both, "通胀+打折叠加正确（=%d）" % both)
+
 	return {"pass": _p, "fail": _f, "failures": _failures}

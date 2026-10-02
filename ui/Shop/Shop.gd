@@ -149,9 +149,11 @@ func _roll() -> void:
 	var cfg := Data.shop_cfg()
 	_max_slot = int(cfg.get("max_slot", 6))
 	_max_lv = int(cfg.get("max_lv", 4))
-	# 只卖已解锁的武器（未解锁的根本不进池子）；讲价道具打折已在 build_pool 里结算
+	# 只卖已解锁的武器（未解锁的根本不进池子）；讲价打折 + 波次通胀都在 build_pool 里结算
+	var infl := float(cfg.get("price_inflation", 0.0))
 	var pool := Economy.build_pool(GameState.weapons, Data.weapons, Data.upgrades,
-		_max_slot, _max_lv, SaveMgr.unlocked_weapons(), GameState.stat_value("shop_discount"))
+		_max_slot, _max_lv, SaveMgr.unlocked_weapons(), GameState.stat_value("shop_discount"),
+		GameState.wave, infl)
 	_offers = Economy.roll_offers(pool, int(cfg.get("offer_count", 4)), _rng)
 	_sold = []
 	for i in _offers.size():
@@ -197,9 +199,16 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 	var name := I18n.pick(def)
 	var tip := I18n.tip(def)
 	var cost := int(o.get("cost", 0))
+	# 基础价（data 里写死的原价，未计通胀/打折）用于画"涨 N%"角标
+	var base_cost := int(def.get("cost", cost))
+	var inflated := cost > base_cost
+	var infl_pct := 0
+	if base_cost > 0 and inflated:
+		infl_pct = int(round(float(cost - base_cost) / float(base_cost) * 100.0))
 	var d: Dictionary = {
 		"kind": kind, "name": name, "tip": tip, "cost": cost,
 		"affordable": afford, "sold": sold, "disabled": false, "icon": null,
+		"base_cost": base_cost, "inflated": inflated, "infl_pct": infl_pct,
 	}
 	if kind == "weapon":
 		var accent := Color(str(def.get("color", "#ffffff")))

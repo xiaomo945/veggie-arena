@@ -84,13 +84,19 @@ const RARITY_WEIGHT := {1: 6.0, 2: 3.0, 3: 1.0}
 # 武器与道具的相对权重：武器要凑满 6 个槽位，不能让 48 个道具把它淹掉
 const WEAPON_WEIGHT := 4.0
 
-# 打折后的价格（"讲价"道具 shop_discount）。夹在 1 折以上，避免刷到 0 金币白嫖。
-static func price_of(base_cost: int, discount_pct: float) -> int:
-	if discount_pct <= 0.0:
-		return base_cost
-	return maxi(1, int(round(float(base_cost) * (1.0 - clampf(discount_pct, 0.0, 0.9)))))
+# 打折 + 波次通胀后的价格。
+# wave<=1 表示首店（刚结束第 1 波，还没经历通胀），不涨价；之后每过一关价格按
+# inflation_pct 线性上涨：第 N 家店 multiplier = 1 + (N-1)*inflation_pct。
+# 目的：让金币有处可花，避免"金币花不完、无限买买买"（用户核心诉求）。
+static func price_of(base_cost: int, discount_pct: float, wave: int = 0, inflation_pct: float = 0.0) -> int:
+	var p := float(base_cost)
+	if inflation_pct > 0.0 and wave > 1:
+		p *= (1.0 + float(wave - 1) * inflation_pct)
+	if discount_pct > 0.0:
+		p *= (1.0 - clampf(discount_pct, 0.0, 0.9))
+	return maxi(1, int(round(p)))
 
-static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Dictionary, max_slot: int, max_lv: int, unlocked_weapons: Array = [], discount_pct: float = 0.0) -> Array:
+static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Dictionary, max_slot: int, max_lv: int, unlocked_weapons: Array = [], discount_pct: float = 0.0, wave: int = 0, inflation_pct: float = 0.0) -> Array:
 	var pool: Array = []
 	for key in weapon_defs.keys():
 		# 未解锁的武器根本不进池子（商店里看不到，也不会被抽到）
@@ -101,14 +107,14 @@ static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Di
 			w["key"] = key
 			w["kind"] = "weapon"
 			w["weight"] = WEAPON_WEIGHT
-			w["cost"] = price_of(int(w.get("cost", 0)), discount_pct)
+			w["cost"] = price_of(int(w.get("cost", 0)), discount_pct, wave, inflation_pct)
 			pool.append(w)
 	for key in upgrade_defs.keys():
 		var u: Dictionary = upgrade_defs[key].duplicate()
 		u["key"] = key
 		u["kind"] = "upgrade"
 		u["weight"] = RARITY_WEIGHT.get(int(u.get("rarity", 2)), 3.0)
-		u["cost"] = price_of(int(u.get("cost", 0)), discount_pct)
+		u["cost"] = price_of(int(u.get("cost", 0)), discount_pct, wave, inflation_pct)
 		pool.append(u)
 	return pool
 

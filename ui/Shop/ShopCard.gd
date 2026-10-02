@@ -17,6 +17,7 @@ const CARD_BG := Color(0.13, 0.15, 0.21, 0.97)
 const CARD_BG_DIM := Color(0.09, 0.10, 0.14, 0.92)
 const BORDER_DIM := Color(0.35, 0.38, 0.45, 0.7)
 const RED := Color(0.95, 0.42, 0.40)
+const INFL := Color(1.0, 0.55, 0.25)   # 涨价角标：暖橙（卡通统一调）
 const ICON_BOX := 60.0
 
 var _d: Dictionary = {}
@@ -106,6 +107,11 @@ func _draw() -> void:
 	var pstr := str(_d.get("cost", 0))
 	_draw_price(pstr, price_c)
 
+	# 通胀角标：本店比原价贵时画一个暖橙"涨 N%"圆角标（把物价上涨显式呈现）
+	var infl_pct := int(_d.get("infl_pct", 0))
+	if infl_pct > 0 and not sold:
+		_draw_infl(infl_pct, afford)
+
 	# Lv 角标（武器）或 稀有度 pips（道具）
 	if str(_d.get("kind", "")) == "weapon":
 		_draw_lv()
@@ -176,6 +182,21 @@ func _draw_price(text: String, c: Color) -> void:
 		draw_texture_rect_region(coin, Rect2(x, y - 1.0, coin_s, coin_s),
 			Rect2(Vector2.ZERO, coin.get_size()))
 	_center(text, x + coin_s + gap + tw * 0.5, y + fs * 0.35 + 2.0, fs, c)
+
+# 通胀角标："涨 N%" 暖橙圆角小标，悬在价格左上方，呼应商店整体卡通暖色调
+func _draw_infl(pct: int, afford: bool) -> void:
+	var txt := "涨 %d%%" % pct
+	var fs := 12
+	var tw := _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var pad := 6.0
+	var w := tw + pad * 2
+	var h := 18.0
+	var x := size.x - 14.0 - w
+	var y := size.y - 50.0
+	var col := INFL if afford else Color(0.82, 0.48, 0.46)
+	var rr := Rect2(x, y, w, h)
+	draw_rect(rr, col, false, 2.0)
+	_center(txt, x + w * 0.5, y + h * 0.5 + fs * 0.32, fs, Color(1, 1, 1, 0.96))
 
 func _draw_wrap(text: String, x0: float, y0: float, fs: int, c: Color, maxw: float, max_lines: int) -> void:
 	var line := ""
