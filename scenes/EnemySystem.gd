@@ -42,8 +42,11 @@ func boss_wave() -> bool:
 func spawn_one() -> void:
 	var e = world.enemies[world.enemy_cursor]
 	world.enemy_cursor = (world.enemy_cursor + 1) % BattleWorld.MAX_ENEMIES
-	var side: int = world.rng.randi_range(0, 3)
-	var pos := Spawner.edge_position(side, Data.arena(), world.rng.randf(), world.rng.randf())
+	# 在玩家视野外一圈刷新（大地图下不再按竞技场边缘，否则怪要跑半天才到玩家身边）
+	var pp := world.player.global_position
+	var ang := world.rng.randf() * TAU
+	var pos := pp + Vector2(cos(ang), sin(ang)) * 580.0
+	pos = Movement.clamp_to_arena(pos, world.arena, 16.0)
 	var type := Spawner.pick_type(GameState.wave, world.rng.randf(), Data.spawn_cfg())
 	# Boss 波里，普通怪有一定概率是"精英版"（更厚更大更值钱）
 	var elite := false
@@ -59,8 +62,11 @@ func spawn_one() -> void:
 func spawn_boss() -> void:
 	var e = world.enemies[world.enemy_cursor]
 	world.enemy_cursor = (world.enemy_cursor + 1) % BattleWorld.MAX_ENEMIES
-	var side: int = world.rng.randi_range(0, 3)
-	var pos := Spawner.edge_position(side, Data.arena(), world.rng.randf(), world.rng.randf())
+	# Boss 也在玩家附近出场（大地图下不再按竞技场边缘）
+	var pp := world.player.global_position
+	var ang := world.rng.randf() * TAU
+	var pos := pp + Vector2(cos(ang), sin(ang)) * 520.0
+	pos = Movement.clamp_to_arena(pos, world.arena, 16.0)
 	var stats := Spawner.stats_for("boss", GameState.wave, Data.enemies)
 	if stats.is_empty():
 		return

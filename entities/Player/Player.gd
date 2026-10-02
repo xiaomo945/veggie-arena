@@ -87,6 +87,10 @@ func _ready() -> void:
 	Events.dash_requested.connect(_on_dash_requested)
 	Events.character_changed.connect(_on_character_changed)
 	Events.weapons_changed.connect(_rebuild_weapons)
+	# ⚠️ 关键修复：开局（start_run → reset 设好 GameState.weapons 后）必须重建武器缓存，
+	# 否则 arms 一直用启动时那份（start_weapon 还是空时的 [pistol,smg]），选武器页设的
+	# 初始武器永远不生效，要到第一关商店买了才出现。run_started 在 reset() 之后 emit。
+	Events.run_started.connect(_rebuild_weapons)
 	arms = PlayerWeapons.new(self)
 	_rebuild_weapons()
 

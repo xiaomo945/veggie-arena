@@ -47,7 +47,6 @@ func _ready() -> void:
 	add_child(enemy_system)
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.melee_swung.connect(_on_melee_swung)
-	Events.fast_forward_toggled.connect(_on_fast_forward)
 	Events.player_died.connect(_on_player_died)
 	Events.run_won.connect(_on_run_won)
 	# ⚠️ 不再这里 reset —— 一局由标题页"开始"或死亡页"再来一局"触发 start_run()
@@ -264,10 +263,6 @@ func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) -
 func _on_melee_swung(origin: Vector2, dir: Vector2, reach: float, half_arc: float,
 		dmg: float, crit: bool, knockback: float, c: Color) -> void:
 	enemy_system.on_melee_swung(origin, dir, reach, half_arc, dmg, crit, knockback, c)
-
-# ---- 快进倍率（2 倍速开关）----
-func _on_fast_forward(on: bool) -> void:
-	_sim_speed = 2 if on else 1
 
 # ---- 颠勺（满锅气终极）----
 func _on_wok_toss_requested() -> void:

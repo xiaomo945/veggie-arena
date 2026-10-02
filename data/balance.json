@@ -1,9 +1,9 @@
 {
-  "arena": { "x": 12, "y": 74, "w": 516, "h": 756 },
+  "arena": { "x": -270, "y": -360, "w": 1080, "h": 1620 },
   "player": {
  "max_hp": 100,
  "speed": 300,
- "radius": 16,
+ "radius": 22,
     "ifr_seconds": 0.38,
     "touch_cooldown": 0.7
   },
@@ -95,7 +95,7 @@
   },
   "pickup": {
     "magnet": 92,
-    "magnet_base": 30,
+    "magnet_base": 75,
     "magnet_autopick": 120,
     "wave_end_loss": 0.25,
     "pull_speed": 430,

@@ -11,11 +11,11 @@ extends Control
 const SkillButtonScript := preload("res://ui/HUD/SkillButton.gd")
 
 # 按钮槽：local_center 是相对本容器的局部中心（容器会被安全区上移，矩形自动跟随）
-# 顺序即绘制顺序；锅气放最右下方（王者荣耀式大按钮），冲刺在它左下方，快进在右上角。
+# 顺序即绘制顺序。只保留两个右手按钮：锅气（大号，右下）、冲刺（右下偏左）。
+# 快进(ff)按钮已移除 —— 移动端竞技场游戏里 2 倍速没有意义，且原位置会超出屏幕。
 const SLOTS := [
-	{"type": "ff",   "center": Vector2(468, 284)},
-	{"type": "wok",  "center": Vector2(440, 806)},
-	{"type": "dash", "center": Vector2(310, 852)},
+	{"type": "wok",  "center": Vector2(452, 788)},
+	{"type": "dash", "center": Vector2(312, 852)},
 ]
 
 var _btns: Array = []          # [{type, node}]

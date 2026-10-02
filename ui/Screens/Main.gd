@@ -14,6 +14,7 @@ var player: Node2D
 var game: Node
 var _rng := RandomNumberGenerator.new()
 var _shake := 0.0          # 屏幕震动强度，受伤时拉起、每帧衰减
+var _cam := Vector2.ZERO    # 相机中心（世界坐标），平滑跟随玩家（大地图用）
 var _prev_hp := 100
 
 const BG := Color(0.06, 0.07, 0.10)
@@ -71,12 +72,27 @@ func _on_hp_shake(hp: int, _m: int) -> void:
 	_prev_hp = hp
 
 func _process(delta: float) -> void:
-	if _shake > 0.1:
+	# 相机跟随玩家（大地图：把玩家居中，正常游玩看不到场地边缘；靠近边界才露出边）
+	var view: Vector2 = get_viewport().size
+	if view.x <= 0:
+		view = Vector2(540.0, 900.0)
+	if player != null and is_instance_valid(player):
+		var half: Vector2 = view * 0.5
+		var a: Dictionary = Data.arena()
+		var ax: float = float(a.get("x", 0.0))
+		var ay: float = float(a.get("y", 0.0))
+		var aw: float = float(a.get("w", 540.0))
+		var ah: float = float(a.get("h", 900.0))
+		var want: Vector2 = player.global_position
+		# 夹相机，避免露出场地外的空白（场地比屏幕大时才有限制效果）
+		want.x = clampf(want.x, ax + half.x, ax + aw - half.x) if aw > view.x else ax + aw * 0.5
+		want.y = clampf(want.y, ay + half.y, ay + ah - half.y) if ah > view.y else ay + ah * 0.5
+		_cam = _cam.lerp(want, 1.0 - exp(-9.0 * delta))
+	var off: Vector2 = Vector2(view.x * 0.5 - _cam.x, view.y * 0.5 - _cam.y)
+	if _shake > 0.1:   # 受击震屏（叠加在相机偏移上）
 		_shake = maxf(0.0, _shake - delta * 42.0)
-		var o := Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake))
-		get_tree().root.canvas_transform = Transform2D(0, o)
-	elif get_tree().root.canvas_transform.origin != Vector2.ZERO:
-		get_tree().root.canvas_transform = Transform2D(0, Vector2.ZERO)
+		off += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake))
+	get_tree().root.canvas_transform = Transform2D(0, off)
 
 # 逐个敌人报告有没有贴图（缺图会退回手绘几何图形，画面看着"少了点什么"但不崩）
 func _enemy_art_report() -> String:

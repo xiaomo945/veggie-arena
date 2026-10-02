@@ -19,6 +19,7 @@ const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,
 var _root: Control
 var _panel: Panel
 var _gold_lbl: Label
+var _stats_lbl: Label
 var _cards: Array = []
 var _reroll_btn: Button
 var _next_btn: Button
@@ -80,7 +81,23 @@ func _build() -> void:
 	gold_coin.set_position(Vector2(268, 20))
 	_panel.add_child(gold_coin)
 
-	var y := 64.0
+	# 基础属性名牌（参照 Brotato：让玩家知道买什么能提升什么；属性名用绿色更清晰）
+	var stats_bg := Panel.new()
+	stats_bg.set_size(Vector2(PANEL_W - 28, 56))
+	stats_bg.set_position(Vector2(14, 50))
+	var sb2 := StyleBoxFlat.new()
+	sb2.bg_color = Color(0.12, 0.14, 0.20, 0.9)
+	sb2.set_corner_radius_all(8)
+	stats_bg.add_theme_stylebox_override("panel", sb2)
+	_panel.add_child(stats_bg)
+	_stats_lbl = Label.new()
+	_stats_lbl.set_size(Vector2(PANEL_W - 40, 52))
+	_stats_lbl.set_position(Vector2(22, 54))
+	_stats_lbl.add_theme_font_size_override("font_size", 13)
+	_stats_lbl.add_theme_color_override("font_color", Color(0.62, 0.90, 0.63))
+	_panel.add_child(_stats_lbl)
+
+	var y := 120.0
 	for i in 4:
 		var card = ShopCardScript.new()
 		card.set_size(Vector2(PANEL_W - 28, CARD_H))
@@ -143,6 +160,7 @@ func _roll() -> void:
 
 func _refresh() -> void:
 	_gold_lbl.text = I18n.t("shop_gold") % GameState.gold
+	_refresh_stats()
 	for i in _cards.size():
 		var c: ShopCardScript = _cards[i]
 		if i >= _offers.size():
@@ -155,6 +173,21 @@ func _refresh() -> void:
 		c.setup(_card_data(o, _sold[i], afford))
 	_reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, Data.shop_cfg())
 	_reroll_btn.disabled = not Economy.can_buy(GameState.gold, Economy.reroll_cost(_reroll_times, Data.shop_cfg()))
+
+# 基础属性名牌：当前局的派生属性（生命/护甲/移速/攻击/射速/范围/暴击）。
+# 属性名用绿色，让玩家一眼看清"买什么能提升什么"，下单前心里有数（参照 Brotato）。
+func _refresh_stats() -> void:
+	if _stats_lbl == null:
+		return
+	var spd := int(round(float(Data.player_cfg().get("speed", 180)) * (1.0 + GameState.stat_value("speed_pct"))))
+	var g1 := "生命 %d   护甲 %d   移速 %d" % [
+		GameState.max_hp, int(GameState.stat_value("armor")), spd]
+	var g2 := "攻击 +%d%%   射速 +%d%%   范围 +%d%%   暴击 %d%%" % [
+		int(GameState.stat_value("dmg_pct") * 100.0),
+		int(GameState.stat_value("rate_pct") * 100.0),
+		int(GameState.stat_value("range_pct") * 100.0),
+		int(GameState.stat_value("crit_chance") * 100.0)]
+	_stats_lbl.text = g1 + "\n" + g2
 
 # 组装单卡展示数据：名称 / 描述 / 价格 / 主色 / 等级角标 / 稀有度 / 状态标签
 func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:

@@ -27,29 +27,54 @@ static func weight_of(item) -> float:
 		return maxf(1.0, float((item as Dictionary).get("weight", 1.0)))
 	return 1.0
 
-# 从池子里不重复抽 n 个，按 weight 加权（rng 由调用方传入，保证可复现）。
+# 从池子里不重复抽 n 个。
 #
-# ⚠️ 为什么不能等概率抽：道具从 18 个涨到 48 个之后，等概率会让"稀有道具"和
-# "基础道具"一样常见 —— 开局就送猛火/连环爆，build 就没有成长感了；同时武器
-# 被稀释到几乎抽不到，六把武器凑不齐。加权后：常见道具常出现，稀有道具偶尔
-# 出现（出现时是个真正的抉择时刻）。
+# ⚠️ 武器保底（道具从 48 涨到 1150 后必须加）：等权重抽会让武器（权重 4）被 1150 个
+# 道具（权重 6/3/1）稀释到 ~1%，玩家几乎刷不到武器、只能买到道具。这里把池子拆成
+# "武器 / 非武器"两堆，先保底抽 1~2 把武器，再用原加权逻辑补齐其余，保证每间商店
+# 都能看到武器（像 Brotato 那样武器和道具混着出）。
 static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator) -> Array:
-	var left := pool.duplicate()
+	var weapons := []
+	var others := []
+	for it in pool:
+		if it is Dictionary and str(it.get("kind", "")) == "weapon":
+			weapons.append(it)
+		else:
+			others.append(it)
 	var out: Array = []
-	while out.size() < count and left.size() > 0:
-		var total := 0.0
-		for it in left:
-			total += weight_of(it)
-		var r := rng.randf() * total
-		var pick := 0
-		for i in left.size():
-			r -= weight_of(left[i])
-			if r <= 0.0:
-				pick = i
-				break
-		out.append(left[pick])
-		left.remove_at(pick)
+	# 保底武器数：offer_count=4 时给 1~2 把，且不超过当前可买的武器数
+	var w_quota := 0
+	if weapons.size() > 0:
+		w_quota = clampi(int(ceil(float(count) * 0.5)), 1, mini(2, weapons.size()))
+	for _i in w_quota:
+		if weapons.is_empty():
+			break
+		var pick: Variant = _weighted_pick(weapons, rng)
+		out.append(pick)
+		weapons.erase(pick)
+	# 其余名额：从"剩下的武器 + 全部非武器"里按原加权抽（不重复）
+	var rest := weapons.duplicate()
+	for o in others:
+		rest.append(o)
+	while out.size() < count and rest.size() > 0:
+		var pick: Variant = _weighted_pick(rest, rng)
+		out.append(pick)
+		rest.erase(pick)
 	return out
+
+# 加权抽一个（从 items 里移除被抽中的，保证不重复）
+static func _weighted_pick(items: Array, rng: RandomNumberGenerator) -> Variant:
+	var total := 0.0
+	for it in items:
+		total += weight_of(it)
+	var r := rng.randf() * total
+	var pick := 0
+	for i in items.size():
+		r -= weight_of(items[i])
+		if r <= 0.0:
+			pick = i
+			break
+	return items[pick]
 
 # 构造可用商品池：武器（槽位未满，或可合成）+ 全部强化
 # weapons 里每项需含 "key" 与 "lv"
