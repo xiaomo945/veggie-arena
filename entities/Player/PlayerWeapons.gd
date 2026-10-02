@@ -113,7 +113,7 @@ func tick(enemies: Array, delta: float) -> void:
 		var dirs := Weapon.pellet_directions(base_dir,
 			int(st.get("pellets", 1)), float(st.get("spread", 0.0)), _rng)
 		for d in dirs:
-			Events.weapon_fired.emit(mpos, d, est, w["color"] as Color)
+			Events.weapon_fired.emit(mpos, d, est, w["color"] as Color, str(w["key"]))
 		w["timer"] = Weapon.next_cooldown(float(w["timer"]), cd)
 
 # 给外观层 / HUD 的只读快照

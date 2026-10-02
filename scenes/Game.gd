@@ -270,7 +270,7 @@ func _on_shop_closed() -> void:
 		enemy_system.spawn_boss()
 	_spawn_wave_burst()
 
-func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) -> void:
+func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color, _key: String) -> void:
 	enemy_system.on_weapon_fired(pos, dir, stats, c)
 
 func _on_melee_swung(origin: Vector2, dir: Vector2, reach: float, half_arc: float,

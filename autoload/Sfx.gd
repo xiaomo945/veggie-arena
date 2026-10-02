@@ -79,7 +79,7 @@ func _play_pitched(key: String, gap_ms: int, pitch: float) -> void:
 		p.pitch_scale = pitch
 		p.play()
 
-func _on_shoot(_a: Vector2, _b: Vector2, _c: Dictionary, _d: Color) -> void:
+func _on_shoot(_a: Vector2, _b: Vector2, _c: Dictionary, _d: Color, _e: String) -> void:
 	_play("shoot", 55)
 
 func _on_hit(amount: int, _pos: Vector2, crit: bool) -> void:
@@ -119,7 +119,7 @@ func _on_hp(hp: int, _max_hp: int) -> void:
 func _on_died() -> void:
 	_play("over", 500)
 
-func _on_wok() -> void:
+func _on_wok(_pos: Vector2) -> void:
 	_play("wok", 120)
 
 # 按 Settings 把每个播放器压到静音或恢复（音效开关/总静音变化时由 PauseScreen 调）

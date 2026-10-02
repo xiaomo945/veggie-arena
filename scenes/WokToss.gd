@@ -44,7 +44,7 @@ func execute() -> bool:
 	var refund := float(fx.get("refund", 0.0))
 	if refund > 0.0:
 		GameState.add_wok(refund * float(Data.wok_cfg().get("max", 100)))
-	Events.wok_tossed.emit()
+	Events.wok_tossed.emit(pp)
 	return true
 
 # 一轮全屏冲击：重伤 + 位移 + 挂持续效果。

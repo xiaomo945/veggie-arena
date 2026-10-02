@@ -24,7 +24,7 @@ signal wok_heat_changed(value: float, tier: int)
 signal wok_tier_changed(tier: int)
 signal wok_ready_changed(ready: bool)
 signal wok_charges_changed(charges: int)
-signal wok_tossed()
+signal wok_tossed(pos: Vector2)
 signal shield_changed(value: int)
 # HUD 颠勺按钮 / Joystick 避让区点按发出，由 Game 真正执行
 signal wok_toss_requested()
@@ -49,7 +49,8 @@ signal weapon_merged(key: String, level: int)
 
 # ---- 战斗发射 ----
 # Player 只发信号说"我要往这个方向打一发"，不认识子弹、也不认识敌人列表
-signal weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, color: Color)
+# key = 武器 key（pistol/smg/rocket…），供特效层按武器做专属火光
+signal weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, color: Color, key: String)
 
 # ---- 近战挥砍 ----
 # PlayerWeapons 在冷却到点、瞄准最近敌人后发出；真正结算（伤害漏斗/击退/视觉）

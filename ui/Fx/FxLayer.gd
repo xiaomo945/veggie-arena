@@ -37,6 +37,8 @@ var _last_hp := -1
 
 const MELEE_LIFE := 0.16
 
+const Shake := preload("res://entities/effects/Shake.gd")
+
 func _ready() -> void:
 	layer = 15          # 在世界之上、HUD(20) 之下
 	# 镜头会跟随玩家平移：特效层必须跟着镜头走，否则飘字/爆环会钉在屏幕固定位置
@@ -110,12 +112,20 @@ func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
 		_pops.append({"pos": pos, "t": 0.0, "life": 0.18,
 			"kind": "impact", "color": pc})
 
-# ---- 信号：远程开火 → 枪口火光 ----
-func _on_fired(_pos: Vector2, _dir: Vector2, _stats: Dictionary, color: Color) -> void:
+# ---- 信号：远程开火 → 枪口火光（按武器做专属） ----
+func _on_fired(_pos: Vector2, _dir: Vector2, _stats: Dictionary, color: Color, key: String) -> void:
 	if _pops.size() >= MAX_POPS:
 		return
-	_pops.append({"pos": _pos, "t": 0.0, "life": 0.12,
-		"kind": "muzzle", "color": color})
+	var pop := {"pos": _pos, "t": 0.0, "life": 0.12, "kind": "muzzle", "color": color}
+	# 武器专属火光：火箭筒更大更橙、霰弹更宽
+	if key == "rocket":
+		pop["life"] = 0.22
+		pop["scale"] = 1.8
+		pop["color"] = Color(1.0, 0.55, 0.25)
+	elif key == "shotgun":
+		pop["scale"] = 1.3
+		pop["wide"] = true
+	_pops.append(pop)
 
 # ---- 信号：击杀爆环 ----
 func _on_killed(_type: String, pos: Vector2) -> void:
@@ -129,9 +139,18 @@ func _on_hp(hp: int, _max_hp: int) -> void:
 		_hurt_t = 0.26
 	_last_hp = hp
 
-# ---- 信号：颠勺金闪 ----
-func _on_toss() -> void:
+# ---- 信号：颠勺大招 → 金闪 + 卡通冲击波 + 爆炒溅射 + 震屏 ----
+func _on_toss(pos: Vector2) -> void:
 	_gold_t = 0.42
+	# 一圈大冲击波（比 Boss 环更大更久）
+	if _rings.size() < MAX_RINGS:
+		_rings.append({"pos": pos, "t": 0.0, "life": 0.5, "big": true, "maxr": 120.0})
+	# 爆炒火球
+	if _pops.size() < MAX_POPS:
+		_pops.append({"pos": pos, "t": 0.0, "life": 0.45,
+			"kind": "boom", "color": Color(1.0, 0.6, 0.28)})
+	# 震屏：颠勺是这游戏最重的一击
+	Shake.kick(9.0, 0.32)
 
 # ---- 信号：近战扇形 + 地面裂痕 ----
 func _on_melee(origin: Vector2, dir: Vector2, reach: float, half_arc: float, color: Color, key: String, level: int) -> void:

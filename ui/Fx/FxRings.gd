@@ -19,7 +19,7 @@ func _draw() -> void:
 		var life: float = float(d.get("life", 0.34))
 		var k: float = clampf(t / life, 0.0, 1.0)
 		var big: bool = bool(d.get("big", false))
-		var maxr: float = 78.0 if big else 34.0
+		var maxr: float = float(d.get("maxr", 78.0 if big else 34.0))
 		var rad: float = lerpf(6.0, maxr, k)
 		var a: float = (1.0 - k) * 0.85
 		var pos: Vector2 = d.get("pos", Vector2.ZERO)

@@ -19,6 +19,9 @@ const BattleWorld := preload("res://scenes/BattleWorld.gd")
 const WokToss := preload("res://scenes/WokToss.gd")
 const BulletSystem := preload("res://scenes/BulletSystem.gd")
 
+# 同屏击杀特效并发上限（防密集击杀时 Node/Tween 暴涨拖帧）
+const MAX_DEATH_FX := 16
+
 const LIFESTEAL_CHANCE := 0.08
 const SEPARATION_FORCE := 90.0
 const KB_IMPULSE := 120.0        # 命中击退脉冲（克制，约 14px 位移）
@@ -183,7 +186,8 @@ func damage_enemy(e, amount: float) -> bool:
 	if e.hurt(amount):
 		GameState.add_kill()
 		# 击杀碎屑 + 冲击波环（Boss 更大），粒子开关控制
-		if Settings.get_setting("particles_enabled", true):
+		# 并发上限：密集击杀时宁可少画几团，也不让 Node/Tween 爆炸拖垮手机帧率
+		if Settings.get_setting("particles_enabled", true) and _death_fx_count() < MAX_DEATH_FX:
 			var spark = HitSpark.new()
 			game.add_child(spark)
 			spark.init(epos, e.etype == "boss")
@@ -266,4 +270,12 @@ func on_wok_toss() -> void:
 	_toss.world = world
 	_toss.damage_fn = damage_enemy
 	_toss.execute()
+
+# 统计当前还活着的击杀特效节点数（配合 MAX_DEATH_FX 限制并发）
+func _death_fx_count() -> int:
+	var n := 0
+	for c in game.get_children():
+		if c.get_script() == HitSpark:
+			n += 1
+	return n
 
