@@ -5,17 +5,13 @@ extends CanvasLayer
 # 设计原则：只订阅 Events 信号做表现，不认识 Player / Game / Enemy，
 # 也不写回任何玩法状态。删掉这个文件，游戏照样能玩 —— 这就是验收标准。
 #
-# 三件事：
-#   1) 飘伤害数字（暴击更大更黄）
-#   2) 击杀爆环（Boss 的环更大）
-#   3) 挨打红闪 / 颠勺金闪（全屏 ColorRect，不挡触摸）
+# 四件事：飘伤害数字 / 击杀爆环 / 全屏晕染(挨打红·颠勺金) / 过关庆祝彩纸
 
 const MAX_FLOATS := 28
 const MAX_RINGS := 18
 const MAX_CRACKS := 24
 const MAX_POPS := 24
 
-# 飘字：时长、上飘速度、横向抖动范围
 const FLOAT_LIFE := 0.62
 const FLOAT_RISE := 46.0
 
@@ -29,11 +25,15 @@ var _ring_view: Node2D
 var _arc_view: Node2D
 var _crack_view: Node2D
 var _pop_view: Node2D
-var _hurt: ColorRect
-var _gold: ColorRect
+var _hurt: Control
+var _gold: Control
 var _hurt_t := 0.0
 var _gold_t := 0.0
 var _last_hp := -1
+# 过关庆祝：画在独立高层 CanvasLayer 上（商店是 30 层），否则彩纸会被面板挡住
+var _celeb_layer: CanvasLayer
+var _celeb_view: Node2D
+var _celeb: Array = []
 
 const MELEE_LIFE := 0.16
 
@@ -74,6 +74,17 @@ func _ready() -> void:
 	_pop_view.name = "Pops"
 	add_child(_pop_view)
 
+	# 过关庆祝层（画在商店之上）
+	_celeb_layer = CanvasLayer.new()
+	_celeb_layer.layer = 40
+	_celeb_layer.name = "Celebrate"
+	add_child(_celeb_layer)
+	_celeb_view = Node2D.new()
+	_celeb_view.set_script(preload("res://ui/Fx/FxPops.gd"))
+	_celeb_view.set("pops", _celeb)
+	_celeb_view.name = "Celeb"
+	_celeb_layer.add_child(_celeb_view)
+
 	_hurt = _mk_flash(Color(1.0, 0.12, 0.18))
 	_gold = _mk_flash(Color(1.0, 0.78, 0.32))
 
@@ -83,15 +94,17 @@ func _ready() -> void:
 	Events.wok_tossed.connect(_on_toss)
 	Events.melee_visual.connect(_on_melee)
 	Events.weapon_fired.connect(_on_fired)
+	Events.wave_ended.connect(_on_wave_ended)
 
-func _mk_flash(c: Color) -> ColorRect:
-	var r := ColorRect.new()
-	r.color = Color(c.r, c.g, c.b, 0.0)
-	r.set_anchors_preset(Control.PRESET_FULL_RECT)
-	# ⚠️ 必须忽略触摸：全屏 ColorRect 默认会吃掉所有点击，摇杆会失灵
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(r)
-	return r
+# 全屏晕染（受伤红 / 颠勺金）。用 FxVignette 而不是 ColorRect：
+# 它会把控件撑到视口 3 倍，连手机 letterbox 黑边一起染上，避免"方块红框"的割裂感。
+func _mk_flash(c: Color) -> Control:
+	var v := Control.new()
+	v.set_script(preload("res://ui/Fx/FxVignette.gd"))
+	v.set("color", c)
+	v.name = "Vignette"
+	add_child(v)
+	return v
 
 # ---- 信号：飘伤害数字 ----
 func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
@@ -138,6 +151,19 @@ func _on_hp(hp: int, _max_hp: int) -> void:
 	if _last_hp >= 0 and hp < _last_hp:
 		_hurt_t = 0.26
 	_last_hp = hp
+
+# ---- 信号：波次结束 → 过关庆祝（卡通彩纸从屏幕中央四散） ----
+func _on_wave_ended(_wave: int, _pos: Vector2) -> void:
+	if _celeb.size() >= 26:
+		return
+	var cx := Vector2(270.0, 450.0)
+	var cols := [Color(1.0, 0.82, 0.29), Color(0.55, 0.85, 0.45),
+		Color(1.0, 0.55, 0.45), Color(0.55, 0.78, 1.0)]
+	var n := 16
+	for i in n:
+		_celeb.append({"pos": cx, "t": 0.0, "life": 0.85, "kind": "confetti",
+			"color": cols[i % cols.size()], "ang": TAU * float(i) / float(n),
+			"dist": randf_range(130.0, 270.0), "spin": randf_range(-7.0, 7.0)})
 
 # ---- 信号：颠勺大招 → 金闪 + 卡通冲击波 + 爆炒溅射 + 震屏 ----
 func _on_toss(pos: Vector2) -> void:
@@ -228,13 +254,33 @@ func _process(delta: float) -> void:
 			pc2 += 1
 	_pop_view.queue_redraw()
 
-	# 全屏闪光
+	# 过关庆祝彩纸推进（独立高层，画在商店之上）
+	var cb := 0
+	while cb < _celeb.size():
+		var cpo: Dictionary = _celeb[cb]
+		var cpt: float = float(cpo.get("t", 0.0)) + delta
+		cpo["t"] = cpt
+		if cpt >= float(cpo.get("life", 0.85)):
+			_celeb.remove_at(cb)
+		else:
+			cb += 1
+	_celeb_view.queue_redraw()
+
+	# 全屏晕染（受伤红 / 颠勺金）：撑满整块手机屏，含 letterbox 黑边
 	if _hurt_t > 0.0:
 		_hurt_t -= delta
-		_hurt.color.a = maxf(0.0, _hurt_t / 0.26) * 0.30
+		_hurt.set("strength", maxf(0.0, _hurt_t / 0.26))
+		_hurt.queue_redraw()
+	elif float(_hurt.get("strength")) > 0.0:
+		_hurt.set("strength", 0.0)
+		_hurt.queue_redraw()
 	if _gold_t > 0.0:
 		_gold_t -= delta
-		_gold.color.a = maxf(0.0, _gold_t / 0.42) * 0.34
+		_gold.set("strength", maxf(0.0, _gold_t / 0.42))
+		_gold.queue_redraw()
+	elif float(_gold.get("strength")) > 0.0:
+		_gold.set("strength", 0.0)
+		_gold.queue_redraw()
 
 # ---- Label 对象池：飘字是最高频的特效，绝不能每次 instantiate ----
 func _take_label() -> Label:

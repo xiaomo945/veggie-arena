@@ -216,13 +216,14 @@ func damage_enemy(e, amount: float) -> bool:
 		return true
 	return false
 
-func on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) -> void:
+# key = 武器 key，透传给子弹画这把武器专属造型（默认参数保证老调用点不用改）
+func on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color, key := "") -> void:
 	world.shots_fired += 1
 	for attempt in BattleWorld.MAX_BULLETS:
 		var b = world.bullets[world.bullet_cursor]
 		world.bullet_cursor = (world.bullet_cursor + 1) % BattleWorld.MAX_BULLETS
 		if not b.active:
-			b.launch(pos, dir, stats, c)
+			b.launch(pos, dir, stats, c, key)
 			return
 
 # 近战扇形挥砍：命中"以 origin 为圆心、reach 为半径、朝向 dir 半角 half_arc 内"

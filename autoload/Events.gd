@@ -15,7 +15,8 @@ signal player_dodged(pos: Vector2)
 
 # ---- 波次 ----
 signal wave_started(wave: int)
-signal wave_ended(wave: int)
+# 波次撑满（波末结算已入袋、即将开补给站）。pos=玩家位置，供过关庆祝特效定位。
+signal wave_ended(wave: int, pos: Vector2)
 signal wave_progress(elapsed: float, length: float)
 signal boss_wave(wave: int)
 

@@ -253,6 +253,8 @@ func _end_wave() -> void:
 	var wh := int(round(GameState.stat_value("wave_heal")))
 	if wh > 0:
 		GameState.heal(wh)
+	# 过关庆祝（卡通彩纸）：在开补给站之前发，Fx 层画在商店之上所以看得见
+	Events.wave_ended.emit(GameState.wave, player.global_position)
 	# 最后一波结束 = 通关：停跑并弹胜利页，不再开补给站
 	if GameState.is_last_wave():
 		GameState.running = false
@@ -270,8 +272,8 @@ func _on_shop_closed() -> void:
 		enemy_system.spawn_boss()
 	_spawn_wave_burst()
 
-func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color, _key: String) -> void:
-	enemy_system.on_weapon_fired(pos, dir, stats, c)
+func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color, key: String) -> void:
+	enemy_system.on_weapon_fired(pos, dir, stats, c, key)
 
 func _on_melee_swung(origin: Vector2, dir: Vector2, reach: float, half_arc: float,
 		dmg: float, crit: bool, knockback: float, c: Color, key: String, level: int) -> void:

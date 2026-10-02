@@ -7,6 +7,7 @@ extends Node2D
 #   "impact"  敌人挨打时的卡通星芒爆点（随命中颜色上色，暴击更亮）
 #   "muzzle"  远程武器枪口火光；scale 放大、wide=true 则星芒更宽（火箭筒/霰弹专属）
 #   "boom"    颠勺大招的爆炒溅射：大团橙色火球膨胀后淡出
+#   "confetti" 过关庆祝的卡通彩纸：小方块四散飞出并旋转（ang/dist/spin 控制方向与落点）
 
 var pops: Array = []   # [{pos, t, life, kind, color, scale, wide}]
 
@@ -29,6 +30,9 @@ func _draw() -> void:
 			_draw_muzzle(pos, k, col, float(d.get("scale", 1.0)), bool(d.get("wide", false)))
 		elif kind == "boom":
 			_draw_boom(pos, k, col)
+		elif kind == "confetti":
+			_draw_confetti(pos, k, col, float(d.get("ang", 0.0)),
+				float(d.get("dist", 90.0)), float(d.get("spin", 4.0)))
 		else:
 			_draw_impact(pos, k, col)
 
@@ -57,6 +61,22 @@ func _draw_muzzle(pos: Vector2, k: float, col: Color, sc: float, wide: bool) -> 
 		var dlen: float = r * (spread + k)
 		var tip: Vector2 = pos + Vector2(cos(ang), sin(ang)) * dlen
 		draw_line(pos, tip, Color(1, 1, 1, a * 0.85), 2.0 * sc)
+
+# 过关庆祝彩纸：暗描边小方块沿 ang 方向飞出、边飞边转边淡出（卡通纸片质感）
+func _draw_confetti(pos: Vector2, k: float, col: Color, ang0: float, dist: float, spin: float) -> void:
+	var a: float = 1.0 - k * k
+	var p: Vector2 = pos + Vector2(cos(ang0), sin(ang0)) * (k * dist)
+	var sz: float = lerpf(8.0, 3.0, k)
+	var rot: float = ang0 + k * spin
+	var outer := PackedVector2Array()
+	var inner := PackedVector2Array()
+	for i in 4:
+		var a2: float = rot + TAU * float(i) / 4.0
+		var v := Vector2(cos(a2), sin(a2))
+		outer.append(p + v * sz)
+		inner.append(p + v * sz * 0.6)
+	draw_colored_polygon(outer, Color(INK.r, INK.g, INK.b, a * 0.6))
+	draw_colored_polygon(inner, Color(col.r, col.g, col.b, a))
 
 # 颠勺爆炒：大团橙红火球膨胀 + 白核 + 暗边，越扩越淡
 func _draw_boom(pos: Vector2, k: float, col: Color) -> void:
