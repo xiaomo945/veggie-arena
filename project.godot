@@ -9,6 +9,11 @@ config/description="手机竖屏竞技场生存 Roguelite"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 run/main_scene="res://ui/Screens/Main.tscn"
 
+; 战场外的清屏色与灶台地板统一（深炭），避免"黑底+灰边"的割裂感
+[rendering]
+
+environment/defaults/default_clear_color=Color(0.05, 0.052, 0.066, 1)
+
 [autoload]
 
 Art="*res://autoload/Art.gd"

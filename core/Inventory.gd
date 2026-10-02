@@ -12,6 +12,15 @@ static func can_accept(weapons: Array, key: String, max_slot: int, max_lv: int) 
 		return true
 	return find_merge_target(weapons, key, max_lv) >= 0
 
+# 某档位武器能不能买：lv<=1 走老规则；lv>1 则需"拥有上一级同 key"（合成上去）
+# 或"有空槽"（直接落一把该档成品，占新槽）
+static func can_accept_tier(weapons: Array, key: String, lv: int, max_slot: int, max_lv: int) -> bool:
+	if lv <= 1:
+		return can_accept(weapons, key, max_slot, max_lv)
+	if find_tier(weapons, key, lv - 1) >= 0:
+		return true
+	return weapons.size() < max_slot
+
 # 找可合成目标，返回索引；没有返回 -1
 static func find_merge_target(weapons: Array, key: String, max_lv: int) -> int:
 	for i in weapons.size():
@@ -22,25 +31,57 @@ static func find_merge_target(weapons: Array, key: String, max_lv: int) -> int:
 			return i
 	return -1
 
+# 找"恰好等于某档位"的武器，返回索引；没有返回 -1（用于高级武器直接合成）
+static func find_tier(weapons: Array, key: String, lv: int) -> int:
+	for i in weapons.size():
+		var w = weapons[i]
+		if not (w is Dictionary):
+			continue
+		if str(w.get("key", "")) == key and int(w.get("lv", 1)) == lv:
+			return i
+	return -1
+
+# 把一把武器升到 new_lv（重算 dmg/cd），原地改 weapons[idx]
+static func _upgrade_to(weapons: Array, idx: int, new_lv: int, combat_cfg: Dictionary) -> void:
+	var w: Dictionary = weapons[idx]
+	var dmg_mul := float(combat_cfg.get("merge_dmg_multiplier", 1.30))
+	var cd_mul := float(combat_cfg.get("merge_cd_multiplier", 0.93))
+	w["lv"] = new_lv
+	w["dmg"] = int(round(float(w.get("dmg", 1)) * dmg_mul))
+	w["cd"] = float(w.get("cd", 1.0)) * cd_mul
+	weapons[idx] = w
+
 # 买一把武器：能合成就升级，否则占新槽。
-# def 需含 key/dmg/cd。返回是否成功（槽满且不可合成时为 false）
+# def 需含 key/dmg/cd，可带 "lv"（直接买某档成品）。
+#   - 买 >1 档：优先把"拥有的上一级同 key"升到该档；
+#   - 买 1 档：优先把"拥有的同 key 未满级"升一级（已有的 2→1 自动合成）；
+#   - 都合不了且槽满：失败。
+# 返回是否成功（槽满且不可合成时为 false）
 static func merge_or_add(weapons: Array, def: Dictionary, max_slot: int, max_lv: int,
 		combat_cfg: Dictionary = {}) -> bool:
 	var key := str(def.get("key", ""))
+	var buy_lv := int(def.get("lv", 1))
+	# 高级成品：合成到"拥有的上一级"
+	if buy_lv > 1:
+		var ti := find_tier(weapons, key, buy_lv - 1)
+		if ti >= 0:
+			_upgrade_to(weapons, ti, buy_lv, combat_cfg)
+			return true
+	# 1 档或无可合成上级：尝试把"同 key 未满级"升一级
 	var idx := find_merge_target(weapons, key, max_lv)
 	if idx >= 0:
-		var w: Dictionary = weapons[idx]
-		var dmg_mul := float(combat_cfg.get("merge_dmg_multiplier", 1.30))
-		var cd_mul := float(combat_cfg.get("merge_cd_multiplier", 0.93))
-		w["lv"] = int(w.get("lv", 1)) + 1
-		w["dmg"] = int(round(float(w.get("dmg", 1)) * dmg_mul))
-		w["cd"] = float(w.get("cd", 1.0)) * cd_mul
-		weapons[idx] = w
+		_upgrade_to(weapons, idx, int(weapons[idx].get("lv", 1)) + 1, combat_cfg)
 		return true
 	if weapons.size() >= max_slot:
 		return false
 	var nw: Dictionary = def.duplicate()
-	nw["lv"] = 1
+	nw["lv"] = buy_lv
+	# 直接落高档成品时，按合成倍率补齐 dmg/cd（与"一级一级合上来"数值一致）
+	if buy_lv > 1:
+		var dmg_mul := float(combat_cfg.get("merge_dmg_multiplier", 1.30))
+		var cd_mul := float(combat_cfg.get("merge_cd_multiplier", 0.93))
+		nw["dmg"] = int(round(float(nw.get("dmg", 1)) * pow(dmg_mul, float(buy_lv - 1))))
+		nw["cd"] = float(nw.get("cd", 1.0)) * pow(cd_mul, float(buy_lv - 1))
 	weapons.append(nw)
 	return true
 

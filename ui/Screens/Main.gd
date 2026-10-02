@@ -16,16 +16,21 @@ var _rng := RandomNumberGenerator.new()
 var _shake := 0.0          # 屏幕震动强度，受伤时拉起、每帧衰减
 var _cam: Camera2D         # 跟随玩家的相机（大地图滚动用，不碰 HUD/摇杆）
 var _prev_hp := 100
+var _floor: Node2D = null  # 厨房战场地面（art/ArenaFloor），切无尽段换砧板可从这里重掷
 
-const BG := Color(0.06, 0.07, 0.10)
-const FLOOR := Color(0.11, 0.13, 0.17)
-const GRID := Color(1.0, 1.0, 1.0, 0.035)
-const BORDER := Color(0.45, 0.75, 0.40, 0.55)
+const FloorScene := preload("res://art/ArenaFloor.gd")
 
 func _ready() -> void:
 	var a := Data.arena()
 	var cx := float(a.get("x", 0)) + float(a.get("w", 540)) * 0.5
 	var cy := float(a.get("y", 0)) + float(a.get("h", 900)) * 0.5
+
+	# 厨房主题战场地面（纯代码绘制）：第一个 add_child = 画在最底层
+	var floor_node := FloorScene.new()
+	_floor = floor_node
+	add_child(floor_node)
+	floor_node.setup(Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
+		float(a.get("w", 1080)), float(a.get("h", 1620))))
 
 	player = PlayerScene.instantiate()
 	player.position = Vector2(cx, cy)
@@ -271,29 +276,3 @@ func _run_simulation(seconds: float) -> void:
 		SaveMgr.total_runs(), SaveMgr.best_score(), SaveMgr.best_wave(),
 		SaveMgr.unlocked_weapons().size(), SaveMgr.last_character()])
 	get_tree().quit(0)
-
-func _draw() -> void:
-	var a := Data.arena()
-	var r := Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
-		float(a.get("w", 540)), float(a.get("h", 900)))
-	# 背景铺满"当前镜头可见区域"（镜头跟随玩家后会平移，固定 (0,0) 的背景会露馅）
-	var view: Vector2 = get_viewport().size
-	if view.x <= 0:
-		view = Vector2(540.0, 900.0)
-	var cam_pos := Vector2.ZERO
-	if player != null and is_instance_valid(player):
-		cam_pos = player.global_position
-	var vis := Rect2(cam_pos - view * 0.5, view)
-	draw_rect(vis, BG)
-	draw_rect(r, FLOOR)
-	# 地砖网格：给移动一个参照物，否则看不出自己在动
-	var step := 60.0
-	var x := r.position.x
-	while x <= r.position.x + r.size.x:
-		draw_line(Vector2(x, r.position.y), Vector2(x, r.position.y + r.size.y), GRID, 1.0)
-		x += step
-	var y := r.position.y
-	while y <= r.position.y + r.size.y:
-		draw_line(Vector2(r.position.x, y), Vector2(r.position.x + r.size.x, y), GRID, 1.0)
-		y += step
-	draw_rect(r, BORDER, false, 2.0)

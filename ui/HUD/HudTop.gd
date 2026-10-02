@@ -37,8 +37,8 @@ func _ready() -> void:
 	_combo_label.text = ""
 
 	# 金币左侧金币图标，金币标签已右移到 x=40 避免遮挡
-	# （用 Art.coin_icon 的卡通金饼替换旧的 48px 方块coin，缩小绘制走线性+mipmap）
-	_mk_icon("coin", Vector2(12, 58), 22, Art.coin_icon())
+	# （用 Art.coin_icon 的卡通金饼替换旧的 48px 方块coin；缩小到 16px 不再显大）
+	_mk_icon("coin", Vector2(14, 60), 16, Art.coin_icon())
 
 	# 暂停按钮：右上角，游戏中显示，暂停 / 结算时隐藏
 	_pause_btn = Button.new()

@@ -31,7 +31,161 @@
     "phase_steps": [0.75, 0.5, 0.25],
     "color": "#ff3b5c",
     "zh": "终局首领",
-    "en": "Final Boss"
+    "en": "Final Boss",
+    "skills": {
+      "enabled": true,
+      "phase_steps": [0.75, 0.5, 0.25],
+      "transition_invuln": 1.2,
+      "phase_speed_per": 0.12,
+      "phase_dmg_per": 0.1,
+      "first_delay": 2.0,
+      "list": {
+        "summon": {
+          "order": 1,
+          "from_phase": 1,
+          "kind": "summon",
+          "cooldown": 7.0,
+          "cooldown_per_phase": 0.8,
+          "cooldown_min": 3.5,
+          "telegraph": 0.5,
+          "recover": 0.3,
+          "count": 3,
+          "count_per_phase": 1,
+          "count_cap": 7,
+          "minion_type": "swarm",
+          "minion_hp_mult": 0.7,
+          "minion_dmg_mult": 0.6,
+          "zh": "召唤萝卜兵",
+          "en": "SPROUT CALL"
+        },
+        "charge": {
+          "order": 2,
+          "from_phase": 2,
+          "kind": "charge",
+          "cooldown": 8.0,
+          "cooldown_per_phase": 0.7,
+          "cooldown_min": 4.0,
+          "telegraph": 0.85,
+          "recover": 0.35,
+          "duration": 0.55,
+          "speed_mult": 3.6,
+          "dmg_mult": 1.15,
+          "reach_telegraph": 520.0,
+          "zh": "冲撞",
+          "en": "CHARGE!"
+        },
+        "breath": {
+          "order": 3,
+          "from_phase": 3,
+          "kind": "breath",
+          "cooldown": 9.0,
+          "cooldown_per_phase": 0.6,
+          "cooldown_min": 5.0,
+          "telegraph": 1.0,
+          "recover": 0.5,
+          "rings": 2,
+          "ring_gap": 0.45,
+          "bullets": 18,
+          "bullet_offset_per_ring": 0.5,
+          "bullet_speed": 230.0,
+          "bullet_radius": 9.0,
+          "bullet_life": 3.2,
+          "dmg_mult": 0.45,
+          "color": "#ffca4a",
+          "zh": "吐息弹幕",
+          "en": "SPORE BARRAGE"
+        }
+      }
+    }
+  },
+  "boss_rush": {
+    "enabled": true,
+    "phase_steps": [0.66, 0.33],
+    "transition_invuln": 0.0,
+    "phase_speed_per": 0.25,
+    "phase_dmg_per": 0.2,
+    "first_delay": 3.5,
+    "list": {
+      "charge": {
+        "order": 1,
+        "from_phase": 1,
+        "kind": "charge",
+        "cooldown": 3.6,
+        "cooldown_per_phase": 0.6,
+        "cooldown_min": 1.5,
+        "telegraph": 0.0,
+        "recover": 0.0,
+        "duration": 0.5,
+        "speed_mult": 2.2,
+        "dmg_mult": 1.0,
+        "reach_telegraph": 0.0,
+        "zh": "冲撞",
+        "en": "CHARGE"
+      }
+    }
+  },
+  "elite_affixes": {
+    "enabled": true,
+    "affixes": {
+      "shield": {
+        "order": 1,
+        "from_wave": 4,
+        "to_wave": 0,
+        "weight": 1.0,
+        "shield_ratio": 0.55,
+        "shield_color": "#7fd8ff",
+        "zh": "护盾",
+        "en": "BULWARK",
+        "tip": "破盾前免疫伤害",
+        "tip_en": "Immune until the shield breaks."
+      },
+      "swift": {
+        "order": 2,
+        "from_wave": 6,
+        "to_wave": 0,
+        "weight": 1.0,
+        "speed_mult": 1.45,
+        "hp_mult": 0.8,
+        "dash_interval": 2.4,
+        "dash_windup": 0.25,
+        "dash_time": 0.3,
+        "dash_speed_mult": 3.2,
+        "color": "#9ff2a8",
+        "zh": "疾风",
+        "en": "SWIFT",
+        "tip": "高速移动并会突进",
+        "tip_en": "Fast and periodically dashes."
+      },
+      "split": {
+        "order": 3,
+        "from_wave": 10,
+        "to_wave": 0,
+        "weight": 1.0,
+        "children": 2,
+        "child_hp_mult": 0.35,
+        "child_radius_mult": 0.62,
+        "child_speed_mult": 1.15,
+        "color": "#c58aff",
+        "zh": "分裂",
+        "en": "SPLITTER",
+        "tip": "死亡时分裂成小怪",
+        "tip_en": "Splits into smaller foes on death."
+      },
+      "volatile": {
+        "order": 4,
+        "from_wave": 14,
+        "to_wave": 0,
+        "weight": 1.0,
+        "blast_radius": 96.0,
+        "blast_dps": 34.0,
+        "blast_life": 2.4,
+        "blast_color": "#ff8a3d",
+        "zh": "易爆",
+        "en": "VOLATILE",
+        "tip": "死亡时留下伤害圈",
+        "tip_en": "Leaves a burning pool on death."
+      }
+    }
   },
   "endless": {
     "hp_per_wave": 0.16,
@@ -41,7 +195,13 @@
     "gold_per_wave": 0.1,
     "gold_cap": 3.0,
     "rate_per_wave": 0.6,
-    "rate_cap": 16.0
+    "rate_cap": 16.0,
+    "milestone_from": 25,
+    "milestone_every": 5,
+    "milestone_gold": 150,
+    "milestone_gold_step": 60,
+    "milestone_gold_cap": 900,
+    "milestone_weapon_min_cost": 26
   },
   "spawn": {
     "base_rate": 2.5,

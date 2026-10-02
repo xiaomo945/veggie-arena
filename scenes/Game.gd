@@ -1,10 +1,7 @@
 extends Node2D
 
 # 战斗协调器：生命周期、暂停、波次推进、金币磁吸、刷怪节奏。
-# 敌人移动 / 子弹命中结算 / 颠勺等重逻辑在 scenes/EnemySystem.gd（本节点的子节点）。
-# 【状态放哪】本节点只留"场景编排"相关的状态（player 引用、_paused、刷怪累计）；
-#   池 / rng / 竞技场 / 暂存数组 / 诊断计数全在 scenes/BattleWorld.gd —— 那份是
-#   EnemySystem 也要用的共享契约。跨模块读写 game._xxx 曾是头号耦合源，现已清零。
+# 重逻辑（敌人移动/子弹结算/颠勺）在 scenes/EnemySystem.gd；共享状态在 scenes/BattleWorld.gd。
 
 const BulletScene := preload("res://entities/Bullet/Bullet.tscn")
 const EnemyScene := preload("res://entities/Enemy/Enemy.tscn")
@@ -35,8 +32,13 @@ func _ready() -> void:
 	var a := Data.arena()
 	world.arena = Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
 		float(a.get("w", 540)), float(a.get("h", 900)))
-	world.pickups = PickupFieldScene.instantiate()
-	add_child(world.pickups)
+	# 战场地面 art/ArenaFloor（砧板+钢边+污渍+远景）替换纯黑背景；show_behind_parent 垫最底
+	var floor_node := Node2D.new()
+	floor_node.set_script(preload("res://art/ArenaFloor.gd"))
+	floor_node.show_behind_parent = true
+	add_child(floor_node)
+	floor_node.setup(world.arena)
+	world.pickups = PickupFieldScene.instantiate(); add_child(world.pickups)
 	_build_pools()
 	# 战斗子系统：接手刷怪 / 敌人移动 / 子弹命中 / 颠勺（状态通过 world 共享）
 	enemy_system = EnemySystem.new()

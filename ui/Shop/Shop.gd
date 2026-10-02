@@ -1,13 +1,12 @@
 extends CanvasLayer
 
-# 补给站：波次结束后弹出，4 张卡 + 刷新 + 下一波。
-# 手机竖屏：卡片竖排单列，按钮高度 ≥ 56px（拇指点得中）。
-# 卡片的"怎么画"全部交给 ShopCard（哑组件），本文件只做：算报价 → 组装展示数据
-# → 接线购买 → 刷新。视觉基调是卡通暖色：深棕面板 + 金描边，圆角/线宽全局一致。
+# 补给站：波次结束后弹出，4 张卡 + 刷新 + 下一波。手机竖屏卡片竖排单列，按钮 ≥56px。
+# 卡片画法交给 ShopCard（哑组件）；本文件只做：算报价 → 组装展示 → 接线购买 → 刷新。
 
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
 const ShopCardScript := preload("res://ui/Shop/ShopCard.gd")
+const ShopTiers := preload("res://core/ShopTiers.gd")
 
 const PANEL_W := 496.0
 const PANEL_H := 732.0
@@ -123,7 +122,7 @@ func _build() -> void:
 	_next_btn.pressed.connect(_next_wave)
 	_panel.add_child(_next_btn)
 
-# 小工具：统一的暖色圆角盒 / 卡通金币图标（Art.coin_icon，全游戏统一观感）
+# 小工具：统一的暖色圆角盒（卡通金币图标走 Art.coin_icon）
 func _flat_box(bg: Color, border: Color, radius: float) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
@@ -221,8 +220,8 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 	var name := I18n.pick(def)
 	var tip := I18n.tip(def)
 	var cost := int(o.get("cost", 0))
-	# 基础价（data 里写死的原价，未计通胀/打折）用于画"涨 N%"角标
-	var base_cost := int(def.get("cost", cost))
+	# 基础价（该档位的 1 级等价原价，未计通胀/打折）用于画"涨 N%"角标
+	var base_cost := int(o.get("base_cost", cost))
 	var inflated := cost > base_cost
 	var infl_pct := 0
 	if base_cost > 0 and inflated:
@@ -233,14 +232,15 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 		"base_cost": base_cost, "inflated": inflated, "infl_pct": infl_pct,
 	}
 	if kind == "weapon":
-		var accent := Color(str(def.get("color", "#ffffff")))
+		# 武器主色 = 分级配色（白1/绿2/蓝3/紫4/红5/传说6），不再是每把武器各一种颜色
+		var lv := int(o.get("lv", 1))
+		var accent := ShopTiers.new().tier_color(lv)
 		var owned := _owned_lv(key)
-		var result_lv := owned + 1 if owned > 0 else 1
 		d["accent"] = accent
-		d["lv"] = result_lv
+		d["lv"] = lv
 		d["icon"] = Art.icon("weapon_" + key)
 		d["tag"] = I18n.t("shop_merge") if owned > 0 else I18n.t("shop_new")
-		d["disabled"] = not Inventory.can_accept(GameState.weapons, key, _max_slot, _max_lv)
+		d["disabled"] = not Inventory.can_accept_tier(GameState.weapons, key, lv, _max_slot, _max_lv)
 	else:
 		var rar := clampi(int(def.get("rarity", 1)), 1, 3)
 		d["accent"] = RARITY_COLORS[rar - 1]

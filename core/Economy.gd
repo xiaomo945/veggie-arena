@@ -84,6 +84,8 @@ const RARITY_WEIGHT := {1: 6.0, 2: 3.0, 3: 1.0}
 # 武器与道具的相对权重：武器要凑满 6 个槽位，不能让 48 个道具把它淹掉
 const WEAPON_WEIGHT := 4.0
 
+const ShopTiers := preload("res://core/ShopTiers.gd")
+
 # 打折 + 波次通胀后的价格。
 # wave<=1 表示首店（刚结束第 1 波，还没经历通胀），不涨价；之后每过一关价格按
 # inflation_pct 线性上涨：第 N 家店 multiplier = 1 + (N-1)*inflation_pct。
@@ -98,22 +100,36 @@ static func price_of(base_cost: int, discount_pct: float, wave: int = 0, inflati
 
 static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Dictionary, max_slot: int, max_lv: int, unlocked_weapons: Array = [], discount_pct: float = 0.0, wave: int = 0, inflation_pct: float = 0.0) -> Array:
 	var pool: Array = []
+	var tiers := ShopTiers.new()
+	var top_tier := tiers.max_tier_for_wave(wave, max_lv)
 	for key in weapon_defs.keys():
 		# 未解锁的武器根本不进池子（商店里看不到，也不会被抽到）
 		if not unlocked_weapons.is_empty() and not unlocked_weapons.has(str(key)):
 			continue
-		if Inventory.can_accept(weapons, key, max_slot, max_lv):
+		# 多档武器：从 1 级到当前波次允许的最高档各出一份（高档更稀有、更贵）
+		for lv in range(1, top_tier + 1):
+			if not Inventory.can_accept_tier(weapons, key, lv, max_slot, max_lv):
+				continue
 			var w: Dictionary = weapon_defs[key].duplicate()
 			w["key"] = key
 			w["kind"] = "weapon"
-			w["weight"] = WEAPON_WEIGHT
-			w["cost"] = price_of(int(w.get("cost", 0)), discount_pct, wave, inflation_pct)
+			w["lv"] = lv
+			w["weight"] = WEAPON_WEIGHT * tiers.tier_weight(lv)
+			# 档位底价 = 1 级价 × 倍率^(lv-1)；再叠打折/通胀（与 1 级同比例，保住"≥1级的N倍"）
+			var base := int(w.get("cost", 0))
+			var tier_base := int(round(float(base) * pow(tiers.tier_price_mult(), float(lv - 1))))
+			w["base_cost"] = tier_base
+			w["cost"] = price_of(tier_base, discount_pct, wave, inflation_pct)
 			pool.append(w)
 	for key in upgrade_defs.keys():
 		var u: Dictionary = upgrade_defs[key].duplicate()
+		var rar := int(u.get("rarity", 1))
+		# 难度门禁：前几波不出现高阶道具（避免一上来就拿到厉害东西）
+		if rar > tiers.max_rarity_for_wave(wave):
+			continue
 		u["key"] = key
 		u["kind"] = "upgrade"
-		u["weight"] = RARITY_WEIGHT.get(int(u.get("rarity", 2)), 3.0)
+		u["weight"] = RARITY_WEIGHT.get(rar, 3.0)
 		u["cost"] = price_of(int(u.get("cost", 0)), discount_pct, wave, inflation_pct)
 		pool.append(u)
 	return pool

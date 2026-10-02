@@ -51,6 +51,11 @@ func drop(pos: Vector2, value: int) -> int:
 	var pieces := Pickup.split_count(v, _max_pieces)
 	var vals := Pickup.split_values(v, pieces)
 	var spread: float = float(_cfg.get("spread", 26.0))
+	# 掉落点钳进竞技场（留 18px 余量），金币才不会散到地图外、看着割裂
+	var a: Dictionary = Data.arena()
+	var ar := Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
+		float(a.get("w", 540)), float(a.get("h", 900))).grow(-18.0)
+	var anchor := _clamp_to(pos, ar)
 	for i in vals.size():
 		var p: Node2D = _next()
 		if p == null:
@@ -60,9 +65,13 @@ func drop(pos: Vector2, value: int) -> int:
 			var ov: int = p.value_and_recycle()
 			overflow += ov
 			Events.pickup_collected.emit(pos, ov)
-		var at: Vector2 = Pickup.drop_position(pos, _rng.randf(), _rng.randf(), spread)
+		var at: Vector2 = _clamp_to(Pickup.drop_position(anchor, _rng.randf(), _rng.randf(), spread), ar)
 		p.spawn(at, int(vals[i]), _cfg)
 	return overflow
+
+# 把点钳进矩形（金币掉地图外的根因：敌人死在边缘，掉落点漂出竞技场）
+static func _clamp_to(p: Vector2, r: Rect2) -> Vector2:
+	return Vector2(clampf(p.x, r.position.x, r.end.x), clampf(p.y, r.position.y, r.end.y))
 
 # 每帧推进所有金币。返回本帧被吃掉的总价值（0 表示没吃到）。
 # magnet 是真实磁吸半径(px)，由 GameState.pickup_magnet() 算出（含自动拾取/拾取范围）。

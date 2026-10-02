@@ -36,6 +36,9 @@ var _blast = null          # 颠勺全屏爆炸（屏幕空间，恒定居中于
 
 const MELEE_LIFE := 0.16
 const Shake := preload("res://entities/effects/Shake.gd")
+const HitStop := preload("res://entities/effects/HitStop.gd")
+const BossIntroScene := preload("res://ui/Fx/FxBossIntro.gd")
+const SpawnHaloScene := preload("res://ui/Fx/FxSpawnHalo.gd")
 
 func _ready() -> void:
 	layer = 15          # 在世界之上、HUD(20) 之下
@@ -89,6 +92,17 @@ func _ready() -> void:
 	_blast.name = "Blast"
 	add_child(_blast)
 
+	# Boss 登场演出（全屏压暗 + 地缝 + 横幅，屏幕空间，自己订阅 boss_wave）
+	var intro := Control.new()
+	intro.set_script(BossIntroScene)
+	intro.name = "BossIntro"
+	add_child(intro)
+	# 精英/Boss 出场光环（世界空间，自己订阅 enemy_spawned）
+	var halo := Node2D.new()
+	halo.set_script(SpawnHaloScene)
+	halo.name = "SpawnHalo"
+	add_child(halo)
+
 	_hurt = _mk_flash(Color(1.0, 0.12, 0.18))
 	_gold = _mk_flash(Color(1.0, 0.78, 0.32))
 
@@ -112,6 +126,9 @@ func _mk_flash(c: Color) -> Control:
 
 # ---- 信号：飘伤害数字 ----
 func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
+	# 重击定帧：单发大伤害让世界"卡"半帧，读成"这一下很沉"
+	if amount >= 30:
+		HitStop.hit(0.045, 0.08)
 	if _floats.size() >= MAX_FLOATS:
 		return          # 高射速时宁可少飘几个，也不能拖帧
 	var lab := _take_label()
@@ -144,11 +161,13 @@ func _on_fired(_pos: Vector2, _dir: Vector2, _stats: Dictionary, color: Color, k
 		pop["wide"] = true
 	_pops.append(pop)
 
-# ---- 信号：击杀爆环 ----
+# ---- 信号：击杀 → 三层迸溅（碎块/汁液/爆环，画在 FxRings）+ 击杀定帧 ----
 func _on_killed(_type: String, pos: Vector2) -> void:
+	HitStop.hit(0.05, 0.12)      # 击杀是最值得"顿一下"的时刻
 	if _rings.size() >= MAX_RINGS:
 		return
-	_rings.append({"pos": pos, "t": 0.0, "life": 0.34, "big": (_type == "boss")})
+	_rings.append({"pos": pos, "t": 0.0, "life": 0.5, "big": (_type == "boss"),
+		"color": Color(1.0, 0.88, 0.55)})
 
 # ---- 信号：挨打红闪 ----
 func _on_hp(hp: int, _max_hp: int) -> void:
@@ -187,10 +206,10 @@ func _on_melee(origin: Vector2, dir: Vector2, reach: float, half_arc: float, col
 	# 近战砍地裂痕：落点在挥砍中点，长度/分叉随武器等级变大
 	if _cracks.size() < MAX_CRACKS:
 		_cracks.append({"pos": origin + dir * reach * 0.5, "dir": dir,
-			"level": level, "color": color, "t": 0.0})
+			"level": level, "color": color, "t": 0.0, "life": 0.85})
 
 func _process(delta: float) -> void:
-	# 飘字：上飘 + 后段淡出
+	# 飘字：上飘 + 后段淡出（结构特殊，单独推进）
 	var i := 0
 	while i < _floats.size():
 		var f: Dictionary = _floats[i]
@@ -205,68 +224,30 @@ func _process(delta: float) -> void:
 			_floats.remove_at(i)
 		else:
 			i += 1
+	# 其余数组都是同一套"推进 t / 到期剔除 / 重绘"，统一走一个函数
+	_tick(_rings, _ring_view, delta)
+	_tick(_arcs, _arc_view, delta)
+	_tick(_cracks, _crack_view, delta)
+	_tick(_pops, _pop_view, delta)
+	_tick(_celeb, _celeb_view, delta)
+	_tick_vignettes(delta)
+	HitStop.tick()      # 定帧恢复（用真实时钟，见 HitStop 注释）
 
-	# 爆环推进
-	var j := 0
-	while j < _rings.size():
-		var r: Dictionary = _rings[j]
-		var rt: float = float(r.get("t", 0.0)) + delta
-		r["t"] = rt
-		if rt >= float(r.get("life", 0.34)):
-			_rings.remove_at(j)
+# 通用推进：t += delta；超过 life 剔除；最后重绘
+func _tick(arr: Array, view: Node2D, delta: float) -> void:
+	var i := 0
+	while i < arr.size():
+		var d: Dictionary = arr[i]
+		var t: float = float(d.get("t", 0.0)) + delta
+		d["t"] = t
+		if t >= float(d.get("life", 0.18)):
+			arr.remove_at(i)
 		else:
-			j += 1
-	_ring_view.queue_redraw()
+			i += 1
+	view.queue_redraw()
 
-	# 近战扇形推进
-	var m := 0
-	while m < _arcs.size():
-		var ar: Dictionary = _arcs[m]
-		var at: float = float(ar.get("t", 0.0)) + delta
-		ar["t"] = at
-		if at >= float(ar.get("life", MELEE_LIFE)):
-			_arcs.remove_at(m)
-		else:
-			m += 1
-	_arc_view.queue_redraw()
-
-	# 地面裂痕推进
-	var cc := 0
-	while cc < _cracks.size():
-		var cr: Dictionary = _cracks[cc]
-		var ct: float = float(cr.get("t", 0.0)) + delta
-		cr["t"] = ct
-		if ct >= 0.85:
-			_cracks.remove_at(cc)
-		else:
-			cc += 1
-	_crack_view.queue_redraw()
-
-	# 命中迸溅 / 枪口火光推进
-	var pc2 := 0
-	while pc2 < _pops.size():
-		var po: Dictionary = _pops[pc2]
-		var pt: float = float(po.get("t", 0.0)) + delta
-		po["t"] = pt
-		if pt >= float(po.get("life", 0.18)):
-			_pops.remove_at(pc2)
-		else:
-			pc2 += 1
-	_pop_view.queue_redraw()
-
-	# 过关庆祝彩纸推进（独立高层，画在商店之上）
-	var cb := 0
-	while cb < _celeb.size():
-		var cpo: Dictionary = _celeb[cb]
-		var cpt: float = float(cpo.get("t", 0.0)) + delta
-		cpo["t"] = cpt
-		if cpt >= float(cpo.get("life", 0.85)):
-			_celeb.remove_at(cb)
-		else:
-			cb += 1
-	_celeb_view.queue_redraw()
-
-	# 全屏晕染（受伤红 / 颠勺金）：撑满整块手机屏，含 letterbox 黑边
+# 全屏晕染（受伤红 / 颠勺金）：撑满整块手机屏，含 letterbox 黑边
+func _tick_vignettes(delta: float) -> void:
 	if _hurt_t > 0.0:
 		_hurt_t -= delta
 		_hurt.set("strength", maxf(0.0, _hurt_t / 0.26))

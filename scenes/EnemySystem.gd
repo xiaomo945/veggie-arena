@@ -3,10 +3,9 @@ extends Node
 # 战斗子系统：刷怪、敌人移动、子弹追踪、命中结算、颠勺。
 # 由 Game 持有（game 子节点），战斗状态通过 scenes/BattleWorld.gd 共享。
 #
-# 【依赖边界】world —— 全部战斗状态（对象池 / rng / 竞技场 / 暂存数组 / 计数器），公开契约。
-#   game —— 只用来挂特效节点（add_child）和注册震屏，**不读它的任何状态字段**。
-#   以前本文件通过 game._xxx 读写 Game 的私有字段 64 处，是全项目头号耦合源；
-#   现在那些字段全部搬进 BattleWorld，两边各取所需、互不掀对方盖子。
+# 【依赖边界】world —— 全部战斗状态（池 / rng / 竞技场 / 暂存数组 / 计数器），公开契约。
+#   game —— 只用来挂特效节点（add_child）和注册震屏，**不读它的任何状态字段**
+#   （以前 game._xxx 读写 64 处是全项目头号耦合源，现已全部搬进 BattleWorld）。
 
 const Spawner := preload("res://core/Spawner.gd")
 const Run := preload("res://core/Run.gd")
@@ -61,14 +60,16 @@ func spawn_one() -> void:
 	var pos := pp + Vector2(cos(ang), sin(ang)) * 470.0
 	pos = Movement.clamp_to_arena(pos, world.arena, 16.0)
 	var type := Spawner.pick_type(GameState.wave, world.rng.randf(), Data.spawn_cfg())
-	# 精英有自己的出场节奏（第 elite_from_wave 波起、每 elite_every 波一轮），
-	# 不再只在 Boss 波出现 —— 每隔几关就能撞见"变强版"，压力有起伏。
+	# 精英节奏：第 elite_from_wave 波起、每 elite_every 波一轮，概率随波缓升
 	var elite := world.rng.randf() < Spawner.elite_chance(GameState.wave, Data.spawn_cfg())
 	var stats := Spawner.stats_for(type, GameState.wave, Data.enemies, elite, endless_scales())
 	if stats.is_empty():
 		return
 	e.spawn(pos, stats, world.next_id)
 	world.next_id += 1
+	# 精英/Boss 出场给一记"光环扩散 + 时间暂缓"（纯表现，FxSpawnHalo 订阅）
+	if bool(stats.get("elite", false)) or str(stats.get("type", "")) == "boss":
+		Events.enemy_spawned.emit(e)
 
 # Boss 波开局额外刷一只首领：慢、大、硬、疼，但金币丰厚
 func spawn_boss() -> void:
@@ -194,6 +195,8 @@ func damage_enemy(e, amount: float) -> bool:
 		var dl = DamageLabel.new()
 		game.add_child(dl)
 		dl.init(int(amount), false, epos)
+	# 受击挤压回弹（squash & stretch）：沿"玩家→敌人"的打击方向压扁
+	e.squash(epos - world.player.global_position)
 	# 单次大伤害轻微震屏
 	if amount >= 35.0:
 		Shake.kick(4.0, 0.16)
@@ -201,12 +204,12 @@ func damage_enemy(e, amount: float) -> bool:
 	Events.damage_dealt.emit(int(amount), epos, false)
 	if e.hurt(amount):
 		GameState.add_kill()
-		# 击杀碎屑 + 冲击波环（Boss 更大），粒子开关控制
-		# 并发上限：密集击杀时宁可少画几团，也不让 Node/Tween 爆炸拖垮手机帧率
-		if Settings.get_setting("particles_enabled", true) and _death_fx_count() < MAX_DEATH_FX:
-			var spark = HitSpark.new()
-			game.add_child(spark)
-			spark.init(epos, e.etype == "boss")
+	# 击杀碎屑 + 冲击波环（Boss 更大）。并发上限：密集击杀时宁可少画几团，
+	# 也不让 Node/Tween 爆炸拖垮手机帧率
+	if Settings.get_setting("particles_enabled", true) and _death_fx_count() < MAX_DEATH_FX:
+		var spark = HitSpark.new()
+		game.add_child(spark)
+		spark.init(epos, e.etype == "boss")
 		# 钱掉在地上（不是直接入账）：玩家要走进磁吸圈才收得到
 		# drop 的返回值 = 池满时被直接结算的金额（钱不会凭空蒸发）
 		var ov: int = world.pickups.drop(epos, e.gold)
@@ -277,8 +280,7 @@ func on_melee_swung(origin: Vector2, dir_in: Vector2, reach: float, half_arc: fl
 	Events.melee_visual.emit(origin, base, reach, half_arc, c, key, level)
 
 # ---- 颠勺（满锅气终极）----
-# 由 HUD 颠勺按钮 / Joystick 避让区点按触发：全屏重伤 + 击退，
-# 附加什么效果（减速/冻结/中毒/灼烧/破甲/连环爆/吸血/掉金/返火）由已买道具决定。
+# HUD 颠勺按钮触发：全屏重伤 + 击退；附加效果由已买道具决定。
 # 施放细节全在 scenes/WokToss.gd —— 这里只把它接上伤害结算与战斗状态。
 func on_wok_toss() -> void:
 	# 懒构造：world / damage_fn 必须每次重新注入，避免拿到过期的战斗状态

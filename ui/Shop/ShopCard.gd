@@ -11,8 +11,9 @@ extends Control
 # 卡通暖色规范：卡片圆角 14 / 小药丸圆角 8~14，描边统一 2px；
 # 价格画成"金币药丸"（币图标 + 数字），主次：名称 > 图标/价格 > 标签 > 描述。
 
-# ---- §8.4 配色 ----
-const LV_COLORS := [Color(0.60,0.63,0.65), Color(0.44,0.81,0.44), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
+# ---- §8.4 配色（用户指定分级：白1/绿2/蓝3/紫4/红5/传说6）----
+const LV_COLORS := [Color(0.85,0.86,0.90), Color(0.25,0.77,0.32), Color(0.18,0.55,1.0),
+	Color(0.63,0.29,1.0), Color(1.0,0.30,0.24), Color(1.0,0.71,0.12)]
 const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
 const GOLD := Color(1.0, 0.82, 0.29)
 const CARD_BG := Color(0.17, 0.13, 0.08, 0.97)
@@ -157,7 +158,7 @@ func _draw_icon(r: Rect2, accent: Color) -> void:
 
 func _draw_lv() -> void:
 	var lv := int(_d.get("lv", 1))
-	var ci := clampi(lv, 1, 4) - 1
+	var ci := clampi(lv, 1, LV_COLORS.size()) - 1
 	var col: Color = LV_COLORS[ci]
 	var txt := "Lv %d" % lv
 	var fs := 13
