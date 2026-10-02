@@ -14,7 +14,7 @@ var player: Node2D
 var game: Node
 var _rng := RandomNumberGenerator.new()
 var _shake := 0.0          # 屏幕震动强度，受伤时拉起、每帧衰减
-var _cam := Vector2.ZERO    # 相机中心（世界坐标），平滑跟随玩家（大地图用）
+var _cam: Camera2D         # 跟随玩家的相机（大地图滚动用，不碰 HUD/摇杆）
 var _prev_hp := 100
 
 const BG := Color(0.06, 0.07, 0.10)
@@ -31,6 +31,14 @@ func _ready() -> void:
 	player.position = Vector2(cx, cy)
 	add_child(player)
 
+	# 相机：挂在世界根节点上，跟随玩家并夹在场地边界内。
+	# 用 Camera2D 让引擎接管"拉伸/跟随"，不要再写 root.canvas_transform（会和 stretch 冲突导致不跟随）
+	_cam = Camera2D.new()
+	_cam.position_smoothing_enabled = true
+	_cam.position_smoothing_speed = 9.0
+	_cam.make_current()
+	add_child(_cam)
+
 	# 战斗管理器（刷怪/子弹/命中/波次）
 	game = GameScene.instantiate()
 	game.set_player(player)
@@ -46,10 +54,8 @@ func _ready() -> void:
 
 	queue_redraw()
 
-	# headless 自测：godot --headless -- --sim=30 会跑 30 秒战斗并打印结果
-	# 画面看不到，就用数字确认"怪刷出来了、被打死了、玩家会掉血"
-	# --char=potato：模拟指定角色（必须在这里单独扫一遍，
-	# 不能塞进 _sim_arg 的循环里 —— 那里遇到 --sim= 就 return 了，--char 会被跳过）
+	# headless 自测：godot --headless -- --sim=30 跑 30 秒战斗并打印数字（怪/击杀/掉血）
+	# --char=potato 单独扫一遍（不能塞进 _sim_arg：那里遇 --sim= 就 return，会漏掉 --char）
 	for ua in OS.get_cmdline_user_args():
 		if ua.begins_with("--char="):
 			GameState.set_character(ua.substr(7))
@@ -72,27 +78,27 @@ func _on_hp_shake(hp: int, _m: int) -> void:
 	_prev_hp = hp
 
 func _process(delta: float) -> void:
-	# 相机跟随玩家（大地图：把玩家居中，正常游玩看不到场地边缘；靠近边界才露出边）
-	var view: Vector2 = get_viewport().size
-	if view.x <= 0:
-		view = Vector2(540.0, 900.0)
-	if player != null and is_instance_valid(player):
+	# 相机跟随：把玩家放到屏幕中央；场地比屏幕大时夹相机，避免看到场地外的空白。
+	# 跟随/拉伸交给 Camera2D（引擎正确接管），这里只算"目标位置 + 受击震屏"
+	if _cam != null and is_instance_valid(_cam) and player != null and is_instance_valid(player):
+		var view: Vector2 = get_viewport().size
+		if view.x <= 0:
+			view = Vector2(540.0, 900.0)
 		var half: Vector2 = view * 0.5
 		var a: Dictionary = Data.arena()
 		var ax: float = float(a.get("x", 0.0))
 		var ay: float = float(a.get("y", 0.0))
 		var aw: float = float(a.get("w", 540.0))
 		var ah: float = float(a.get("h", 900.0))
-		var want: Vector2 = player.global_position
-		# 夹相机，避免露出场地外的空白（场地比屏幕大时才有限制效果）
+		var want := player.global_position
 		want.x = clampf(want.x, ax + half.x, ax + aw - half.x) if aw > view.x else ax + aw * 0.5
 		want.y = clampf(want.y, ay + half.y, ay + ah - half.y) if ah > view.y else ay + ah * 0.5
-		_cam = _cam.lerp(want, 1.0 - exp(-9.0 * delta))
-	var off: Vector2 = Vector2(view.x * 0.5 - _cam.x, view.y * 0.5 - _cam.y)
-	if _shake > 0.1:   # 受击震屏（叠加在相机偏移上）
-		_shake = maxf(0.0, _shake - delta * 42.0)
-		off += Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake))
-	get_tree().root.canvas_transform = Transform2D(0, off)
+		_cam.position = want
+		if _shake > 0.1:   # 受击震屏：作为相机 offset 叠加（不平滑，保持"被撞"的抖动感）
+			_shake = maxf(0.0, _shake - delta * 42.0)
+			_cam.offset = Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake))
+		else:
+			_cam.offset = Vector2.ZERO
 
 # 逐个敌人报告有没有贴图（缺图会退回手绘几何图形，画面看着"少了点什么"但不崩）
 func _enemy_art_report() -> String:
@@ -109,9 +115,7 @@ func _sim_arg() -> float:
 			return float(a.substr(6))
 	return 0.0
 
-# 模拟用 AI：远离最近的敌人，同时往场地中心靠，避免被逼到墙角定死。
-# 真实游戏里这由玩家手指完成，模拟只能用算法代替。
-# sense：看到多近的怪才开始躲；jitter：方向抖动幅度（越大越"手抖"）
+# 模拟 AI：远离最近敌人、同时往场地中心靠，避免被逼到墙角定死（sense=发现距离, jitter=手抖）
 func _dodge_dir(sense: float = 160.0, jitter: float = 0.35) -> Vector2:
 	var a := Data.arena()
 	var center := Vector2(float(a.get("x", 0)) + float(a.get("w", 540)) * 0.5,
@@ -172,17 +176,13 @@ func _run_simulation(seconds: float) -> void:
 	var survived := 0
 	var _trace := OS.get_cmdline_user_args().has("--trace")
 	var use_dash := OS.get_cmdline_user_args().has("--dash")
-	# --human：模拟"普通玩家"而不是"完美 AI"——
-	# 每 12 帧（0.2 秒，接近人的反应时间）才重新判断一次方向，
-	# 视野更窄（120px 才发现怪），手更抖，还有 12% 概率判断失误。
-	# 调难度要以这一档为准：完美 AI 全程不挨打说明不了任何问题。
+	# --human：模拟"普通玩家"（每 0.2s 才重新判断、视野更窄、12% 失误）；调难度以此档为准
 	var human := OS.get_cmdline_user_args().has("--human")
 	var dodge := Vector2.ZERO
 	var dodge_age := 0
 	_threats = 0
 	for i in steps:
-		# 站着不动是最坏情况；模拟里让玩家自动躲，才能看出"会玩的话能撑多久"
-		# --still：模拟"站着不动的玩家"（最坏情况），用来量难度下限
+		# 站着不动（--still）是最坏情况；否则让玩家自动躲，才能看出"会玩能撑多久"
 		if OS.get_cmdline_user_args().has("--still"):
 			player.set_move_dir(Vector2.ZERO)
 		elif human:
@@ -195,8 +195,7 @@ func _run_simulation(seconds: float) -> void:
 			player.set_move_dir(dodge)
 		else:
 			player.set_move_dir(_dodge_dir())
-		# --dash：怪贴脸时冲刺脱离，验证冲刺在实战里的代码路径与收益
-		# 每 2 秒冲一次（覆盖代码路径）+ 怪贴近 140px 时真躲一下
+		# --dash：怪贴脸时冲刺脱离，验证冲刺实战路径与收益
 		if use_dash and (i % 120 == 0 or _threat_close(140.0)):
 			_threats += 1
 			Events.dash_requested.emit()
