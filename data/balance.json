@@ -1,9 +1,14 @@
 {
-  "arena": { "x": -270, "y": -360, "w": 1080, "h": 1620 },
+  "arena": {
+    "x": -270,
+    "y": -360,
+    "w": 1080,
+    "h": 1620
+  },
   "player": {
- "max_hp": 100,
- "speed": 300,
- "radius": 22,
+    "max_hp": 100,
+    "speed": 300,
+    "radius": 22,
     "ifr_seconds": 0.38,
     "touch_cooldown": 0.7
   },
@@ -15,29 +20,30 @@
     "bonus_per_wave": 6
   },
   "spawn": {
- "base_rate": 0.55,
- "per_wave": 0.40,
- "cap": 8.0,
- "max_alive": 60,
+    "base_rate": 2.5,
+    "per_wave": 0.5,
+    "cap": 8.0,
+    "max_alive": 30,
     "warn_time": 0.45,
     "edge_offset": 20,
     "fast_from_wave": 2,
     "fast_chance": 0.26,
     "tank_from_wave": 3,
-    "tank_chance": 0.10,
+    "tank_chance": 0.1,
     "tank_chance_late": 0.16,
     "tank_late_from_wave": 6,
     "fly_from_wave": 4,
-    "fly_chance": 0.20,
+    "fly_chance": 0.2,
     "boss_every": 5,
     "boss_rate_mult": 0.55,
     "elite_chance": 0.22,
     "swarm_from_wave": 5,
-    "swarm_chance": 0.10,
+    "swarm_chance": 0.1,
     "brute_from_wave": 4,
-    "brute_chance": 0.10,
+    "brute_chance": 0.1,
     "shambler_from_wave": 7,
-    "shambler_chance": 0.08
+    "shambler_chance": 0.08,
+    "spawn_burst": 5
   },
   "shop": {
     "offer_count": 4,
@@ -48,7 +54,7 @@
   },
   "combat": {
     "min_damage": 1,
-    "merge_dmg_multiplier": 1.30,
+    "merge_dmg_multiplier": 1.3,
     "merge_cd_multiplier": 0.93
   },
   "feel": {
@@ -68,20 +74,20 @@
     "hit_heat": 1.0,
     "decay_per_sec": 4,
     "cool_on_hit": 0.3,
-    "tier1_fire": 0.30,
+    "tier1_fire": 0.3,
     "tier2_fire": 0.65,
-    "tier2_dmg": 0.30,
+    "tier2_dmg": 0.3,
     "toss_dmg_mult": 0.6,
     "toss_flat": 25,
     "toss_knock": 130,
     "toss_slow_pct": 0.5,
     "toss_poison_dur": 3.0,
     "toss_burn_dur": 2.5,
- "toss_shred_dur": 3.0,
- "toss_explode_radius": 70,
- "toss_chain_dmg": 12,
- "frenzy_mult": 1.6
-},
+    "toss_shred_dur": 3.0,
+    "toss_explode_radius": 70,
+    "toss_chain_dmg": 12,
+    "frenzy_mult": 1.6
+  },
   "bullet": {
     "homing_turn": 4.0,
     "homing_range": 360
@@ -90,7 +96,7 @@
     "cooldown": 1.8,
     "duration": 0.16,
     "speed_mult": 3.4,
-    "ifr": 0.30,
+    "ifr": 0.3,
     "distance": 96
   },
   "pickup": {

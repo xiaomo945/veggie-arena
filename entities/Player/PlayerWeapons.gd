@@ -102,7 +102,8 @@ func tick(enemies: Array, delta: float) -> void:
 			var base_dir: Vector2 = (epos - origin).normalized()
 			var kb := float(st.get("knockback", 0.0))
 			Events.melee_swung.emit(mpos, base_dir, float(st.get("range", 150)),
-				Weapon.melee_half_arc(st), float(est["dmg"]), crit, kb, w["color"] as Color)
+				Weapon.melee_half_arc(st), float(est["dmg"]), crit, kb, w["color"] as Color,
+				str(w["key"]), int(w["level"]))
 			w["timer"] = Weapon.next_cooldown(float(w["timer"]), cd)
 			continue
 		var bs := float(st.get("bullet_speed", 600))

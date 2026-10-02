@@ -1,15 +1,9 @@
 extends Node2D
 
-# 敌人：三种造型必须一眼能分清（之前版本被吐槽"看不到敌人是谁"）。
-#   小兵 grunt = 红色圆（最常见）
-#   冲刺兵 fast = 橙色尖三角（细长、快）
-#   重甲兵 tank = 紫色六边形（大、慢、硬）
-#
-# 外观优先级：res://art/sprite_enemy_<类型>.png 存在 → 画贴图；
-# 不存在 → 退回下面的手绘几何体。两条路径共用同一套闪白/血条逻辑。
+# 敌人：造型一眼能分清（grunt 红圆 / fast 橙三角 / tank 紫六边 / fly 菱 / boss 星）。
+# 有 res://art/sprite_enemy_<类型>.png 就画贴图，否则走下面的凶萌手绘；闪白/血条共用。
 
-# 贴图绘制边长 = radius * 该系数（贴图里角色占画布约 90%，画出来跟手绘版体量一致）
-const SPRITE_SCALE := 2.2
+const SPRITE_SCALE := 2.2   # 贴图边长 = radius * 系数（贴图角色约占画布 90%，与手绘体量一致）
 const FLASH_DUR := 0.16
 
 var alive := false
@@ -27,14 +21,7 @@ var elite := false
 var _flash := 0.0
 var _phase := 0.0
 var _kb := Vector2.ZERO          # 受击击退脉冲（由 EnemySystem 施加/衰减）
-# 状态效果统一表：{效果名: {"v": 强度, "t": 剩余秒}}
-#   用一张表而不是给每种效果各加两个成员变量：加新效果（中毒/灼烧/破甲…）
-#   只多一个名字，不动结构。已支持：
-#     slow   减速   v=移速折扣(0.5→减半)
-#     freeze 冻结   v=任意>0 即完全定住
-#     poison 中毒   v=每秒伤害（按最大生命%结算，见 EnemySystem 施加处）
-#     burn   灼烧   v=每秒固定伤害
-#     shred  破甲   v=受到伤害加成比例
+# 状态效果统一表：{效果名: {"v": 强度, "t": 剩余秒}}。slow 减速 / freeze 冻结 / poison 中毒(按最大生命%结算) / burn 灼烧 / shred 破甲，加新效果只多一个名字。
 var _fx: Dictionary = {}
 # Boss 多阶段 / 冲锋技能（仅 etype=="boss" 生效）
 var _boss_phase := 1
@@ -218,47 +205,81 @@ func _draw() -> void:
 		draw_circle(Vector2.ZERO, radius, Color(1.0, 0.25, 0.25, 0.35 * f))
 	_draw_hp_bar()
 
-# 缺图时的手绘造型（保留原顺序：先"看清敌人"，再谈美术）
+# 带卡通描边的多边形：先画一圈放大的深色，再画本体
+func _draw_poly(pts: PackedVector2Array, c: Color) -> void:
+	var out := PackedVector2Array()
+	for p in pts:
+		out.append(p * 1.12)
+	draw_colored_polygon(out, Color(0.18, 0.10, 0.12, 1.0))
+	draw_colored_polygon(pts, c)
+
+# 凶萌脸：怒眼+斜眉+龇牙，所有怪物共用；sz 控制大小，look 让眼略朝玩家
+func _angry_face(sz: float, look: Vector2, alpha: float) -> void:
+	var ex := sz * 0.40
+	var ey := -sz * 0.16
+	for sgn in [-1, 1]:
+		var x: float = sgn * ex + look.x * sz * 0.10
+		var y: float = ey + look.y * sz * 0.08
+		draw_circle(Vector2(x, y), sz * 0.24, Color(1, 1, 1, alpha))
+		draw_circle(Vector2(x + look.x * sz * 0.07, y + look.y * sz * 0.05), sz * 0.13, Color(0.12, 0.10, 0.10, alpha))
+		var b0 := Vector2(x - sz * 0.32, y - sz * 0.40)
+		var b1 := Vector2(x + sz * 0.30, y - sz * 0.14)
+		if sgn < 0:
+			b0 = Vector2(x + sz * 0.32, y - sz * 0.40)
+			b1 = Vector2(x - sz * 0.30, y - sz * 0.14)
+		draw_line(b0, b1, Color(0.12, 0.10, 0.10, alpha), maxf(1.6, sz * 0.11))
+	var my := sz * 0.46
+	draw_line(Vector2(-sz * 0.5, my), Vector2(sz * 0.5, my), Color(0.12, 0.10, 0.10, alpha), maxf(1.6, sz * 0.11))
+	for k in range(-2, 3):
+		var tx := float(k) * sz * 0.22
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(tx - sz * 0.085, my), Vector2(tx + sz * 0.085, my), Vector2(tx, my + sz * 0.22)]),
+			Color(1, 1, 1, alpha))
+
+# 缺图时的手绘造型：凶萌风（圆身/尖三角/六边/菱/星 + 怒脸 + 龇牙）
 func _draw_shape(c: Color) -> void:
+	var look := Vector2(0.0, 0.2)
 	match etype:
 		"fast":
-			# 尖三角，尖端朝上表示"冲得快"
-			draw_colored_polygon(PackedVector2Array([
-				Vector2(0, -radius * 1.25),
-				Vector2(radius * 0.95, radius * 0.75),
+			_draw_poly(PackedVector2Array([
+				Vector2(0, -radius * 1.25), Vector2(radius * 0.95, radius * 0.75),
 				Vector2(-radius * 0.95, radius * 0.75)]), c)
+			_angry_face(radius * 0.95, look, 1.0)
 		"tank":
-			# 六边形，厚重
 			var pts := PackedVector2Array()
 			for i in range(6):
 				var a := TAU * float(i) / 6.0 - PI * 0.5
 				pts.append(Vector2(cos(a), sin(a)) * radius)
-			draw_colored_polygon(pts, c)
-			draw_arc(Vector2.ZERO, radius * 0.55, 0.0, TAU, 12,
-				Color(1, 1, 1, 0.35), 3.0, true)
+			_draw_poly(pts, c)
+			draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 14, Color(0.20, 0.10, 0.26, 0.6), 3.0, true)
+			_angry_face(radius * 0.85, look, 1.0)
 		"fly":
-			# 菱形（四角星），小、亮，和其余三种一眼不同
-			draw_colored_polygon(PackedVector2Array([
-				Vector2(0, -radius * 1.3),
-				Vector2(radius * 0.55, 0),
-				Vector2(0, radius * 1.3),
-				Vector2(-radius * 0.55, 0)]), c)
-			draw_circle(Vector2.ZERO, radius * 0.32, Color(1, 1, 1, 0.5))
+			draw_colored_polygon(PackedVector2Array([Vector2(-radius*0.5,0), Vector2(-radius*1.6,-radius*0.5), Vector2(-radius*1.2,radius*0.45)]), Color(1,1,1,0.55))
+			draw_colored_polygon(PackedVector2Array([Vector2(radius*0.5,0), Vector2(radius*1.6,-radius*0.5), Vector2(radius*1.2,radius*0.45)]), Color(1,1,1,0.55))
+			_draw_poly(PackedVector2Array([Vector2(0,-radius*1.3), Vector2(radius*0.55,0), Vector2(0,radius*1.3), Vector2(-radius*0.55,0)]), c)
+			_angry_face(radius * 0.6, look, 1.0)
 		"boss":
-			# 十二角星，大、狰狞，是场地里的视觉焦点
 			var sp := PackedVector2Array()
 			for i in range(24):
 				var a := TAU * float(i) / 24.0
-				var rr := radius * (0.62 if i % 2 == 0 else 1.0)
-				sp.append(Vector2(cos(a), sin(a)) * rr)
-			draw_colored_polygon(sp, c)
-			draw_arc(Vector2.ZERO, radius * 0.5, 0.0, TAU, 14,
-				Color(1, 1, 1, 0.4), 4.0, true)
+				sp.append(Vector2(cos(a), sin(a)) * radius * (0.62 if i % 2 == 0 else 1.0))
+			_draw_poly(sp, c)
+			_angry_face(radius * 0.92, look, 1.0)
+		"swarm":
+			_draw_poly(PackedVector2Array([Vector2(-radius,0), Vector2(0,-radius), Vector2(radius,0), Vector2(0,radius)]), c)
+			_angry_face(radius * 0.9, look, 1.0)
+		"brute":
+			_draw_poly(PackedVector2Array([Vector2(-radius,-radius*0.9), Vector2(radius,-radius*0.9), Vector2(radius,radius*0.9), Vector2(-radius,radius*0.9)]), c)
+			_angry_face(radius * 0.9, look, 1.0)
+		"shambler":
+			_draw_poly(PackedVector2Array([Vector2(-radius,-radius*0.8), Vector2(-radius*0.7,-radius), Vector2(radius*0.7,-radius), Vector2(radius,-radius*0.8), Vector2(radius,radius), Vector2(-radius,radius)]), c)
+			_angry_face(radius * 0.9, look, 1.0)
 		_:
-			# 小兵：圆 + 一条"腰带"，比纯圆更好认
-			draw_circle(Vector2.ZERO, radius, c)
-			draw_arc(Vector2.ZERO, radius * 0.6, 0.0, TAU, 14,
-				Color(0, 0, 0, 0.28), 3.0, true)
+			# 小兵：圆身 + 两只小角 + 凶萌脸
+			_draw_poly(PackedVector2Array([Vector2(-radius*0.4,-radius*0.9), Vector2(-radius*0.1,-radius*1.25), Vector2(-radius*0.05,-radius*0.9)]), c)
+			_draw_poly(PackedVector2Array([Vector2(radius*0.4,-radius*0.9), Vector2(radius*0.1,-radius*1.25), Vector2(radius*0.05,-radius*0.9)]), c)
+			_draw_poly(PackedVector2Array([Vector2(-radius,0), Vector2(radius,0), Vector2(radius*0.85,radius), Vector2(0,radius*1.15), Vector2(-radius*0.85,radius)]), c)
+			_angry_face(radius * 0.95, look, 1.0)
 
 # 贴图版本：modulate 直接吃闪白，血条照旧画在上面
 func _draw_sprite(tex: Texture2D, size: float, c: Color) -> void:

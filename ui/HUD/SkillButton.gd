@@ -138,7 +138,7 @@ func _draw_wok(c: Vector2) -> void:
 func _draw_dash(c: Vector2) -> void:
 	var radius := size.x * 0.5 - 4.0
 	var base := Color(0.16, 0.20, 0.28, 0.42)
-	var ring := Color(0.62, 0.86, 1.0, 0.95) if _dash_ready else Color(0.45, 0.52, 0.62, 0.85)
+	var ring := Color(0.55, 0.85, 0.45, 0.95) if _dash_ready else Color(0.45, 0.52, 0.62, 0.85)
 	draw_circle(c, radius, base)
 	draw_arc(c, radius, 0.0, TAU, 40, ring, 4.0, true)
 	if not _dash_ready:
@@ -146,7 +146,7 @@ func _draw_dash(c: Vector2) -> void:
 		draw_colored_polygon(_wedge(c, radius - 4.0, -PI * 0.5, -PI * 0.5 + span),
 			Color(0.05, 0.07, 0.12, 0.55))
 	var a := 0.95 if _dash_ready else 0.35
-	var col := Color(0.86, 0.94, 1.0, a)
+	var col := Color(0.86, 0.96, 0.84, a)
 	for i in 2:
 		var x := c.x - 8.0 + float(i) * 11.0
 		draw_colored_polygon(PackedVector2Array([

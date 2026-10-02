@@ -42,7 +42,7 @@ func _draw() -> void:
 func _draw_run_progress() -> void:
 	draw_rect(Rect2(RUN_X, RUN_Y, RUN_W, RUN_H), Color(0, 0, 0, 0.5))
 	var frac := clampf(float(run_wave) / maxf(1.0, float(run_total)), 0.0, 1.0)
-	draw_rect(Rect2(RUN_X, RUN_Y, RUN_W * frac, RUN_H), Color(0.45, 0.78, 0.95, 0.9))
+	draw_rect(Rect2(RUN_X, RUN_Y, RUN_W * frac, RUN_H), Color(1.0, 0.72, 0.32, 0.9))
 
 func _draw_hp_bar() -> void:
 	# 底槽

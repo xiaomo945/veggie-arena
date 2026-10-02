@@ -31,13 +31,13 @@ func _ready() -> void:
 	player.position = Vector2(cx, cy)
 	add_child(player)
 
-	# 相机：挂在世界根节点上，跟随玩家并夹在场地边界内。
-	# 用 Camera2D 让引擎接管"拉伸/跟随"，不要再写 root.canvas_transform（会和 stretch 冲突导致不跟随）
+	# 相机：直接挂在玩家身上（最稳的跟随方式，引擎原生支持，不用每帧手动算位置）
+	# 不要再写 root.canvas_transform —— 那会和 stretch 模式冲突，导致镜头完全不动
 	_cam = Camera2D.new()
 	_cam.position_smoothing_enabled = true
 	_cam.position_smoothing_speed = 9.0
-	_cam.make_current()
-	add_child(_cam)
+	player.add_child(_cam)
+	_cam.make_current()   # 必须在 add_child 之后调用，否则节点还没进树会报 is_inside_tree 错误
 
 	# 战斗管理器（刷怪/子弹/命中/波次）
 	game = GameScene.instantiate()
@@ -78,23 +78,10 @@ func _on_hp_shake(hp: int, _m: int) -> void:
 	_prev_hp = hp
 
 func _process(delta: float) -> void:
-	# 相机跟随：把玩家放到屏幕中央；场地比屏幕大时夹相机，避免看到场地外的空白。
-	# 跟随/拉伸交给 Camera2D（引擎正确接管），这里只算"目标位置 + 受击震屏"
-	if _cam != null and is_instance_valid(_cam) and player != null and is_instance_valid(player):
-		var view: Vector2 = get_viewport().size
-		if view.x <= 0:
-			view = Vector2(540.0, 900.0)
-		var half: Vector2 = view * 0.5
-		var a: Dictionary = Data.arena()
-		var ax: float = float(a.get("x", 0.0))
-		var ay: float = float(a.get("y", 0.0))
-		var aw: float = float(a.get("w", 540.0))
-		var ah: float = float(a.get("h", 900.0))
-		var want := player.global_position
-		want.x = clampf(want.x, ax + half.x, ax + aw - half.x) if aw > view.x else ax + aw * 0.5
-		want.y = clampf(want.y, ay + half.y, ay + ah - half.y) if ah > view.y else ay + ah * 0.5
-		_cam.position = want
-		if _shake > 0.1:   # 受击震屏：作为相机 offset 叠加（不平滑，保持"被撞"的抖动感）
+	# 相机跟随由"挂在玩家身上"自动完成（引擎原生，拉伸/平滑都管好了，不碰 stretch）
+	# 这里只管受击震屏：衰减后作为相机 offset 叠加，不影响跟随
+	if _cam != null and is_instance_valid(_cam):
+		if _shake > 0.1:
 			_shake = maxf(0.0, _shake - delta * 42.0)
 			_cam.offset = Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake))
 		else:
@@ -115,25 +102,27 @@ func _sim_arg() -> float:
 			return float(a.substr(6))
 	return 0.0
 
-# 模拟 AI：远离最近敌人、同时往场地中心靠，避免被逼到墙角定死（sense=发现距离, jitter=手抖）
-func _dodge_dir(sense: float = 160.0, jitter: float = 0.35) -> Vector2:
+# 模拟 AI：逃离"附近所有怪的质心"（按距离反比加权）+ 往场地中心靠。
+# 只躲最近一只会一头扎进怪群，这版更像真玩家的走位，也能在更密的怪海里活下来。
+func _dodge_dir(sense: float = 220.0, jitter: float = 0.22) -> Vector2:
 	var a := Data.arena()
 	var center := Vector2(float(a.get("x", 0)) + float(a.get("w", 540)) * 0.5,
 	                      float(a.get("y", 0)) + float(a.get("h", 900)) * 0.5)
 	var pp := player.global_position
-	var nearest: Node2D = null
-	var nd := 99999.0
+	var flee := Vector2.ZERO
+	var n := 0
 	for e in game.world.enemies:
 		if not e.alive:
 			continue
 		var d := pp.distance_to(e.global_position)
-		if d < nd:
-			nd = d
-			nearest = e
+		if d < sense:
+			# 越近的怪推得越狠（1/d 加权），方向是"远离它"
+			flee += (pp - e.global_position).normalized() / maxf(d, 24.0)
+			n += 1
 	var to_center := (center - pp).normalized()
 	var away := to_center
-	if nearest != null and nd < sense:
-		away = (pp - nearest.global_position).normalized().lerp(to_center, 0.25)
+	if n > 0:
+		away = flee.normalized().lerp(to_center, 0.2)
 	# 抖动避免被逼到死角后反复横跳卡住
 	away = away.rotated(randf_range(-jitter, jitter))
 	return away.limit_length(1.0)
@@ -175,7 +164,10 @@ func _run_simulation(seconds: float) -> void:
 	var peak_alive := 0
 	var survived := 0
 	var _trace := OS.get_cmdline_user_args().has("--trace")
-	var use_dash := OS.get_cmdline_user_args().has("--dash")
+	# 模拟 AI 默认会"贴脸就冲刺"脱离——和真玩家一样（冲刺是核心脱困手段）。
+	# 之前的旧模拟从不冲刺，等于故意 handicap 自己，把难度估高了一截。
+	# --no-dash 可关掉，用来单独看"不冲刺硬扛"的 worst case。
+	var use_dash := not OS.get_cmdline_user_args().has("--no-dash")
 	# --human：模拟"普通玩家"（每 0.2s 才重新判断、视野更窄、12% 失误）；调难度以此档为准
 	var human := OS.get_cmdline_user_args().has("--human")
 	var dodge := Vector2.ZERO
@@ -280,7 +272,15 @@ func _draw() -> void:
 	var a := Data.arena()
 	var r := Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
 		float(a.get("w", 540)), float(a.get("h", 900)))
-	draw_rect(Rect2(0, 0, 540, 900), BG)
+	# 背景铺满"当前镜头可见区域"（镜头跟随玩家后会平移，固定 (0,0) 的背景会露馅）
+	var view: Vector2 = get_viewport().size
+	if view.x <= 0:
+		view = Vector2(540.0, 900.0)
+	var cam_pos := Vector2.ZERO
+	if player != null and is_instance_valid(player):
+		cam_pos = player.global_position
+	var vis := Rect2(cam_pos - view * 0.5, view)
+	draw_rect(vis, BG)
 	draw_rect(r, FLOOR)
 	# 地砖网格：给移动一个参照物，否则看不出自己在动
 	var step := 60.0

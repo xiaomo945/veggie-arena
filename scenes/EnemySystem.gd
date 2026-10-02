@@ -45,7 +45,8 @@ func spawn_one() -> void:
 	# 在玩家视野外一圈刷新（大地图下不再按竞技场边缘，否则怪要跑半天才到玩家身边）
 	var pp := world.player.global_position
 	var ang := world.rng.randf() * TAU
-	var pos := pp + Vector2(cos(ang), sin(ang)) * 580.0
+	# 刷在玩家附近一圈（比屏幕略大一点就到，避免"子弹好久没怪可打"的空窗）
+	var pos := pp + Vector2(cos(ang), sin(ang)) * 470.0
 	pos = Movement.clamp_to_arena(pos, world.arena, 16.0)
 	var type := Spawner.pick_type(GameState.wave, world.rng.randf(), Data.spawn_cfg())
 	# Boss 波里，普通怪有一定概率是"精英版"（更厚更大更值钱）
@@ -65,7 +66,7 @@ func spawn_boss() -> void:
 	# Boss 也在玩家附近出场（大地图下不再按竞技场边缘）
 	var pp := world.player.global_position
 	var ang := world.rng.randf() * TAU
-	var pos := pp + Vector2(cos(ang), sin(ang)) * 520.0
+	var pos := pp + Vector2(cos(ang), sin(ang)) * 480.0
 	pos = Movement.clamp_to_arena(pos, world.arena, 16.0)
 	var stats := Spawner.stats_for("boss", GameState.wave, Data.enemies)
 	if stats.is_empty():
@@ -224,7 +225,7 @@ func on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) ->
 # 的全部存活敌人，伤害统一走 damage_enemy 漏斗（击杀/掉金/锅气/破甲都生效）。
 # knockback>0 时对存活敌人施加朝向其外侧的击退脉冲。视觉交给 melee_visual 信号。
 func on_melee_swung(origin: Vector2, dir_in: Vector2, reach: float, half_arc: float,
-		dmg: float, crit: bool, knockback: float, c: Color) -> void:
+		dmg: float, crit: bool, knockback: float, c: Color, key: String, level: int) -> void:
 	world.shots_fired += 1
 	var base := dir_in.normalized()
 	for e in world.edata:
@@ -252,7 +253,7 @@ func on_melee_swung(origin: Vector2, dir_in: Vector2, reach: float, half_arc: fl
 			var kdir: Vector2 = (d.normalized() if dist > 0.001 else base)
 			en.apply_knockback(kdir, knockback)
 	# 视觉：短命扇形（纯表现，删掉也不影响伤害）
-	Events.melee_visual.emit(origin, base, reach, half_arc, c)
+	Events.melee_visual.emit(origin, base, reach, half_arc, c, key, level)
 
 # ---- 颠勺（满锅气终极）----
 # 由 HUD 颠勺按钮 / Joystick 避让区点按触发：全屏重伤 + 击退，

@@ -139,7 +139,7 @@ func apply_volume() -> void:
 func ui_click() -> void:
 	_play("button", 10)
 
-func _on_dash() -> void:
+func _on_dash(_pos: Vector2, _dir: Vector2) -> void:
 	_play("dash", 50)
 
 func _on_unlock(_key: String) -> void:

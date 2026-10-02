@@ -92,6 +92,7 @@ func start_run() -> void:
 	_sim_speed = 1
 	Events.fast_forward_toggled.emit(false)
 	set_physics_process(true)
+	_spawn_wave_burst()
 	Events.run_started.emit()
 
 func _build_pools() -> void:
@@ -156,6 +157,17 @@ func ground_gold() -> int:
 
 func alive_enemy_count() -> int:
 	return world.alive_enemy_count()
+
+# 每波开局先撒一批怪，避免"第一秒空场、子弹飞半天没目标"的空窗；
+# 数量随波次略增（spawn_burst + 波号），但不超 max_alive 上限。
+func _spawn_wave_burst() -> void:
+	var cfg := Data.spawn_cfg()
+	var n := int(cfg.get("spawn_burst", 14)) + GameState.wave
+	var cap := int(cfg.get("max_alive", 88))
+	for _i in n:
+		if world.alive_enemy_count() >= cap:
+			break
+		enemy_system.spawn_one()
 
 # ---- 主循环 ----
 func _physics_process(delta: float) -> void:
@@ -256,13 +268,14 @@ func _on_shop_closed() -> void:
 	if enemy_system.boss_wave():
 		Events.boss_wave.emit(GameState.wave)
 		enemy_system.spawn_boss()
+	_spawn_wave_burst()
 
 func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color) -> void:
 	enemy_system.on_weapon_fired(pos, dir, stats, c)
 
 func _on_melee_swung(origin: Vector2, dir: Vector2, reach: float, half_arc: float,
-		dmg: float, crit: bool, knockback: float, c: Color) -> void:
-	enemy_system.on_melee_swung(origin, dir, reach, half_arc, dmg, crit, knockback, c)
+		dmg: float, crit: bool, knockback: float, c: Color, key: String, level: int) -> void:
+	enemy_system.on_melee_swung(origin, dir, reach, half_arc, dmg, crit, knockback, c, key, level)
 
 # ---- 颠勺（满锅气终极）----
 func _on_wok_toss_requested() -> void:

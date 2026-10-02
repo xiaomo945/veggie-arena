@@ -12,6 +12,7 @@ extends CanvasLayer
 
 const MAX_FLOATS := 28
 const MAX_RINGS := 18
+const MAX_CRACKS := 24
 
 # 飘字：时长、上飘速度、横向抖动范围
 const FLOAT_LIFE := 0.62
@@ -19,10 +20,12 @@ const FLOAT_RISE := 46.0
 
 var _rings: Array = []
 var _arcs: Array = []
+var _cracks: Array = []
 var _floats: Array = []
 var _pool: Array = []
 var _ring_view: Node2D
 var _arc_view: Node2D
+var _crack_view: Node2D
 var _hurt: ColorRect
 var _gold: ColorRect
 var _hurt_t := 0.0
@@ -33,6 +36,8 @@ const MELEE_LIFE := 0.16
 
 func _ready() -> void:
 	layer = 15          # 在世界之上、HUD(20) 之下
+	# 镜头会跟随玩家平移：特效层必须跟着镜头走，否则飘字/爆环会钉在屏幕固定位置
+	follow_viewport_enabled = true
 	name = "FxLayer"
 
 	# 爆环用一个独立 Node2D 画（CanvasLayer 自己不能 _draw）
@@ -49,6 +54,13 @@ func _ready() -> void:
 	_arc_view.set("arcs", _arcs)
 	_arc_view.name = "MeleeArcs"
 	add_child(_arc_view)
+
+	# 地面裂痕（菜刀等近战砍地）：独立数组 + 独立 Node2D
+	_crack_view = Node2D.new()
+	_crack_view.set_script(preload("res://ui/Fx/FxCracks.gd"))
+	_crack_view.set("cracks", _cracks)
+	_crack_view.name = "Cracks"
+	add_child(_crack_view)
 
 	_hurt = _mk_flash(Color(1.0, 0.12, 0.18))
 	_gold = _mk_flash(Color(1.0, 0.78, 0.32))
@@ -98,12 +110,16 @@ func _on_hp(hp: int, _max_hp: int) -> void:
 func _on_toss() -> void:
 	_gold_t = 0.42
 
-# ---- 信号：近战扇形 ----
-func _on_melee(origin: Vector2, dir: Vector2, reach: float, half_arc: float, color: Color) -> void:
+# ---- 信号：近战扇形 + 地面裂痕 ----
+func _on_melee(origin: Vector2, dir: Vector2, reach: float, half_arc: float, color: Color, key: String, level: int) -> void:
 	if _arcs.size() >= 12:
 		return          # 多武器高频挥砍时宁可少画几刀，也不拖帧
 	_arcs.append({"origin": origin, "dir": dir, "reach": reach,
 		"half": half_arc, "color": color, "t": 0.0, "life": MELEE_LIFE})
+	# 近战砍地裂痕：落点在挥砍中点，长度/分叉随武器等级变大
+	if _cracks.size() < MAX_CRACKS:
+		_cracks.append({"pos": origin + dir * reach * 0.5, "dir": dir,
+			"level": level, "color": color, "t": 0.0})
 
 func _process(delta: float) -> void:
 	# 飘字：上飘 + 后段淡出
@@ -145,6 +161,18 @@ func _process(delta: float) -> void:
 		else:
 			m += 1
 	_arc_view.queue_redraw()
+
+	# 地面裂痕推进
+	var cc := 0
+	while cc < _cracks.size():
+		var cr: Dictionary = _cracks[cc]
+		var ct: float = float(cr.get("t", 0.0)) + delta
+		cr["t"] = ct
+		if ct >= 0.85:
+			_cracks.remove_at(cc)
+		else:
+			cc += 1
+	_crack_view.queue_redraw()
 
 	# 全屏闪光
 	if _hurt_t > 0.0:

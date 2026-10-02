@@ -56,9 +56,10 @@ signal weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, color: Color)
 # 由 EnemySystem 完成。dir=挥砍朝向，reach=弧半径，half_arc=半角（弧度），
 # dmg=已含暴击与全局加成的单跳伤害，knockback=击退脉冲（0 表示不击退）。
 signal melee_swung(origin: Vector2, dir: Vector2, reach: float, half_arc: float,
-	dmg: float, crit: bool, knockback: float, color: Color)
-# 纯视觉：Fx 层画一个短命扇形。和伤害结算解耦（删掉 Fx 游戏照样能打）。
-signal melee_visual(origin: Vector2, dir: Vector2, reach: float, half_arc: float, color: Color)
+	dmg: float, crit: bool, knockback: float, color: Color, key: String, level: int)
+# 纯视觉：Fx 层画一个短命扇形 + 地面裂痕。和伤害结算解耦（删掉 Fx 游戏照样能打）。
+# key/level 用于按武器种类与等级做不同的特效（如菜刀砍地裂痕随等级变长）。
+signal melee_visual(origin: Vector2, dir: Vector2, reach: float, half_arc: float, color: Color, key: String, level: int)
 
 # ---- 操作输入 ----
 # 摇杆只发信号，不认识 Player；Player 只收信号，不认识摇杆。

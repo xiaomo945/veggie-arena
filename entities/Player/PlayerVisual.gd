@@ -57,32 +57,44 @@ func _draw_sprite(tex: Texture2D, squash: float, stretch: float, alpha: float) -
 		Rect2(Vector2.ZERO, tex.get_size()), Color(1, 1, 1, alpha))
 
 func _draw_body(squash: float, stretch: float, alpha: float) -> void:
+	var bw := 15.0 * stretch
+	var bh := 16.0 * squash
+	# 萝卜尾（根须）在身体下方
 	draw_colored_polygon(PackedVector2Array([
-		Vector2(-9, -12), Vector2(-3, -30), Vector2(0, -11)]), Color(LEAF.r, LEAF.g, LEAF.b, alpha))
+		Vector2(-3, bh * 0.62), Vector2(3, bh * 0.62), Vector2(0, bh + 9.0)]),
+		Color(0.92, 0.78, 0.82, alpha))
+	# 卡通描边（深一点的轮廓）
+	draw_circle(Vector2.ZERO, maxf(bw, bh) + 1.8, Color(0.36, 0.22, 0.24, alpha))
+	# 身体（奶白偏粉的萝卜身）
+	draw_circle(Vector2.ZERO, bh, Color(SKIN.r, SKIN.g, SKIN.b, alpha))
+	# 下半身淡粉红晕（萝卜根部的红）
+	draw_circle(Vector2(0, bh * 0.34), bh * 0.78, Color(0.98, 0.80, 0.84, alpha * 0.9))
+	# 头顶两片小叶
 	draw_colored_polygon(PackedVector2Array([
-		Vector2(9, -12), Vector2(3, -30), Vector2(0, -11)]), Color(LEAF2.r, LEAF2.g, LEAF2.b, alpha))
-	var body := PackedVector2Array([
-		Vector2(-13 * stretch, -10 * squash),
-		Vector2(13 * stretch, -10 * squash),
-		Vector2(10 * stretch, 6 * squash),
-		Vector2(0, 18 * squash),
-		Vector2(-10 * stretch, 6 * squash),
-	])
-	draw_colored_polygon(body, Color(SKIN.r, SKIN.g, SKIN.b, alpha))
+		Vector2(-2, -bh), Vector2(-12, -bh - 13), Vector2(-1, -bh - 4)]),
+		Color(LEAF.r, LEAF.g, LEAF.b, alpha))
 	draw_colored_polygon(PackedVector2Array([
-		Vector2(-13 * stretch, -10 * squash),
-		Vector2(13 * stretch, -10 * squash),
-		Vector2(13 * stretch, -4 * squash),
-		Vector2(-13 * stretch, -4 * squash)]), Color(SHADE.r, SHADE.g, SHADE.b, alpha))
+		Vector2(2, -bh), Vector2(12, -bh - 13), Vector2(1, -bh - 4)]),
+		Color(LEAF2.r, LEAF2.g, LEAF2.b, alpha))
+	# 脸：看向移动方向
 	var look: Vector2 = player.move_dir()
 	if look == Vector2.ZERO:
 		look = Vector2(0, -1)
 	else:
 		look = look.limit_length(1.0)
-	draw_circle(Vector2(-4.6 + look.x * 2.2, -2 + look.y * 1.6), 2.3,
-		Color(EYE.r, EYE.g, EYE.b, alpha))
-	draw_circle(Vector2(4.6 + look.x * 2.2, -2 + look.y * 1.6), 2.3,
-		Color(EYE.r, EYE.g, EYE.b, alpha))
+	# 腮红
+	draw_circle(Vector2(-7.5 + look.x, -1 + look.y), 3.0, Color(1.0, 0.66, 0.70, alpha * 0.7))
+	draw_circle(Vector2(7.5 + look.x, -1 + look.y), 3.0, Color(1.0, 0.66, 0.70, alpha * 0.7))
+	# 大眼睛（白眼 + 黑瞳 + 高光）
+	for sgn in [-1, 1]:
+		var ex: float = sgn * 5.5 + look.x * 1.5
+		var ey: float = -3.0 + look.y * 1.2
+		draw_circle(Vector2(ex, ey), 4.2, Color(1, 1, 1, alpha))
+		draw_circle(Vector2(ex + look.x * 1.2, ey + look.y * 0.8), 2.3, Color(EYE.r, EYE.g, EYE.b, alpha))
+		draw_circle(Vector2(ex - 1.2, ey - 1.4), 1.1, Color(1, 1, 1, alpha))
+	# 小嘴（微笑弧）
+	draw_arc(Vector2(look.x * 1.5, 4.0 + look.y), 3.2, 0.15 * PI, 0.85 * PI, 10,
+		Color(0.55, 0.22, 0.26, alpha), 1.6, true)
 
 # 角色贴图：优先 char_<角色>，缺图退回通用 player，再缺图就走手绘
 func _skin_texture() -> Texture2D:

@@ -28,7 +28,7 @@ func _on_state(ratio: float, ready: bool) -> void:
 func _draw() -> void:
 	var c := Vector2(SIZE * 0.5, SIZE * 0.5)
 	var base := Color(0.16, 0.20, 0.28, 0.42)
-	var ring := Color(0.62, 0.86, 1.0, 0.95) if _can_dash else Color(0.45, 0.52, 0.62, 0.85)
+	var ring := Color(0.55, 0.85, 0.45, 0.95) if _can_dash else Color(0.45, 0.52, 0.62, 0.85)
 	draw_circle(c, RADIUS, base)
 	# 外圈：冷却完成时用亮色描边，冷却中偏灰
 	draw_arc(c, RADIUS, 0.0, TAU, 40, ring, 4.0, true)
@@ -39,7 +39,7 @@ func _draw() -> void:
 			Color(0.05, 0.07, 0.12, 0.55))
 	# 中心图标：两条向右的箭头（冲刺符号），冷却中变暗
 	var a := 0.95 if _can_dash else 0.35
-	var col := Color(0.86, 0.94, 1.0, a)
+	var col := Color(0.86, 0.96, 0.84, a)
 	for i in 2:
 		var x := c.x - 8.0 + float(i) * 11.0
 		draw_colored_polygon(PackedVector2Array([
