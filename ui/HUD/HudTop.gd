@@ -71,9 +71,12 @@ func _mk_icon(name: String, pos: Vector2, sz: float, override: Texture2D = null)
 	var tex = TextureRect.new()
 	tex.texture = override if override != null else Art.ui_icon(name)
 	tex.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	# ⚠️ expand_mode 必须在 size 之前设：默认 EXPAND_KEEP_SIZE 下最小尺寸=贴图原尺寸
+	#    （金币 64px / 红心更大），先设 size 会被撑到 64px 且之后不会自己缩回去 ——
+	#    截图目检发现"金币图标巨大、盖住 GOLD 文字"就是这个顺序问题。
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.custom_minimum_size = Vector2(sz, sz)
 	tex.size = Vector2(sz, sz)
-	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tex.position = pos
 	add_child(tex)
