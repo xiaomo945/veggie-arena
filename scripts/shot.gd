@@ -14,6 +14,7 @@ extends SceneTree
 #   --boss          截图前发一次 boss_wave（看 Boss 登场演出）
 #   --final         截图前发一次 final_boss_wave
 #   --elite         截图前把场上第一只怪标成精英并重发出场信号（看精英出场）
+#   --shop          截图前塞一组"有两对可合成"的武器并打开补给站（看 6 格物品栏 / 合成高亮）
 #   --series=秒     连拍：每 1 秒一张（文件名自动加序号）
 #   --to=x,y        玩家一直朝这个世界坐标走（看地图边缘 / 围栏用）
 #
@@ -32,6 +33,8 @@ var _boss_wait := 0.45
 var _elite_wait := 0.3
 var _rise := false
 var _rise_wait := 0.42
+var _shop := false
+var _shop_n := 6
 
 const AUTOLOADS := {
 	"Art": "res://autoload/Art.gd",
@@ -63,6 +66,11 @@ func _initialize() -> void:
 			_final = true
 		elif a == "--elite":
 			_elite = true
+		elif a == "--shop":
+			_shop = true
+		elif a.begins_with("--shop="):
+			_shop = true
+			_shop_n = maxi(0, int(a.substr(7)))
 		elif a.begins_with("--series="):
 			_series = float(a.substr(9))
 		elif a == "--rise":
@@ -106,6 +114,9 @@ func _initialize() -> void:
 	if _rise:
 		_fire_rise(main)
 		await _wait(_rise_wait)
+	if _shop:
+		_fire_shop()
+		await _wait(0.6)
 	_save(_out)
 	quit(0)
 
@@ -152,6 +163,29 @@ func _fire_rise(main: Node) -> void:
 		if e.alive and e.etype == "boss":
 			e.global_position = main.player.global_position + Vector2(150.0, -40.0)
 			return
+
+# 补给站：塞一组"两对同 key 同等级"的武器（触发金色可合成高亮），再开店。
+# 6 格全满 + 2 对可合，正好把"满槽样式 / 空槽样式 / 合成高亮"三种状态里前两种都照到。
+func _fire_shop() -> void:
+	var gs := _bus("GameState")
+	var defs: Dictionary = _bus("Data").weapons
+	var keys := defs.keys()
+	if keys.size() < 4:
+		return
+	var plan := [[0, 1], [0, 1], [1, 2], [2, 3], [2, 3], [3, 1]]
+	if _shop_n < plan.size():
+		plan = plan.slice(0, _shop_n)
+	gs.weapons.clear()
+	for p in plan:
+		var d: Dictionary = defs[keys[p[0]]]
+		gs.weapons.append({
+			"key": str(keys[p[0]]), "lv": p[1],
+			"dmg": int(d.get("dmg", 10)), "cd": float(d.get("cd", 0.5)),
+			"color": d.get("color", Color(1, 1, 1)), "buy_cost": 40 * int(p[1]),
+		})
+	gs.gold = 500
+	_bus("Events").weapons_changed.emit(gs.weapons)
+	_bus("Events").shop_opened.emit()
 
 func _save(path: String) -> void:
 	root.get_texture().get_image().save_png(path)

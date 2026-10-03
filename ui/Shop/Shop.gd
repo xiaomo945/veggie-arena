@@ -163,6 +163,8 @@ func _refresh() -> void:
 		c.setup(_card_data(o, _sold[i], afford))
 	_merge_btn.text = I18n.t("shop_merge_btn")
 	_merge_btn.disabled = not Inventory.has_mergeable(GameState.weapons, _max_lv)
+	# 刷新按钮的文字一直没人设置过（截图目检才发现是空白按钮），补上 + 显示当前刷新价
+	_reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, Data.shop_cfg())
 	_inv.refresh(GameState.weapons, _max_lv, _max_slot)
 
 func _refresh_stats() -> void:
