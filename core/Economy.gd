@@ -106,18 +106,20 @@ static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Di
 		# 未解锁的武器根本不进池子（商店里看不到，也不会被抽到）
 		if not unlocked_weapons.is_empty() and not unlocked_weapons.has(str(key)):
 			continue
-		# 多档武器：从 1 级到当前波次允许的最高档各出一份（高档更稀有、更贵）
-		for lv in range(1, top_tier + 1):
-			if not Inventory.can_accept_tier(weapons, key, lv, max_slot, max_lv):
+		# 按"玩家已持有等级"刷出可买的档位（未持有只刷1级；已持有L级刷[L-1,L]），
+		# 再与波次上限取交集。没有空槽就不刷（手动合成下每把都占槽，满槽只能先卖/合）。
+		var owned := Inventory.owned_max_lv(weapons, str(key))
+		for lv in tiers.offer_tiers(owned, top_tier, max_lv):
+			if not Inventory.can_accept_slot(weapons, max_slot):
 				continue
 			var w: Dictionary = weapon_defs[key].duplicate()
 			w["key"] = key
 			w["kind"] = "weapon"
 			w["lv"] = lv
 			w["weight"] = WEAPON_WEIGHT * tiers.tier_weight(lv)
-			# 档位底价 = 1 级价 × 倍率^(lv-1)；再叠打折/通胀（与 1 级同比例，保住"≥1级的N倍"）
+			# 档位底价走 ShopTiers.price_for_tier（保证高级绝不便宜），再叠打折/通胀
 			var base := int(w.get("cost", 0))
-			var tier_base := int(round(float(base) * pow(tiers.tier_price_mult(), float(lv - 1))))
+			var tier_base := tiers.price_for_tier(base, lv)
 			w["base_cost"] = tier_base
 			w["cost"] = price_of(tier_base, discount_pct, wave, inflation_pct)
 			pool.append(w)

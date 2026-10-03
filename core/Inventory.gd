@@ -1,37 +1,26 @@
 extends RefCounted
 
 # 武器槽与合成升级 —— 纯逻辑
-# 规则：同类武器再买一把 = 合成升级（不占新槽位），最高 max_lv
+# 规则（用户最终拍板）：同类武器"两把相同的→合成升一级"（2合1）；商店购买不再自动合成，
+# 而是落一把独立成品占一个槽位，玩家在补给站点"合成"手动把两把相同的合上去。
+# 另外支持"售出"：回收价 ≤ 买入价（默认 80%）。
 
 const Combat := preload("res://core/Combat.gd")
+const Weapon := preload("res://core/Weapon.gd")
 
-# 这个 key 还能不能进商店池？
-# 条件：槽位没满，或者场上有一把同 key 且等级未满的
-static func can_accept(weapons: Array, key: String, max_slot: int, max_lv: int) -> bool:
-	if weapons.size() < max_slot:
-		return true
-	return find_merge_target(weapons, key, max_lv) >= 0
-
-# 某档位武器能不能买：lv<=1 走老规则；lv>1 则需"拥有上一级同 key"（合成上去）
-# 或"有空槽"（直接落一把该档成品，占新槽）
-static func can_accept_tier(weapons: Array, key: String, lv: int, max_slot: int, max_lv: int) -> bool:
-	if lv <= 1:
-		return can_accept(weapons, key, max_slot, max_lv)
-	if find_tier(weapons, key, lv - 1) >= 0:
-		return true
+# 还有没有空槽（任何"新买一把"都需要一个空槽，因为不再自动合成）
+static func can_accept_slot(weapons: Array, max_slot: int) -> bool:
 	return weapons.size() < max_slot
 
-# 找可合成目标，返回索引；没有返回 -1
-static func find_merge_target(weapons: Array, key: String, max_lv: int) -> int:
-	for i in weapons.size():
-		var w = weapons[i]
-		if not (w is Dictionary):
-			continue
-		if str(w.get("key", "")) == key and int(w.get("lv", 1)) < max_lv:
-			return i
-	return -1
+# 兼容旧调用：某档位武器能不能买 = 有没有空槽（手动合成下，买任何档都只是占一个槽）
+static func can_accept_tier(weapons: Array, _key: String, _lv: int, max_slot: int, _max_lv: int) -> bool:
+	return can_accept_slot(weapons, max_slot)
 
-# 找"恰好等于某档位"的武器，返回索引；没有返回 -1（用于高级武器直接合成）
+# 兼容旧调用
+static func can_accept(weapons: Array, _key: String, max_slot: int, _max_lv: int) -> bool:
+	return can_accept_slot(weapons, max_slot)
+
+# 找"恰好等于某档位"的武器，返回索引；没有返回 -1
 static func find_tier(weapons: Array, key: String, lv: int) -> int:
 	for i in weapons.size():
 		var w = weapons[i]
@@ -40,6 +29,14 @@ static func find_tier(weapons: Array, key: String, lv: int) -> int:
 		if str(w.get("key", "")) == key and int(w.get("lv", 1)) == lv:
 			return i
 	return -1
+
+# 某 key 当前持有的最高等级（没持有返回 0）
+static func owned_max_lv(weapons: Array, key: String) -> int:
+	var top := 0
+	for w in weapons:
+		if w is Dictionary and str(w.get("key", "")) == key:
+			top = maxi(top, int(w.get("lv", 1)))
+	return top
 
 # 把一把武器升到 new_lv（重算 dmg/cd），原地改 weapons[idx]
 static func _upgrade_to(weapons: Array, idx: int, new_lv: int, combat_cfg: Dictionary) -> void:
@@ -51,24 +48,97 @@ static func _upgrade_to(weapons: Array, idx: int, new_lv: int, combat_cfg: Dicti
 	w["cd"] = float(w.get("cd", 1.0)) * cd_mul
 	weapons[idx] = w
 
-# 买一把武器：能合成就升级，否则占新槽。
-# def 需含 key/dmg/cd，可带 "lv"（直接买某档成品）。
-#   - 买 >1 档：优先把"拥有的上一级同 key"升到该档；
-#   - 买 1 档：优先把"拥有的同 key 未满级"升一级（已有的 2→1 自动合成）；
-#   - 都合不了且槽满：失败。
-# 返回是否成功（槽满且不可合成时为 false）
+# 买一把武器（不自动合成）：按 tier 重算 dmg/cd，记录买入价 buy_cost，落独立槽位。
+# def 需含 key/dmg/cd（1级基准值）；cost 是该档的实际售价，原样记进 buy_cost 供售出退款。
+# 没空槽返回 false（钱不会被扣，由调用方负责退款）。
+static func buy_weapon(weapons: Array, def: Dictionary, tier: int, cost: int, max_slot: int,
+		combat_cfg: Dictionary = {}) -> bool:
+	if weapons.size() >= max_slot:
+		return false
+	var st: Dictionary = Weapon.merged_stats(def, maxi(1, tier), combat_cfg)
+	var nw: Dictionary = {
+		"key": str(def.get("key", "")),
+		"lv": maxi(1, tier),
+		"dmg": int(round(float(st.get("dmg", def.get("dmg", 1))))),
+		"cd": float(st.get("cd", def.get("cd", 1.0))),
+		"color": def.get("color", Color(1, 1, 1)),
+		"buy_cost": maxi(0, cost),
+	}
+	weapons.append(nw)
+	return true
+
+# 是否存在"两把相同 key 且相同等级（未满级）"可合成 —— 决定"合成"按钮是否可点
+static func has_mergeable(weapons: Array, max_lv: int) -> bool:
+	var seen: Dictionary = {}
+	for w in weapons:
+		if not (w is Dictionary):
+			continue
+		var lv := int(w.get("lv", 1))
+		if lv >= max_lv:
+			continue
+		var k := str(w.get("key", "")) + "|" + str(lv)
+		if seen.has(k):
+			return true
+		seen[k] = true
+	return false
+
+# 手动合成：把所有"同 key 同等级"的成对武器合并升一级（循环到没有可合为止）。
+# 合出来的高档武器买入价 = 两把之和（保证售出不会凭空赚，也不会亏到买入总额之外）。
+# 返回本次合成的 (key, 新等级) 列表，供表现层做特效。
+static func merge_pairs(weapons: Array, max_lv: int, combat_cfg: Dictionary = {}) -> Array:
+	var done: Array = []
+	var again := true
+	while again:
+		again = false
+		var seen: Dictionary = {}   # key|lv -> index
+		for i in weapons.size():
+			var w = weapons[i]
+			if not (w is Dictionary):
+				continue
+			var lv := int(w.get("lv", 1))
+			if lv >= max_lv:
+				continue
+			var k := str(w.get("key", "")) + "|" + str(lv)
+			if seen.has(k):
+				var j: int = seen[k]
+				# j 升一级，i 被吸收（删除），买入价累加
+				_upgrade_to(weapons, j, lv + 1, combat_cfg)
+				weapons[j]["buy_cost"] = int(weapons[j].get("buy_cost", 0)) + int(w.get("buy_cost", 0))
+				weapons.remove_at(i)
+				done.append({"key": str(w.get("key", "")), "lv": lv + 1})
+				again = true
+				break
+			seen[k] = i
+	return done
+
+# 售出第 idx 把武器：返回回收金币（≤ 买入价），并从数组移除。idx 越界返回 0。
+static func sell_weapon(weapons: Array, idx: int, ratio: float) -> int:
+	if idx < 0 or idx >= weapons.size():
+		return 0
+	var w = weapons[idx]
+	if not (w is Dictionary):
+		return 0
+	var bc := int(w.get("buy_cost", 0))
+	var gain := int(floor(float(bc) * clampf(ratio, 0.0, 1.0)))
+	weapons.remove_at(idx)
+	return gain
+
+# 买一把武器：能合成就升级，否则占新槽（保留给 headless 模拟器直接调用，不参与 UI 手动合成）。
 static func merge_or_add(weapons: Array, def: Dictionary, max_slot: int, max_lv: int,
 		combat_cfg: Dictionary = {}) -> bool:
 	var key := str(def.get("key", ""))
 	var buy_lv := int(def.get("lv", 1))
-	# 高级成品：合成到"拥有的上一级"
 	if buy_lv > 1:
 		var ti := find_tier(weapons, key, buy_lv - 1)
 		if ti >= 0:
 			_upgrade_to(weapons, ti, buy_lv, combat_cfg)
 			return true
-	# 1 档或无可合成上级：尝试把"同 key 未满级"升一级
-	var idx := find_merge_target(weapons, key, max_lv)
+	var idx := -1
+	for i in weapons.size():
+		var w = weapons[i]
+		if w is Dictionary and str(w.get("key", "")) == key and int(w.get("lv", 1)) < max_lv:
+			idx = i
+			break
 	if idx >= 0:
 		_upgrade_to(weapons, idx, int(weapons[idx].get("lv", 1)) + 1, combat_cfg)
 		return true
@@ -76,7 +146,7 @@ static func merge_or_add(weapons: Array, def: Dictionary, max_slot: int, max_lv:
 		return false
 	var nw: Dictionary = def.duplicate()
 	nw["lv"] = buy_lv
-	# 直接落高档成品时，按合成倍率补齐 dmg/cd（与"一级一级合上来"数值一致）
+	nw["buy_cost"] = int(def.get("cost", 0))
 	if buy_lv > 1:
 		var dmg_mul := float(combat_cfg.get("merge_dmg_multiplier", 1.30))
 		var cd_mul := float(combat_cfg.get("merge_cd_multiplier", 0.93))

@@ -15,7 +15,7 @@ const EXT := ".png"
 
 # key: 完整路径，value: Texture2D 或 null
 # 缓存 null 是有意的：缺图只查一次，之后走字典，不会每帧碰文件系统
-var _cache: Dictionary = {}
+static var _cache: Dictionary = {}
 
 # ---- 名字归一化：大小写、空格、连字符都不影响命中 ----
 static func normalize(name: String) -> String:
@@ -35,7 +35,7 @@ static func icon_path(name: String) -> String:
 func sprite(name: String) -> Texture2D:
 	return _cached_load(sprite_path(name))
 
-func icon(name: String) -> Texture2D:
+static func icon(name: String) -> Texture2D:
 	return _cached_load(icon_path(name))
 
 # 只查不加载（没那张图时避免一次无用的 load）
@@ -112,7 +112,7 @@ func clear_cache() -> void:
 func cached_count() -> int:
 	return _cache.size()
 
-func _cached_load(path: String) -> Texture2D:
+static func _cached_load(path: String) -> Texture2D:
 	if _cache.has(path):
 		return _cache[path] as Texture2D
 	var tex: Texture2D = null

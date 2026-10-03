@@ -30,7 +30,8 @@ func run() -> Dictionary:
 	for i in MAX_SLOT:
 		full.append({"key": "w%d" % i, "lv": 1, "dmg": 10, "cd": 0.5})
 	chk(Inventory.can_accept(full, "newgun", MAX_SLOT, MAX_LV) == false, "槽位满了，全新武器不能买")
-	chk(Inventory.can_accept(full, "w0", MAX_SLOT, MAX_LV) == true, "槽位满了，但已有的 w0 可以合成")
+	# 手动合成下：买任何武器都只是占一个槽，满槽时即使已有 w0 也不能买（需先合成/售出腾槽）
+	chk(Inventory.can_accept(full, "w0", MAX_SLOT, MAX_LV) == false, "槽位满了，即使已有 w0 也不能买（先合成/售出腾槽）")
 
 	var maxed: Array = [{"key": "pistol", "lv": 4, "dmg": 20, "cd": 0.3}]
 	chk(Inventory.can_accept(maxed, "pistol", 1, MAX_LV) == false, "已满级的武器不能再合成")

@@ -109,6 +109,9 @@ const UI := {
   # ---- 商店（补全标签）----
   "shop_new": {"en": "NEW", "zh": "新武器"},
   "shop_merge": {"en": "MERGE +1", "zh": "合成 +1"},
+  "shop_merge_btn": {"en": "MERGE", "zh": "合成"},
+  "shop_sell": {"en": "SELL", "zh": "售"},
+  "shop_myweapons": {"en": "YOUR WEAPONS", "zh": "我的武器"},
   "shop_full": {"en": "SLOTS FULL", "zh": "槽位已满"},
   "shop_rarity": {"en": "RARITY", "zh": "稀有度"},
 
