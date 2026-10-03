@@ -23,12 +23,13 @@ const BACK_Y := 786.0
 const BACK_W := 200.0
 const BACK_H := 52.0
 
-# 配色（与数值总表 §8.4 统一：精英金圈 #ffd24a）
-const GOLD := Color(1.0, 0.82, 0.29)
-const PANEL_BG := Color(0.10, 0.12, 0.17, 0.96)
-const CARD_BG := Color(0.14, 0.16, 0.22, 0.96)
-const CARD_BG_SEL := Color(0.20, 0.22, 0.30, 0.98)
-const BORDER_DIM := Color(0.35, 0.38, 0.45, 0.8)
+# 配色：统一到商店的卡通暖色（深棕面板 + 金描边 + 圆角）
+const GOLD := Color(0.99, 0.87, 0.40)
+const GOLD_DK := Color(0.80, 0.60, 0.26)
+const PANEL_BG := Color(0.14, 0.10, 0.07, 0.96)
+const CARD_BG := Color(0.18, 0.12, 0.07, 0.96)
+const CARD_BG_SEL := Color(0.27, 0.18, 0.09, 0.98)
+const BORDER_DIM := Color(0.60, 0.46, 0.22, 0.85)
 
 var _keys: Array = []
 var _selected := 0
@@ -166,10 +167,9 @@ func _draw() -> void:
 func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 	var def: Dictionary = Data.weapon(key)
 	var accent := Color(str(def.get("color", "#ffffff")))
-	draw_rect(r, CARD_BG_SEL if selected else CARD_BG)
 	var bw := 4.0 if selected else (2.0 if hovered else 1.5)
 	var bc := GOLD if selected else (accent if hovered else BORDER_DIM)
-	draw_rect(r, bc, false, bw)
+	Art.round_rect(self, r, CARD_BG_SEL if selected else CARD_BG, bc, bw, 14)
 
 	# 图标：优先 weapon_<key> 贴图，缺图退化成主色圆点
 	var tex := Art.icon("weapon_" + key)
@@ -221,9 +221,7 @@ func _draw_wrap(text: String, r: Rect2, y0: float, fs: int, c: Color, max_lines:
 
 func _draw_button(r: Rect2, text: String, bg: Color, fg: Color, fs: int, outline := false) -> void:
 	if outline:
-		draw_rect(r, Color(0.20, 0.22, 0.28, 0.85))
-		draw_rect(r, Color(0.45, 0.48, 0.56, 0.9), false, 2.0)
+		Art.round_rect(self, r, Color(0.22, 0.15, 0.08, 0.9), Color(0.55, 0.44, 0.26, 0.9), 2.0, 14)
 	else:
-		draw_rect(r, bg)
-		draw_rect(r, Color(0.72, 0.60, 0.16), false, 4.0)
+		Art.round_rect(self, r, bg, GOLD_DK, 4.0, 16)
 	_center(text, r.position.x + r.size.x * 0.5, r.position.y + r.size.y * 0.5 + fs * 0.35, fs, fg)

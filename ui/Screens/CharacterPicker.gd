@@ -97,16 +97,15 @@ func _draw() -> void:
 func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 	var entry: Dictionary = Data.character(key)
 	var accent := Color(str(entry.get("color", "#ffffff")))
-	# 底板：选中/悬停时更亮
-	var bg := Color(0.13, 0.15, 0.20, 0.92)
+	# 底板：统一到商店暖棕（深棕面板 + 金描边 + 圆角），选中/悬停更亮
+	var bg := Color(0.18, 0.12, 0.07, 0.92)
 	if selected:
-		bg = Color(0.20, 0.24, 0.32, 0.98)
+		bg = Color(0.27, 0.18, 0.09, 0.98)
 	elif hovered:
-		bg = Color(0.17, 0.19, 0.25, 0.95)
-	draw_rect(r, bg)
-	# 选中用角色主色描边，未选中灰边
-	var border := accent if selected else Color(0.35, 0.38, 0.45, 0.8)
-	draw_rect(r, border, false, 3.0 * _k if selected else 1.5 * _k)
+		bg = Color(0.22, 0.15, 0.08, 0.95)
+	var border := accent if selected else Color(0.60, 0.46, 0.22, 0.85)
+	var bw := 3.0 * _k if selected else 1.5 * _k
+	Art.round_rect(self, r, bg, border, bw, 9.0 * _k)
 
 	# 立绘：优先 char_<key>；缺图退化成一个主色圆点，玩家仍能分辨
 	var tex := Art.sprite("char_" + key)

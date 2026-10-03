@@ -20,6 +20,7 @@ var wkey := ""    # 武器 key，用来画这把武器专属的子弹造型
 # 每把武器的子弹造型（卡通化，让"这把枪"一眼认得出）。
 # 没列出的走默认圆弹；按 key 映射，以后新加武器只要在这里补一行。
 const SHAPES := {
+	"pistol": "pistol", "smg": "smg", "shotgun": "shotgun",
 	"rocket": "rocket", "bow": "arrow",
 	"skewer": "spike", "chopsticks": "spike", "fork": "spike",
 	"peeler": "spike", "grater": "spike", "microwave": "spike",
@@ -74,6 +75,12 @@ func _draw() -> void:
 			_draw_rocket(col)
 		"arrow":
 			_draw_arrow(col)
+		"pistol":
+			_draw_pistol(col)
+		"smg":
+			_draw_smg(col)
+		"shotgun":
+			_draw_shotgun(col)
 		"spike":
 			_draw_spike(col)
 		"chunk":
@@ -151,3 +158,41 @@ func _draw_drop(col: Color) -> void:
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(s * 2.0, 0), Vector2(s * 0.3, -s * 0.62), Vector2(s * 0.3, s * 0.62)]), col)
 	draw_circle(Vector2(-s * 0.28, -s * 0.3), s * 0.32, Color(1, 1, 1, 0.9))
+
+# 手枪：黄铜小尖头弹（抛物弹头 + 平底弹壳），细长三角一眼是"子弹"
+func _draw_pistol(col: Color) -> void:
+	var ln := radius * 3.2
+	var h := radius * 0.85
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(ln, 0), Vector2(ln * 0.1, -h), Vector2(-ln * 0.6, -h * 0.72),
+		Vector2(-ln * 0.6, h * 0.72), Vector2(ln * 0.1, h)]), INK)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(ln - 1.6, 0), Vector2(ln * 0.1, -h + 1.3),
+		Vector2(-ln * 0.6 + 1.2, -h * 0.72 + 1.0),
+		Vector2(-ln * 0.6 + 1.2, h * 0.72 - 1.0), Vector2(ln * 0.1, h - 1.3)]), col)
+	draw_circle(Vector2(-ln * 0.42, -h * 0.2), h * 0.34, Color(1, 1, 1, 0.85))
+
+# 冲锋枪：短粗圆头弹，弹体胖、弹头圆，飞起来就是一团铜色拳头
+func _draw_smg(col: Color) -> void:
+	var ln := radius * 2.0
+	var h := radius * 1.18
+	draw_rect(Rect2(-ln * 0.6, -h, ln * 0.9, h * 2.0), INK)
+	draw_circle(Vector2(ln * 0.3, 0), h, INK)
+	draw_rect(Rect2(-ln * 0.6 + 1.4, -h + 1.4, ln * 0.9 - 2.0, h * 2.0 - 2.8), col)
+	draw_circle(Vector2(ln * 0.3 - 1.0, 0), h - 1.6, col)
+	draw_circle(Vector2(ln * 0.05, -h * 0.32), h * 0.3, Color(1, 1, 1, 0.85))
+
+# 霰弹：一束小弹丸沿飞行方向扇形散开（铅灰偏武器色），读起来就是"喷出去的一把砂"
+func _draw_shotgun(col: Color) -> void:
+	var n := 4
+	var spread := 0.62
+	for i in n:
+		var f := float(i) / float(n - 1) if n > 1 else 0.5
+		var ang := -spread * 0.5 + spread * f
+		var off := float(i - (n - 1) * 0.5) * 3.4
+		var px := cos(ang) * off * 0.55 + off * 0.25
+		var py := sin(ang) * off * 0.95
+		var r := radius * 0.92
+		draw_circle(Vector2(px, py), r + 1.3, INK)
+		draw_circle(Vector2(px, py), r, col)
+		draw_circle(Vector2(px - r * 0.3, py - r * 0.3), r * 0.4, Color(1, 1, 1, 0.82))

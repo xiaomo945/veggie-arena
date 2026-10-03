@@ -104,6 +104,39 @@ static func style_button(b: Button, bg: Color, fg: Color, border: Color) -> void
 	b.add_theme_color_override("font_pressed_color", fg)
 	b.add_theme_color_override("font_hover_color", fg)
 
+# 圆角矩形（填充 + 描边），代码绘制的卡片/按钮共用，对齐商店"深棕面板 + 金描边 + 圆角"。
+# 必须在调用方的 _draw 内调用（draw_* 只能在那时生效）。
+static func round_rect(c: Control, r: Rect2, fill: Color, border: Color, bw: float, rad: float) -> void:
+	var pts := _rr_points(r, rad)
+	c.draw_colored_polygon(pts, fill)
+	if bw > 0.0 and border.a > 0.0:
+		c.draw_polyline(pts, border, bw, true)
+
+static func _rr_points(r: Rect2, rad: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var rx := minf(rad, r.size.x * 0.5)
+	var ry := minf(rad, r.size.y * 0.5)
+	var seg := 5
+	var p0 := r.position
+	var s := r.size
+	var cs := {
+		"tl": p0 + Vector2(rx, ry),
+		"tr": p0 + Vector2(s.x - rx, ry),
+		"br": p0 + Vector2(s.x - rx, s.y - ry),
+		"bl": p0 + Vector2(rx, s.y - ry),
+	}
+	_append_arc(pts, cs["tl"], rx, ry, PI, PI * 1.5, seg)
+	_append_arc(pts, cs["tr"], rx, ry, PI * 1.5, PI * 2.0, seg)
+	_append_arc(pts, cs["br"], rx, ry, 0.0, PI * 0.5, seg)
+	_append_arc(pts, cs["bl"], rx, ry, PI * 0.5, PI, seg)
+	return pts
+
+static func _append_arc(pts: PackedVector2Array, center: Vector2, rx: float, ry: float, a0: float, a1: float, seg: int) -> void:
+	for i in seg + 1:
+		var t := float(i) / float(seg)
+		var a := lerpf(a0, a1, t)
+		pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
+
 # 换皮 / 热重载贴图时用：清掉缓存，下一次访问重新读磁盘
 func clear_cache() -> void:
 	_cache.clear()

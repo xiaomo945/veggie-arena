@@ -67,6 +67,7 @@ func _mk_btn(text: String, y: float, cb: Callable, icon_name := "") -> Button:
 	b.set_size(Vector2(300, 64))
 	b.set_position(Vector2((540 - 300) * 0.5, y))
 	b.add_theme_font_size_override("font_size", 22)
+	Art.style_button(b, Color(0.98, 0.62, 0.22), Color(0.30, 0.14, 0.04), Color(0.88, 0.52, 0.16))
 	if icon_name != "":
 		if Art.has_ui_icon(icon_name):
 			b.icon = Art.ui_icon(icon_name)
@@ -80,6 +81,7 @@ func _mk_toggle(y: float, cb: Callable) -> Button:
 	b.set_size(Vector2(300, 52))
 	b.set_position(Vector2((540 - 300) * 0.5, y))
 	b.add_theme_font_size_override("font_size", 18)
+	Art.style_button(b, Color(0.86, 0.55, 0.20), Color(0.30, 0.18, 0.05), Color(0.80, 0.56, 0.22))
 	b.pressed.connect(cb)
 	_root.add_child(b)
 	return b

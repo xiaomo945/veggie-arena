@@ -38,6 +38,12 @@ func _ready() -> void:
 	floor_node.show_behind_parent = true
 	add_child(floor_node)
 	floor_node.setup(world.arena)
+	# 厨房氛围粒子（蒸汽/火星/油星）垫在地面之上、战斗之下，给满屏割草一点"活气"
+	var ambient := Node2D.new()
+	ambient.set_script(preload("res://art/AmbientKitchen.gd"))
+	ambient.show_behind_parent = true
+	add_child(ambient)
+	ambient.setup(world.arena)
 	world.pickups = PickupFieldScene.instantiate(); add_child(world.pickups)
 	_build_pools()
 	# 战斗子系统：接手刷怪 / 敌人移动 / 子弹命中 / 颠勺（状态通过 world 共享）
