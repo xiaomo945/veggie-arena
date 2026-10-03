@@ -85,6 +85,41 @@ static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> voi
 				Vector2(radius*0.7,-radius), Vector2(radius,-radius*0.8),
 				Vector2(radius,radius), Vector2(-radius,radius)]), col)
 			angry_face(c, radius * 0.9, look, 1.0)
+		"charger":
+			# 尖头三角（比冲刺兵更敦实，蓄力时一眼是"要撞过来"）
+			poly(c, PackedVector2Array([Vector2(0,-radius*1.3), Vector2(radius*1.05,radius*0.9),
+				Vector2(radius*0.5,radius*0.7), Vector2(-radius*0.5,radius*0.7),
+				Vector2(-radius*1.05,radius*0.9)]), col)
+			angry_face(c, radius * 0.85, look, 1.0)
+		"shooter":
+			# 八边形炮台 + 朝玩家的炮口凸起
+			var so := PackedVector2Array()
+			for i in range(8):
+				var a := TAU * float(i) / 8.0
+				so.append(Vector2(cos(a), sin(a)) * radius)
+			poly(c, so, col)
+			c.draw_circle(look * radius * 0.95, radius * 0.30, Color(0.12,0.10,0.12,0.85))
+			angry_face(c, radius * 0.70, look, 1.0)
+		"splitter":
+			# 方块身体 + 中缝（暗示"一分为二"）
+			poly(c, PackedVector2Array([Vector2(-radius,-radius*0.9), Vector2(radius,-radius*0.9),
+				Vector2(radius,radius*0.9), Vector2(-radius,radius*0.9)]), col)
+			c.draw_line(Vector2(0,-radius*0.9), Vector2(0,radius*0.9),
+				Color(0.12,0.10,0.12,0.85), maxf(1.6, radius*0.12))
+			angry_face(c, radius * 0.9, look, 1.0)
+		"bomber":
+			# 圆鼓鼓 + 头顶引线（"我马上炸"）
+			poly(c, PackedVector2Array([Vector2(-radius*0.95,0), Vector2(0,-radius),
+				Vector2(radius*0.95,0), Vector2(0,radius*0.95)]), col)
+			c.draw_line(Vector2(0,-radius), Vector2(0,-radius*1.4),
+				Color(0.3,0.2,0.1,0.9), maxf(1.6, radius*0.12))
+			c.draw_circle(Vector2(0,-radius*1.5), radius*0.18, Color(1.0,0.8,0.3,1.0))
+			angry_face(c, radius * 0.7, look, 1.0)
+		"splitling":
+			# 小菱形芽
+			poly(c, PackedVector2Array([Vector2(-radius,0), Vector2(0,-radius),
+				Vector2(radius,0), Vector2(0,radius)]), col)
+			angry_face(c, radius * 0.8, look, 1.0)
 		_:
 			# 小兵：圆身 + 两只小角 + 凶萌脸
 			poly(c, PackedVector2Array([Vector2(-radius*0.4,-radius*0.9),

@@ -16,6 +16,7 @@ var max_life := 1.0
 var tint := Color(1, 1, 1)
 var hit_ids := {}
 var wkey := ""    # 武器 key，用来画这把武器专属的子弹造型
+var enemy := false # 敌弹标记：true=怪物发射、命中玩家；false=玩家武器、命中敌人
 
 # 每把武器的子弹造型（卡通化，让"这把枪"一眼认得出）。
 # 没列出的走默认圆弹；按 key 映射，以后新加武器只要在这里补一行。
@@ -27,14 +28,16 @@ const SHAPES := {
 	"staff": "orb_ring", "ladle": "orb_ring",
 	"pan": "chunk", "griddle": "chunk", "baking_tray": "chunk",
 	"mortar": "chunk", "wok_scoop": "chunk", "clay_pot": "chunk",
-	"chili": "drop", "pepper": "drop", "oil_sprayer": "drop",
-	"blender": "drop", "whisk": "drop", "egg_beater": "drop",
-	"garlic_press": "drop", "strainer": "drop", "teapot": "drop",
-}
+		"chili": "drop", "pepper": "drop", "oil_sprayer": "drop",
+		"blender": "drop", "whisk": "drop", "egg_beater": "drop",
+		"garlic_press": "drop", "strainer": "drop", "teapot": "drop",
+		"enemybolt": "enemybolt",
+	}
 const INK := Color(0.06, 0.05, 0.09, 0.9)
 
 func launch(pos: Vector2, direction: Vector2, stats: Dictionary, c: Color, key := "") -> void:
 	wkey = key
+	enemy = false    # 默认玩家弹；敌弹由 BulletSystem.launch_enemy 设 true
 	global_position = pos
 	dir = direction.normalized()
 	speed = float(stats.get("bullet_speed", 560))
@@ -56,6 +59,7 @@ func recycle() -> void:
 	active = false
 	visible = false
 	hit_ids.clear()
+	enemy = false
 
 func advance(delta: float) -> void:
 	if not active:
@@ -158,6 +162,18 @@ func _draw_drop(col: Color) -> void:
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(s * 2.0, 0), Vector2(s * 0.3, -s * 0.62), Vector2(s * 0.3, s * 0.62)]), col)
 	draw_circle(Vector2(-s * 0.28, -s * 0.3), s * 0.32, Color(1, 1, 1, 0.9))
+
+# 敌弹：紫红尖刺球 + 外圈脉冲环，一眼和玩家子弹区分开（"这玩意儿会打我"）
+func _draw_enemybolt(col: Color) -> void:
+	var s := radius * 1.6
+	draw_circle(Vector2.ZERO, s + 1.6, INK)
+	draw_circle(Vector2.ZERO, s, col)
+	draw_circle(Vector2.ZERO, s * 0.45, Color(1, 0.85, 0.95, 0.95))
+	for k in range(8):
+		var a := TAU * float(k) / 8.0
+		var tip := Vector2(cos(a), sin(a)) * (s + 6.0)
+		var base := Vector2(cos(a), sin(a)) * s
+		draw_line(base, tip, INK, 2.2)
 
 # 手枪：黄铜小尖头弹（抛物弹头 + 平底弹壳），细长三角一眼是"子弹"
 func _draw_pistol(col: Color) -> void:

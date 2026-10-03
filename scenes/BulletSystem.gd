@@ -11,6 +11,7 @@ extends RefCounted
 
 const Hit := preload("res://core/Hit.gd")
 const Movement := preload("res://core/Movement.gd")
+const BattleWorld := preload("res://scenes/BattleWorld.gd")
 
 var world = null                     # BattleWorld
 var damage_fn: Callable = Callable() # (enemy, amount) -> bool 是否被这一击打死
@@ -36,7 +37,7 @@ func home(delta: float) -> void:
 	var hr := float(cfg.get("homing_range", 360))
 	var max_turn := turn * delta
 	for b in world.bullets:
-		if not b.active:
+		if not b.active or b.enemy:
 			continue
 		var best := -1
 		var best_d := INF
@@ -62,7 +63,7 @@ func home(delta: float) -> void:
 # 反射用 Movement 的边界判定，保证和大怪/玩家的夹取规则一致。
 func bounce() -> void:
 	for b in world.bullets:
-		if not b.active or b.bounce_left <= 0:
+		if not b.active or b.bounce_left <= 0 or b.enemy:
 			continue
 		var p: Vector2 = b.global_position
 		var r: float = b.radius
@@ -81,9 +82,19 @@ func bounce() -> void:
 			b.global_position = Movement.clamp_to_arena(p, world.arena, r)
 
 func resolve() -> void:
+	# 敌弹：命中玩家（纯表现之外的唯一伤害去向是 Player.take_hit，受无敌帧保护）
+	if world.player != null:
+		var pr := float(Data.player_cfg().get("radius", 16))
+		for b in world.bullets:
+			if not b.active or not b.enemy:
+				continue
+			if b.global_position.distance_to(world.player.global_position) <= b.radius + pr:
+				world.player.take_hit(b.dmg)
+				b.recycle()
+	# 玩家子弹：只参与"打敌人"的碰撞配对（敌弹已被上面单独处理）
 	world.bdata.clear()
 	for b in world.bullets:
-		if b.active:
+		if b.active and not b.enemy:
 			world.bdata.append({"pos": b.global_position, "radius": b.radius, "active": true, "ref": b})
 	if world.bdata.is_empty() or world.edata.is_empty():
 		return
@@ -110,6 +121,26 @@ func resolve() -> void:
 			b.pierce_left -= 1
 		else:
 			b.recycle()
+
+# 炮手开火：从共享子弹池借一颗空闲弹，标记为敌弹并朝玩家射出。
+# 与玩家子弹共用池，但 enemy=true 让 home/bounce/resolve 把它当"打玩家"处理。
+func launch_enemy(pos: Vector2, dir: Vector2, dmg: float, color: Color) -> void:
+	var b = _free_bullet()
+	if b == null:
+		return
+	b.launch(pos, dir, {"bullet_speed": 300.0, "dmg": dmg, "range": 460.0}, color, "enemybolt")
+	b.enemy = true
+
+# 从环形池里找一颗空闲弹（和 on_weapon_fired 共用同一条游标，互不冲突）
+func _free_bullet():
+	var start: int = world.bullet_cursor
+	for i in BattleWorld.MAX_BULLETS:
+		var idx: int = (start + i) % BattleWorld.MAX_BULLETS
+		var b = world.bullets[idx]
+		if not b.active:
+			world.bullet_cursor = (idx + 1) % BattleWorld.MAX_BULLETS
+			return b
+	return null
 
 func _explode(b, center_enemy) -> void:
 	var c: Vector2 = center_enemy.global_position

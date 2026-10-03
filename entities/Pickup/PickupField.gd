@@ -28,7 +28,10 @@ func _ready() -> void:
 # 单测里节点不进树、_ready 不会自动跑，以前测试只能手动 field._ready()；
 # 现在测试（和任何想脱离场景树用这块逻辑的地方）直接调 build_pool()。
 func build_pool() -> void:
-	_rng.randomize()
+	if OS.has_environment("SIM_SEED"):
+		_rng.seed = int(OS.get_environment("SIM_SEED")) + 3
+	else:
+		_rng.randomize()
 	var raw: Dictionary = {}
 	if Data.balance.has("pickup"):
 		var got: Dictionary = Data.balance["pickup"] as Dictionary

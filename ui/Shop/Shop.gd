@@ -36,7 +36,10 @@ var _max_lv := 4
 
 func _ready() -> void:
 	layer = 30
-	_rng.randomize()
+	if OS.has_environment("SIM_SEED"):
+		_rng.seed = int(OS.get_environment("SIM_SEED")) + 4
+	else:
+		_rng.randomize()
 	_build()
 	_root.visible = false
 	Events.shop_opened.connect(_open)

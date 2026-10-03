@@ -21,7 +21,10 @@ var _crit_mult := 1.0
 
 func _init(owner: Node2D) -> void:
 	host = owner
-	_rng.randomize()
+	if OS.has_environment("SIM_SEED"):
+		_rng.seed = int(OS.get_environment("SIM_SEED")) + 2
+	else:
+		_rng.randomize()
 
 # 属性缓存：所有道具加成（伤害/攻速/射程/弹速/穿透/溅射/弹丸数/暴击）
 # 都在这里一次性叠进去，开火时不再重复计算 stat_value。

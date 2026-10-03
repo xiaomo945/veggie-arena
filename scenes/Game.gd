@@ -32,7 +32,10 @@ var _spawn_acc := 0.0
 var _sim_speed := 1
 
 func _ready() -> void:
-	world.rng.randomize()
+	if OS.has_environment("SIM_SEED"):
+		world.rng.seed = int(OS.get_environment("SIM_SEED"))
+	else:
+		world.rng.randomize()
 	var a := Data.arena()
 	world.arena = Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
 		float(a.get("w", 540)), float(a.get("h", 900)))

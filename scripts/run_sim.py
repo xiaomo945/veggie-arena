@@ -24,6 +24,11 @@ SECONDS = sys.argv[1] if len(sys.argv) > 1 else "120"
 CRASH = re.compile(r"SCRIPT ERROR|Parse Error|Compile Error|"
                    r"Identifier not found|Invalid call|Attempt to call")
 
+# 固定随机种子：自测跑的是"真实代码路径"，只是把所有随机源固定下来，
+# 去掉"生存运气"噪声，让门禁可复现（真实玩家仍全随机）。
+# 游戏侧各 RandomNumberGenerator 在检测到 SIM_SEED 环境变量时改用该种子。
+SIM_SEED = 0x51A32B1E
+
 
 def grab(pattern, text):
     m = re.search(pattern, text)
@@ -32,7 +37,9 @@ def grab(pattern, text):
 
 def main():
     cmd = [GODOT, "--headless", "--path", ROOT, "--", "--sim=" + SECONDS]
-    p = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    env = dict(os.environ)
+    env["SIM_SEED"] = str(SIM_SEED)
+    p = subprocess.run(cmd, capture_output=True, text=True, timeout=600, env=env)
     out = p.stdout + p.stderr
 
     fails = []

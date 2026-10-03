@@ -17,6 +17,7 @@ const Shake := preload("res://entities/effects/Shake.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
 const WokToss := preload("res://scenes/WokToss.gd")
 const BulletSystem := preload("res://scenes/BulletSystem.gd")
+const EnemyMind := preload("res://scenes/EnemyMind.gd")
 
 # 同屏击杀特效并发上限（防密集击杀时 Node/Tween 暴涨拖帧）
 const MAX_DEATH_FX := 16
@@ -29,6 +30,7 @@ const KB_DECEL := 520.0          # 击退衰减（/s），短促
 var world: BattleWorld = null    # 注入：战斗状态（池 / rng / arena / 暂存数组）
 var _toss: WokToss = null        # 锅气大招（独立部件，见 scenes/WokToss.gd）
 var _bullets: BulletSystem = null # 子弹（独立部件，见 scenes/BulletSystem.gd）
+var _mind = null                  # 敌人 AI/移动/接触（独立部件，见 scenes/EnemyMind.gd）
 var game: Node2D = null          # 仅用于挂特效节点与注册震屏
 var _contact := 0.0              # 荆棘伤害（contact_dmg），每帧缓存一次
 
@@ -51,6 +53,7 @@ func endless_scales() -> Dictionary:
 	return Run.endless_scales(GameState.wave, Data.wave_cfg(), Data.endless_cfg())
 
 func spawn_one() -> void:
+	_ensure_mind()
 	var e = world.enemies[world.enemy_cursor]
 	world.enemy_cursor = (world.enemy_cursor + 1) % BattleWorld.MAX_ENEMIES
 	# 在玩家视野外一圈刷新（大地图下不再按竞技场边缘，否则怪要跑半天才到玩家身边）
@@ -67,12 +70,15 @@ func spawn_one() -> void:
 		return
 	e.spawn(pos, stats, world.next_id)
 	world.next_id += 1
+	if _mind != null:
+		_mind.register(e, stats)
 	# 精英/Boss 出场给一记"光环扩散 + 时间暂缓"（纯表现，FxSpawnHalo 订阅）
 	if bool(stats.get("elite", false)) or str(stats.get("type", "")) == "boss":
 		Events.enemy_spawned.emit(e)
 
 # Boss 波开局额外刷一只首领：慢、大、硬、疼，但金币丰厚
 func spawn_boss() -> void:
+	_ensure_mind()
 	var e = world.enemies[world.enemy_cursor]
 	world.enemy_cursor = (world.enemy_cursor + 1) % BattleWorld.MAX_ENEMIES
 	# Boss 也在玩家附近出场（大地图下不再按竞技场边缘）
@@ -90,67 +96,47 @@ func spawn_boss() -> void:
 		return
 	e.spawn(pos, stats, world.next_id)
 	world.next_id += 1
+	if _mind != null:
+		_mind.register(e, stats)
 	# Boss 出场轻微震屏（终局 Boss 更重，出场就有压迫感）
 	if bool(stats.get("final", false)):
 		Shake.kick(16.0, 0.6)
 	else:
 		Shake.kick(9.0, 0.4)
 
+# 分裂怪死亡时由 EnemyMind.on_kill 回调：在死亡位置生成两只子代（行为为空，不会无限分裂）。
+# 复用同一个环形对象池，受 MAX_ENEMIES 硬封顶；行为登记交给 _mind.register。
+func spawn_child(pos: Vector2, type: String) -> void:
+	if world.alive_enemy_count() >= BattleWorld.MAX_ENEMIES:
+		return
+	var e = world.enemies[world.enemy_cursor]
+	world.enemy_cursor = (world.enemy_cursor + 1) % BattleWorld.MAX_ENEMIES
+	var stats := Spawner.stats_for(type, GameState.wave, Data.enemies, false, endless_scales())
+	if stats.is_empty():
+		return
+	e.spawn(pos, stats, world.next_id)
+	world.next_id += 1
+	if _mind != null:
+		_mind.register(e, stats)
+
+# 敌人移动/分离/接触结算（含炮手远程、猛冲兵相位猛冲、自爆、分裂等行为）
+# 全交给 EnemyMind —— 这样不断加新行为也不会把本文件顶过 300 行红线。
+# EnemyMind 懒构造：world 由 Game 在 _ready 之后才注入，这里不能在 _ready 里 new。
 func update_enemies(delta: float) -> void:
-	var pp: Vector2 = world.player.global_position
-	# 每帧读一次荆棘伤害（道具统计，别在 O(n²) 里反复算）
-	_contact = GameState.stat_value("contact_dmg")
-	for i in world.enemies.size():
-		var e = world.enemies[i]
-		if not e.alive:
-			continue
-		var pos: Vector2 = e.global_position
-		# 朝玩家
-		var to_p: Vector2 = (pp - pos)
-		if to_p.length() > 0.001:
-			var dir: Vector2 = to_p.normalized()
-			# 飞行兵：在朝玩家的方向上叠加左右蛇形摆动，更难被预判/击中
-			if e.flight:
-				var perp := Vector2(-dir.y, dir.x)
-				dir = (dir + perp * sin(e.wobble(delta)) * 0.7).normalized()
-			# 颠勺减速：临时降低移动速度（factor 由道具决定，倍率叠加在基础速度上）
-			var spd: float = e.move_speed()
-			pos += dir * spd * delta
-		# 分离：只算附近的，避免 O(n^2) 在满怪时拖慢手机
-		world.neighbors.clear()
-		for j in world.enemies.size():
-			if j == i:
-				continue
-			var o = world.enemies[j]
-			if not o.alive:
-				continue
-			if pos.distance_squared_to(o.global_position) < 3600.0:  # 60px 内才算
-				world.neighbors.append({"pos": o.global_position, "radius": o.radius})
-		pos += Hit.separation(pos, world.neighbors, e.radius) * SEPARATION_FORCE * delta
-		# 别叠在玩家身上
-		pos += Hit.keep_distance(pos, pp, e.radius + float(Data.player_cfg().get("radius", 16)))
-		# 受击击退脉冲：随帧快速衰减，位移克制不影响手感
-		var kb: Vector2 = e.knockback()
-		if kb.length_squared() > 0.01:
-			pos += kb * delta
-			e.set_knockback(kb.move_toward(Vector2.ZERO, KB_DECEL * delta))
-		e.global_position = Movement.clamp_to_arena(pos, world.arena, e.radius)
-		e.tick(delta)
-		# 持续伤害（中毒 / 灼烧）：必须走 damage_enemy 统一结算，
-		# 否则击杀不计数、不掉金币、也不涨锅气 —— 毒杀变成"白杀"
-		var dot: float = e.tick_fx(delta)
-		if dot > 0.0:
-			damage_enemy(e, dot)
-		# 接触玩家 → 造成伤害
-		if pos.distance_to(pp) <= e.radius + float(Data.player_cfg().get("radius", 16)) + 2.0:
-			if world.player.has_method("take_hit"):
-				world.player.take_hit(e.dmg)
-				# 挨打掉火候（被摸一下 = 锅被泼了冷水）；封顶 8 点，避免首领一巴掌把火候清零
-				GameState.cool_wok(minf(e.dmg, 8.0))
-				# 荆棘（contact_dmg）：贴上来就得挨烫。让"挨打"不再是纯亏，
-				# 也是"站桩流"能成立的前提
-				if _contact > 0.0:
-					damage_enemy(e, _contact)
+	_ensure_mind()
+	_mind.update(delta)
+
+# 懒构造 EnemyMind（world 注入后才可用）；顺手把子弹部件也准备好，炮手要借它开火。
+# spawn_child 作为回调传进去，分裂怪死亡时由 EnemyMind 回调本系统生成子代。
+func _ensure_mind() -> void:
+	if _mind != null:
+		return
+	if _bullets == null:
+		_bullets = BulletSystem.new()
+		_bullets.world = world
+		_bullets.damage_fn = damage_enemy
+	_mind = EnemyMind.new()
+	_mind.setup(world, damage_enemy, _bullets, spawn_child)
 
 # 先收集敌人数组（含本帧位置/速度），供开火与子弹追踪共用
 func collect_enemy_data() -> void:
@@ -204,6 +190,8 @@ func damage_enemy(e, amount: float) -> bool:
 	Events.damage_dealt.emit(int(amount), epos, false)
 	if e.hurt(amount):
 		GameState.add_kill()
+		if _mind != null:
+			_mind.on_kill(e, epos)
 	# 击杀碎屑 + 冲击波环（Boss 更大）。并发上限：密集击杀时宁可少画几团，
 	# 也不让 Node/Tween 爆炸拖垮手机帧率
 	if Settings.get_setting("particles_enabled", true) and _death_fx_count() < MAX_DEATH_FX:

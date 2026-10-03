@@ -113,6 +113,7 @@ func _ready() -> void:
 
 	Events.damage_dealt.connect(_on_damage)
 	Events.enemy_killed.connect(_on_killed)
+	Events.enemy_exploded.connect(_on_enemy_exploded)
 	Events.player_hp_changed.connect(_on_hp)
 	Events.wok_tossed.connect(_on_toss)
 	Events.melee_visual.connect(_on_melee)
@@ -173,6 +174,15 @@ func _on_killed(_type: String, pos: Vector2) -> void:
 		return
 	_rings.append({"pos": pos, "t": 0.0, "life": 0.5, "big": (_type == "boss"),
 		"color": Color(1.0, 0.88, 0.55)})
+
+# 自爆怪贴脸爆炸：橙红冲击环 + 迸溅（复用击杀环/迸溅视图，删掉也不影响玩法）
+func _on_enemy_exploded(pos: Vector2, _radius: float) -> void:
+	if _rings.size() < MAX_RINGS:
+		_rings.append({"pos": pos, "t": 0.0, "life": 0.45, "big": true,
+			"color": Color(1.0, 0.45, 0.35)})
+	if _pops.size() < MAX_POPS:
+		_pops.append({"pos": pos, "t": 0.0, "life": 0.22, "kind": "impact",
+			"color": Color(1.0, 0.5, 0.4), "scale": 1.6})
 
 # ---- 信号：挨打红闪 ----
 func _on_hp(hp: int, _max_hp: int) -> void:

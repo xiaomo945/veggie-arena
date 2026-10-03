@@ -43,6 +43,10 @@ static func pick_type(wave: int, r: float, cfg: Dictionary) -> String:
 	var swarm_chance := 0.0
 	var brute_chance := 0.0
 	var shambler_chance := 0.0
+	var shooter_chance := 0.0
+	var charger_chance := 0.0
+	var bomber_chance := 0.0
+	var splitter_chance := 0.0
 	if wave >= int(cfg.get("fast_from_wave", 2)):
 		fast_chance = float(cfg.get("fast_chance", 0.28))
 	if wave >= int(cfg.get("fly_from_wave", 4)):
@@ -58,6 +62,14 @@ static func pick_type(wave: int, r: float, cfg: Dictionary) -> String:
 		brute_chance = float(cfg.get("brute_chance", 0.10))
 	if wave >= int(cfg.get("shambler_from_wave", 7)):
 		shambler_chance = float(cfg.get("shambler_chance", 0.08))
+	if wave >= int(cfg.get("charger_from_wave", 5)):
+		charger_chance = float(cfg.get("charger_chance", 0.05))
+	if wave >= int(cfg.get("shooter_from_wave", 6)):
+		shooter_chance = float(cfg.get("shooter_chance", 0.05))
+	if wave >= int(cfg.get("bomber_from_wave", 7)):
+		bomber_chance = float(cfg.get("bomber_chance", 0.03))
+	if wave >= int(cfg.get("splitter_from_wave", 8)):
+		splitter_chance = float(cfg.get("splitter_chance", 0.03))
 	if r < fast_chance:
 		return "fast"
 	if r < fast_chance + fly_chance:
@@ -68,6 +80,14 @@ static func pick_type(wave: int, r: float, cfg: Dictionary) -> String:
 		return "brute"
 	if r < fast_chance + fly_chance + swarm_chance + brute_chance + shambler_chance:
 		return "shambler"
+	if r < fast_chance + fly_chance + swarm_chance + brute_chance + shambler_chance + charger_chance:
+		return "charger"
+	if r < fast_chance + fly_chance + swarm_chance + brute_chance + shambler_chance + charger_chance + shooter_chance:
+		return "shooter"
+	if r < fast_chance + fly_chance + swarm_chance + brute_chance + shambler_chance + charger_chance + shooter_chance + bomber_chance:
+		return "bomber"
+	if r < fast_chance + fly_chance + swarm_chance + brute_chance + shambler_chance + charger_chance + shooter_chance + bomber_chance + splitter_chance:
+		return "splitter"
 	if r > 1.0 - tank_chance:
 		return "tank"
 	return "grunt"
@@ -108,6 +128,7 @@ static func stats_for(type: String, wave: int, defs: Dictionary, elite: bool = f
 		"color": d.get("color", "#ffffff"),
 		"zh": d.get("zh", type),
 		"flight": bool(d.get("flight", false)),
+		"behavior": d.get("behavior", ""),
 		"elite": false,
 	}
 	if elite:

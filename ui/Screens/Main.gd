@@ -129,7 +129,7 @@ func _dodge_dir(sense: float = 220.0, jitter: float = 0.22) -> Vector2:
 	if n > 0:
 		away = flee.normalized().lerp(to_center, 0.2)
 	# 抖动避免被逼到死角后反复横跳卡住
-	away = away.rotated(randf_range(-jitter, jitter))
+	away = away.rotated(_rng.randf_range(-jitter, jitter))
 	return away.limit_length(1.0)
 
 # 自动逛补给站：把"买得起的全买"跑一遍，等于把商店的购买运行期路径也测了。
@@ -188,7 +188,7 @@ func _run_simulation(seconds: float) -> void:
 			if dodge_age <= 0:
 				dodge = _dodge_dir(120.0, 0.6)
 				if _rng.randf() < 0.12:
-					dodge = dodge.rotated(randf_range(1.2, 2.4))   # 判断失误
+					dodge = dodge.rotated(_rng.randf_range(1.2, 2.4))   # 判断失误
 				dodge_age = 12
 			player.set_move_dir(dodge)
 		else:

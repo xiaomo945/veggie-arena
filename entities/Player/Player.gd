@@ -60,7 +60,10 @@ func _ready() -> void:
 	var a := Data.arena()
 	_arena = Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
 		float(a.get("w", 540)), float(a.get("h", 900)))
-	_rng.randomize()
+	if OS.has_environment("SIM_SEED"):
+		_rng.seed = int(OS.get_environment("SIM_SEED")) + 1
+	else:
+		_rng.randomize()
 	_dash_cfg = Dash.cfg(Data.dash_cfg())
 	# 冲刺类道具：冷却按"减少比例"叠（最多减 80%，否则无限冲刺会破坏节奏）
 	_dash_cfg["cooldown"] = float(_dash_cfg.get("cooldown", 1.8)) \

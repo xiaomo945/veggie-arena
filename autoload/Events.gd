@@ -9,6 +9,8 @@ signal player_hp_changed(hp: int, max_hp: int)
 signal player_died()
 signal enemy_spawned(enemy: Node)
 signal enemy_killed(type: String, pos: Vector2)
+# 自爆怪贴脸爆炸（纯表现层：画一圈冲击环 + 迸溅），订阅方见 FxLayer
+signal enemy_exploded(pos: Vector2, radius: float)
 signal damage_dealt(amount: int, pos: Vector2, critical: bool)
 # 闪避成功（被动道具 dodge）：整次伤害被免掉，用于飘"MISS"字/音效
 signal player_dodged(pos: Vector2)
