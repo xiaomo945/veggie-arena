@@ -17,11 +17,13 @@ const Spawner := preload("res://core/Spawner.gd")
 const Run := preload("res://core/Run.gd")
 const EnemySystem := preload("res://scenes/EnemySystem.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
+const WaveDirector := preload("res://scenes/WaveDirector.gd")
 
 # 共享战斗状态（池 / rng / 竞技场 / 诊断计数），EnemySystem 拿的是同一个对象
 var world := BattleWorld.new()
 var player: Node2D = null
 var enemy_system: Node = null          # 战斗子系统（刷怪/敌人/子弹/颠勺），_ready 里注入
+var wave_dir: Node = null              # 波次流程子协调器（见 scenes/WaveDirector.gd）
 var _paused := false
 var _spawn_acc := 0.0
 # 战斗倍率（快进）：每物理帧多跑一次世界步进，而不是改 time_scale
@@ -50,6 +52,10 @@ func _ready() -> void:
 	enemy_system = EnemySystem.new()
 	enemy_system.world = world
 	add_child(enemy_system)
+	# 波次流程子协调器：撒怪/开波/结算/下一波，拆出来避免 Game 超 300 行红线
+	wave_dir = WaveDirector.new()
+	wave_dir.setup(self, world, enemy_system)
+	add_child(wave_dir)
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.melee_swung.connect(_on_melee_swung)
 	Events.player_died.connect(_on_player_died)
@@ -62,7 +68,7 @@ func _ready() -> void:
 	add_child(DeathScene.instantiate())
 	add_child(VictoryScene.instantiate())
 	add_child(PauseScene.instantiate())
-	Events.shop_closed.connect(_on_shop_closed)
+	Events.shop_closed.connect(wave_dir.on_shop_closed)
 	Events.pause_requested.connect(_on_pause_requested)
 	Events.resume_requested.connect(_on_resume_requested)
 	Events.quit_to_title_requested.connect(_on_quit_to_title)
@@ -76,6 +82,10 @@ func set_player(p: Node2D) -> void:
 
 func is_paused() -> bool:
 	return _paused
+
+# 给 WaveDirector 用的公开暂停入口（架构守卫 R3 禁止跨模块读私有字段，故走公开方法）
+func set_paused(v: bool) -> void:
+	_paused = v
 
 func step(delta: float) -> void:
 	_physics_process(delta)
@@ -95,7 +105,7 @@ func start_run() -> void:
 	_sim_speed = 1
 	Events.fast_forward_toggled.emit(false)
 	set_physics_process(true)
-	_spawn_wave_burst()
+	wave_dir.spawn_wave_burst()
 	Events.run_started.emit()
 
 func _build_pools() -> void:
@@ -125,7 +135,7 @@ func _on_endless_continue() -> void:
 	GameState.paused = false
 	set_physics_process(true)
 	GameState.next_wave()
-	_begin_wave()
+	wave_dir.begin_wave()
 	Events.endless_started.emit(GameState.wave)
 
 func _on_run_won() -> void:
@@ -170,16 +180,6 @@ func ground_gold() -> int:
 
 func alive_enemy_count() -> int:
 	return world.alive_enemy_count()
-
-# 每波开局先撒一批怪（数量 = spawn_burst + 波号，不超 max_alive）
-func _spawn_wave_burst() -> void:
-	var cfg := Data.spawn_cfg()
-	var n := int(cfg.get("spawn_burst", 14)) + GameState.wave
-	var cap := int(cfg.get("max_alive", 88))
-	for _i in n:
-		if world.alive_enemy_count() >= cap:
-			break
-		enemy_system.spawn_one()
 
 func _physics_process(delta: float) -> void:
 	if player == null or not GameState.running or _paused:
@@ -233,7 +233,7 @@ func _step_world(delta: float) -> void:
 	_collect_pickups(delta)
 
 	if GameState.wave_finished():
-		_end_wave()
+		wave_dir.end_wave()
 
 func _collect_pickups(delta: float) -> void:
 	if world.pickups == null:
@@ -245,46 +245,8 @@ func _collect_pickups(delta: float) -> void:
 		world.gold_picked += got
 		GameState.add_gold(got)
 
-func _end_wave() -> void:
-	# 波末清场：地上没捡的钱自动入袋，但按 wave_end_loss 扣减（fullauto=0 损耗）
-	if world.pickups != null:
-		var swept: int = world.pickups.collect_all(player.global_position)
-		if swept > 0:
-			world.gold_picked += swept
-			var kept: int = int(float(swept) * (1.0 - GameState.gold_sweep_loss()))
-			if kept > 0:
-				GameState.add_gold(kept)
-	GameState.add_gold(Economy.wave_bonus(GameState.wave, Data.wave_cfg()))
-	GameState.heal_percent(float(Data.wave_cfg().get("heal_percent", 0.12)))
-	# 波末回血（wave_heal）：固定值，与上面的百分比回血叠加，是"续航流"的核心
-	var wh := int(round(GameState.stat_value("wave_heal")))
-	if wh > 0:
-		GameState.heal(wh)
-	# 过关庆祝（卡通彩纸）：在开补给站之前发，Fx 层画在商店之上所以看得见
-	Events.wave_ended.emit(GameState.wave, player.global_position)
-	# 最后一波结束 = 通关：停跑并弹胜利页，不再开补给站
-	if GameState.is_last_wave():
-		GameState.running = false
-		Events.run_won.emit()
-		return
-	_paused = true
-	Events.shop_opened.emit()
-
-func _on_shop_closed() -> void:
-	_paused = false
-	GameState.next_wave()
-	_begin_wave()
-
-# 开一波：Boss 波开局刷首领并通知 HUD 弹横幅（终局波发专属信号），再撒一批怪
-func _begin_wave() -> void:
-	if enemy_system.boss_wave():
-		if enemy_system.final_wave():
-			Events.final_boss_wave.emit(GameState.wave)
-		else:
-			Events.boss_wave.emit(GameState.wave)
-		enemy_system.spawn_boss()
-	_spawn_wave_burst()
-
+# 波末结算 / 商店关闭进下一波 / 开波 的逻辑已拆到 scenes/WaveDirector.gd
+#（Game 曾长到 306 行超 300 行架构红线；拆出后由 wave_dir 代理，见 _ready）
 func _on_weapon_fired(pos: Vector2, dir: Vector2, stats: Dictionary, c: Color, key: String) -> void:
 	enemy_system.on_weapon_fired(pos, dir, stats, c, key)
 
