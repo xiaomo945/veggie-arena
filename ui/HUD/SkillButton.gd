@@ -11,8 +11,10 @@ extends Control
 const TYPE_WOK := "wok"
 const TYPE_DASH := "dash"
 const TYPE_FF := "ff"
+const TYPE_SKILL := "skill"      # 通用主动技能按钮（冰镇/毒雾…），由 skill_id 区分
 
 var btn_type := "dash"
+var skill_id := ""               # TYPE_SKILL 时有效：对应 data/skills.json 的 id
 
 var _touch_index := -1
 
@@ -24,10 +26,14 @@ var _dash_ratio := 1.0
 var _dash_ready := true
 # 快进状态（本地开关）
 var _ff_on := false
+# 主动技能状态（冷却）
+var _skill_ratio := 1.0
+var _skill_ready := true
 
 const SIZE := Vector2(96.0, 96.0)
 const WOK_SIZE := Vector2(128.0, 128.0)
 const FF_SIZE := Vector2(80.0, 80.0)
+const SKILL_SIZE := Vector2(84.0, 84.0)
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
@@ -41,6 +47,9 @@ func _ready() -> void:
 	elif btn_type == TYPE_FF:
 		size = FF_SIZE
 		Events.fast_forward_toggled.connect(_on_ff_sync)
+	elif btn_type == TYPE_SKILL:
+		size = SKILL_SIZE
+		Events.skill_cooldown_changed.connect(_on_skill_cd)
 	queue_redraw()
 
 func _on_heat(value: float, _tier: int) -> void:
@@ -54,6 +63,14 @@ func _on_charges(n: int) -> void:
 # 公开接口：HUD 转发锅气充能数（避免外部直接碰 _charges 私有字段）
 func set_charges(n: int) -> void:
 	_charges = n
+	queue_redraw()
+
+# 主动技能冷却状态（SkillSystem 每帧广播）
+func _on_skill_cd(id: String, ratio: float, ready: bool) -> void:
+	if id != skill_id:
+		return
+	_skill_ratio = clampf(ratio, 0.0, 1.0)
+	_skill_ready = ready
 	queue_redraw()
 
 func _on_dash(ratio: float, ready: bool) -> void:
@@ -90,6 +107,8 @@ func _press(index: int) -> void:
 		Events.wok_toss_requested.emit()
 	elif btn_type == TYPE_DASH:
 		Events.dash_requested.emit()
+	elif btn_type == TYPE_SKILL:
+		Events.skill_requested.emit(skill_id)
 	elif btn_type == TYPE_FF:
 		_ff_on = not _ff_on
 		Events.fast_forward_toggled.emit(_ff_on)
@@ -107,6 +126,8 @@ func _draw() -> void:
 		_draw_wok(c)
 	elif btn_type == TYPE_DASH:
 		_draw_dash(c)
+	elif btn_type == TYPE_SKILL:
+		_draw_skill(c)
 	else:
 		_draw_ff(c)
 
@@ -178,3 +199,31 @@ func _wedge(c: Vector2, r: float, from: float, to: float) -> PackedVector2Array:
 		var ang := from + (to - from) * (float(i) / float(steps))
 		pts.append(c + Vector2(cos(ang), sin(ang)) * r)
 	return pts
+
+# ---- 主动技能：彩色圆环 + 冷却扇形 + 技能名（冰镇/毒雾） ----
+func _draw_skill(c: Vector2) -> void:
+	var radius := size.x * 0.5 - 4.0
+	var col := _skill_color()
+	var base := Color(col.r, col.g, col.b, 0.22)
+	draw_circle(c, radius, base)
+	draw_arc(c, radius, 0.0, TAU, 40,
+		Color(col.r, col.g, col.b, 0.95) if _skill_ready else Color(0.5, 0.55, 0.62, 0.8),
+		3.5, true)
+	if not _skill_ready:
+		var span := TAU * (1.0 - _skill_ratio)
+		draw_colored_polygon(_wedge(c, radius - 4.0, -PI * 0.5, -PI * 0.5 + span),
+			Color(0.05, 0.07, 0.12, 0.55))
+	var fs := ThemeDB.fallback_font
+	if fs == null:
+		return
+	var txt := I18n.t("skill_" + skill_id)
+	draw_string(fs, c + Vector2(-22.0, 7.0), txt,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 1.0, 1.0, 0.96))
+
+# 技能按钮主色：按 id 区分（与 FxSkill 的特效色一致）
+func _skill_color() -> Color:
+	if skill_id == "frost":
+		return Color(0.5, 0.85, 1.0)
+	if skill_id == "poison":
+		return Color(0.55, 0.85, 0.4)
+	return Color(0.9, 0.7, 0.4)

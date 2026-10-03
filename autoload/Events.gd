@@ -37,6 +37,14 @@ signal shield_changed(value: int)
 # HUD 颠勺按钮 / Joystick 避让区点按发出，由 Game 真正执行
 signal wok_toss_requested()
 
+# ---- 主动技能（锅气之外的手动释放技能：冰镇 / 毒雾 …）----
+# HUD 技能按钮按下发出（带技能 id），由 Game 真正施放；与锅气同级的"右手技能"。
+signal skill_requested(id: String)
+# SkillSystem → HUD：某技能冷却进度(0..1)与是否可用，画按钮冷却扇形
+signal skill_cooldown_changed(id: String, ratio: float, ready: bool)
+# 施放成功的特效信号（纯表现层 FxSkill 订阅）；pos/radius 是玩家世界坐标与影响半径
+signal skill_cast(id: String, pos: Vector2, radius: float)
+
 # ---- 经济 ----
 signal gold_changed(gold: int)
 signal pickup_spawned(pos: Vector2, value: int)

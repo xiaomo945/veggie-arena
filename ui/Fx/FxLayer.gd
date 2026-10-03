@@ -102,6 +102,11 @@ func _ready() -> void:
 	halo.set_script(SpawnHaloScene)
 	halo.name = "SpawnHalo"
 	add_child(halo)
+	# 主动技能施放特效（世界空间，自己订阅 skill_cast）
+	var skill_fx := Node2D.new()
+	skill_fx.set_script(preload("res://ui/Fx/FxSkill.gd"))
+	skill_fx.name = "SkillFx"
+	add_child(skill_fx)
 
 	_hurt = _mk_flash(Color(1.0, 0.12, 0.18))
 	_gold = _mk_flash(Color(1.0, 0.78, 0.32))
@@ -189,11 +194,11 @@ func _on_wave_ended(_wave: int, _pos: Vector2) -> void:
 			"dist": randf_range(130.0, 270.0), "spin": randf_range(-7.0, 7.0)})
 
 # ---- 信号：颠勺大招 → 全屏卡通爆炸 + 金闪 + 震屏 ----
-# ⚠️ 爆炸不钉世界坐标（跑动中会被落在身后，显得"歪"），画屏幕中心=玩家。
-func _on_toss(_pos: Vector2) -> void:
+# 爆炸中心跟随玩家实时位置（pos 是玩家世界坐标），不再钉屏幕中心。
+func _on_toss(pos: Vector2) -> void:
 	_gold_t = 0.42
 	if _blast != null:
-		_blast.fire()
+		_blast.fire(pos)
 	# 震屏：颠勺是这游戏最重的一击
 	Shake.kick(9.0, 0.32)
 

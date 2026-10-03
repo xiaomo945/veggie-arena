@@ -192,11 +192,20 @@ func _run_simulation(seconds: float) -> void:
 				dodge_age = 12
 			player.set_move_dir(dodge)
 		else:
-			player.set_move_dir(_dodge_dir())
+			player.set_move_dir(_dodge_dir(280.0, 0.12))
 		# --dash：怪贴脸时冲刺脱离，验证冲刺实战路径与收益
-		if use_dash and (i % 120 == 0 or _threat_close(140.0)):
+		if use_dash and (i % 90 == 0 or _threat_close(150.0)):
 			_threats += 1
 			Events.dash_requested.emit()
+		# 模拟 AI 也会用主动技能（冰镇减速 + 毒雾持续伤害）：既验证技能运行期路径，
+		# 也贴近"会玩的玩家会放技能"的真实情况——纯走位 AI 在更密的怪海里会被磨死，
+		# 而真玩家会靠技能控场。这样网关才代表真实可玩性，而不是逼着把怪量调到"无聊"。
+		if _threat_close(170.0) and i % 60 == 0:
+			Events.wok_toss_requested.emit()   # 被围时放颠勺清场（有充能才生效）
+		if _threat_close(150.0) and i % 30 == 0:
+			Events.skill_requested.emit("frost")
+		if i % 180 == 0:
+			Events.skill_requested.emit("poison")
 		player.step(1.0 / 60.0)
 		game.step(1.0 / 60.0)
 		# 波次结束：自动逛补给站（买得起的全买，验证购买运行期路径不崩），再开下一波

@@ -2,14 +2,16 @@ extends Control
 
 # 颠勺大招的全屏卡通爆炸
 #
-# 为什么画在屏幕空间而不是世界空间：爆炸环原本钉在世界坐标，但大招有 0.5 秒生命，
-# 这半秒里玩家一直在跑，环就落在身后 —— 看上去"歪、不在正中间"（用户明确反馈）。
-# 镜头恒定以玩家为中心，所以**屏幕中心永远等于玩家**，放这里既不会歪也不会脱节。
+# 爆炸中心 = 玩家实时世界坐标投影到屏幕。
+# ⚠️ 之前的 bug：这里直接画"屏幕中心"，注释还写着"镜头恒定以玩家为中心"。
+# 但竞技场尺寸==视口(540x900)，镜头被夹在竞技场里动不了，屏幕中心实际是
+# 竞技场正中央(270,450)，玩家在边缘时爆炸就明显"钉在场中央、不跟着人走"。
+# 现在改为把玩家世界坐标用 get_canvas_transform 投影到屏幕，环/射线就稳稳跟在人身上。
 #
 # 三段组成，边缘一律柔化（多层衰减而不是一根硬圆线），避免看到生硬的圆形边框：
-#   1) 白光爆闪 —— 铺满整屏（含 letterbox 黑边），本来就没有边界
-#   2) 扩散冲击波带 —— 由内向外多层衰减，一直扩到屏幕外才消失
-#   3) 放射速度线 —— 卡通"咻"的爆开感
+#   1) 白光爆闪 —— 铺满整屏（含 letterbox 黑边），本来就没有边界，与中心无关
+#   2) 扩散冲击波带 —— 以玩家为准由内向外多层衰减，一直扩到屏幕外才消失
+#   3) 放射速度线 —— 卡通"咻"的爆开感（从玩家位置放射）
 
 const LIFE := 0.55
 const MAXR := 620.0     # 扩到屏幕外（540x900 半对角约 525），让环自然冲出画面
@@ -18,8 +20,10 @@ const BANDS := 8        # 冲击波层数（越多边缘越柔）
 
 var t := 0.0
 var playing := false
+var _center_world := Vector2.ZERO   # 爆炸中心（玩家世界坐标），由 fire(pos) 传入
 
-func fire() -> void:
+func fire(pos_world: Vector2 = Vector2.ZERO) -> void:
+	_center_world = pos_world
 	t = 0.0
 	playing = true
 	set_process(true)
@@ -53,8 +57,11 @@ func _draw() -> void:
 	var view: Vector2 = get_viewport_rect().size
 	if view.x <= 0.0:
 		view = Vector2(540.0, 900.0)
-	# 锚点 -1..2 时，视口中心在本控件局部坐标里位于 view + view*0.5
-	var c: Vector2 = Vector2(view.x, view.y) + view * 0.5
+	# 爆炸中心 = 玩家实时世界坐标投影到屏幕。
+	# 竞技场==视口，镜头被夹住，屏幕中心≠玩家，必须按玩家世界坐标投影才跟人走。
+	var c: Vector2 = view * 0.5
+	var xf := get_viewport().get_canvas_transform()
+	c = xf * _center_world
 
 	# 1) 白光爆闪：整块屏铺满，无边界所以不会割裂
 	if k < FLASH_T:

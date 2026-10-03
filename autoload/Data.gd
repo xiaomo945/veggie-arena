@@ -11,6 +11,7 @@ var enemies: Dictionary = {}
 var upgrades: Dictionary = {}
 var characters: Dictionary = {}
 var unlocks: Dictionary = {}
+var skills: Dictionary = {}
 
 func _ready() -> void:
 	load_all()
@@ -22,6 +23,7 @@ func load_all() -> void:
 	upgrades = _read("res://data/upgrades.json")
 	characters = _read("res://data/characters.json")
 	unlocks = _read("res://data/unlocks.json")
+	skills = _read("res://data/skills.json")
 
 func _read(path: String) -> Dictionary:
 	var f := FileAccess.open(path, FileAccess.READ)
@@ -101,3 +103,7 @@ func weapon_keys() -> Array:
 
 func upgrade_keys() -> Array:
 	return upgrades.keys()
+
+# 主动技能表：返回 data/skills.json 里的 "skills" 数组（每项含 id/cooldown/radius/效果）
+func skills_cfg() -> Array:
+	return skills.get("skills", [])

@@ -50,6 +50,8 @@ const UI := {
   "hud_unlocked": {"en": "UNLOCKED: %s!", "zh": "解锁：%s！"},
   "hud_combo": {"en": "COMBO x%d", "zh": "连击 x%d"},
   "hud_wok_heat": {"en": "WOK HEAT  %d%%", "zh": "锅气  %d%%"},
+  "skill_frost": {"en": "FROST", "zh": "冰镇"},
+  "skill_poison": {"en": "TOXIC", "zh": "毒雾"},
 
   # ---- 商店 ----
   "shop_title": {"en": "SHOP", "zh": "补给站"},

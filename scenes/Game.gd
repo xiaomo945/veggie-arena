@@ -18,12 +18,14 @@ const Run := preload("res://core/Run.gd")
 const EnemySystem := preload("res://scenes/EnemySystem.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
 const WaveDirector := preload("res://scenes/WaveDirector.gd")
+const SkillSystem := preload("res://scenes/SkillSystem.gd")
 
 # 共享战斗状态（池 / rng / 竞技场 / 诊断计数），EnemySystem 拿的是同一个对象
 var world := BattleWorld.new()
 var player: Node2D = null
 var enemy_system: Node = null          # 战斗子系统（刷怪/敌人/子弹/颠勺），_ready 里注入
 var wave_dir: Node = null              # 波次流程子协调器（见 scenes/WaveDirector.gd）
+var skill_sys = null                    # 主动技能系统（冰镇/毒雾…，见 scenes/SkillSystem.gd）
 var _paused := false
 var _spawn_acc := 0.0
 # 战斗倍率（快进）：每物理帧多跑一次世界步进，而不是改 time_scale
@@ -56,6 +58,10 @@ func _ready() -> void:
 	wave_dir = WaveDirector.new()
 	wave_dir.setup(self, world, enemy_system)
 	add_child(wave_dir)
+	# 主动技能系统（冰镇/毒雾…）：挂在 Game 下，与 WaveDirector 同级；
+	# 负责冷却推进与施放，不碰 EnemySystem（它已到 300 行红线）。
+	skill_sys = SkillSystem.new()
+	skill_sys.setup(Data.skills_cfg(), world)
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.melee_swung.connect(_on_melee_swung)
 	Events.player_died.connect(_on_player_died)
@@ -73,6 +79,7 @@ func _ready() -> void:
 	Events.resume_requested.connect(_on_resume_requested)
 	Events.quit_to_title_requested.connect(_on_quit_to_title)
 	Events.wok_toss_requested.connect(_on_wok_toss_requested)
+	Events.skill_requested.connect(_on_skill_requested)
 	Events.endless_continue_requested.connect(_on_endless_continue)
 
 # 注入玩家节点：同时挂到 world 上，EnemySystem 才拿得到（只留这一个入口）
@@ -100,6 +107,7 @@ func start_run() -> void:
 	world.reset_run()
 	_spawn_acc = 0.0
 	GameState.reset()
+	skill_sys.reset_cooldowns()
 	_paused = false
 	GameState.paused = false
 	_sim_speed = 1
@@ -193,6 +201,9 @@ func _step_world(delta: float) -> void:
 	# 锅气自然衰减：停手不刷怪就凉下来，逼你保持进攻节奏
 	GameState.decay_wok(delta)
 	GameState.tick_buff(delta)
+	# 主动技能冷却推进（暂停/非运行态时本函数不进，CD 自然冻结）
+	if skill_sys != null:
+		skill_sys.tick(delta)
 	# 颠勺冲击波动画推进
 	if world.shock_t >= 0.0:
 		world.shock_t += delta
@@ -257,6 +268,11 @@ func _on_melee_swung(origin: Vector2, dir: Vector2, reach: float, half_arc: floa
 # ---- 颠勺（满锅气终极）----
 func _on_wok_toss_requested() -> void:
 	enemy_system.on_wok_toss()
+
+# ---- 主动技能（冰镇/毒雾…）：右手按钮按下 → 这里真正施放 ----
+func _on_skill_requested(id: String) -> void:
+	if skill_sys != null:
+		skill_sys.cast(id)
 
 func _draw() -> void:
 	if world.shock_t < 0.0 or world.shock_t > world.shock_dur:

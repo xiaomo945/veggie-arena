@@ -1,0 +1,22 @@
+{
+  "skills": [
+    {
+      "id": "frost",
+      "effect": "slow",
+      "cooldown": 6.0,
+      "radius": 160.0,
+      "slow_v": 0.5,
+      "slow_dur": 3.0,
+      "freeze_dur": 0.35
+    },
+    {
+      "id": "poison",
+      "effect": "poison",
+      "cooldown": 9.0,
+      "radius": 150.0,
+      "poison_dps_pct": 0.05,
+      "burn_dps": 10.0,
+      "dur": 3.5
+    }
+  ]
+}

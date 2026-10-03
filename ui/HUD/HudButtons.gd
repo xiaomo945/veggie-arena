@@ -11,11 +11,14 @@ extends Control
 const SkillButtonScript := preload("res://ui/HUD/SkillButton.gd")
 
 # 按钮槽：local_center 是相对本容器的局部中心（容器会被安全区上移，矩形自动跟随）
-# 顺序即绘制顺序。只保留两个右手按钮：锅气（大号，右下）、冲刺（右下偏左）。
-# 快进(ff)按钮已移除 —— 移动端竞技场游戏里 2 倍速没有意义，且原位置会超出屏幕。
+# 顺序即绘制顺序。右侧技能簇（x>250，避开左下摇杆区）：
+#   锅气（大号，右下，爆炸+击退）、冲刺（右下偏左）、冰镇（中右）、毒雾（中）。
+# 锅气/冰镇/毒雾 = 3 个手动释放技能（王者荣耀式），左手走位+右手点技能同时成立。
 const SLOTS := [
-	{"type": "wok",  "center": Vector2(452, 788)},
-	{"type": "dash", "center": Vector2(312, 852)},
+	{"type": "wok",   "center": Vector2(470, 786)},
+	{"type": "dash",  "center": Vector2(300, 856)},
+	{"type": "skill", "id": "frost",  "center": Vector2(430, 672)},
+	{"type": "skill", "id": "poison", "center": Vector2(330, 672)},
 ]
 
 var _btns: Array = []          # [{type, node}]
@@ -28,6 +31,8 @@ func _ready() -> void:
 	for s in SLOTS:
 		var b = SkillButtonScript.new()
 		b.btn_type = s["type"]
+		if s["type"] == "skill":
+			b.skill_id = s["id"]
 		var sz: Vector2 = b.size
 		b.position = (s["center"] as Vector2) - sz * 0.5
 		add_child(b)
