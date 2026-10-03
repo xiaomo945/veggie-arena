@@ -1,24 +1,37 @@
 extends Control
 
-# HUD 底部 / 右侧技能按钮区：锅气（大号，带充能进度环）/ 冲刺 / 快进 2 倍速。
+# HUD 右下角技能簇 + 手动攻击键。
 #
-# 布局用 slots 数组描述，方便老板以后把"锅气技能拆成多个按钮" —— 直接往里加一项即可，
-# 右侧矩形自动避让摇杆（见 Joystick 的 MOVE_ZONE_W）。每个按钮是独立的 SkillButton，
-# 各自认领自己矩形内的那根手指，与左侧摇杆互不抢指。
+# 布局（全部写死，绝不漂移）：
+#   · 圆心 PIVOT 放"手动攻击键"——释放最常用的那个技能（skills.json 的 primary）
+#   · 三个技能（锅气爆炸 / 冰镇 / 毒雾）绕圆心排成半圆扇面，固定在右下角
+#   · 冲刺挪到扇面外（右上侧），既不压技能环，也不进左下摇杆的移动区
 #
-# 锅气按钮常驻可见（有充能显示 x{n}，没充能显示"锅气"+ 火候进度环）。
+# 角度用屏幕坐标系（y 向下）：150°=左下、195°=左、240°=左上，
+# 三档正好扫出绕着右下角的半圆扇面，右手拇指一划就能从最常用的技能扫到大招。
+#
+# ⚠️ 踩过的坑：以前是 `var sz = b.size` 再 add_child —— _ready 还没跑，size 是 (0,0)，
+#    于是每个按钮都按"左上角对齐中心"摆，整体偏右下半个按钮。现在先入树再对中心。
 
 const SkillButtonScript := preload("res://ui/HUD/SkillButton.gd")
 
-# 按钮槽：local_center 是相对本容器的局部中心（容器会被安全区上移，矩形自动跟随）
-# 顺序即绘制顺序。右侧技能簇（x>250，避开左下摇杆区）：
-#   锅气（大号，右下，爆炸+击退）、冲刺（右下偏左）、冰镇（中右）、毒雾（中）。
-# 锅气/冰镇/毒雾 = 3 个手动释放技能（王者荣耀式），左手走位+右手点技能同时成立。
-const SLOTS := [
-	{"type": "wok",   "center": Vector2(470, 786)},
-	{"type": "dash",  "center": Vector2(300, 856)},
-	{"type": "skill", "id": "frost",  "center": Vector2(430, 672)},
-	{"type": "skill", "id": "poison", "center": Vector2(330, 672)},
+const PIVOT := Vector2(468.0, 762.0)   # 圆心 = 手动攻击键的位置
+# 技能环半径：按钮是"轴对齐方块"，斜向排布时不能只看圆心距 ——
+# 必须让相邻两块的 |dx| 或 |dy| 大于两者半径之和，否则边角会叠，
+# 一根手指同时落进两个按钮的矩形里就会被重复触发。152 是实测刚好拉开的值。
+const ARC_R := 152.0
+
+# 绕圆心的半圆扇面（顺序即绘制顺序）
+const FAN := [
+	{"type": "wok",   "deg": 240.0},
+	{"type": "skill", "id": "frost",  "deg": 195.0},
+	{"type": "skill", "id": "poison", "deg": 150.0},
+]
+
+# 圆心上的攻击键 + 移到扇面外的冲刺
+const EXTRA := [
+	{"type": "attack", "center": PIVOT},
+	{"type": "dash",   "center": Vector2(455.0, 500.0)},
 ]
 
 var _btns: Array = []          # [{type, node}]
@@ -28,19 +41,35 @@ var _dash_btn = null
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
 	size = Vector2(540.0, 900.0)
-	for s in SLOTS:
-		var b = SkillButtonScript.new()
-		b.btn_type = s["type"]
-		if s["type"] == "skill":
-			b.skill_id = s["id"]
-		var sz: Vector2 = b.size
-		b.position = (s["center"] as Vector2) - sz * 0.5
-		add_child(b)
-		if s["type"] == "wok":
-			_wok_btn = b
-		elif s["type"] == "dash":
-			_dash_btn = b
-		_btns.append({"type": s["type"], "node": b})
+	for s in _slots():
+		_add(s)
+
+# 扇面中心由 (PIVOT, ARC_R, 角度) 算出，仍是固定值 —— 只是写成一眼能调的形
+func _slots() -> Array:
+	var out: Array = []
+	for s in FAN:
+		var a: float = deg_to_rad(float(s["deg"]))
+		out.append({
+			"type": s["type"],
+			"id": str(s.get("id", "")),
+			"center": PIVOT + Vector2(cos(a), sin(a)) * ARC_R,
+		})
+	out.append_array(EXTRA)
+	return out
+
+func _add(s: Dictionary) -> void:
+	var b = SkillButtonScript.new()
+	b.btn_type = str(s.get("type", ""))
+	var sid: String = str(s.get("id", ""))
+	if sid != "":
+		b.skill_id = sid
+	add_child(b)                                    # 先入树，_ready 里才定下 size
+	b.position = (s["center"] as Vector2) - b.size * 0.5
+	if b.btn_type == "wok":
+		_wok_btn = b
+	elif b.btn_type == "dash":
+		_dash_btn = b
+	_btns.append({"type": b.btn_type, "node": b})
 
 # ---- 对外接口（由 HUD.gd 调用）----
 
@@ -60,7 +89,7 @@ func dash_rect() -> Rect2:
 		return _dash_btn.get_global_rect()
 	return Rect2()
 
-# 预留：以后"锅气技能拆成多个按钮"，直接从这里取第 n 个技能按钮的矩形
+# 预留：取第 n 个按钮的矩形
 func slot_rect(index: int) -> Rect2:
 	if index >= 0 and index < _btns.size():
 		return (_btns[index]["node"] as Control).get_global_rect()

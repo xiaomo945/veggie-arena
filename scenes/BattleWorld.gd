@@ -45,8 +45,8 @@ var next_id := 1
 # 颠勺冲击波：shock_t < 0 表示没在播
 var shock_t := -1.0
 var shock_pos := Vector2.ZERO
-var shock_max := 280.0
-var shock_dur := 0.38
+var shock_max := 430.0   # 之前 280：爆炸冲击波看着"范围小"，放大到接近半屏
+var shock_dur := 0.45
 
 # 诊断计数器（模拟报告 / 调试面板读）
 var shots_fired := 0

@@ -14,7 +14,7 @@ extends Control
 #   3) 放射速度线 —— 卡通"咻"的爆开感（从玩家位置放射）
 
 const LIFE := 0.55
-const MAXR := 620.0     # 扩到屏幕外（540x900 半对角约 525），让环自然冲出画面
+const MAXR := 780.0     # 扩到屏幕外（540x900 半对角约 525），让环自然冲出画面
 const FLASH_T := 0.18   # 爆闪占整段的比例
 const BANDS := 8        # 冲击波层数（越多边缘越柔）
 
@@ -63,10 +63,19 @@ func _draw() -> void:
 	var xf := get_viewport().get_canvas_transform()
 	c = xf * _center_world
 
-	# 1) 白光爆闪：整块屏铺满，无边界所以不会割裂
+	# 1) 白光爆闪：以玩家为中心的径向圆形爆闪。
+	#    ⚠️ 之前这里是 draw_rect 铺满整屏 —— 玩家看到的爆炸因此是个"正方形"，
+	#       跟"以玩家为中心的圆形爆炸"完全对不上。改成多层同心圆向外铺，
+	#       中心最亮、边缘衰减，读起来就是一发圆形大爆炸。
 	if k < FLASH_T:
 		var fa: float = 1.0 - k / FLASH_T
-		draw_rect(Rect2(Vector2.ZERO, size), Color(1.0, 0.96, 0.82, fa * 0.55))
+		var fr: float = lerpf(70.0, MAXR * 0.95, k / FLASH_T)
+		for i in 7:
+			var rr: float = fr * (1.0 - float(i) * 0.11)
+			if rr <= 8.0:
+				continue
+			var a: float = fa * 0.20 * (1.0 - float(i) / 7.0)
+			draw_circle(c, rr, Color(1.0, 0.96, 0.82, a))
 
 	# 2) 扩散冲击波带：多层由内向外衰减，边缘柔化
 	var r: float = k * MAXR

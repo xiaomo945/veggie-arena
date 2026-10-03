@@ -52,6 +52,7 @@ const UI := {
   "hud_wok_heat": {"en": "WOK HEAT  %d%%", "zh": "锅气  %d%%"},
   "skill_frost": {"en": "FROST", "zh": "冰镇"},
   "skill_poison": {"en": "TOXIC", "zh": "毒雾"},
+  "hud_attack": {"en": "ATK", "zh": "攻击"},
 
   # ---- 商店 ----
   "shop_title": {"en": "SHOP", "zh": "补给站"},

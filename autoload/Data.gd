@@ -107,3 +107,14 @@ func upgrade_keys() -> Array:
 # 主动技能表：返回 data/skills.json 里的 "skills" 数组（每项含 id/cooldown/radius/效果）
 func skills_cfg() -> Array:
 	return skills.get("skills", [])
+
+# 手动攻击键（右下角大按钮）释放哪个技能 —— "最常用的那一个"。
+# 读 skills.json 的 "primary"；没配就退回第一个技能，永远有值。
+func skills_primary() -> String:
+	var p := str(skills.get("primary", ""))
+	if p != "":
+		return p
+	var arr := skills_cfg()
+	if arr.size() > 0:
+		return str((arr[0] as Dictionary).get("id", ""))
+	return ""

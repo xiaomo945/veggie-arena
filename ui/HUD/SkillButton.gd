@@ -12,6 +12,7 @@ const TYPE_WOK := "wok"
 const TYPE_DASH := "dash"
 const TYPE_FF := "ff"
 const TYPE_SKILL := "skill"      # 通用主动技能按钮（冰镇/毒雾…），由 skill_id 区分
+const TYPE_ATTACK := "attack"    # 手动攻击键：右下角大按钮，释放"最常用的技能"（primary）
 
 var btn_type := "dash"
 var skill_id := ""               # TYPE_SKILL 时有效：对应 data/skills.json 的 id
@@ -30,10 +31,11 @@ var _ff_on := false
 var _skill_ratio := 1.0
 var _skill_ready := true
 
-const SIZE := Vector2(96.0, 96.0)
-const WOK_SIZE := Vector2(128.0, 128.0)
+const SIZE := Vector2(88.0, 88.0)
+const WOK_SIZE := Vector2(88.0, 88.0)   # 半圆扇面上要和冰/毒拉开距离，不能太大
 const FF_SIZE := Vector2(80.0, 80.0)
-const SKILL_SIZE := Vector2(84.0, 84.0)
+const SKILL_SIZE := Vector2(76.0, 76.0)
+const ATTACK_SIZE := Vector2(100.0, 100.0)
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
@@ -49,6 +51,11 @@ func _ready() -> void:
 		Events.fast_forward_toggled.connect(_on_ff_sync)
 	elif btn_type == TYPE_SKILL:
 		size = SKILL_SIZE
+		Events.skill_cooldown_changed.connect(_on_skill_cd)
+	elif btn_type == TYPE_ATTACK:
+		size = ATTACK_SIZE
+		# 攻击键释放的是"最常用的那一个"技能（skills.json 的 primary）
+		skill_id = Data.skills_primary()
 		Events.skill_cooldown_changed.connect(_on_skill_cd)
 	queue_redraw()
 
@@ -107,7 +114,7 @@ func _press(index: int) -> void:
 		Events.wok_toss_requested.emit()
 	elif btn_type == TYPE_DASH:
 		Events.dash_requested.emit()
-	elif btn_type == TYPE_SKILL:
+	elif btn_type == TYPE_SKILL or btn_type == TYPE_ATTACK:
 		Events.skill_requested.emit(skill_id)
 	elif btn_type == TYPE_FF:
 		_ff_on = not _ff_on
@@ -128,6 +135,8 @@ func _draw() -> void:
 		_draw_dash(c)
 	elif btn_type == TYPE_SKILL:
 		_draw_skill(c)
+	elif btn_type == TYPE_ATTACK:
+		_draw_attack(c)
 	else:
 		_draw_ff(c)
 
@@ -219,6 +228,31 @@ func _draw_skill(c: Vector2) -> void:
 	var txt := I18n.t("skill_" + skill_id)
 	draw_string(fs, c + Vector2(-22.0, 7.0), txt,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 1.0, 1.0, 0.96))
+
+# ---- 手动攻击键：右下角最大最显眼，释放"最常用的技能"（primary）----
+# 复用 _skill_ready/_skill_ratio（_ready 里已把 skill_id 绑到 primary，冷却自动同步）
+func _draw_attack(c: Vector2) -> void:
+	var radius := size.x * 0.5 - 4.0
+	var col := _skill_color()
+	draw_circle(c, radius, Color(col.r, col.g, col.b, 0.30))
+	draw_arc(c, radius, 0.0, TAU, 52,
+		Color(col.r, col.g, col.b, 0.98) if _skill_ready else Color(0.5, 0.55, 0.62, 0.85),
+		5.0, true)
+	if not _skill_ready:
+		var span := TAU * (1.0 - _skill_ratio)
+		draw_colored_polygon(_wedge(c, radius - 4.0, -PI * 0.5, -PI * 0.5 + span),
+			Color(0.05, 0.07, 0.12, 0.55))
+	# 卡通刀刃图标：刀身 + 护手 + 柄头
+	var d: float = radius * 0.40
+	var w := Color(1.0, 1.0, 1.0, 0.95) if _skill_ready else Color(1.0, 1.0, 1.0, 0.38)
+	draw_line(c + Vector2(-d * 0.75, d * 0.75), c + Vector2(d * 0.62, -d * 0.62), w, 8.0, true)
+	draw_line(c + Vector2(-d * 0.15, d * 0.95), c + Vector2(d * 0.35, d * 0.45), w, 7.0, true)
+	draw_circle(c + Vector2(-d * 0.85, d * 0.85), radius * 0.10, w)
+	var fs := ThemeDB.fallback_font
+	if fs == null:
+		return
+	draw_string(fs, c + Vector2(-16.0, radius * 0.80), I18n.t("hud_attack"),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 1.0, 1.0, 0.92))
 
 # 技能按钮主色：按 id 区分（与 FxSkill 的特效色一致）
 func _skill_color() -> Color:
