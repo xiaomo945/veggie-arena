@@ -35,6 +35,7 @@ var _rise := false
 var _rise_wait := 0.42
 var _shop := false
 var _shop_n := 6
+var _no_run := false
 
 const AUTOLOADS := {
 	"Art": "res://autoload/Art.gd",
@@ -71,6 +72,8 @@ func _initialize() -> void:
 		elif a.begins_with("--shop="):
 			_shop = true
 			_shop_n = maxi(0, int(a.substr(7)))
+		elif a == "--no-run":
+			_no_run = true
 		elif a.begins_with("--series="):
 			_series = float(a.substr(9))
 		elif a == "--rise":
@@ -87,7 +90,8 @@ func _initialize() -> void:
 	var main: Node = load("res://ui/Screens/Main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
-	_bus("Events").run_requested.emit()
+	if not _no_run:
+		_bus("Events").run_requested.emit()
 	await process_frame
 	if _series > 0.0:
 		for i in int(_series):
