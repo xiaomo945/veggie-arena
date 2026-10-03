@@ -12,13 +12,16 @@ const Weapon := preload("res://core/Weapon.gd")
 static func can_accept_slot(weapons: Array, max_slot: int) -> bool:
 	return weapons.size() < max_slot
 
-# 兼容旧调用：某档位武器能不能买 = 有没有空槽（手动合成下，买任何档都只是占一个槽）
-static func can_accept_tier(weapons: Array, _key: String, _lv: int, max_slot: int, _max_lv: int) -> bool:
-	return can_accept_slot(weapons, max_slot)
-
-# 兼容旧调用
-static func can_accept(weapons: Array, _key: String, max_slot: int, _max_lv: int) -> bool:
-	return can_accept_slot(weapons, max_slot)
+# 某档位武器能不能买（用户拍板的两态规则）：
+#   - 有空槽 → 能买：单独占一格，不自动合
+#   - 没空槽 → 只有当场上已有一把"同 key 同等级、且还没满级"的武器时才能买，
+#               这一把会被直接合成进去（升一级）。否则买了没地方放，不能买。
+static func can_accept_tier(weapons: Array, key: String, lv: int, max_slot: int, max_lv: int) -> bool:
+	if can_accept_slot(weapons, max_slot):
+		return true
+	if lv >= max_lv:
+		return false
+	return find_tier(weapons, key, lv) >= 0
 
 # 找"恰好等于某档位"的武器，返回索引；没有返回 -1
 static func find_tier(weapons: Array, key: String, lv: int) -> int:
@@ -48,23 +51,32 @@ static func _upgrade_to(weapons: Array, idx: int, new_lv: int, combat_cfg: Dicti
 	w["cd"] = float(w.get("cd", 1.0)) * cd_mul
 	weapons[idx] = w
 
-# 买一把武器（不自动合成）：按 tier 重算 dmg/cd，记录买入价 buy_cost，落独立槽位。
-# def 需含 key/dmg/cd（1级基准值）；cost 是该档的实际售价，原样记进 buy_cost 供售出退款。
-# 没空槽返回 false（钱不会被扣，由调用方负责退款）。
+# 买一把武器（用户拍板的两态落法）：
+#   - 没满槽 → 单独占一个新格，不自动合（按 tier 重算 dmg/cd，记 buy_cost 供售出退款）
+#   - 满  槽 → 找同 key 同等级的那一把，直接合成升一级；本次花费累加进它的 buy_cost，
+#               保证"售出回收价 ≤ 总投入"。找不到搭档 / 该档已满级 → 买不了，返回 false。
+# def 需含 key/dmg/cd（1级基准值）。返回 false 时钱不会被扣（由调用方负责退款）。
 static func buy_weapon(weapons: Array, def: Dictionary, tier: int, cost: int, max_slot: int,
-		combat_cfg: Dictionary = {}) -> bool:
-	if weapons.size() >= max_slot:
+		combat_cfg: Dictionary = {}, max_lv: int = 99) -> bool:
+	if weapons.size() < max_slot:
+		var st: Dictionary = Weapon.merged_stats(def, maxi(1, tier), combat_cfg)
+		var nw: Dictionary = {
+			"key": str(def.get("key", "")),
+			"lv": maxi(1, tier),
+			"dmg": int(round(float(st.get("dmg", def.get("dmg", 1))))),
+			"cd": float(st.get("cd", def.get("cd", 1.0))),
+			"color": def.get("color", Color(1, 1, 1)),
+			"buy_cost": maxi(0, cost),
+		}
+		weapons.append(nw)
+		return true
+	if tier >= max_lv:
 		return false
-	var st: Dictionary = Weapon.merged_stats(def, maxi(1, tier), combat_cfg)
-	var nw: Dictionary = {
-		"key": str(def.get("key", "")),
-		"lv": maxi(1, tier),
-		"dmg": int(round(float(st.get("dmg", def.get("dmg", 1))))),
-		"cd": float(st.get("cd", def.get("cd", 1.0))),
-		"color": def.get("color", Color(1, 1, 1)),
-		"buy_cost": maxi(0, cost),
-	}
-	weapons.append(nw)
+	var ti := find_tier(weapons, str(def.get("key", "")), tier)
+	if ti < 0:
+		return false
+	_upgrade_to(weapons, ti, tier + 1, combat_cfg)
+	weapons[ti]["buy_cost"] = int(weapons[ti].get("buy_cost", 0)) + maxi(0, cost)
 	return true
 
 # 是否存在"两把相同 key 且相同等级（未满级）"可合成 —— 决定"合成"按钮是否可点
@@ -110,6 +122,44 @@ static func merge_pairs(weapons: Array, max_lv: int, combat_cfg: Dictionary = {}
 				break
 			seen[k] = i
 	return done
+
+# 找 weapons[idx] 的"另一把同 key 同等级"搭档下标；没有 / 自己已满级 → -1
+static func partner_index(weapons: Array, idx: int, max_lv: int) -> int:
+	if idx < 0 or idx >= weapons.size():
+		return -1
+	var w = weapons[idx]
+	if not (w is Dictionary):
+		return -1
+	var lv := int(w.get("lv", 1))
+	if lv >= max_lv:
+		return -1
+	var key := str(w.get("key", ""))
+	for j in weapons.size():
+		if j == idx:
+			continue
+		var o = weapons[j]
+		if o is Dictionary and str(o.get("key", "")) == key and int(o.get("lv", 1)) == lv:
+			return j
+	return -1
+
+# 该格此刻点下去能不能合成（用于给格子画金色"可合"高亮）
+static func has_partner(weapons: Array, idx: int, max_lv: int) -> bool:
+	return partner_index(weapons, idx, max_lv) >= 0
+
+# 手动合成（用户拍板的"点格子"式）：点第 idx 格 → 另一把"同 key 同等级"的武器
+# 被吸进来（那把从物品栏消失），本格升一级，买入价累加。没搭档 / 已满级 → false。
+static func merge_into(weapons: Array, idx: int, max_lv: int, combat_cfg: Dictionary = {}) -> bool:
+	var j := partner_index(weapons, idx, max_lv)
+	if j < 0:
+		return false
+	# 成品统一停在"两格里靠左的那格"：删掉靠右的那格，靠左那格的位次就不会被挪动，
+	# 玩家点左边或点右边得到的是同一个画面，不会有"怎么跳到隔壁格"的困惑。
+	var dst := mini(idx, j)
+	var src := maxi(idx, j)
+	_upgrade_to(weapons, dst, int(weapons[dst].get("lv", 1)) + 1, combat_cfg)
+	weapons[dst]["buy_cost"] = int(weapons[dst].get("buy_cost", 0)) + int(weapons[src].get("buy_cost", 0))
+	weapons.remove_at(src)
+	return true
 
 # 售出第 idx 把武器：返回回收金币（≤ 买入价），并从数组移除。idx 越界返回 0。
 static func sell_weapon(weapons: Array, idx: int, ratio: float) -> int:

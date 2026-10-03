@@ -21,20 +21,25 @@ func run() -> Dictionary:
 	var MAX_SLOT := 6
 	var MAX_LV := 4
 
-	# 1) 能否进商店池
+	# 1) 两态可买性（用户拍板）：没满槽 → 都能买（占新格，不自动合）；
+	#    满槽 → 只有"场上已有一把同 key 同等级、且还没满级"才能买（买下去直接合成升一级）
 	var w1: Array = [{"key": "pistol", "lv": 1, "dmg": 9, "cd": 0.42}]
-	chk(Inventory.can_accept(w1, "bow", MAX_SLOT, MAX_LV) == true, "槽位没满，新武器可以买")
-	chk(Inventory.can_accept(w1, "pistol", MAX_SLOT, MAX_LV) == true, "槽位没满，同类武器也可以买")
+	chk(Inventory.can_accept_tier(w1, "bow", 1, MAX_SLOT, MAX_LV) == true, "槽位没满，新武器可以买")
+	chk(Inventory.can_accept_tier(w1, "pistol", 1, MAX_SLOT, MAX_LV) == true, "槽位没满，同类武器也能买（占新格）")
 
 	var full: Array = []
 	for i in MAX_SLOT:
 		full.append({"key": "w%d" % i, "lv": 1, "dmg": 10, "cd": 0.5})
-	chk(Inventory.can_accept(full, "newgun", MAX_SLOT, MAX_LV) == false, "槽位满了，全新武器不能买")
-	# 手动合成下：买任何武器都只是占一个槽，满槽时即使已有 w0 也不能买（需先合成/售出腾槽）
-	chk(Inventory.can_accept(full, "w0", MAX_SLOT, MAX_LV) == false, "槽位满了，即使已有 w0 也不能买（先合成/售出腾槽）")
-
+	chk(Inventory.can_accept_tier(full, "newgun", 1, MAX_SLOT, MAX_LV) == false,
+		"槽位满了，全新武器买不了（没地方放）")
+	chk(Inventory.can_accept_tier(full, "w0", 1, MAX_SLOT, MAX_LV) == true,
+		"槽位满了，但场上已有 1 级 w0 → 买了直接合成升 2 级")
+	chk(Inventory.can_accept_tier(full, "w0", 2, MAX_SLOT, MAX_LV) == false,
+		"槽位满了，场上没有 2 级 w0 → 买不了 2 级的")
+	# 满级档位在满槽时不能再往上合
 	var maxed: Array = [{"key": "pistol", "lv": 4, "dmg": 20, "cd": 0.3}]
-	chk(Inventory.can_accept(maxed, "pistol", 1, MAX_LV) == false, "已满级的武器不能再合成")
+	chk(Inventory.can_accept_tier(maxed, "pistol", MAX_LV, 1, MAX_LV) == false,
+		"满级档位在满槽时不能再往上合")
 
 	# 2) 合成升级：不占新槽
 	var inv: Array = [{"key": "pistol", "lv": 1, "dmg": 9, "cd": 0.42}]
@@ -99,7 +104,54 @@ func run() -> Dictionary:
 	chk(abs(float(st2.get("lifesteal", 0)) - 6.0) < 0.001,
 		"lifesteal 可叠加（实际 %s）" % st2.get("lifesteal"))
 
-	# 7) 守卫：数据表里每个强化的 stat 都必须被游戏某处处理
+	# 7) 两态购买：没满槽 → 占新格不自动合；满槽 → 直接合成进同 key 同等级的那把
+	var inv2: Array = [{"key": "pistol", "lv": 1, "dmg": 9, "cd": 0.42, "buy_cost": 20}]
+	var defp := {"key": "pistol", "dmg": 9, "cd": 0.42}
+	var b1 := Inventory.buy_weapon(inv2, defp, 1, 20, MAX_SLOT, COMBAT_CFG, MAX_LV)
+	chk(b1 and inv2.size() == 2, "没满槽 → 买同名武器占新格（不自动合），共 %d 把" % inv2.size())
+	chk(int(inv2[0]["lv"]) == 1 and int(inv2[1]["lv"]) == 1, "两把都还是 1 级（未被自动合成）")
+
+	var fullp: Array = []
+	for i in MAX_SLOT:
+		fullp.append({"key": "k%d" % i, "lv": 1, "dmg": 10, "cd": 0.5, "buy_cost": 20})
+	var b2 := Inventory.buy_weapon(fullp, {"key": "k2", "dmg": 10, "cd": 0.5}, 1, 25, MAX_SLOT, COMBAT_CFG, MAX_LV)
+	chk(b2 == true, "满槽 → 买同 key 同等级的武器可以买（直接合成）")
+	chk(fullp.size() == MAX_SLOT, "满槽合成不占新格（实际 %d 把）" % fullp.size())
+	chk(int(fullp[2]["lv"]) == 2, "k2 升到 2 级（实际 %d）" % fullp[2]["lv"])
+	chk(int(fullp[2]["buy_cost"]) == 45, "买入价累加 20+25（实际 %d）" % fullp[2]["buy_cost"])
+	var b3 := Inventory.buy_weapon(fullp, {"key": "zzz", "dmg": 10, "cd": 0.5}, 1, 25, MAX_SLOT, COMBAT_CFG, MAX_LV)
+	chk(b3 == false, "满槽 + 场上没有同 key 同等级的 → 买不了")
+	chk(fullp.size() == MAX_SLOT, "买失败时槽位不变（实际 %d）" % fullp.size())
+
+	# 8) 点格子合成：点第 idx 格 → 另一把同 key 同等级的被吸进来并消失，成品停在这一格
+	var mg: Array = [
+		{"key": "a", "lv": 1, "dmg": 10, "cd": 0.5, "buy_cost": 20},
+		{"key": "b", "lv": 1, "dmg": 10, "cd": 0.5, "buy_cost": 20},
+		{"key": "a", "lv": 1, "dmg": 10, "cd": 0.5, "buy_cost": 20},
+	]
+	chk(Inventory.has_partner(mg, 0, MAX_LV) and Inventory.has_partner(mg, 2, MAX_LV), "a 的两格互为搭档")
+	chk(Inventory.has_partner(mg, 1, MAX_LV) == false, "b 没有搭档（不该亮合成高亮）")
+	var m1 := Inventory.merge_into(mg, 2, MAX_LV, COMBAT_CFG)
+	chk(m1 == true, "点第 3 格可以合成")
+	chk(mg.size() == 2, "合成后少一把（实际 %d 把）" % mg.size())
+	chk(str(mg[0]["key"]) == "a" and int(mg[0]["lv"]) == 2, "合成结果停在两格里靠左的那格")
+	chk(str(mg[1]["key"]) == "b", "没参与合成的那把位次不变")
+	chk(int(mg[0]["buy_cost"]) == 40, "买入价累加 20+20（实际 %d）" % int(mg[0]["buy_cost"]))
+	# 点靠左的那格，结果同样停在靠左那格（点哪边画面都一样）
+	var mg2: Array = [
+		{"key": "a", "lv": 1, "dmg": 10, "cd": 0.5, "buy_cost": 20},
+		{"key": "a", "lv": 1, "dmg": 10, "cd": 0.5, "buy_cost": 20},
+		{"key": "c", "lv": 1, "dmg": 10, "cd": 0.5, "buy_cost": 20},
+	]
+	var m2 := Inventory.merge_into(mg2, 0, MAX_LV, COMBAT_CFG)
+	chk(m2 and mg2.size() == 2 and int(mg2[0]["lv"]) == 2, "点第 1 格合成 → 结果仍停在第 1 格")
+	chk(str(mg2[1]["key"]) == "c", "移除的是靠右的搭档，后面的补位正常")
+	# 满级的格子找不到搭档
+	var mg3: Array = [{"key": "a", "lv": MAX_LV, "dmg": 10, "cd": 0.5, "buy_cost": 100},
+		{"key": "a", "lv": MAX_LV, "dmg": 10, "cd": 0.5, "buy_cost": 100}]
+	chk(Inventory.merge_into(mg3, 0, MAX_LV, COMBAT_CFG) == false, "满级的两把不能再往上合")
+
+	# 9) 守卫：数据表里每个强化的 stat 都必须被游戏某处处理
 	#    （曾经出过 upgrades.json 写 heal_now、代码却匹配 heal 的静默失效 bug）
 	#
 	#    ⚠️ 原来是硬编码一份 known 列表，结果"加一个道具就要改一次测试"，

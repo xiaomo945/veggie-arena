@@ -11,8 +11,10 @@ const InventoryPanelScript := preload("res://ui/Shop/InventoryPanel.gd")
 
 const PANEL_W := 496.0
 const PANEL_H := 762.0
-const CARD_H := 110.0
+const CARD_H := 100.0
 const CARD_GAP := 8.0
+const INV_H := 104.0      # 我的武器：6 个固定方格（含标题行）
+const CARDS_Y := 224.0
 
 const GOLD := Color(0.99, 0.87, 0.40)
 const GOLD_DK := Color(0.80, 0.60, 0.26)
@@ -85,11 +87,12 @@ func _build() -> void:
 	_panel.add_child(_stats_lbl)
 	# 我的武器（可售出）面板
 	_inv = InventoryPanelScript.new()
-	_inv.set_size(Vector2(PANEL_W - 28, 78)); _inv.set_position(Vector2(14, 112))
+	_inv.set_size(Vector2(PANEL_W - 28, INV_H)); _inv.set_position(Vector2(14, 112))
 	_inv.sell_requested.connect(_sell)
+	_inv.merge_requested.connect(_merge_at)
 	_panel.add_child(_inv)
 	# 4 张购买卡
-	var y := 200.0
+	var y := CARDS_Y
 	for i in 4:
 		var card = ShopCardScript.new()
 		card.set_size(Vector2(PANEL_W - 28, CARD_H)); card.set_position(Vector2(14, y))
@@ -160,7 +163,7 @@ func _refresh() -> void:
 		c.setup(_card_data(o, _sold[i], afford))
 	_merge_btn.text = I18n.t("shop_merge_btn")
 	_merge_btn.disabled = not Inventory.has_mergeable(GameState.weapons, _max_lv)
-	_inv.refresh(GameState.weapons, _max_lv)
+	_inv.refresh(GameState.weapons, _max_lv, _max_slot)
 
 func _refresh_stats() -> void:
 	if _stats_lbl == null: return
@@ -196,7 +199,8 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 func _owned_lv(key: String) -> int:
 	return Inventory.owned_max_lv(GameState.weapons, key)
 
-# 购买：落一把独立成品占一个槽（不自动合成），买入价记进 buy_cost 供售出退款
+# 购买（两态落法）：没满槽 → 单独占一格不自动合；满槽 → 同 key 同等级的那把直接合成升一级。
+# 买入价记进 buy_cost 供售出退款；买不了（满槽且没有可合的搭档）时金币原路退回。
 func _buy(index: int) -> void:
 	if index >= _offers.size() or _sold[index]: return
 	var o: Dictionary = _offers[index]; var cost := int(o.get("cost", 0))
@@ -204,14 +208,30 @@ func _buy(index: int) -> void:
 	GameState.spend_gold(cost)
 	var bought := false
 	if str(o.get("kind", "")) == "weapon":
-		bought = Inventory.buy_weapon(GameState.weapons, o, int(o.get("lv", 1)), cost, _max_slot, Data.combat_cfg())
+		bought = Inventory.buy_weapon(GameState.weapons, o, int(o.get("lv", 1)), cost,
+			_max_slot, Data.combat_cfg(), _max_lv)
 		if bought: Events.weapons_changed.emit(GameState.weapons)
 		else: GameState.add_gold(cost)
 	else:
 		GameState.buy_upgrade(str(o.get("key", ""))); bought = true
 	_sold[index] = bought; _refresh(); _flash_card(index, bought)
 
-# 手动合成：把场上所有"同 key 同等级"的两把合一级（玩家长按 Brotato 式格子合成）
+# 手动合成（点格子）：点第 idx 格 → 另一把"同 key 同等级"的武器被吸进来并消失、本格升一级
+func _merge_at(index: int) -> void:
+	if index < 0 or index >= GameState.weapons.size():
+		return
+	var w = GameState.weapons[index]
+	if not (w is Dictionary):
+		return
+	var key := str(w.get("key", ""))
+	var lv := int(w.get("lv", 1))
+	if not Inventory.merge_into(GameState.weapons, index, _max_lv, Data.combat_cfg()):
+		return
+	Events.weapon_merged.emit(key, lv + 1)
+	Events.weapons_changed.emit(GameState.weapons)
+	_refresh()
+
+# 一键合成：把场上所有"同 key 同等级"的对子全部合一级（懒人快捷方式，等价于逐格点）
 func _merge() -> void:
 	var done := Inventory.merge_pairs(GameState.weapons, _max_lv, Data.combat_cfg())
 	for m in done: Events.weapon_merged.emit(m.get("key", ""), int(m.get("lv", 1)))

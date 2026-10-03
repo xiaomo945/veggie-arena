@@ -80,7 +80,8 @@ func run() -> Dictionary:
 	chk(kinds.has("bow"), "持有2级的 bow 仍可购买（刷出 1/2 级）")
 	chk(kinds.has("pistol"), "持有1级的 pistol 仍刷1级")
 
-	# 槽位满时：买任何武器都要占一个槽，故不再提供武器（需先合成/售出腾槽）
+	# 槽位满时：只刷"场上有同 key 同等级、能直接合成掉"的档位；
+	# 全新武器 / 场上没有同等级的档位 / 已满级的档位一律不刷（买了没地方放）
 	var full: Array = [
 		{"key": "pistol", "lv": 4, "dmg": 20, "cd": 0.3},
 		{"key": "bow", "lv": 1, "dmg": 18, "cd": 0.8},
@@ -91,10 +92,17 @@ func run() -> Dictionary:
 	]
 	var p3 := Economy.build_pool(full, wd2, upgrade_defs, 6, 4)
 	var wcount := 0
+	var wkeys := {}
 	for it in p3:
 		if str(it.get("kind", "")) == "weapon":
 			wcount += 1
-	chk(wcount == 0, "满槽时不再刷武器（需先合成/售出腾槽，实际 %d 把）" % wcount)
+			wkeys["%s|%d" % [it.get("key"), int(it.get("lv", 1))]] = true
+	# 满槽可合成的：bow1 / smg2 / staff3 / rocket1（场上各有一把同等级的）
+	chk(wcount == 4, "满槽时只刷能直接合成的 4 个档位（实际 %d 把）" % wcount)
+	chk(wkeys.has("bow|1") and wkeys.has("smg|2") and wkeys.has("staff|3") and wkeys.has("rocket|1"),
+		"满槽时场上有的等级照刷（买下去直接合成）")
+	chk(not wkeys.has("pistol|4") and not wkeys.has("shotgun|4"), "满级档位在满槽时不刷（合不动）")
+	chk(not wkeys.has("pistol|3") and not wkeys.has("smg|1"), "场上没有同等级的档位不刷（合不动）")
 
 	# 6) 一波收入
 	var inc := Economy.wave_income(1, 15, 1.0, WAVE_CFG)

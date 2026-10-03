@@ -107,10 +107,11 @@ static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Di
 		if not unlocked_weapons.is_empty() and not unlocked_weapons.has(str(key)):
 			continue
 		# 按"玩家已持有等级"刷出可买的档位（未持有只刷1级；已持有L级刷[L-1,L]），
-		# 再与波次上限取交集。没有空槽就不刷（手动合成下每把都占槽，满槽只能先卖/合）。
+		# 再与波次上限取交集。可买性走两态规则：有空槽就能买；满槽则必须"场上有
+		# 同等级可合"才刷出来（买下去直接合成升级），满槽且合成不了就不刷。
 		var owned := Inventory.owned_max_lv(weapons, str(key))
 		for lv in tiers.offer_tiers(owned, top_tier, max_lv):
-			if not Inventory.can_accept_slot(weapons, max_slot):
+			if not Inventory.can_accept_tier(weapons, str(key), lv, max_slot, max_lv):
 				continue
 			var w: Dictionary = weapon_defs[key].duplicate()
 			w["key"] = key
