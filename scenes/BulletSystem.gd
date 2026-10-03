@@ -18,6 +18,9 @@ var damage_fn: Callable = Callable() # (enemy, amount) -> bool 是否被这一�
 
 const KB_IMPULSE := 120.0            # 命中击退脉冲（克制，约 14px 位移）
 
+# 命中配对结果的持久数组：每帧复用，避免 find_hits 为命中对 new 一堆 Dictionary
+var _hit_out: Array = []
+
 # 武器行为（见 core/Weapon.gd 的 behavior 注释）相关的常量
 const CHAIN_RANGE := 190.0           # 链式跳跃的最大跨度
 const CHAIN_FALLOFF := 0.72          # 每跳一次伤害衰减（跳得越远越弱）
@@ -127,15 +130,28 @@ func resolve() -> void:
 				world.player.take_hit(b.dmg)
 				b.recycle()
 	# 玩家子弹：只参与"打敌人"的碰撞配对（敌弹已被上面单独处理）
-	world.bdata.clear()
+	# ⚠️ 之前每帧给每颗激活子弹 new 一个 Dictionary 装快照（满屏 90 颗 = 一帧 90 个 dict），
+	#    和邻居/敌人数组是同源 GC 风暴。现在复用字典池 + 末尾 resize 截断，稳态零分配。
+	var n := 0
 	for b in world.bullets:
 		if b.active and not b.enemy:
-			world.bdata.append({"pos": b.global_position, "radius": b.radius, "active": true, "ref": b})
+			var d: Dictionary
+			if n < world.bdata.size():
+				d = world.bdata[n]
+			else:
+				d = {}
+				world.bdata.append(d)
+			d["pos"] = b.global_position
+			d["radius"] = b.radius
+			d["active"] = true
+			d["ref"] = b
+			n += 1
+	world.bdata.resize(n)
 	if world.bdata.is_empty() or world.edata.is_empty():
 		return
 	# 击退强度：子弹类道具 knock_pct 让"打断敌人贴脸"成为一种构筑方向
 	var kb := KB_IMPULSE * (1.0 + GameState.stat_value("knock_pct"))
-	for h: Dictionary in Hit.find_hits(world.bdata, world.edata):
+	for h: Dictionary in Hit.find_hits(world.bdata, world.edata, _hit_out):
 		var b = world.bdata[int(h["bullet"])]["ref"]
 		var e = world.edata[int(h["enemy"])]["ref"]
 		if not b.active or not e.alive:

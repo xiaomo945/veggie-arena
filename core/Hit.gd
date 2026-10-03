@@ -10,9 +10,12 @@ static func overlaps(a_pos: Vector2, a_r: float, b_pos: Vector2, b_r: float) -> 
 	return a_pos.distance_squared_to(b_pos) <= r * r
 
 # 遍历所有子弹 × 敌人，返回命中对 [{bullet: int, enemy: int}]
-# 子弹需含 pos/radius；敌人需含 pos/radius/alive
-static func find_hits(bullets: Array, enemies: Array) -> Array:
-	var out: Array = []
+# 子弹需含 pos/radius；敌人需含 pos/radius/alive。
+# out 可传一个持久数组来复用（避免每帧为命中对 new 一堆 Dictionary 造成 GC）；
+# 不传则每调用新建一个（测试用，向后兼容）。
+static func find_hits(bullets: Array, enemies: Array, out: Array = []) -> Array:
+	out.clear()
+	var i := 0
 	for bi in bullets.size():
 		var b = bullets[bi]
 		if not (b is Dictionary):
@@ -30,7 +33,15 @@ static func find_hits(bullets: Array, enemies: Array) -> Array:
 			var epos: Vector2 = e.get("pos", Vector2.ZERO)
 			var er: float = float(e.get("radius", 12))
 			if overlaps(bpos, br, epos, er):
-				out.append({"bullet": int(bi), "enemy": int(ei)})
+				var h: Dictionary
+				if i < out.size():
+					h = out[i]
+				else:
+					h = {}
+					out.append(h)
+				h["bullet"] = int(bi)
+				h["enemy"] = int(ei)
+				i += 1
 	return out
 
 # 敌人之间的分离力：把重叠的单位推开，让怪群看起来是一"群"而不是一"坨"

@@ -11,13 +11,15 @@ const Spawner := preload("res://core/Spawner.gd")
 const Run := preload("res://core/Run.gd")
 const Hit := preload("res://core/Hit.gd")
 const Movement := preload("res://core/Movement.gd")
-const DamageLabel := preload("res://entities/effects/DamageLabel.gd")
 const HitSpark := preload("res://entities/effects/HitSpark.gd")
 const Shake := preload("res://entities/effects/Shake.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
 const WokToss := preload("res://scenes/WokToss.gd")
 const BulletSystem := preload("res://scenes/BulletSystem.gd")
 const EnemyMind := preload("res://scenes/EnemyMind.gd")
+
+# 命中飘字走 FxLayer 的池化飘字（Events.damage_dealt），不再每命中 new 一个
+# Node2D+Tween 再 queue_free —— 高频开火时那才是"打怪卡"的真正元凶（节点抖动 + GC）。
 
 # 同屏击杀特效并发上限（防密集击杀时 Node/Tween 暴涨拖帧）
 const MAX_DEATH_FX := 16
@@ -138,18 +140,31 @@ func _ensure_mind() -> void:
 	_mind = EnemyMind.new()
 	_mind.setup(world, damage_enemy, _bullets, spawn_child)
 
-# 先收集敌人数组（含本帧位置/速度），供开火与子弹追踪共用
+# 收集敌人数组（含位置/速度）供开火与子弹追踪共用。⚠️ 复用字典池 + resize 截断，稳态零分配。
 func collect_enemy_data() -> void:
-	world.edata.clear()
+	var arr := world.edata
+	var n := 0
 	for e in world.enemies:
-		if e.alive:
-			# 敌人基本朝玩家追，用"朝玩家方向 × 速度"近似速度，给自动瞄准打提前量
-			var vel := Vector2.ZERO
-			var to_p: Vector2 = world.player.global_position - e.global_position
-			if to_p.length() > 0.001:
-				vel = to_p.normalized() * float(e.speed)
-			world.edata.append({"pos": e.global_position, "radius": e.radius,
-				"vel": vel, "alive": true, "ref": e})
+		if not e.alive:
+			continue
+		# 敌人基本朝玩家追，用"朝玩家方向 × 速度"近似速度，给自动瞄准打提前量
+		var vel := Vector2.ZERO
+		var to_p: Vector2 = world.player.global_position - e.global_position
+		if to_p.length() > 0.001:
+			vel = to_p.normalized() * float(e.speed)
+		var d: Dictionary
+		if n < arr.size():
+			d = arr[n]
+		else:
+			d = {}
+			arr.append(d)
+		d["pos"] = e.global_position
+		d["radius"] = e.radius
+		d["vel"] = vel
+		d["alive"] = true
+		d["ref"] = e
+		n += 1
+	arr.resize(n)      # 截掉上一帧多出来的旧条目（旧 dict 原地复用，不新建）
 
 # ---- 子弹：追踪 / 弹墙 / 命中结算全在 scenes/BulletSystem.gd ----
 # 这里只做转发，并把伤害结算（damage_enemy）注入进去 —— 子弹自己不知道
@@ -176,11 +191,7 @@ func damage_enemy(e, amount: float) -> bool:
 	amount *= 1.0 + e.fx("shred")
 	# 先取位置：hurt() 触发死亡后会 recycle，之后再取坐标就不稳了
 	var epos: Vector2 = e.global_position
-	# 伤害飘字（纯表现，受粒子开关控制）
-	if Settings.get_setting("particles_enabled", true):
-		var dl = DamageLabel.new()
-		game.add_child(dl)
-		dl.init(int(amount), false, epos)
+	# 伤害飘字统一走 FxLayer 池化飘字（Events.damage_dealt）；不再每命中 new 节点（打怪卡元凶）。
 	# 受击挤压回弹（squash & stretch）：沿"玩家→敌人"的打击方向压扁
 	e.squash(epos - world.player.global_position)
 	# 单次大伤害轻微震屏

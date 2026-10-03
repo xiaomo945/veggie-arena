@@ -1,9 +1,7 @@
 extends CanvasLayer
 
-# 打击感特效层（Juice）
-# 只订阅 Events 做表现，不认识 Player/Game/Enemy，也不写回玩法状态。
-# 删掉这个文件游戏照样能玩 —— 这就是验收标准。
-# 四件事：飘伤害数字 / 击杀爆环 / 全屏晕染(挨打红·颠勺金) / 过关庆祝彩纸
+# 打击感特效层（Juice）：只订阅 Events 做表现，不认识 Player/Game/Enemy，也不写回玩法状态。
+# 删掉这个文件游戏照样能玩（验收标准）。四件事：飘字 / 爆环 / 全屏晕染 / 过关彩纸
 
 const MAX_FLOATS := 28
 const MAX_RINGS := 18
@@ -28,8 +26,7 @@ var _gold: Control
 var _hurt_t := 0.0
 var _gold_t := 0.0
 var _last_hp := -1
-	# 过关庆祝：画在独立高层 CanvasLayer 上（商店是 30 层），否则彩纸会被面板挡住
-var _celeb_layer: CanvasLayer
+var _celeb_layer: CanvasLayer  # 过关庆祝画在独立高层 CanvasLayer（商店 30 层之上），否则彩纸被面板挡住
 var _celeb_view: Node2D
 var _celeb: Array = []
 var _blast = null          # 颠勺全屏爆炸（屏幕空间，恒定居中于玩家）
@@ -41,20 +38,18 @@ const BossIntroScene := preload("res://ui/Fx/FxBossIntro.gd")
 const SpawnHaloScene := preload("res://ui/Fx/FxSpawnHalo.gd")
 
 func _ready() -> void:
-	layer = 15          # 在世界之上、HUD(20) 之下
-	# 镜头会跟随玩家平移：特效层必须跟着镜头走，否则飘字/爆环会钉在屏幕固定位置
+	layer = 15          # 在世界之上、HUD(20) 之下；特效层跟着镜头走，否则飘字/爆环钉死在屏幕
 	follow_viewport_enabled = true
 	name = "FxLayer"
 
-	# 爆环用一个独立 Node2D 画（CanvasLayer 自己不能 _draw）
+	# CanvasLayer 自己不能 _draw，爆环用独立 Node2D 画
 	_ring_view = Node2D.new()
 	_ring_view.set_script(preload("res://ui/Fx/FxRings.gd"))
-	# Array 是引用类型：把数组直接给它，双方看到的是同一份，无需再同步
-	_ring_view.set("rings", _rings)
+	_ring_view.set("rings", _rings)   # Array 是引用类型：直接给，双方同份，无需同步
 	_ring_view.name = "Rings"
 	add_child(_ring_view)
 
-	# 近战挥砍扇形：同样的套路，独立的数组 + 独立 Node2D
+	# 近战挥砍扇形：同样的套路，独立数组 + 独立 Node2D
 	_arc_view = Node2D.new()
 	_arc_view.set_script(preload("res://ui/Fx/MeleeArc.gd"))
 	_arc_view.set("arcs", _arcs)
@@ -142,8 +137,13 @@ func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
 		return
 	lab.text = str(amount)
 	lab.position = pos + Vector2(randf_range(-8.0, 8.0), -10.0)
-	lab.scale = Vector2(1.25, 1.25) if critical else Vector2(1.0, 1.0)
-	lab.modulate = Color(1.0, 0.86, 0.35) if critical else Color(1.0, 1.0, 1.0)
+	# 配色/字号与早期 DamageLabel 拉平（暴击=金、大数字≥30=橙、其余=白）；黑描边在 _take_label 统一加
+	var big := amount >= 30
+	var sc := 1.28 if (critical or big) else 1.0
+	var col := Color(1.0, 1.0, 1.0)
+	if critical: col = Color(1.0, 0.86, 0.35)
+	elif big: col = Color(1.0, 0.55, 0.35)
+	lab.scale = Vector2(sc, sc); lab.modulate = col
 	lab.visible = true
 	_floats.append({"label": lab, "t": 0.0})
 	# 命中迸溅：和飘字一起冒，给每次打击一点卡通星芒
@@ -218,13 +218,11 @@ func _on_melee(origin: Vector2, dir: Vector2, reach: float, half_arc: float, col
 		return          # 多武器高频挥砍时宁可少画几刀，也不拖帧
 	_arcs.append({"origin": origin, "dir": dir, "reach": reach,
 		"half": half_arc, "color": color, "t": 0.0, "life": MELEE_LIFE})
-	# 近战砍地裂痕：落点在挥砍中点，长度/分叉随武器等级变大
-	if _cracks.size() < MAX_CRACKS:
+	if _cracks.size() < MAX_CRACKS:  # 近战砍地裂痕：落点在挥砍中点，长度/分叉随武器等级变大
 		_cracks.append({"pos": origin + dir * reach * 0.5, "dir": dir,
 			"level": level, "color": color, "t": 0.0, "life": 0.85})
 
 func _process(delta: float) -> void:
-	# 飘字：上飘 + 后段淡出（结构特殊，单独推进）
 	var i := 0
 	while i < _floats.size():
 		var f: Dictionary = _floats[i]
@@ -248,9 +246,7 @@ func _process(delta: float) -> void:
 	_tick_vignettes(delta)
 	HitStop.tick()      # 定帧恢复（用真实时钟，见 HitStop 注释）
 
-# 通用推进：t += delta；超过 life 剔除；最后重绘
-# ⚠️ 只在"有特效在播"或"刚播完需要清空"的那一帧重绘。之前无条件每帧重绘，
-#    等于每帧白白逼 5 个 CanvasLayer 节点刷一遍（空数组也刷），手机上纯浪费。
+# 通用推进：t += delta；超 life 剔除；仅在"有特效在播或刚播完需清空"时重绘（避免空数组每帧白刷）
 func _tick(arr: Array, view: Node2D, delta: float) -> void:
 	var had := not arr.is_empty()
 	var i := 0
@@ -289,6 +285,9 @@ func _take_label() -> Label:
 	var lab := Label.new()
 	lab.add_theme_font_size_override("font_size", 20)
 	lab.add_theme_color_override("font_color", Color(1, 1, 1))
+	# 黑描边：和早期 DamageLabel 一致，密集怪海里也一眼看清数字
+	lab.add_theme_color_override("font_outline_color", Color(0.06, 0.05, 0.09, 1.0))
+	lab.add_theme_constant_override("outline_size", 4)
 	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lab.visible = false
 	add_child(lab)
