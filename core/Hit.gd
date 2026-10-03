@@ -35,10 +35,14 @@ static func find_hits(bullets: Array, enemies: Array) -> Array:
 
 # 敌人之间的分离力：把重叠的单位推开，让怪群看起来是一"群"而不是一"坨"
 # 返回本帧应该叠加到自身速度上的位移
-static func separation(self_pos: Vector2, others: Array, self_radius: float) -> Vector2:
+# limit：只取前 limit 个邻居。调用方用"复用字典池 + 有效个数"的方式避免每帧 new
+# 上万个 Dictionary（旧写法是卡顿主因之一），池数组比实际个数长，靠这个参数截断。
+static func separation(self_pos: Vector2, others: Array, self_radius: float, limit := -1) -> Vector2:
+	var n: int = others.size() if limit < 0 else mini(limit, others.size())
 	var push := Vector2.ZERO
 	var count := 0
-	for o in others:
+	for i in n:
+		var o = others[i]
 		if not (o is Dictionary):
 			continue
 		var p: Vector2 = o.get("pos", Vector2.ZERO)

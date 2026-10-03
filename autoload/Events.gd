@@ -47,6 +47,10 @@ signal skill_cooldown_changed(id: String, ratio: float, ready: bool)
 # 施放成功的特效信号（纯表现层 FxSkill 订阅）；pos/radius 是玩家世界坐标与影响半径
 signal skill_cast(id: String, pos: Vector2, radius: float)
 
+# ---- 调试（仅调试模式，见 core/DebugMode：正式版按钮都不创建，此信号没人发）----
+# HUD 调试面板"跳到第 N 波"发出，由 WaveDirector 真正执行（清场后直接开那一波）
+signal debug_jump_wave(wave: int)
+
 # ---- 经济 ----
 signal gold_changed(gold: int)
 signal pickup_spawned(pos: Vector2, value: int)

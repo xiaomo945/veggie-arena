@@ -15,6 +15,8 @@ func setup(g: Node, w, es) -> void:
 	game = g
 	world = w
 	enemy_system = es
+	# 调试面板"跳到第 N 波"（core/DebugMode 决定按钮存不存在，正式版没人发这个信号）
+	Events.debug_jump_wave.connect(jump_to_wave)
 
 # 每波开局先撒一批怪（数量 = spawn_burst + 波号，不超 max_alive）
 func spawn_wave_burst() -> void:
@@ -67,3 +69,21 @@ func on_shop_closed() -> void:
 	game.set_paused(false)
 	GameState.next_wave()
 	begin_wave()
+
+# 调试：直接跳到第 n 波（清场后按那一波开打），让你不必为看第 15 波先打 14 波。
+# 只被 Events.debug_jump_wave 触发；按钮本体只在调试模式创建（core/DebugMode）。
+func jump_to_wave(n: int) -> void:
+	var total := int(Data.wave_cfg().get("total", 20))
+	GameState.wave = clampi(n, 1, maxi(total, 1))
+	GameState.elapsed_in_wave = 0.0
+	for e in world.enemies:
+		if e.alive:
+			e.recycle()
+	for b in world.bullets:
+		if b.active:
+			b.recycle()
+	if world.pickups != null:
+		world.pickups.clear()
+	world.reset_run()
+	begin_wave()
+	Events.wave_started.emit(GameState.wave)

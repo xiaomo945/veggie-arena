@@ -31,6 +31,8 @@ func _on_cast(id: String, pos: Vector2, radius: float) -> void:
 		Shake.kick(4.0, 0.14)
 
 func _process(delta: float) -> void:
+	# 没有任何技能特效在播就完全不重绘（旧写法每帧都 queue_redraw，白刷一层画布）
+	var had := not _fx.is_empty()
 	var i := 0
 	while i < _fx.size():
 		var d: Dictionary = _fx[i]
@@ -40,7 +42,8 @@ func _process(delta: float) -> void:
 			_fx.remove_at(i)
 		else:
 			i += 1
-	queue_redraw()
+	if had:
+		queue_redraw()
 
 func _draw() -> void:
 	for d in _fx:
@@ -73,13 +76,20 @@ func _draw_one(d: Dictionary) -> void:
 	var ct: float = t - life
 	if ct >= 0.0:
 		var ca: float = clampf(1.0 - ct / maxf(0.001, float(d.get("cloud", 1.2))), 0.0, 1.0)
+		# 滞留场画成"甜甜圈"而不是整块实心圆：技能是在脚下放的，实心圆会把主角
+		# 整只糊住（Fx 层在 CanvasLayer，必然盖住主角）。外圈厚、内圈留空，
+		# 效果更明显的同时主角始终看得见。
 		if frost:
-			draw_circle(p, radius * 0.95, Color(col.r, col.g, col.b, ca * 0.30))
+			draw_arc(p, radius * 0.70, 0.0, TAU, 52,
+				Color(col.r, col.g, col.b, ca * 0.34), radius * 0.58, true)
 			draw_arc(p, radius * 0.95, 0.0, TAU, 44,
 				Color(0.85, 0.97, 1.0, ca * 0.6), 3.0, true)
 			_draw_shards(p, radius, ca)
 		else:
-			draw_circle(p, radius * 0.95, Color(col.r, col.g, col.b, ca * 0.34))
+			draw_arc(p, radius * 0.70, 0.0, TAU, 52,
+				Color(col.r, col.g, col.b, ca * 0.38), radius * 0.58, true)
+			draw_arc(p, radius * 0.95, 0.0, TAU, 44,
+				Color(0.80, 1.0, 0.72, ca * 0.5), 3.0, true)
 			_draw_bubbles(p, radius, ca, t, col)
 
 # 冰晶：沿边缘迸出的小尖刺（位置由 index 推导，不用随机）

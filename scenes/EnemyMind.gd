@@ -32,6 +32,11 @@ var spawn_child_fn: Callable = Callable()  # (pos, type) -> void，供分裂怪
 # 行为状态按 eid 存（对象池复用：eid 每刷一只自增，天然跟"当前 occupant"绑定）
 var _beh: Dictionary = {}              # eid -> 行为名（shooter/charger/splitter/bomber）
 var _st: Dictionary = {}               # eid -> 行为状态机（相位/计时/开火冷却）
+# 每帧复用的暂存容器：_alive 只装活着的怪，_nn 是 world.neighbors 里的有效个数。
+# ⚠️ 旧实现给每个邻居 new 一个 Dictionary，满怪时一帧上万次分配 → 手机上 GC 风暴式卡顿。
+#    现在改成"字典池复用 + 截断读取"，稳态零分配。
+var _alive: Array = []
+var _nn := 0
 
 func setup(w, dmg, bullets, spawn_child) -> void:
 	world = w
@@ -50,10 +55,13 @@ func update(delta: float) -> void:
 	var pp: Vector2 = world.player.global_position
 	var pr: float = float(Data.player_cfg().get("radius", 16))
 	var contact_dmg: float = GameState.stat_value("contact_dmg")
-	for i in world.enemies.size():
-		var e = world.enemies[i]
-		if not e.alive:
-			continue
+	# 先做一次存活快照：内层分离循环只扫活着的，不再遍历整个 110 容量的对象池
+	_alive.clear()
+	for e in world.enemies:
+		if e.alive:
+			_alive.append(e)
+	for i in _alive.size():
+		var e = _alive[i]
 		var beh: String = _beh.get(e.eid, "")
 		var pos: Vector2 = e.global_position
 		var to_p: Vector2 = pp - pos
@@ -99,17 +107,9 @@ func update(delta: float) -> void:
 		# 实际位移（move_speed 已含减速/冻结；猛冲再乘相位倍率）
 		var spd: float = e.move_speed() * spd_mult
 		pos += dir * spd * delta
-		# 分离：只算附近，避免 O(n^2) 在满怪时拖慢手机
-		world.neighbors.clear()
-		for j in world.enemies.size():
-			if j == i:
-				continue
-			var o = world.enemies[j]
-			if not o.alive:
-				continue
-			if pos.distance_squared_to(o.global_position) < 3600.0:  # 60px 内才算
-				world.neighbors.append({"pos": o.global_position, "radius": o.radius})
-		pos += Hit.separation(pos, world.neighbors, e.radius) * 90.0 * delta
+		# 分离：只算 60px 内的邻居，且复用字典池（零分配，见 _collect_neighbors）
+		_collect_neighbors(pos, e)
+		pos += Hit.separation(pos, world.neighbors, e.radius, _nn) * 90.0 * delta
 		# 别叠在玩家身上
 		pos += Hit.keep_distance(pos, pp, e.radius + pr)
 		# 受击击退脉冲：随帧快速衰减
@@ -148,6 +148,24 @@ func update(delta: float) -> void:
 				st["fire"] = SHOOT_CD
 				var d: Vector2 = (pp - e.global_position).normalized()
 				bullet_sys.launch_enemy(e.global_position, d, e.dmg * 1.3, Color(0.69, 0.42, 1.0))
+
+# 收集 self_e 周围 60px 内的邻居到 world.neighbors（复用池），有效个数写进 _nn。
+# 池只会增长到"历史最多邻居数"，之后一直原地改写，不再产生新对象。
+func _collect_neighbors(pos: Vector2, self_e) -> void:
+	_nn = 0
+	for j in _alive.size():
+		var o = _alive[j]
+		if o == self_e:
+			continue
+		if pos.distance_squared_to(o.global_position) >= 3600.0:   # 60px 内才算
+			continue
+		if _nn >= world.neighbors.size():
+			world.neighbors.append({"pos": o.global_position, "radius": o.radius})
+		else:
+			var d: Dictionary = world.neighbors[_nn]
+			d["pos"] = o.global_position
+			d["radius"] = o.radius
+		_nn += 1
 
 # 自爆：对玩家造成一次范围感的大伤（无敌帧已防连击），视觉环 + 震屏，然后消失
 func _explode(e, pos: Vector2) -> void:

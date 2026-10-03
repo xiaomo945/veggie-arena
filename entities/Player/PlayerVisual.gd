@@ -11,7 +11,9 @@ var player: Node = null
 
 const Weapon := preload("res://core/Weapon.gd")
 const MOUNT_RADIUS := 42.0
-const SPRITE_SCALE := 2.8
+# 贴图边长 = radius × 系数。之前 2.8（≈45px）比 brute/shambler 这些大怪还小，
+# 混在怪堆里根本找不着；放大到 3.3（≈53px）与大体型怪物同量级。
+const SPRITE_SCALE := 3.3
 const MOUNT_ICON := 30.0
 
 const SKIN := Color(0.97, 0.96, 0.92)
@@ -53,18 +55,24 @@ func _draw() -> void:
 func _draw_sprite(tex: Texture2D, squash: float, stretch: float, alpha: float) -> void:
 	var w: float = player.radius() * SPRITE_SCALE * stretch
 	var h: float = player.radius() * SPRITE_SCALE * squash
+	_draw_separators(maxf(w, h) * 0.5, alpha)
 	draw_texture_rect_region(tex, Rect2(-w * 0.5, -h * 0.5, w, h),
 		Rect2(Vector2.ZERO, tex.get_size()), Color(1, 1, 1, alpha))
 
+# 贴纸分离圈：外亮内深两道描边。怪群从身下压过来时，靠这两道圈把主角"抠"出来，
+# 否则同色系的萝卜身子会和怪糊成一团。
+func _draw_separators(r: float, alpha: float) -> void:
+	draw_circle(Vector2.ZERO, r + 5.0, Color(1.0, 1.0, 1.0, alpha * 0.80))
+	draw_circle(Vector2.ZERO, r + 2.4, Color(0.28, 0.15, 0.19, alpha * 0.95))
+
 func _draw_body(squash: float, stretch: float, alpha: float) -> void:
-	var bw := 15.0 * stretch
-	var bh := 16.0 * squash
+	var bw := 18.0 * stretch
+	var bh := 19.0 * squash
 	# 萝卜尾（根须）在身体下方
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(-3, bh * 0.62), Vector2(3, bh * 0.62), Vector2(0, bh + 9.0)]),
 		Color(0.92, 0.78, 0.82, alpha))
-	# 卡通描边（深一点的轮廓）
-	draw_circle(Vector2.ZERO, maxf(bw, bh) + 1.8, Color(0.36, 0.22, 0.24, alpha))
+	_draw_separators(maxf(bw, bh), alpha)
 	# 身体（奶白偏粉的萝卜身）
 	draw_circle(Vector2.ZERO, bh, Color(SKIN.r, SKIN.g, SKIN.b, alpha))
 	# 下半身淡粉红晕（萝卜根部的红）

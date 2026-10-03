@@ -20,6 +20,13 @@ const FADE := 0.7         # 交叉淡入淡出秒数
 var _players := {}
 var _current := ""
 
+# 当前曲目的目标音量（含用户音乐音量设置）；关音乐时直接静音
+func _target_db() -> float:
+	if Settings == null:
+		return VOL_DB
+	var db: float = Settings.music_player_db()
+	return -80.0 if db <= -79.0 else db + VOL_DB
+
 func _ready() -> void:
 	for k in TRACKS.keys():
 		var p := AudioStreamPlayer.new()
@@ -73,7 +80,7 @@ func _fade_in(track: String) -> void:
 	if p == null:
 		return
 	var tw := create_tween()
-	tw.tween_property(p, "volume_db", VOL_DB, FADE)
+	tw.tween_property(p, "volume_db", _target_db(), FADE)
 
 func _fade_out(track: String) -> void:
 	var p := _players[track] as AudioStreamPlayer

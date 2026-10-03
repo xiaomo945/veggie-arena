@@ -130,6 +130,19 @@ func toggle_muted() -> bool:
 	return muted
 
 # ---- 画质 / 性能 ----
+# ⚠️ 之前 quality 只改了菜单按钮的高亮，运行时根本没人读它 —— 玩家切"低画质"啥也没变。
+#    下面这两个是各表现层真正该问的开关，改画质立刻见效（粒子数 / 粒子开关）。
+# 粒子数量系数：低画质 0（直接不跑粒子）、中 0.6、高 1.0
+func particle_scale() -> float:
+	match quality:
+		0: return 0.0
+		1: return 0.6
+		_: return 1.0
+
+# 此刻该不该跑粒子（画质=低时强制关）
+func particles_on() -> bool:
+	return particles_enabled and quality > 0
+
 func set_quality(v: int) -> void:
 	quality = clampi(v, 0, 2)
 	_save()
@@ -186,31 +199,20 @@ func apply_fps() -> void:
 
 # 建立 Music / Sfx 两条子总线，并把 Sfx/Bgm 的播放器重路由到对应总线，
 # 从而实现音乐 / 音效独立音量。不改 Sfx.gd / Bgm.gd 源码。
+# ⚠️ 改成"音量直接落在播放器上"：之前是运行时 add_bus + 总线音量，但部分 Web
+#    环境（尤其 iOS Safari）对运行时新建总线的路由不生效，实测表现就是
+#    "画面正常、全程静音"。播放器自身的 volume_db 没有这条歧路，永远可靠。
 func apply_audio() -> void:
-	_ensure_bus("Music")
-	_ensure_bus("Sfx")
-	for p in Bgm.get_children():
-		var ap := p as AudioStreamPlayer
-		if ap != null and ap.bus != "Music":
-			ap.bus = "Music"
-	for p in Sfx.get_children():
-		var ap := p as AudioStreamPlayer
-		if ap != null and ap.bus != "Sfx":
-			ap.bus = "Sfx"
-	var mi := AudioServer.get_bus_index("Music")
-	if mi >= 0:
-		AudioServer.set_bus_volume_db(mi, _db(music_volume))
-	var si := AudioServer.get_bus_index("Sfx")
-	if si >= 0:
-		AudioServer.set_bus_volume_db(si, _db(sfx_volume))
+	Sfx.apply_volume()
+	Bgm.refresh()
 
-func _ensure_bus(name: String) -> void:
-	if AudioServer.get_bus_index(name) != -1:
-		return
-	AudioServer.add_bus(AudioServer.bus_count)
-	var idx := AudioServer.bus_count - 1
-	AudioServer.set_bus_name(idx, name)
-	AudioServer.set_bus_send(idx, "Master")
+# 音效播放器该用的音量（含总开关）
+func sfx_player_db() -> float:
+	return _db(sfx_volume) if sfx_enabled() else -80.0
+
+# 音乐播放器该用的音量（Bgm 会在此基础上再压自己的 -7dB 档）
+func music_player_db() -> float:
+	return _db(music_volume) if music_enabled() else -80.0
 
 # 0 音量视为静音（-80dB），否则按线性比例换算
 func _db(v: int) -> float:

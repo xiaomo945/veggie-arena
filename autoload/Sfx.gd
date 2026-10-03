@@ -9,6 +9,26 @@ extends Node
 var _players: Dictionary = {}
 var _last_hp := 999
 var _last_at: Dictionary = {}   # 每种音效上次播放的毫秒时间，用于节流
+var _unlocked := false          # Web/iOS 音频是否已随首次手势解锁
+
+# Web / iOS：AudioContext 必须在"用户手势"里第一次出声才解锁。
+# 之前第一次出声的是标题页 deferred 播的菜单 BGM（不在任何手势里），
+# 个别浏览器会因此把整局静音。这里兜底：任意第一次"按下"类输入到来时，
+# 立刻在该手势里播一声（按钮音），把音频解锁掉；之后此函数直接返回零开销。
+func _input(event: InputEvent) -> void:
+	if _unlocked:
+		return
+	var down := false
+	if event is InputEventMouseButton:
+		down = (event as InputEventMouseButton).pressed
+	elif event is InputEventScreenTouch:
+		down = (event as InputEventScreenTouch).pressed
+	elif event is InputEventKey:
+		down = (event as InputEventKey).pressed
+	if not down:
+		return
+	_unlocked = true
+	_play("button", 0)
 
 func _ready() -> void:
 	# 音效全部用子 Agent 合成的程序化 Ogg（art/sfx/），质量比内联 _synth 更好；
@@ -124,16 +144,13 @@ func _on_wok(_pos: Vector2) -> void:
 
 # 按 Settings 把每个播放器压到静音或恢复（音效开关/总静音变化时由 PauseScreen 调）
 func apply_volume() -> void:
-	var on := true
+	var db := 0.0
 	if Settings != null:
-		on = Settings.sfx_enabled()
+		db = Settings.sfx_player_db()
 	for p in _players.values():
 		var ap := p as AudioStreamPlayer
 		if ap != null:
-			if on:
-				ap.volume_db = 0.0
-			else:
-				ap.volume_db = -80.0
+			ap.volume_db = db
 
 # UI 按钮点击音（暂停菜单/通用按钮）
 func ui_click() -> void:

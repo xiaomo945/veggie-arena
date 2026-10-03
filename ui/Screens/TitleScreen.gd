@@ -183,6 +183,9 @@ func _build() -> void:
 	_picker_layer.visible = false
 
 func _on_start() -> void:
+	# START 是整局的第一次点击：在这里出第一声，保证 Web/iOS 的 AudioContext
+	# 在"用户手势内"被解锁（iOS 上手势外出的第一声可能整局静音）。
+	Sfx.ui_click()
 	# 存档里记过上次的角色就默认选它（省得每次重选）
 	var last := SaveMgr.last_character()
 	if not last.is_empty() and Data.characters.has(last):

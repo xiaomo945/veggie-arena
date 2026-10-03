@@ -16,13 +16,17 @@ var _arena := Rect2(0, 0, 540, 900)
 var _parts: Array = []
 var _acc := 0.0
 var _rng := RandomNumberGenerator.new()
+var _max := MAX          # 按画质缩放后的实际上限（低画质=0，直接不跑）
 
 func setup(rect: Rect2) -> void:
 	_arena = rect
 	_rng.randomize()
+	# 画质联动：低画质直接把粒子整个关掉（设置里切"低"立刻少一整套每帧绘制）
+	_max = int(round(MAX * Settings.particle_scale()))
+	set_process(_max > 0 and Settings.particles_on())
 
 func _ready() -> void:
-	set_process(true)
+	set_process(_max > 0 and Settings.particles_on())
 
 func _process(delta: float) -> void:
 	_acc += delta
@@ -55,7 +59,7 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func _spawn_one() -> void:
-	if _parts.size() >= MAX:
+	if _parts.size() >= _max:
 		return
 	var r := _rng.randf()
 	var kind := "steam" if r < 0.5 else ("spark" if r < 0.78 else "oil")

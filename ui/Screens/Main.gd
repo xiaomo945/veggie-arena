@@ -34,6 +34,11 @@ func _ready() -> void:
 
 	player = PlayerScene.instantiate()
 	player.position = Vector2(cx, cy)
+	# ⚠️ 主角必须画在敌人/子弹之上：game 节点（含 110 个敌人 + 90 发子弹的池）是在
+	#    player 之后 add_child 的，默认按树序绘制会把主角整个埋进怪堆里 ——
+	#    "主角看不见了，只能靠感觉"就是这么来的。抬 z_index 让主角永远压在战斗层之上
+	#    （HUD/Fx 是 CanvasLayer，不受影响，依旧盖在最上层）。
+	player.z_index = 6
 	add_child(player)
 
 	# 相机：直接挂在玩家身上（最稳的跟随方式，引擎原生支持，不用每帧手动算位置）
@@ -179,6 +184,11 @@ func _run_simulation(seconds: float) -> void:
 	var dodge := Vector2.ZERO
 	var dodge_age := 0
 	_threats = 0
+	# ⚠️ 模拟只让手动 step 推世界：start_run() 会打开引擎的 _physics_process，
+	#    它按真实时间再推一遍，推几帧取决于机器快慢 —— 同一个种子能跑出不同结局
+	#    （门禁"一会儿第 2 波、一会儿第 1 波阵亡"就是这么来的）。模拟期间关掉它。
+	player.set_physics_process(false)
+	game.set_physics_process(false)
 	for i in steps:
 		# 站着不动（--still）是最坏情况；否则让玩家自动躲，才能看出"会玩能撑多久"
 		if OS.get_cmdline_user_args().has("--still"):

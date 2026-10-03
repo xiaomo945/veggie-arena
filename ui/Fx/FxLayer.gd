@@ -249,7 +249,10 @@ func _process(delta: float) -> void:
 	HitStop.tick()      # 定帧恢复（用真实时钟，见 HitStop 注释）
 
 # 通用推进：t += delta；超过 life 剔除；最后重绘
+# ⚠️ 只在"有特效在播"或"刚播完需要清空"的那一帧重绘。之前无条件每帧重绘，
+#    等于每帧白白逼 5 个 CanvasLayer 节点刷一遍（空数组也刷），手机上纯浪费。
 func _tick(arr: Array, view: Node2D, delta: float) -> void:
+	var had := not arr.is_empty()
 	var i := 0
 	while i < arr.size():
 		var d: Dictionary = arr[i]
@@ -259,7 +262,8 @@ func _tick(arr: Array, view: Node2D, delta: float) -> void:
 			arr.remove_at(i)
 		else:
 			i += 1
-	view.queue_redraw()
+	if had:
+		view.queue_redraw()
 
 # 全屏晕染（受伤红 / 颠勺金）：撑满整块手机屏，含 letterbox 黑边
 func _tick_vignettes(delta: float) -> void:

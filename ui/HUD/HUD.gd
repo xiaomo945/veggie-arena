@@ -14,6 +14,8 @@ extends CanvasLayer
 const HudTopScript := preload("res://ui/HUD/HudTop.gd")
 const HudBannersScript := preload("res://ui/HUD/HudBanners.gd")
 const HudButtonsScript := preload("res://ui/HUD/HudButtons.gd")
+const WaveSkipScript := preload("res://ui/HUD/WaveSkip.gd")
+const DebugMode := preload("res://core/DebugMode.gd")
 
 # 竖屏安全区：顶部内容下移避让刘海 / 状态栏，底部按钮上移避让手势条。
 const TOP_SHIFT := 34.0
@@ -43,6 +45,10 @@ func _ready() -> void:
 
 	_buttons = HudButtonsScript.new()
 	add_child(_buttons)
+
+	# 调试"跳到第 N 波"：只在测试模式创建节点（core/DebugMode），正式版玩家看不到
+	if DebugMode.enabled():
+		add_child(WaveSkipScript.new())
 
 	Events.player_hp_changed.connect(_on_hp)
 	Events.gold_changed.connect(_on_gold)
