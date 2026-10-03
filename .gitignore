@@ -19,7 +19,7 @@ web/build*/
 Thumbs.db
 
 # Godot/系统崩溃转储（core.<pid>，体积可达 GB 级，绝不进 git）
-core
+# 注意：只忽略带扩展名的转储文件，绝不能写裸的 "core" —— 否则会把源码目录 core/ 一起忽略
 core.*
 *.core
 

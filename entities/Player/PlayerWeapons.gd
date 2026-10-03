@@ -99,13 +99,17 @@ func tick(enemies: Array, delta: float) -> void:
 		if crit:
 			est["dmg"] = float(est.get("dmg", 0)) * _crit_mult
 		est["crit"] = crit
-		# 近战：瞬时扇形挥砍，命中弧内全部敌人，无子弹。
+		# 扇形结算：近战挥砍 / 瞬发光束 / 自身脉冲 —— 三者共用同一套
+		# "以自己为圆心、朝向目标的一个扇形"判定，差别只在半径与张角
+		# （Weapon.sector_half_arc）。无子弹、无飞行时间。
 		# 伤害走 EnemySystem.damage_enemy 漏斗（击杀/掉金/锅气/破甲都在那）。
-		if Weapon.is_melee(st):
-			var base_dir: Vector2 = (epos - origin).normalized()
+		if Weapon.is_sector(st):
+			var sec_dir: Vector2 = (epos - origin).normalized()
 			var kb := float(st.get("knockback", 0.0))
-			Events.melee_swung.emit(mpos, base_dir, float(st.get("range", 150)),
-				Weapon.melee_half_arc(st), float(est["dmg"]), crit, kb, w["color"] as Color,
+			# 脉冲以玩家自身为心；挥砍 / 光束从武器环绕站位发出（看得见"从哪打出去"）
+			var pivot: Vector2 = origin if Weapon.behavior_of(st) == "pulse" else mpos
+			Events.melee_swung.emit(pivot, sec_dir, float(st.get("range", 150)),
+				Weapon.sector_half_arc(st), float(est["dmg"]), crit, kb, w["color"] as Color,
 				str(w["key"]), int(w["level"]))
 			w["timer"] = Weapon.next_cooldown(float(w["timer"]), cd)
 			continue

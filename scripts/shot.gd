@@ -15,6 +15,7 @@ extends SceneTree
 #   --final         截图前发一次 final_boss_wave
 #   --elite         截图前把场上第一只怪标成精英并重发出场信号（看精英出场）
 #   --shop          截图前塞一组"有两对可合成"的武器并打开补给站（看 6 格物品栏 / 合成高亮）
+#   --hud[=N]       截图前塞一组"七种打法各一把"的武器，只看 HUD 武器槽的行为符文
 #   --series=秒     连拍：每 1 秒一张（文件名自动加序号）
 #   --to=x,y        玩家一直朝这个世界坐标走（看地图边缘 / 围栏用）
 #
@@ -35,6 +36,10 @@ var _rise := false
 var _rise_wait := 0.42
 var _shop := false
 var _shop_n := 6
+var _hud := false
+var _hud_n := 6
+var _stats := false
+var _pause := false
 var _no_run := false
 
 const AUTOLOADS := {
@@ -72,8 +77,17 @@ func _initialize() -> void:
 		elif a.begins_with("--shop="):
 			_shop = true
 			_shop_n = maxi(0, int(a.substr(7)))
+		elif a == "--hud":
+			_hud = true
+		elif a.begins_with("--hud="):
+			_hud = true
+			_hud_n = maxi(0, int(a.substr(6)))
 		elif a == "--no-run":
 			_no_run = true
+		elif a == "--stats":
+			_stats = true
+		elif a == "--pause":
+			_pause = true
 		elif a.begins_with("--series="):
 			_series = float(a.substr(9))
 		elif a == "--rise":
@@ -118,9 +132,19 @@ func _initialize() -> void:
 	if _rise:
 		_fire_rise(main)
 		await _wait(_rise_wait)
+	if _hud:
+		_fire_hud()
+		await _wait(0.5)
 	if _shop:
 		_fire_shop()
 		await _wait(0.6)
+	if _stats:
+		_fire_stats()
+		await _wait(0.5)
+		_dump_labels(_stats_node)
+	if _pause:
+		_bus("Events").run_paused.emit(true)
+		await _wait(0.4)
 	_save(_out)
 	quit(0)
 
@@ -168,6 +192,19 @@ func _fire_rise(main: Node) -> void:
 			e.global_position = main.player.global_position + Vector2(150.0, -40.0)
 			return
 
+# 武器槽目检：七种打法各来一把，只看 HUD 顶部那排槽里的行为符文有没有画对。
+# 等级故意错开（1~4），顺便看等级点数得清不清楚。
+func _fire_hud() -> void:
+	var gs := _bus("GameState")
+	var plan := [["pistol", 1], ["cleaver", 2], ["microwave", 3], ["pan", 2],
+		["staff", 4], ["baking_tray", 1], ["rocket", 3]]
+	if _hud_n < plan.size():
+		plan = plan.slice(0, _hud_n)
+	gs.weapons.clear()
+	for p in plan:
+		gs.weapons.append({"key": str(p[0]), "lv": int(p[1])})
+	_bus("Events").weapons_changed.emit(gs.weapons)
+
 # 补给站：塞一组"两对同 key 同等级"的武器（触发金色可合成高亮），再开店。
 # 6 格全满 + 2 对可合，正好把"满槽样式 / 空槽样式 / 合成高亮"三种状态里前两种都照到。
 func _fire_shop() -> void:
@@ -190,6 +227,49 @@ func _fire_shop() -> void:
 	gs.gold = 500
 	_bus("Events").weapons_changed.emit(gs.weapons)
 	_bus("Events").shop_opened.emit()
+
+# 属性页目检：把每个 stat 的第一个升级 key 各买 1 层，让目录里所有行都亮起来
+# （顺带验证"亮/灰"两种样式、中文分组标题与滚动区是否溢出屏幕）。
+func _fire_stats() -> void:
+	var gs := _bus("GameState")
+	var data: Node = _bus("Data")
+	var ups: Dictionary = data.upgrades
+	var first_key: Dictionary = {}   # stat -> 第一个提供它的升级 key
+	for k in ups:
+		var u: Dictionary = ups[k] as Dictionary
+		var st: String = str(u.get("stat", ""))
+		if st != "" and not first_key.has(st):
+			first_key[st] = k
+		if u.has("stats"):
+			for sk in u["stats"]:
+				var s2 := str(sk)
+				if not first_key.has(s2):
+					first_key[s2] = k
+	var ups_set: Dictionary = {}
+	for st in first_key:
+		ups_set[first_key[st]] = 1
+	gs.upgrades = ups_set
+	gs.max_hp = 137
+	var ss: Node = load("res://ui/Screens/StatsScreen.gd").new()
+	root.add_child(ss)
+	ss.show_menu()
+	_stats_node = ss
+
+var _stats_node: Node = null
+
+# DEBUG：布局跑完后再遍历，打印非空 Label 的最终位置
+func _dump_labels(from: Node) -> void:
+	if from == null:
+		return
+	var stack: Array = [from]
+	while stack.size() > 0:
+		var n: Node = stack.pop_back()
+		for c in n.get_children():
+			stack.append(c)
+		if n is Label:
+			var l := n as Label
+			if l.text != "":
+				print("LBL '", l.text, "' gpos=", l.global_position, " size=", l.size)
 
 func _save(path: String) -> void:
 	root.get_texture().get_image().save_png(path)

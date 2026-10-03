@@ -21,6 +21,8 @@ var _floor: Node2D = null  # 厨房战场地面（art/ArenaFloor），切无尽�
 const FloorScene := preload("res://art/ArenaFloor.gd")
 
 func _ready() -> void:
+	if OS.has_environment("SIM_SEED"):
+		_rng.seed = int(OS.get_environment("SIM_SEED")) + 5
 	var a := Data.arena()
 	var cx := float(a.get("x", 0)) + float(a.get("w", 540)) * 0.5
 	var cy := float(a.get("y", 0)) + float(a.get("h", 900)) * 0.5

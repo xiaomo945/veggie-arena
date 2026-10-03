@@ -73,10 +73,12 @@
     "spread": 0,
     "pierce": 0,
     "aoe": 52,
+    "behavior": "chain",
+    "chain": 2,
     "cost": 26,
     "color": "#b0aad0",
-    "tip": "命中炸开一片，群怪好用",
-    "tip_en": "Pops on hit, great vs crowds.",
+    "tip": "法术链：命中后弹向附近另一只怪，跳 2 次，每跳伤害衰减",
+    "tip_en": "Arcs to a nearby foe on hit. 2 jumps, damage decays each hop.",
     "en": "Magic Staff"
   },
   "rocket": {
@@ -89,10 +91,12 @@
     "spread": 0,
     "pierce": 0,
     "aoe": 86,
+    "behavior": "homing",
+    "homing": 4.5,
     "cost": 34,
     "color": "#e06a6a",
-    "tip": "大范围爆炸，慢但狠",
-    "tip_en": "Huge blast. Slow but mean.",
+    "tip": "制导弹头：自己会拐弯咬住最近的怪，大范围爆炸",
+    "tip_en": "Homing warhead: curves into the nearest foe, then blows up.",
     "en": "Rocket"
   },
   "cleaver": {
@@ -171,10 +175,12 @@
     "spread": 0.18,
     "pierce": 0,
     "aoe": 0,
+    "behavior": "homing",
+    "homing": 2.2,
     "cost": 18,
     "color": "#e04b3a",
-    "tip": "射速快到发烫，单发轻但持续输出高",
-    "tip_en": "Red-hot fire rate, light hits.",
+    "tip": "热追踪：火星自己会飘向怪，射速快到发烫",
+    "tip_en": "Heat-seeking sparks that drift into foes. Blazing fire rate.",
     "en": "Chili Cannon"
   },
   "blender": {
@@ -195,7 +201,7 @@
   },
   "pan": {
     "zh": "煎锅",
-    "dmg": 20,
+    "dmg": 16,
     "cd": 1.05,
     "range": 150,
     "bullet_speed": 700,
@@ -203,10 +209,11 @@
     "spread": 0,
     "pierce": 0,
     "aoe": 44,
+    "behavior": "pulse",
     "cost": 24,
     "color": "#cfa46b",
-    "tip": "贴脸一锅拍下去，小范围震伤",
-    "tip_en": "Slams a small shockwave.",
+    "tip": "不用瞄准：以自己为心炸一圈，围上来的怪全吃到",
+    "tip_en": "No aiming needed: a ring of force bursts from you in every direction.",
     "en": "Frying Pan"
   },
   "microwave": {
@@ -219,10 +226,11 @@
     "spread": 0,
     "pierce": 1,
     "aoe": 0,
+    "behavior": "beam",
     "cost": 22,
     "color": "#b8c0c8",
-    "tip": "穿透射线，直线清场",
-    "tip_en": "Piercing ray, clears lanes.",
+    "tip": "瞬发光束：一照到底，一条直线上全中，不用等子弹飞",
+    "tip_en": "Instant beam: hits everything on one line, no travel time.",
     "en": "Microwave"
   },
   "fork": {
@@ -235,10 +243,12 @@
     "spread": 0,
     "pierce": 2,
     "aoe": 0,
+    "behavior": "chain",
+    "chain": 2,
     "cost": 20,
     "color": "#d7dde6",
-    "tip": "又快又长，连穿刺成串怪",
-    "tip_en": "Long and fast, skewers lines.",
+    "tip": "叉中一只就串到下一只：命中后连跳 2 次",
+    "tip_en": "Skewers one, then hops to two more.",
     "en": "Fork"
   },
   "pepper": {
@@ -283,10 +293,11 @@
     "spread": 0,
     "pierce": 2,
     "aoe": 0,
+    "behavior": "beam",
     "cost": 24,
     "color": "#c9b89a",
-    "tip": "一擦一条线，穿透两三个",
-    "tip_en": "Shreds a line through foes.",
+    "tip": "一擦到底：瞬发细光束，排队来的怪整串刮掉",
+    "tip_en": "Instant thin beam: shreds a whole queue at once.",
     "en": "Grater"
   },
   "spatula": {
@@ -338,10 +349,12 @@
     "spread": 0,
     "pierce": 0,
     "aoe": 0,
+    "behavior": "boomerang",
     "cost": 13,
     "color": "#b0b8c0",
-    "tip": "捞你一脸：便宜的入门远程",
-    "tip_en": "Cheap starter ranged."
+    "tip": "捞出去再捞回来：回旋一勺，来回都能捞中",
+    "tip_en": "Scoops out and scoops back: hits on both trips.",
+    "en": "Strainer"
   },
   "peeler": {
     "key": "peeler",
@@ -356,10 +369,12 @@
     "spread": 0,
     "pierce": 0,
     "aoe": 0,
+    "behavior": "boomerang",
     "cost": 14,
     "color": "#cdb38b",
-    "tip": "飞快但轻飘，贴脸狂削",
-    "tip_en": "Frantic but light."
+    "tip": "回旋削：刀飞出去会转回来，围着你的怪挨两遍",
+    "tip_en": "Boomerang peeler: flies out, curves back, hits twice.",
+    "en": "Peeler"
   },
   "egg_beater": {
     "key": "egg_beater",
@@ -420,7 +435,7 @@
     "zh": "煎饼铛",
     "en": "Griddle",
     "type": "ranged",
-    "dmg": 14,
+    "dmg": 11,
     "cd": 0.7,
     "range": 150,
     "bullet_speed": 520,
@@ -428,17 +443,18 @@
     "spread": 0,
     "pierce": 0,
     "aoe": 30,
+    "behavior": "pulse",
     "cost": 20,
     "color": "#9aa0a6",
-    "tip": "贴脸一摊，范围灼烧",
-    "tip_en": "Splat close, wide splash."
+    "tip": "热浪脉冲：身周一圈灼烧，贴脸围殴的克星",
+    "tip_en": "Heat pulse: burns everything around you, anti-swarm."
   },
   "clay_pot": {
     "key": "clay_pot",
     "zh": "砂锅",
     "en": "Clay Pot",
     "type": "ranged",
-    "dmg": 40,
+    "dmg": 30,
     "cd": 1.4,
     "range": 170,
     "bullet_speed": 500,
@@ -446,10 +462,11 @@
     "spread": 0,
     "pierce": 0,
     "aoe": 0,
+    "behavior": "pulse",
     "cost": 26,
     "color": "#b5764a",
-    "tip": "慢但一锅闷死",
-    "tip_en": "Slow but heavy hit."
+    "tip": "闷一圈：慢，但身周的怪一起挨一记重闷",
+    "tip_en": "Slow, but everything nearby takes the hit at once."
   },
   "tongs": {
     "key": "tongs",
@@ -519,10 +536,11 @@
     "spread": 0.2,
     "pierce": 0,
     "aoe": 0,
+    "behavior": "boomerang",
     "cost": 24,
     "color": "#cdb89a",
-    "tip": "两发齐烤，中距稳输出",
-    "tip_en": "Two-batch steady fire."
+    "tip": "当飞盘甩出去：飞到头会掉头飞回来，来回各能刮一次",
+    "tip_en": "Thrown like a frisbee: it curves back and hits twice."
   },
   "wok_scoop": {
     "key": "wok_scoop",

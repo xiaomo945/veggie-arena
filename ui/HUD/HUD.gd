@@ -16,6 +16,7 @@ const HudBannersScript := preload("res://ui/HUD/HudBanners.gd")
 const HudButtonsScript := preload("res://ui/HUD/HudButtons.gd")
 const WaveSkipScript := preload("res://ui/HUD/WaveSkip.gd")
 const DebugMode := preload("res://core/DebugMode.gd")
+const Weapon := preload("res://core/Weapon.gd")
 
 # 竖屏安全区：顶部内容下移避让刘海 / 状态栏，底部按钮上移避让手势条。
 const TOP_SHIFT := 34.0
@@ -111,6 +112,8 @@ func _on_weapons(_ignored: Array = []) -> void:
 			"lv": int(w.get("lv", 1)),
 			"color": Color(str(def.get("color", "#ffffff"))),
 			"name": I18n.pick(def),
+			# 打法分支（光束/脉冲/链式/回旋/制导…）：武器槽要画对应符文
+			"behavior": Weapon.behavior_of(def),
 		})
 	_top.set_bar("slots", slots)
 

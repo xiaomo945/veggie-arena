@@ -10,8 +10,10 @@ extends Control
 # 布局约束：手机竖屏 540x900，顶部 74px 是 HUD 区（竞技场从 y=74 开始）。
 
 const HudBarsScript := preload("res://ui/HUD/HudBars.gd")
+const WeaponBarScript := preload("res://ui/HUD/WeaponBar.gd")
 
 var _bars: Node2D
+var _weapon_bar: Node2D
 var _wave: Label
 var _gold: Label
 var _kill: Label
@@ -25,6 +27,11 @@ func _ready() -> void:
 
 	_bars = HudBarsScript.new()
 	add_child(_bars)
+
+	# 武器槽单独一层（画在血条之上）：带行为符文，见 ui/HUD/WeaponBar.gd
+	_weapon_bar = WeaponBarScript.new()
+	_weapon_bar.name = "WeaponBar"
+	add_child(_weapon_bar)
 
 	# 血条左侧红心图标（代表血量），血条已右移到 x=40 给图标腾出空间
 	_mk_icon("heart", Vector2(10, 4), 26)
@@ -84,8 +91,12 @@ func _mk_icon(name: String, pos: Vector2, sz: float, override: Texture2D = null)
 # ---- 对外接口（由 HUD.gd 调用）----
 
 # 把数据塞给 HudBars（hp_ratio / wave_progress / wok_ratio / wok_tier /
-# slots / run_wave / run_total）并请求重绘。
+# run_wave / run_total）并请求重绘。slots 是武器槽专属，交给 WeaponBar。
 func set_bar(prop: String, value: Variant) -> void:
+	if prop == "slots":
+		_weapon_bar.set("slots", value)
+		_weapon_bar.queue_redraw()
+		return
 	_bars.set(prop, value)
 	_bars.queue_redraw()
 

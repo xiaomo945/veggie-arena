@@ -125,18 +125,55 @@ func run(data) -> Dictionary:
 	var worst := INF
 	for k in data.weapon_keys():
 		var w: Dictionary = data.weapon(k)
-		var v := _value_per_gold(w, 3 if float(w.get("aoe", 0)) > 0.0 else 1)
+		# 带 aoe 的按"同时命中 3 个"折算；脉冲 / 光束本身就是群体打法，同样折算
+		# （不然砂锅这类"身周一圈"的武器会被当成单体武器低估成废卡）
+		var beh := Weapon.behavior_of(w)
+		var multi := float(w.get("aoe", 0)) > 0.0 or beh == "pulse" or beh == "beam"
+		var v := _value_per_gold(w, 3 if multi else 1)
 		if v < worst:
 			worst = v
 			weakest = str(w.get("zh", k))
 	chk(worst > cheap * 0.5,
 		"最弱的武器（%s）性价比也有手枪的一半（%.2f vs %.2f）" % [weakest, worst, cheap])
 
+	# 17) 行为分支：老武器缺省 projectile，近战自动归 melee，data 写了就按写的
+	chk(Weapon.behavior_of(pistol) == "projectile", "老武器缺省还是普通弹（向后兼容）")
+	chk(Weapon.behavior_of(data.weapon("cleaver")) == "melee", "近战武器自动归到 melee")
+	chk(Weapon.behavior_of(data.weapon("microwave")) == "beam", "微波炉是瞬发光束")
+
+	# 18) 扇形半角：近战 120°、光束是一条线、脉冲整圈
+	chk(abs(rad_to_deg(Weapon.melee_half_arc(data.weapon("cleaver"))) * 2.0 - 120.0) < 0.001,
+		"近战张角 120°")
+	chk(rad_to_deg(Weapon.sector_half_arc(data.weapon("microwave"))) * 2.0 < 10.0,
+		"光束张角小于 10°，读起来是一条线")
+	chk(abs(Weapon.sector_half_arc(data.weapon("pan")) - PI) < 0.001,
+		"脉冲是整圈（半角 PI = 360°）")
+	chk(Weapon.is_sector(data.weapon("pan")) and Weapon.is_sector(data.weapon("cleaver")),
+		"脉冲与近战共用同一套扇形结算")
+	chk(not Weapon.is_sector(pistol), "普通弹不走扇形结算")
+
+	# 19) 打法必须铺开：32 把武器不能清一色普通弹（"换武器只换数字"的老毛病）
+	var kinds := {}
+	for k in data.weapon_keys():
+		kinds[Weapon.behavior_of(data.weapon(k))] = true
+	chk(kinds.size() >= 5, "武器打法至少 5 种（实际 %d 种）" % kinds.size())
+
+	# 20) behavior 拼错会静默退化成普通弹 —— 必须有测试兜住
+	var known := {"projectile": true, "melee": true, "beam": true, "pulse": true,
+		"chain": true, "boomerang": true, "homing": true}
+	var bad := ""
+	for k in data.weapon_keys():
+		var b := Weapon.behavior_of(data.weapon(k))
+		if not known.has(b):
+			bad += "%s=%s " % [str(k), b]
+	chk(bad == "", ("没有拼错的 behavior" if bad == "" else "拼错：%s" % bad))
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
 
-# 每金币能买到多少输出：带 aoe 的武器按同时命中 N 个折算
+# 每金币能买到多少输出：带 aoe / 脉冲 / 光束的武器按同时命中 N 个折算
 func _value_per_gold(w: Dictionary, targets: int) -> float:
 	var dps := Combat.weapon_dps(w)
-	if float(w.get("aoe", 0)) > 0.0:
+	var beh := Weapon.behavior_of(w)
+	if float(w.get("aoe", 0)) > 0.0 or beh == "pulse" or beh == "beam":
 		dps *= float(targets)
 	return dps / maxf(1.0, float(w.get("cost", 1)))

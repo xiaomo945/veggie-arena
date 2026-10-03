@@ -18,27 +18,39 @@ var damage_fn: Callable = Callable() # (enemy, amount) -> bool 是否被这一�
 
 const KB_IMPULSE := 120.0            # 命中击退脉冲（克制，约 14px 位移）
 
+# 武器行为（见 core/Weapon.gd 的 behavior 注释）相关的常量
+const CHAIN_RANGE := 190.0           # 链式跳跃的最大跨度
+const CHAIN_FALLOFF := 0.72          # 每跳一次伤害衰减（跳得越远越弱）
+const BOOMERANG_RETURN_AT := 0.42    # 飞到寿命 42% 时掉头
+const BOOMERANG_BACK := 1.9          # 掉头后追加的寿命倍率（够飞回玩家身边）
+
 # ---- 每帧推进 ----
-# 顺序很重要：先转向（追踪）、再撞墙反弹、最后判命中。
+# 顺序很重要：先转向（追踪）、再回旋掉头、再撞墙反弹、最后判命中。
+# 回旋必须排在追踪之后：追踪把方向拧向敌人，回旋再拧回玩家，回旋说了算。
 func tick(delta: float) -> void:
 	home(delta)
+	boomerang()
 	bounce()
 	resolve()
 
-# 追踪：每帧把每颗激活子弹的方向，朝"当前最近的存活怪"最多转 homing_turn*delta 弧度。
-# 幅度克制（约 4 rad/s），只修正发射后怪的绕走/多怪时的误判，不会瞬转成"导航弹"。
+# 追踪：每帧把每颗激活子弹的方向，朝"当前最近的存活怪"最多转 turn*delta 弧度。
+# 幅度克制（全局约 4 rad/s），只修正发射后怪的绕走/多怪时的误判，不会瞬转成"导航弹"。
+# behavior=homing 的武器用自己的 homing_turn（默认 9 rad/s，真的会咬人）。
 # homing_pct 道具在此基础上再乘一档（"制导萝卜"）。
 func home(delta: float) -> void:
 	var cfg := Data.bullet_cfg()
-	var turn := float(cfg.get("homing_turn", 0.0))
-	if turn <= 0.0:
+	var hp := 1.0 + GameState.stat_value("homing_pct")
+	var base_turn := float(cfg.get("homing_turn", 0.0)) * hp
+	if base_turn <= 0.0:
 		return
-	turn *= 1.0 + GameState.stat_value("homing_pct")
 	var hr := float(cfg.get("homing_range", 360))
-	var max_turn := turn * delta
 	for b in world.bullets:
 		if not b.active or b.enemy:
 			continue
+		var turn := base_turn
+		if b.homing_turn > 0.0:
+			turn = b.homing_turn * hp
+		var max_turn := turn * delta
 		var best := -1
 		var best_d := INF
 		for k in world.edata.size():
@@ -58,6 +70,29 @@ func home(delta: float) -> void:
 		ang = clampf(ang, -max_turn, max_turn)
 		b.dir = cur.rotated(ang)
 		b.rotation = b.dir.angle()
+
+# 回旋（boomerang）：飞到寿命 BOOMERANG_RETURN_AT 时掉头飞回玩家。
+# 掉头瞬间清空命中记录 —— 于是同一只怪"去一趟、回一趟"各挨一次，
+# 手感上就是飞盘/回旋镖：贴脸围着你的怪会被扫两遍。
+func boomerang() -> void:
+	if world.player == null:
+		return
+	var pp: Vector2 = world.player.global_position
+	for b in world.bullets:
+		if not b.active or b.enemy or b.mode != "boomerang":
+			continue
+		if b.returning:
+			if b.global_position.distance_to(pp) <= 28.0:
+				b.recycle()
+				continue
+			b.dir = (pp - b.global_position).normalized()
+			b.rotation = b.dir.angle()
+			continue
+		if b.life >= b.max_life * BOOMERANG_RETURN_AT:
+			b.returning = true
+			b.hit_ids.clear()
+			b.life = 0.0
+			b.max_life *= BOOMERANG_BACK
 
 # 弹墙（ricochet）：撞到竞技场边就反射一次，直到次数用完。
 # 反射用 Movement 的边界判定，保证和大怪/玩家的夹取规则一致。
@@ -117,10 +152,41 @@ func resolve() -> void:
 			e.apply_knockback(b.dir.normalized(), kb)
 		if b.aoe_radius > 0.0:
 			_explode(b, e)
+		# 链式：命中后跳向另一只怪，跳成功就不消耗穿透也不回收
+		if b.chain_left > 0 and _chain_step(b, e):
+			continue
 		if b.pierce_left > 0:
 			b.pierce_left -= 1
 		else:
 			b.recycle()
+
+# 链式（chain）：命中后瞬移到命中点、掉头咬住附近另一只没打过的怪。
+# 每跳一次伤害 ×CHAIN_FALLOFF，跳完衰减完就当普通弹结束 —— 视觉上是一道链闪电。
+# 返回 true 表示"跳成功了"（调用方不再回收这颗弹）。
+func _chain_step(b, from_enemy) -> bool:
+	var best = null
+	var best_d := INF
+	for d in world.edata:
+		if not bool(d.get("alive", false)):
+			continue
+		var e = d.get("ref")
+		if e == null or not e.alive or e == from_enemy:
+			continue
+		if b.hit_ids.has(e.eid):
+			continue
+		var dist: float = b.global_position.distance_to(e.global_position)
+		if dist < best_d:
+			best_d = dist
+			best = e
+	if best == null or best_d > CHAIN_RANGE:
+		return false
+	b.chain_left -= 1
+	b.dmg *= CHAIN_FALLOFF
+	b.global_position = from_enemy.global_position
+	b.dir = (best.global_position as Vector2 - b.global_position).normalized()
+	b.rotation = b.dir.angle()
+	b.life = 0.0
+	return true
 
 # 炮手开火：从共享子弹池借一颗空闲弹，标记为敌弹并朝玩家射出。
 # 与玩家子弹共用池，但 enemy=true 让 home/bounce/resolve 把它当"打玩家"处理。

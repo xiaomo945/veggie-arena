@@ -19,6 +19,43 @@ static func melee_half_arc(def: Dictionary) -> float:
 	var deg := float(def.get("arc", MELEE_ARC_DEG))
 	return deg_to_rad(deg) * 0.5
 
+# ---- 行为分支 ----
+# 32 把武器曾经只差在数字上（dmg/cd/pellets…），换武器只换数值不换手感。
+# 现在 data/weapons.json 里加一个 "behavior" 字段就能换一整套打法：
+#   projectile（缺省）—— 普通子弹，兼容全部老武器
+#   melee      —— 近战扇形挥砍（无子弹）
+#   beam       —— 瞬发光束：极细的一条直线，穿到底
+#   pulse      —— 以自己为圆心的脉冲，360° 全打
+#   chain      —— 链式跳弹：命中后跳向附近另一只怪，每跳衰减
+#   boomerang  —— 回旋：飞出去再飞回来，来回各能命中一次
+#   homing     —— 制导：强追踪，自己会拐弯咬住目标
+# 前三种共用同一套"扇形结算"（区别只在半径与张角），后三种是子弹修饰符。
+const BEAM_ARC_DEG := 7.0   # 光束张角：7° 才读起来是"一条线"而不是"一片扇"
+
+static func behavior_of(def: Dictionary) -> String:
+	var b := str(def.get("behavior", ""))
+	if b != "":
+		return b
+	return "melee" if is_melee(def) else "projectile"
+
+# 是不是"以自己为圆心的扇形"结算（近战 / 光束 / 脉冲）
+static func is_sector(def: Dictionary) -> bool:
+	match behavior_of(def):
+		"melee", "beam", "pulse":
+			return true
+		_:
+			return false
+
+# 扇形半角（弧度）：近战 120°、光束 7°、脉冲整圈（半角 PI）
+static func sector_half_arc(def: Dictionary) -> float:
+	match behavior_of(def):
+		"beam":
+			return deg_to_rad(BEAM_ARC_DEG) * 0.5
+		"pulse":
+			return PI
+		_:
+			return melee_half_arc(def)
+
 # 合成后的属性：Lv1 原样，之后每级 dmg ×1.30、cd ×0.93（系数来自 balance.json）
 static func merged_stats(def: Dictionary, level: int, cfg: Dictionary) -> Dictionary:
 	var dm := float(cfg.get("merge_dmg_multiplier", 1.30))

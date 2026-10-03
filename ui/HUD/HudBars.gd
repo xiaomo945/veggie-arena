@@ -5,7 +5,6 @@ extends Node2D
 
 var hp_ratio := 1.0
 var wave_progress := 0.0
-var slots: Array = []      # [{key, level, color, zh}]
 var wok_ratio := 0.0       # 0..1 火候
 var wok_tier := 0          # 0 微温 / 1 翻炒 / 2 爆炒
 var run_wave := 1          # 当前波次（用于总进度条）
@@ -16,10 +15,7 @@ const BAR_Y := 8.0
 const BAR_W := 486.0
 const BAR_H := 14.0
 
-const SLOT_SIZE := 30.0
-const SLOT_GAP := 6.0
-const SLOT_Y := 32.0
-
+# 武器槽不在这里画了：搬去 ui/HUD/WeaponBar.gd（带行为符文，单独一层）
 # 锅气条放在顶部 HUD 区（与血条并排，全宽），手机底部会被浏览器底栏遮挡，不能放下面
 const WOK_X := 40.0
 const WOK_Y := 24.0
@@ -35,7 +31,6 @@ const RUN_H := 3.0
 func _draw() -> void:
 	_draw_run_progress()
 	_draw_hp_bar()
-	_draw_slots()
 	_draw_wok()
 
 # 总波次进度：run_wave / run_total，一眼看出距离通关还有多远
@@ -76,25 +71,6 @@ func _draw_hp_bar() -> void:
 	for i in range(1, 5):
 		var x := BAR_X + BAR_W * float(i) / 5.0
 		draw_line(Vector2(x, BAR_Y + 2.0), Vector2(x, BAR_Y + BAR_H - 2.0), Color(0, 0, 0, 0.30), 1.0)
-
-func _draw_slots() -> void:
-	var n := maxi(slots.size(), 1)
-	var total_w := float(n) * SLOT_SIZE + float(n - 1) * SLOT_GAP
-	var x0 := 526.0 - total_w
-	for i in slots.size():
-		var s: Dictionary = slots[i]
-		var x := x0 + float(i) * (SLOT_SIZE + SLOT_GAP)
-		var rect := Rect2(x, SLOT_Y, SLOT_SIZE, SLOT_SIZE)
-		_round(rect.position.x, rect.position.y, SLOT_SIZE, SLOT_SIZE, Color(0.04, 0.04, 0.06, 0.55),
-			Color(0.30, 0.24, 0.14), 2, 7.0)
-		var c: Color = s.get("color", Color(1, 1, 1))
-		_round(rect.position.x + 2.0, rect.position.y + 2.0, SLOT_SIZE - 4.0, SLOT_SIZE - 4.0, c,
-			Color(0, 0, 0, 0.0), 0, 5.0)
-		# 等级：右下角小圆点，一颗代表一级
-		var lv := int(s.get("lv", 1))
-		for k in lv:
-			var px := x + 5.0 + float(k) * 6.0
-			draw_circle(Vector2(px, SLOT_Y + SLOT_SIZE - 5.0), 2.2, Color(1, 1, 1, 0.9))
 
 func _draw_wok() -> void:
 	# 火候填充：档位越高越"炽热"

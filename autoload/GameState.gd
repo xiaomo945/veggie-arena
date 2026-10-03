@@ -105,7 +105,8 @@ func _char_stat(stat: String) -> float:
 
 # ---- 血量 ----
 func take_damage(amount: int) -> void:
-	hp = maxi(0, hp - amount)
+	# 护甲（armor）在所有伤害源的统一入口做扁平减免，强化终于不只是商店里的数字
+	hp = maxi(0, hp - maxi(0, int(amount) - int(stat_value("armor"))))
 	Events.player_hp_changed.emit(hp, max_hp)
 	if hp <= 0:
 		running = false

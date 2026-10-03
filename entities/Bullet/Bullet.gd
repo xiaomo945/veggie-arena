@@ -17,6 +17,10 @@ var tint := Color(1, 1, 1)
 var hit_ids := {}
 var wkey := ""    # 武器 key，用来画这把武器专属的子弹造型
 var enemy := false # 敌弹标记：true=怪物发射、命中玩家；false=玩家武器、命中敌人
+var mode := ""        # 行为分支（chain / boomerang / homing），"" = 普通弹
+var chain_left := 0   # 剩余链式跳跃次数
+var homing_turn := 0.0 # 每秒最大转向（弧度）；>0 时覆盖全局 bullet.homing_turn
+var returning := false # 回旋弹是否已掉头进入回程
 
 # 每把武器的子弹造型（卡通化，让"这把枪"一眼认得出）。
 # 没列出的走默认圆弹；按 key 映射，以后新加武器只要在这里补一行。
@@ -34,6 +38,7 @@ const SHAPES := {
 		"enemybolt": "enemybolt",
 	}
 const INK := Color(0.06, 0.05, 0.09, 0.9)
+const HOMING_TURN := 9.0   # 制导弹缺省转向（rad/s）；全局 bullet.homing_turn 只有 4.0
 
 func launch(pos: Vector2, direction: Vector2, stats: Dictionary, c: Color, key := "") -> void:
 	wkey = key
@@ -49,6 +54,14 @@ func launch(pos: Vector2, direction: Vector2, stats: Dictionary, c: Color, key :
 	life = 0.0
 	radius = 4.0 if aoe_radius <= 0.0 else 7.0
 	tint = c
+	# 子弹修饰符：只有 chain / boomerang / homing 三种会真的改飞行方式，
+	# 其余（projectile / melee / beam / pulse）一律当普通弹处理，保持老手感。
+	mode = str(stats.get("behavior", ""))
+	if mode != "chain" and mode != "boomerang" and mode != "homing":
+		mode = ""
+	chain_left = 0 if mode != "chain" else int(stats.get("chain", 0))
+	homing_turn = 0.0 if mode != "homing" else float(stats.get("homing", HOMING_TURN))
+	returning = false
 	hit_ids.clear()
 	active = true
 	visible = true
