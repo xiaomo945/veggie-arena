@@ -11,26 +11,22 @@ const INK := Color(0.086, 0.078, 0.094)
 const SHADOW := Color(0.0, 0.0, 0.0, 0.30)
 
 const BAND := 15.0        # 钢边带宽
-const RIVET_STEP := 56.0  # 铆钉间距
+const RIVET_STEP := 88.0  # 铆钉间距（稀疏一点：每帧都要随地面重画，省不少 draw call）
 
-# 画法：外圈 ink 描边 → 钢带（上亮下暗做圆角体积）→ 内圈 ink → 砧板内侧投影 → 铆钉
+# ⚠️ 包边全部画在场地【内侧】，不是外侧。
+#   镜头贴边后"屏幕边 = 场地边"，画在外侧的部分会被裁到屏幕外（用户实测：边框整条消失）。
+#   从边界往里依次是：ink 外沿 → 钢带（亮上暗下）→ ink 内沿 → 砧板内侧投影 → 铆钉。
 static func draw_rim(c: CanvasItem, arena: Rect2) -> void:
 	if not _near_edge(c, arena):
 		return
-	var o := arena.grow(BAND + 3.0)
-	# 砧板内侧投影：贴着边往里一圈暗带，把"砧板凹在灶台里"的进深做出来
-	var inner := arena
-	_shadow_band(c, inner)
-	# 外描边
-	_band(c, o, INK)
-	# 钢带本体
-	var m := arena.grow(BAND)
-	_band(c, m, STEEL_M)
-	# 钢带上缘高光 + 下缘暗边（条带内外各走一条线）
-	_edge_line(c, o.grow(-2.0), STEEL_L, 2.4)
-	_edge_line(c, m.grow(1.0), STEEL_D, 2.0)
-	# 内描边
-	_band(c, arena.grow(1.5), INK)
+	_band(c, arena, INK, 4.0)                    # 外沿描边（贴着边界往里 4px）
+	var m := arena.grow(-4.0)
+	_band(c, m, STEEL_M, BAND)                   # 钢带本体
+	_edge_line(c, m.grow(-1.5), STEEL_L, 2.4)    # 上缘高光
+	var inner := m.grow(-BAND)
+	_edge_line(c, inner.grow(1.5), STEEL_D, 2.0) # 下缘暗边
+	_band(c, inner, INK, 2.0)                    # 内描边
+	_shadow_band(c, inner.grow(-2.0))            # 砧板内侧投影（往里 11px）
 	_rivets(c, arena)
 
 # 只在镜头看得见任一边时才画（视野中心到边界的距离 < 半屏 + 带宽）
@@ -49,12 +45,12 @@ static func _cam(c: CanvasItem) -> Vector2:
 			return cam.get_screen_center_position()
 	return Vector2.ZERO
 
-# 四条边各画一条矩形（贪一点：画到角上互相覆盖，反正同色）
-static func _band(c: CanvasItem, r: Rect2, col: Color) -> void:
-	c.draw_rect(Rect2(r.position.x, r.position.y, r.size.x, BAND + 3.0), col)
-	c.draw_rect(Rect2(r.position.x, r.end.y - BAND - 3.0, r.size.x, BAND + 3.0), col)
-	c.draw_rect(Rect2(r.position.x, r.position.y, BAND + 3.0, r.size.y), col)
-	c.draw_rect(Rect2(r.end.x - BAND - 3.0, r.position.y, BAND + 3.0, r.size.y), col)
+# 四条边各画一条矩形，厚度 t，方向恒为【往里】（画到角上互相覆盖，反正同色）
+static func _band(c: CanvasItem, r: Rect2, col: Color, t: float = BAND + 3.0) -> void:
+	c.draw_rect(Rect2(r.position.x, r.position.y, r.size.x, t), col)
+	c.draw_rect(Rect2(r.position.x, r.end.y - t, r.size.x, t), col)
+	c.draw_rect(Rect2(r.position.x, r.position.y, t, r.size.y), col)
+	c.draw_rect(Rect2(r.end.x - t, r.position.y, t, r.size.y), col)
 
 # 沿矩形四边走一圈细线（用 polyline，四段各画）
 static func _edge_line(c: CanvasItem, r: Rect2, col: Color, w: float) -> void:
@@ -77,7 +73,8 @@ static func _shadow_band(c: CanvasItem, r: Rect2) -> void:
 
 # 铆钉：钢带上一颗颗小圆钉（亮面 + 暗底），让包边读起来是金属而不是色条
 static func _rivets(c: CanvasItem, arena: Rect2) -> void:
-	var mid := arena.grow(BAND * 0.5)
+	# 铆钉走在钢带中线：钢带现在是往里 4 ~ 4+BAND，所以中线是往里 4 + BAND*0.5
+	var mid := arena.grow(-4.0 - BAND * 0.5)
 	var cam := _cam(c)
 	var view := c.get_viewport_rect().size
 	var half := view * 0.5 + Vector2(24.0, 24.0)

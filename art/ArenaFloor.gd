@@ -13,6 +13,8 @@ const FloorGrime := preload("res://art/FloorGrime.gd")
 const FloorRim := preload("res://art/FloorRim.gd")
 
 const FAR_K := 0.52                      # 远景视差系数（越小跟得越"慢"）
+const VIEW_PAD := 56.0                   # 可见范围外多画一圈：允许镜头小幅移动时不重绘
+const REDRAW_STEP_SQ := 36.0             # 镜头移动超过 6px 才重绘地面（配合 VIEW_PAD 不会露边）
 const TILE_COLS := 14
 const TILE_ROWS := 21
 
@@ -47,7 +49,7 @@ func arena() -> Rect2:
 # ---- 每帧只做一件事：看镜头动没动 ----
 func _process(_delta: float) -> void:
 	var cam := _camera()
-	if cam.distance_squared_to(_cam) > 0.25:
+	if cam.distance_squared_to(_cam) > REDRAW_STEP_SQ:
 		_cam = cam
 		queue_redraw()
 
@@ -60,7 +62,7 @@ func _camera() -> Vector2:
 
 func _draw() -> void:
 	var view := get_viewport_rect().size
-	var vis := Rect2(_cam - view * 0.5, view)
+	var vis := Rect2(_cam - view * 0.5, view).grow(VIEW_PAD)
 	_draw_far(vis)
 	draw_rect(vis.grow(8.0), COUNTER)
 	_counter_grid(vis)
@@ -84,9 +86,8 @@ func _draw_far(vis: Rect2) -> void:
 		if absf(p.y - vis_far.get_center().y) > vis.size.y * 0.5 + r:
 			continue
 		# 三圈同心圆叠出"软阴影"（draw_circle 没有渐变，只能这么糊）
-		draw_circle(p, r, Color(SHADOW_FAR.r, SHADOW_FAR.g, SHADOW_FAR.b, 0.10))
-		draw_circle(p, r * 0.72, Color(SHADOW_FAR.r, SHADOW_FAR.g, SHADOW_FAR.b, 0.14))
-		draw_circle(p, r * 0.45, Color(SHADOW_FAR.r, SHADOW_FAR.g, SHADOW_FAR.b, 0.18))
+		draw_circle(p, r, Color(SHADOW_FAR.r, SHADOW_FAR.g, SHADOW_FAR.b, 0.14))
+		draw_circle(p, r * 0.55, Color(SHADOW_FAR.r, SHADOW_FAR.g, SHADOW_FAR.b, 0.20))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # 灶台外的大方格地砖（很淡，只是别让外面是一整块死黑）
@@ -113,6 +114,8 @@ func _gen_grain(rng: RandomNumberGenerator) -> Array:
 			var px := _arena.position.x + float(i) * _tile
 			var py := _arena.position.y + float(j) * _tile
 			for _k in 2:
+				if rng.randf() < 0.35:
+					continue
 				var yy := py + rng.randf_range(0.14, 0.86) * _tile
 				var ax := px + rng.randf_range(0.02, 0.30) * _tile
 				var bx := px + rng.randf_range(0.70, 0.98) * _tile
@@ -127,7 +130,7 @@ func _gen_far(rng: RandomNumberGenerator) -> Array:
 	var out: Array = []
 	var outer := _arena.grow(620.0)
 	var inner := _arena.grow(-40.0)
-	for i in 90:
+	for i in 64:
 		var p := Vector2(rng.randf_range(outer.position.x, outer.end.x),
 			rng.randf_range(outer.position.y, outer.end.y))
 		if inner.has_point(p):

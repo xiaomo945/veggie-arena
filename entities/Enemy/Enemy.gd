@@ -38,7 +38,9 @@ var _rise := -1.0
 # 受击挤压回弹（squash & stretch）：撞击方向 + 剩余时间
 var _squash := 0.0
 var _squash_dir := Vector2.ZERO
+var _dirty := false                 # 屏幕外时攒下的重绘请求（进屏幕再补，见 EnemyCull）
 const Shake := preload("res://entities/effects/Shake.gd")
+const Cull := preload("res://entities/Enemy/EnemyCull.gd")
 const EnemyShape := preload("res://entities/Enemy/EnemyShape.gd")
 
 const RISE_T := 0.85      # Boss "从地里升起来"的时长
@@ -72,9 +74,10 @@ func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	# Boss 出场要"从地里升起来"：等它走进屏幕那一刻才开始播（别白播）
 	_rise_armed = etype == "boss"
 	_rise = -1.0
+	_dirty = false           # 屏幕外时攒着没画的重绘请求（进屏幕再补）
 	_fx.clear()      # 对象池复用：上一只怪身上的毒/冰不能带到下一只身上
 	visible = true
-	queue_redraw()
+	_redraw()
 
 func recycle() -> void:
 	alive = false
@@ -84,7 +87,7 @@ func recycle() -> void:
 func hurt(amount: float) -> bool:
 	hp -= amount
 	_flash = FLASH_DUR
-	queue_redraw()
+	_redraw()
 	if hp <= 0.0:
 		recycle()
 		return true
@@ -94,20 +97,23 @@ func hurt(amount: float) -> bool:
 func squash(dir: Vector2) -> void:
 	_squash = 0.14
 	_squash_dir = dir.normalized()
-	queue_redraw()
+	_redraw()
 
 func apply_knockback(dir: Vector2, impulse: float) -> void:
 	var v: Vector2 = _kb + dir * impulse
 	_kb = v.limit_length(220.0)
 
 func tick(delta: float) -> void:
+	if _dirty and Cull.in_view(self):
+		_dirty = false
+		_redraw()
 	if _flash > 0.0:
 		_flash -= delta
 		if _flash <= 0.0:
-			queue_redraw()
+			_redraw()
 	if _squash > 0.0:
 		_squash = maxf(0.0, _squash - delta)
-		queue_redraw()
+		_redraw()
 	if _rise_armed:
 		_tick_rise(delta)
 	if etype == "boss":
@@ -116,24 +122,19 @@ func tick(delta: float) -> void:
 # 升起演出：等进入屏幕才开始；升起期间站桩（move_speed 挡移动）
 func _tick_rise(delta: float) -> void:
 	if _rise < 0.0:
-		if _in_view():
+		if Cull.in_view(self):
 			_rise = 0.0
-			queue_redraw()
+			_redraw()
 		return
 	_rise += delta
-	queue_redraw()
+	_redraw()
 	if _rise >= RISE_T:
 		_rise_armed = false
 		_rise = -1.0
 
-func _in_view() -> bool:
-	var vp := get_viewport()
-	if vp == null:
-		return true
-	var cam := vp.get_camera_2d()
-	var c := cam.get_screen_center_position() if cam != null else Vector2.ZERO
-	var half := vp.get_visible_rect().size * 0.5
-	return Rect2(c - half, half * 2.0).grow(80.0).has_point(global_position)
+# 屏幕外不重绘（性能）：可见就画，不可见只记 _dirty，进屏幕时由 tick 补画
+func _redraw() -> void:
+	_dirty = not Cull.redraw_if_visible(self)
 
 # 施加一个状态效果。同种效果取"更强 + 更久"，不叠乘（叠乘会让数值失控）。
 func apply_fx(name: String, value: float, dur: float) -> void:
