@@ -1394,5 +1394,89 @@
     "tip_en": "More gold.",
     "cat": "passive",
     "rarity": 2
+  },
+  "homing": {
+    "key": "homing",
+    "zh": "制导强化",
+    "en": "Guided",
+    "stat": "homing_pct",
+    "value": 0.25,
+    "cost": 14,
+    "tip": "追踪弹转得更急、咬得更死",
+    "tip_en": "Homing turns sharper.",
+    "cat": "weapon",
+    "rarity": 2
+  },
+  "knock": {
+    "key": "knock",
+    "zh": "击退强化",
+    "en": "Knockback",
+    "stat": "knock_pct",
+    "value": 0.3,
+    "cost": 12,
+    "tip": "命中把怪推得更远，更好拉开身位",
+    "tip_en": "Push enemies farther.",
+    "cat": "weapon",
+    "rarity": 1
+  },
+  "berserk": {
+    "key": "berserk",
+    "zh": "背水一战",
+    "en": "Berserk",
+    "stat": "low_hp_dmg",
+    "value": 0.4,
+    "cost": 13,
+    "tip": "血越少打得越狠（满血无效）",
+    "tip_en": "Hit harder at low HP.",
+    "cat": "passive",
+    "rarity": 2
+  },
+  "waveheal": {
+    "key": "waveheal",
+    "zh": "波末回血",
+    "en": "Wave Mend",
+    "stat": "wave_heal",
+    "value": 8,
+    "cost": 12,
+    "tip": "每波结束额外回 8 血",
+    "tip_en": "Heal 8 HP each wave.",
+    "cat": "passive",
+    "rarity": 1
+  },
+  "bounce": {
+    "key": "bounce",
+    "zh": "弹墙",
+    "en": "Ricochet",
+    "stat": "ricochet",
+    "value": 1,
+    "cost": 13,
+    "tip": "子弹撞墙反弹 +1 次",
+    "tip_en": "Bullets bounce +1.",
+    "cat": "weapon",
+    "rarity": 2
+  },
+  "discount": {
+    "key": "discount",
+    "zh": "砍价",
+    "en": "Haggler",
+    "stat": "shop_discount",
+    "value": 0.1,
+    "cost": 15,
+    "tip": "商店所有价格 -10%",
+    "tip_en": "Shop prices -10%.",
+    "cat": "passive",
+    "rarity": 2
+  },
+  "hitboost": {
+    "key": "hitboost",
+    "zh": "受击爆发",
+    "en": "Adrenaline",
+    "stat": "hit_boost",
+    "value": 0.2,
+    "cost": 13,
+    "tip": "挨打后短时增伤+提速",
+    "tip_en": "Damage & speed up after hit.",
+    "cat": "passive",
+    "rarity": 2
   }
 }

@@ -120,6 +120,13 @@ const UI := {
   "stat_dash_cd": {"en": "Dash Cooldown", "zh": "冲刺冷却"},
   "stat_dash_dist": {"en": "Dash Distance", "zh": "冲刺距离"},
   "stat_ifr": {"en": "Invuln Time", "zh": "无敌帧"},
+  "stat_homing_pct": {"en": "Homing", "zh": "制导强化"},
+  "stat_knock_pct": {"en": "Knockback", "zh": "击退强化"},
+  "stat_low_hp_dmg": {"en": "Berserk", "zh": "背水一战"},
+  "stat_wave_heal": {"en": "Wave Mend", "zh": "波末回血"},
+  "stat_ricochet": {"en": "Ricochet", "zh": "弹墙"},
+  "stat_shop_discount": {"en": "Haggler", "zh": "砍价"},
+  "stat_hit_boost": {"en": "Adrenaline", "zh": "受击爆发"},
 
   # ---- 标题 ----
   "title_sub": {"en": "", "zh": "萝 卜 突 围"},
