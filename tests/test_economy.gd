@@ -104,6 +104,39 @@ func run() -> Dictionary:
 	chk(not wkeys.has("pistol|4") and not wkeys.has("shotgun|4"), "满级档位在满槽时不刷（合不动）")
 	chk(not wkeys.has("pistol|3") and not wkeys.has("smg|1"), "场上没有同等级的档位不刷（合不动）")
 
+	# 8) 合成搭档保底：持有 L 级，商店必须 reliably 给得出 L 级去合 L+1
+	#    （bug：高级武器权重极低，随机抽几乎永远抽不到那把关键搭档 → 5→6 合不出来）
+	var wk := {
+		"knife": {"cost": 20, "dmg": 10}, "pistol": {"cost": 20, "dmg": 10},
+		"smg": {"cost": 20, "dmg": 10}, "bow": {"cost": 20, "dmg": 10},
+		"sword": {"cost": 20, "dmg": 10}, "rocket": {"cost": 20, "dmg": 10},
+	}
+	var uk := {"hp": {"stat": "max_hp", "value": 15}, "dmg": {"stat": "dmg_pct", "value": 0.1}}
+	var full5: Array = [
+		{"key": "knife", "lv": 5, "dmg": 200, "cd": 0.1},
+		{"key": "pistol", "lv": 3, "dmg": 20, "cd": 0.5},
+		{"key": "smg", "lv": 2, "dmg": 15, "cd": 0.3},
+		{"key": "bow", "lv": 4, "dmg": 40, "cd": 0.7},
+		{"key": "sword", "lv": 2, "dmg": 30, "cd": 0.6},
+		{"key": "rocket", "lv": 1, "dmg": 50, "cd": 1.1},
+	]
+	var pool5 := Economy.build_pool(full5, wk, uk, 6, 6)
+	var has_partner := false
+	for it in pool5:
+		if str(it.get("key")) == "knife" and int(it.get("lv", 0)) == 5 and it.get("merge_partner", false):
+			has_partner = true
+	chk(has_partner, "满槽持有 knife Lv5 时，池子里把 knife Lv5 标成合成搭档")
+	# 抽 100 次大商店（6 张），统计 knife Lv5 出现次数 —— 它是最高档搭档，应几乎每次都被保底
+	var seen_partner := 0
+	for t in 100:
+		var r2 := RandomNumberGenerator.new(); r2.seed = 1000 + t
+		var of5 := Economy.roll_offers(pool5, 6, r2)
+		for it in of5:
+			if str(it.get("key")) == "knife" and int(it.get("lv", 0)) == 5:
+				seen_partner += 1
+				break
+	chk(seen_partner >= 95, "100 次大商店里 knife Lv5 至少出现 95 次（保底生效，实际 %d）" % seen_partner)
+
 	# 6) 一波收入
 	var inc := Economy.wave_income(1, 15, 1.0, WAVE_CFG)
 	chk(inc == 29, "第1波：15 杀 ×1 金币 + 14 奖励 = 29（实际 %d）" % inc)

@@ -36,9 +36,12 @@ static func weight_of(item) -> float:
 static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator) -> Array:
 	var weapons := []
 	var others := []
+	var partners := []   # 合成搭档：买下去能直接跟已持有武器凑成对（同 key 同等级）
 	for it in pool:
 		if it is Dictionary and str(it.get("kind", "")) == "weapon":
 			weapons.append(it)
+			if it.get("merge_partner", false):
+				partners.append(it)
 		else:
 			others.append(it)
 	var out: Array = []
@@ -46,7 +49,20 @@ static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator) -> 
 	var w_quota := 0
 	if weapons.size() > 0:
 		w_quota = clampi(int(ceil(float(count) * 0.5)), 1, mini(2, weapons.size()))
-	for _i in w_quota:
+	# 先强制塞 1 把"合成搭档"：玩家持有 L 级，商店就必须 reliably 给得出 L 级去合 L+1。
+	# 否则高级武器权重极低（5 级 0.28 vs 1 级 7），随机抽几乎永远抽不到那把关键的搭档，
+	# "持有 5 级却合不出 6 级"。优先选等级最高的搭档（玩家最该推进的"前沿"那把），
+	# 其余武器位仍走原加权，保证还能看到新武器。
+	var took_partner := 0
+	if partners.size() > 0 and w_quota >= 1:
+		var best: Variant = partners[0]
+		for pp in partners:
+			if int(pp.get("lv", 1)) > int(best.get("lv", 1)):
+				best = pp
+		out.append(best)
+		weapons.erase(best)
+		took_partner = 1
+	for _i in (w_quota - took_partner):
 		if weapons.is_empty():
 			break
 		var pick: Variant = _weighted_pick(weapons, rng)
@@ -118,6 +134,10 @@ static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Di
 			w["kind"] = "weapon"
 			w["lv"] = lv
 			w["weight"] = WEAPON_WEIGHT * tiers.tier_weight(lv)
+			# 合成搭档：买下去能和已持有的"同 key 同等级"凑成对（满级除外）。
+			# 这条标记让 roll_offers 保底给一把，否则高级武器权重极低，
+			# "持有 5 级却永远刷不到第 2 把 5 级" → 5→6 永远合不出来。
+			w["merge_partner"] = Inventory.find_tier(weapons, str(key), lv) >= 0 and lv < max_lv
 			# 档位底价走 ShopTiers.price_for_tier（保证高级绝不便宜），再叠打折/通胀
 			var base := int(w.get("cost", 0))
 			var tier_base := tiers.price_for_tier(base, lv)

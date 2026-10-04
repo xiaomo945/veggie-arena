@@ -26,7 +26,7 @@ func chk(cond: bool, msg: String) -> void:
 		_failures.append(msg)
 		print("  FAIL: " + msg)
 
-const CFG := {"big_every": 3, "big_offer_count": 6, "small_offer_count": 2,
+const CFG := {"big_every": 3, "big_offer_count": 6, "small_offer_count": 4,
 	"big_discount_pct": 0.15, "single_reroll_ratio": 0.5,
 	"reroll_base": 3, "reroll_step": 2}
 
@@ -45,12 +45,12 @@ func run(_data) -> Dictionary:
 		"第 1/3/6 波是大商店")
 	chk(not ShopPlan.is_big(2, CFG) and not ShopPlan.is_big(4, CFG) and not ShopPlan.is_big(5, CFG),
 		"第 2/4/5 波是小商店")
-	chk(ShopPlan.offer_count(1, CFG) == 6 and ShopPlan.offer_count(2, CFG) == 2,
-		"大商店 6 张 / 小商店 2 张")
+	chk(ShopPlan.offer_count(1, CFG) == 6 and ShopPlan.offer_count(2, CFG) == 4,
+		"大商店 6 张 / 小商店 4 张")
 	chk(absf(ShopPlan.discount(3, CFG) - 0.15) < 0.0001 and ShopPlan.discount(2, CFG) == 0.0,
 		"只有大商店打折 15%")
-	chk(ShopPlan.offer_count(1, {}) == 6 and ShopPlan.offer_count(2, {}) == 2,
-		"缺配置时回落默认值（大 6 / 小 2）")
+	chk(ShopPlan.offer_count(1, {}) == 6 and ShopPlan.offer_count(2, {}) == 4,
+		"缺配置时回落默认值（大 6 / 小 4）")
 
 	# --- Q6：单张刷新的价格约为整店刷新的一半 ---
 	chk(ShopPlan.single_reroll_cost(0, CFG) == 2, "首次单张刷新 2 金（整店 3 的一半向上取整）")

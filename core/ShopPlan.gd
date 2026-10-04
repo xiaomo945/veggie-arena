@@ -23,7 +23,7 @@ static func is_big(wave: int, cfg: Dictionary) -> bool:
 static func offer_count(wave: int, cfg: Dictionary) -> int:
 	if is_big(wave, cfg):
 		return maxi(1, int(cfg.get("big_offer_count", 6)))
-	return maxi(1, int(cfg.get("small_offer_count", 2)))
+	return maxi(1, int(cfg.get("small_offer_count", 4)))
 
 # 本波的额外折扣（大商店才打折，与玩家自己的 shop_discount 叠加）
 static func discount(wave: int, cfg: Dictionary) -> float:
