@@ -273,20 +273,20 @@ func _draw_body(c: Color, flash_k: float) -> void:
 
 func _draw_flash_outline(r: float, k: float) -> void:
 	draw_arc(Vector2.ZERO, r, 0.0, TAU, 20, Color(1, 1, 1, k * 0.9), 2.6, true)
-
 # Boss 出场的土坑：脚下越裂越大的黑坑 + 几块崩出的土块
 func _draw_rise_hole() -> void:
 	EnemyShape.rise_hole(self, radius, clampf(_rise / RISE_T, 0.0, 1.0))
 
 func _draw_poly(pts: PackedVector2Array, c: Color) -> void:
 	EnemyShape.poly(self, pts, c)
-
 # 缺图时的手绘造型：委托给 EnemyShape（升起变换已在 _draw_body 里设好）
 func _draw_shape(c: Color) -> void:
 	EnemyShape.body(self, etype, radius, c)
 
 func _draw_sprite(tex: Texture2D, size: float, c: Color) -> void:
 	var half := size * 0.5
+	if _rise < 0.0:
+		EnemyShape.ground_shadow(self, half)   # 脚下投影（贴图怪也有"站地"感）
 	draw_texture_rect_region(tex, Rect2(-half, -half, size, size),
 		Rect2(Vector2.ZERO, tex.get_size()), c)
 

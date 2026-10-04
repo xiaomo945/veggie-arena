@@ -1,10 +1,8 @@
 extends CanvasLayer
 
-# 打击感特效层（Juice）：只订阅 Events 做表现，不认识 Player/Game/Enemy，也不写回玩法状态。
-# 删掉这个文件游戏照样能玩（验收标准）。四件事：飘字 / 爆环 / 全屏晕染 / 过关彩纸
+# 打击感特效层（Juice）：只订阅 Events 做表现、不写回玩法状态；删掉它游戏照样能玩。四件事：飘字 / 爆环 / 全屏晕染 / 过关彩纸
 
-# 飘字/爆环/迸溅的并发上限不再写死：掉帧时由画质档位自动收紧
-#（见 core/PerfGuard.gd）。它们是"看得见的开销"，降档先砍这些，最后才动同屏敌人。
+# 飘字/爆环/迸溅的并发上限由画质档位自动收紧（见 core/PerfGuard.gd），掉帧先砍这些、最后才动同屏敌人。
 const MAX_CRACKS := 24
 
 const FLOAT_LIFE := 0.62
@@ -101,6 +99,10 @@ func _ready() -> void:
 	skill_fx.set_script(preload("res://ui/Fx/FxSkill.gd"))
 	skill_fx.name = "SkillFx"
 	add_child(skill_fx)
+	var range_ring := Node2D.new()
+	range_ring.set_script(preload("res://ui/Fx/FxRangeRing.gd"))
+	range_ring.name = "RangeRing"
+	add_child(range_ring)
 
 	_hurt = _mk_flash(Color(1.0, 0.12, 0.18))
 	_gold = _mk_flash(Color(1.0, 0.78, 0.32))
@@ -114,8 +116,7 @@ func _ready() -> void:
 	Events.weapon_fired.connect(_on_fired)
 	Events.wave_ended.connect(_on_wave_ended)
 
-# 全屏晕染：用 FxVignette（撑到视口 3 倍，把 letterbox 黑边也染上），
-# 而不是 ColorRect——后者只盖 540x900，在手机上就是个"方块红框"，很割裂。
+# 全屏晕染用 FxVignette 撑满视口（含 letterbox 黑边），比 ColorRect 的方块框更统一。
 func _mk_flash(c: Color) -> Control:
 	var v := Control.new()
 	v.set_script(preload("res://ui/Fx/FxVignette.gd"))
@@ -124,7 +125,6 @@ func _mk_flash(c: Color) -> Control:
 	add_child(v)
 	return v
 
-# ---- 信号：飘伤害数字 ----
 func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
 	# 顿帧：重击每次都停；普通命中要节流，否则连射武器会顿成幻灯片
 	if amount >= 30:

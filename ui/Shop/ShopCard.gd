@@ -150,11 +150,11 @@ func _draw() -> void:
 	var tag_c := accent if not dim else Color(0.55,0.58,0.62,0.8)
 	_center(tag, tx + 8.0, 47, 12, tag_c, r.size.x - tx - 92.0)
 
-	# 描述（按字符换行，最多 2 行；右侧留 96px 给价格药丸，避免文字钻到药丸底下）
+	# 描述（按字符换行，最多 2 行；右侧留 110px 给价格药丸，避免文字钻到药丸底下）
 	if not compact:
 		var desc := str(_d.get("tip", ""))
 		_draw_wrap(desc, tx, 66, 12, Color(0.76,0.72,0.64,0.95) if not dim else Color(0.5,0.47,0.43,0.7),
-			r.size.x - tx - 96.0, 2)
+			r.size.x - tx - 110.0, 2)
 
 	# 价格（"金币药丸"；买不起/槽满标红）—— 矮卡时挪到左下，给右上角的按钮让位
 	_draw_price(str(_d.get("cost", 0)), afford and not disabled, compact, tx)
@@ -245,7 +245,8 @@ func _draw_price(text: String, ok: bool, compact: bool, tx: float) -> void:
 	var h := 28.0
 	var w := coin_s + tw + 18.0
 	var px := (size.x - 14.0 - w) if not compact else tx
-	var py := (size.y - 42.0) if not compact else (size.y - 34.0)
+	# 价格药丸固定贴在卡片最底部一行（专属底部条带），不与上方描述/图标重叠
+	var py := (size.y - 30.0) if not compact else (size.y - 34.0)
 	var rr := Rect2(px, py, w, h)
 	draw_style_box(_sb(Color(0.30, 0.21, 0.06, 0.96) if ok else Color(0.28, 0.10, 0.08, 0.96),
 		Color(0.85, 0.66, 0.22) if ok else RED, 14.0, 2), rr)
@@ -264,7 +265,8 @@ func _draw_infl(pct: int, afford: bool, compact: bool, tx: float) -> void:
 	var w := tw + pad * 2
 	var h := 18.0
 	var x := (size.x - 14.0 - w) if not compact else tx
-	var y := (size.y - 50.0) if not compact else (size.y - 60.0)
+	# 通胀角标上移到价格药丸上方，二者不叠
+	var y := (size.y - 54.0) if not compact else (size.y - 60.0)
 	var col := INFL if afford else Color(0.82, 0.48, 0.46)
 	draw_style_box(_sb(Color(0.16, 0.10, 0.05, 0.9), col, 9.0, 2), Rect2(x, y, w, h))
 	_center(txt, x + w * 0.5, y + h * 0.5 + fs * 0.32, fs, Color(1, 1, 1, 0.96))

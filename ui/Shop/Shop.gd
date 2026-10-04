@@ -179,7 +179,14 @@ func _buy(index: int) -> void:
 		if bought: Events.weapons_changed.emit(GameState.weapons)
 		else: GameState.add_gold(cost)
 	else:
-		GameState.buy_upgrade(str(o.get("key", ""))); bought = true
+		var key := str(o.get("key", ""))
+		GameState.buy_upgrade(key); bought = true
+		# 强化效果可见化：弹一条"你买了什么 / 干嘛用的"，拾取类再补一圈范围环
+		var def := Data.upgrade(key)
+		if def != null:
+			_pop_effect(I18n.pick(def) + "：" + I18n.tip(def), Color(1.0, 0.82, 0.29))
+			if _is_pickup(def):
+				Events.player_range_preview.emit(GameState.pickup_magnet())
 	_sold[index] = bought; _refresh(); _flash_card(index, bought)
 
 # 手动合成（点格子）：点第 idx 格 → 另一把"同 key 同等级"的武器被吸进来并消失、本格升一级
@@ -210,6 +217,9 @@ func _sell(index: int) -> void:
 	if gain > 0:
 		GameState.add_gold(gain)
 		Events.weapons_changed.emit(GameState.weapons)
+	else:
+		# 最后一把武器不让卖（Inventory 已做"至少留 1 把"保护）：给个红色提示，避免玩家以为"卖不掉是 bug"
+		_pop_effect(I18n.t("shop_keep_one"), Color(0.95, 0.42, 0.40))
 	_refresh()
 
 func _flash_card(index: int, ok: bool) -> void:
@@ -217,6 +227,24 @@ func _flash_card(index: int, ok: bool) -> void:
 	var c: ShopCardScript = _panel.cards[index]
 	c.modulate = Color(0.45, 1.0, 0.55) if ok else Color(1.0, 0.45, 0.45)
 	create_tween().tween_property(c, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.4)
+
+# 让 HUD 横幅弹一条短提示（买强化反馈 / 卖最后一把的红色告警）。
+# 通过 HUD 的公开访问器拿到 HudBanners 实例，不读私有字段（R3）。
+func _pop_effect(text: String, col: Color) -> void:
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud == null or not hud.has_method("banners"):
+		return
+	var b = hud.banners()
+	if b != null and b.has_method("pop_effect"):
+		b.pop_effect(text, col)
+
+# 强化是否属于"金币拾取范围"类（pickup_pct / autopick / fullauto）：买了要补画一圈范围环
+func _is_pickup(def: Dictionary) -> bool:
+	for e in Inventory.stat_entries(def):
+		var s := str(e.get("stat", ""))
+		if s == "pickup_pct" or s == "autopick" or s == "fullauto":
+			return true
+	return false
 
 func _slots_full() -> bool:
 	var n := 0

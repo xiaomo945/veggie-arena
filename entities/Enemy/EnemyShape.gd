@@ -60,16 +60,36 @@ static func _gloss(c: CanvasItem, radius: float) -> void:
 	c.draw_circle(Vector2.ZERO, radius * 0.28, Color(1.0, 1.0, 1.0, 0.34))
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-# 多边形 + 厚暗色描边（卡通贴纸感）
+# 落地阴影：脚下软椭圆（与 Boss 出场的土坑区分——这是"站在地上"的投影）。
+# 用显式多边形点画，不碰 draw_set_transform，所以无论被调用时本体处于
+# squash/rise 的什么变换下都不会打乱后续绘制，也不会被缩放乱跑。
+static func ground_shadow(c: CanvasItem, radius: float) -> void:
+	var cy := radius * 0.95
+	var outer := PackedVector2Array()
+	for i in 18:
+		var a := TAU * float(i) / 18.0
+		outer.append(Vector2(cos(a) * radius * 0.95, cy + sin(a) * radius * 0.27))
+	c.draw_colored_polygon(outer, Color(0.0, 0.0, 0.0, 0.13))
+	var inner := PackedVector2Array()
+	for i in 16:
+		var a := TAU * float(i) / 16.0
+		inner.append(Vector2(cos(a) * radius * 0.72, cy + sin(a) * radius * 0.20))
+	c.draw_colored_polygon(inner, Color(0.0, 0.0, 0.0, 0.22))
+
+# 多边形 + 厚暗色描边 + 内侧亮边（卡通贴纸感 + 果冻感 rim light）
 static func poly(c: CanvasItem, pts: PackedVector2Array, col: Color) -> void:
 	var out := PackedVector2Array()
+	var rim := PackedVector2Array()
 	for p in pts:
-		out.append(p * 1.14)
+		out.append(p * 1.16)
+		rim.append(p * 1.11)
 	c.draw_colored_polygon(out, OUTLINE)
+	c.draw_colored_polygon(rim, col.lightened(0.55))
 	c.draw_colored_polygon(pts, col)
 
 # ---- 凶萌造型：每种怪一个形状 + 专属装饰 ----
 static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> void:
+	ground_shadow(c, radius)   # 先画脚下投影，本体随后压在上面
 	var look := Vector2(0.0, 0.2)
 	match etype:
 		"fast":

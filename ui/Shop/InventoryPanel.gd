@@ -98,7 +98,7 @@ func _draw_chip(w: Dictionary, rect: Rect2, idx: int) -> void:
 	draw_style_box(_sb(Color(0.16, 0.12, 0.07, 0.97), accent, 8.0, 2), rect)
 	# 武器图标
 	var tex: Texture2D = Art.icon("weapon_" + str(w.get("key", "")))
-	var s := mini(rect.size.x - 14.0, rect.size.y - 38.0)
+	var s := mini(rect.size.x - 14.0, rect.size.y - 46.0)
 	if tex != null and tex is Texture2D:
 		draw_texture_rect_region(tex,
 			Rect2(rect.position.x + (rect.size.x - s) * 0.5, rect.position.y + 20.0, s, s),
@@ -116,13 +116,14 @@ func _draw_chip(w: Dictionary, rect: Rect2, idx: int) -> void:
 		draw_circle(c, 9.0, GOLD)
 		draw_circle(c, 9.0, Color(1.0, 0.95, 0.72), false, 1.5, true)
 		_center(MERGE_TXT, c.x, c.y + 4.0, 11, Color(0.35, 0.20, 0.02))
-	# 售按钮（底部整条）
+	# 售按钮（底部整条，加高到 22px、字号加大、金色"卖出 +N"，手机好点中）
 	var sv := _tiers.sell_price(int(w.get("buy_cost", 0)))
-	var sb_rect := Rect2(rect.position.x + 3.0, rect.position.y + rect.size.y - 19.0,
-		rect.size.x - 6.0, 16.0)
+	var bar_h := 22.0
+	var sb_rect := Rect2(rect.position.x + 3.0, rect.position.y + rect.size.y - bar_h - 3.0,
+		rect.size.x - 6.0, bar_h)
 	draw_style_box(_sb(Color(0.30, 0.18, 0.06, 0.98), Color(0.85, 0.66, 0.22), 6.0, 1), sb_rect)
-	_center(I18n.t("shop_sell") + "%d" % sv, rect.position.x + rect.size.x * 0.5,
-		sb_rect.position.y + 12.0, 12, GOLD, rect.size.x - 8.0)
+	_center(I18n.t("shop_sell_btn") + "%d" % sv, rect.position.x + rect.size.x * 0.5,
+		sb_rect.position.y + bar_h * 0.5 + 7.0, 14, GOLD, rect.size.x - 8.0)
 	_sell_rects.append({"rect": sb_rect, "idx": idx})
 	_slot_rects.append({"rect": rect, "idx": idx})
 

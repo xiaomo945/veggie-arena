@@ -90,12 +90,18 @@ func run(arg = null) -> Dictionary:
 	chk(int(inv[0].get("buy_cost", -1)) == 40, "合成后买入价=两把之和 40（实际 %d）" % int(inv[0].get("buy_cost", -1)))
 	chk(done.size() == 1 and int(done[0].get("lv", 1)) == 2, "merge_pairs 返回合成结果")
 
-	# 8) 售出：回收 ≤ 买入价，且移除武器
-	var before_gold := 0
-	var gain := Inventory.sell_weapon(inv, 0, st.sell_ratio())
+	# 8) 售出：回收 ≤ 买入价，且移除武器；但至少保留 1 把（避免无武器软锁）
+	#    先用两把武器验证退款与移除
+	var inv2 := [{"key": "pistol", "lv": 1, "dmg": 9, "cd": 0.42, "buy_cost": 20},
+		{"key": "pistol", "lv": 2, "dmg": 12, "cd": 0.39, "buy_cost": 40}]
+	var gain := Inventory.sell_weapon(inv2, 1, st.sell_ratio())
 	chk(gain == 32, "售出 2 级（买入40）→ 回收 32（实际 %d）" % gain)
 	chk(gain <= 40, "售出回收不超过累计买入 40")
-	chk(inv.size() == 0, "售出后武器被移除")
+	chk(inv2.size() == 1, "售出后移除该把（剩 1 把）")
+	# 只剩一把时不允许再卖（Inventory 的"至少留 1 把"保护）
+	var alone := [{"key": "pistol", "lv": 1, "buy_cost": 20}]
+	chk(Inventory.sell_weapon(alone, 0, st.sell_ratio()) == 0, "只剩一把时不允许卖出（返回 0）")
+	chk(alone.size() == 1, "只剩一把时武器不被移除")
 
 	# 9) 模拟器兼容：merge_or_add 仍可直接升级（headless 平衡模拟用）
 	var sim := [{"key": "bow", "lv": 1, "dmg": 18, "cd": 0.8}]

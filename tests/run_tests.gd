@@ -28,6 +28,7 @@ const TShopPlan := preload("res://tests/test_shop_plan.gd")
 const TPerfGuard := preload("res://tests/test_perf_guard.gd")
 const THitFeel := preload("res://tests/test_hit_feel.gd")
 const TWeaponSets := preload("res://tests/test_weapon_sets.gd")
+const TShopFeedback := preload("res://tests/test_shop_feedback.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -68,6 +69,7 @@ func _initialize() -> void:
 	_run("PerfGuard(帧率自适应降级)", TPerfGuard, data)
 	_run("HitFeel(命中顿帧节流)", THitFeel, data)
 	_run("WeaponSets(套装/属性缩放)", TWeaponSets, data)
+	_run("ShopFeedback(商店三项修复)", TShopFeedback)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告
 	data.free()

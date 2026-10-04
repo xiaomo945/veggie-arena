@@ -166,6 +166,9 @@ static func merge_into(weapons: Array, idx: int, max_lv: int, combat_cfg: Dictio
 static func sell_weapon(weapons: Array, idx: int, ratio: float) -> int:
 	if idx < 0 or idx >= weapons.size():
 		return 0
+	# 至少保留 1 把武器，避免把最后一把卖掉后陷入"无武器软锁"
+	if weapons.size() <= 1:
+		return 0
 	var w = weapons[idx]
 	if not (w is Dictionary):
 		return 0

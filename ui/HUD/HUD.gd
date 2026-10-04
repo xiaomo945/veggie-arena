@@ -46,6 +46,7 @@ func _ready() -> void:
 
 	_banners = HudBannersScript.new()
 	add_child(_banners)
+	add_to_group("hud")   # 供 Shop 等 UI 层通过 get_first_node_in_group 拿到 HUD，再取横幅组件
 
 	_buttons = HudButtonsScript.new()
 	add_child(_buttons)
@@ -166,6 +167,10 @@ func _refresh() -> void:
 	_top.set_kills_text(I18n.t("hud_kills") % GameState.kills)
 	_top.set_bar("run_wave", GameState.wave)
 	_top.set_bar("run_total", _run_total)
+
+# 对外：返回横幅组件（HudBanners），供 Shop 等 UI 层弹出强化反馈（R3：走公开访问器，不读私有字段）
+func banners() -> Node:
+	return _banners
 
 func _wave_text() -> String:
 	if GameState.endless:

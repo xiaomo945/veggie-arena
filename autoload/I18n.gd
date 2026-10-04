@@ -186,6 +186,8 @@ const UI := {
   "shop_merge": {"en": "MERGE +1", "zh": "合成 +1"},
   "shop_merge_btn": {"en": "MERGE", "zh": "合成"},
   "shop_sell": {"en": "SELL", "zh": "售"},
+  "shop_sell_btn": {"en": "SELL +", "zh": "卖出 +"},
+  "shop_keep_one": {"en": "Keep at least one weapon", "zh": "至少保留一把武器"},
   "shop_myweapons": {"en": "YOUR WEAPONS", "zh": "我的武器"},
   "shop_full": {"en": "SLOTS FULL", "zh": "槽位已满"},
   "shop_rarity": {"en": "RARITY", "zh": "稀有度"},

@@ -23,6 +23,10 @@ var _unlock_t := 0.0
 var _unlock_queue: Array = []   # 待展示的解锁提示（一次一条，避免刷屏）
 var _set: Label                 # 套装凑齐提示（Q1）
 var _set_t := 0.0
+var _effect: Label              # 商店强化反馈：买完强化弹一条"你买了什么/干嘛用的"
+var _effect_t := 0.0
+const EFFECT_HOLD := 1.5       # 强化反馈：常显 1.5s，末 0.5s 淡出（共 2s）
+const EFFECT_FADE := 0.5
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
@@ -36,6 +40,8 @@ func _ready() -> void:
 	_unlock = _mk(Vector2(0, 340), HudLayout.banner_w(), 40.0, 24, Color(1.0, 0.84, 0.36))
 	# 套装凑齐横幅（放在锅气弹窗下方、Boss 横幅上方，三条互不遮挡）
 	_set = _mk(Vector2(0, 150), HudLayout.banner_w(), 36.0, 22, Color(1.0, 0.92, 0.70))
+	# 强化反馈横幅（屏幕中部偏下，买完强化弹出，明确"这东西干嘛用的"）
+	_effect = _mk(Vector2(0, 560), HudLayout.banner_w(), 40.0, 22, Color(1.0, 0.84, 0.36))
 
 func _mk(pos: Vector2, w: float, h: float, fs: int, c: Color) -> Label:
 	var l := Label.new()
@@ -75,6 +81,14 @@ func pop_set(text: String, c: Color) -> void:
 	_set.modulate.a = 1.0
 	_set_t = SET_HOLD
 
+# 强化反馈：买完强化弹一条短提示（zh 名 + tip），2 秒后淡出。
+# 仅用于商店强化，避免武器卡购买刷屏（调用方自己控制时机）。
+func pop_effect(text: String, col: Color) -> void:
+	_effect.text = text
+	_effect.add_theme_color_override("font_color", col)
+	_effect.modulate.a = 1.0
+	_effect_t = EFFECT_HOLD + EFFECT_FADE
+
 # 解锁提示：一次显示一条，UNLOCK_HOLD 秒后换下一条（多条时排队，不叠在一起）
 func queue_unlock(key: String) -> void:
 	_unlock_queue.append(key)
@@ -101,6 +115,11 @@ func tick(delta: float) -> void:
 		if _unlock_t <= 0.0:
 			_unlock.text = ""
 		return
+	if _effect_t > 0.0:
+		_effect_t -= delta
+		_effect.modulate.a = clampf(_effect_t / EFFECT_FADE, 0.0, 1.0)
+		if _effect_t <= 0.0:
+			_effect.text = ""
 	if _unlock_queue.is_empty():
 		return
 	var key := str(_unlock_queue.pop_front())

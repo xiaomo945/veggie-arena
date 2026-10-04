@@ -69,6 +69,10 @@ signal character_changed(key: String)
 signal weapons_changed(weapons: Array)
 signal weapon_merged(key: String, level: int)
 
+# 金币拾取范围预览：买完"拾取范围"类强化后由 UI 层 emit（core 不 emit），
+# FxLayer 订阅并画一圈从玩家扩散到半径的金色环，让看不见的拾取范围变化一眼可见。
+signal player_range_preview(radius: float)
+
 # ---- 战斗发射 ----
 # Player 只发信号说"我要往这个方向打一发"，不认识子弹、也不认识敌人列表
 # key = 武器 key（pistol/smg/rocket…），供特效层按武器做专属火光
