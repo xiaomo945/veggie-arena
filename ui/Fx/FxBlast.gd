@@ -2,14 +2,16 @@ extends Control
 
 # 颠勺大招的全屏卡通爆炸
 #
-# 爆炸中心 = 玩家实时世界坐标投影到屏幕。
-# ⚠️ 之前的 bug：这里直接画"屏幕中心"，注释还写着"镜头恒定以玩家为中心"。
-# 但竞技场尺寸==视口(540x900)，镜头被夹在竞技场里动不了，屏幕中心实际是
-# 竞技场正中央(270,450)，玩家在边缘时爆炸就明显"钉在场中央、不跟着人走"。
-# 现在改为把玩家世界坐标用 get_canvas_transform 投影到屏幕，环/射线就稳稳跟在人身上。
+# 爆炸中心 = 玩家实时世界坐标。FxLayer 是世界空间层（follow_viewport_enabled=true，
+# 跟着相机走），所以它的子节点直接画"世界坐标"即可，相机变换已由整层统一施加。
+#
+# ⚠️ 历史 bug：这里曾用 get_canvas_transform() * _center_world 把相机变换又乘一遍，
+#    等于对位置做了两次相机变换，再叠加 -1..2 锚点把 local(0,0) 推到 (-270,-450)，
+#    结果圆环被甩到左上角屏幕外、白光爆闪留在场中央，看起来像"两个不相关的爆炸"。
+#    现在直接画世界坐标、锚点改回 0..1，整发爆炸稳稳钉在玩家当前位置。
 #
 # 三段组成，边缘一律柔化（多层衰减而不是一根硬圆线），避免看到生硬的圆形边框：
-#   1) 白光爆闪 —— 铺满整屏（含 letterbox 黑边），本来就没有边界，与中心无关
+#   1) 白光爆闪 —— 以玩家为中心向外多层同心圆铺开，半径远超半视口，铺满整屏
 #   2) 扩散冲击波带 —— 以玩家为准由内向外多层衰减，一直扩到屏幕外才消失
 #   3) 放射速度线 —— 卡通"咻"的爆开感（从玩家位置放射）
 
@@ -41,11 +43,12 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _ready() -> void:
-	# 撑到视口 3 倍，覆盖 letterbox 黑边，做到真·全屏
-	anchor_left = -1.0
-	anchor_top = -1.0
-	anchor_right = 2.0
-	anchor_bottom = 2.0
+	# 满屏控件：锚点 0..1 让 local(0,0) 对齐世界原点，画世界坐标时位置才准。
+	# ⚠️ 之前用 -1..2 把 local(0,0) 推到 (-270,-450)，叠加世界层相机变换后圆环被甩到左上角。
+	anchor_left = 0.0
+	anchor_top = 0.0
+	anchor_right = 1.0
+	anchor_bottom = 1.0
 	# 全屏控件必须忽略触摸，否则吃掉摇杆点击
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_process(false)      # 只在 fire() 后的 0.55 秒里跑
@@ -54,19 +57,11 @@ func _draw() -> void:
 	if not playing:
 		return
 	var k: float = clampf(t / LIFE, 0.0, 1.0)
-	var view: Vector2 = get_viewport_rect().size
-	if view.x <= 0.0:
-		view = Vector2(540.0, 900.0)
-	# 爆炸中心 = 玩家实时世界坐标投影到屏幕。
-	# 竞技场==视口，镜头被夹住，屏幕中心≠玩家，必须按玩家世界坐标投影才跟人走。
-	var c: Vector2 = view * 0.5
-	var xf := get_viewport().get_canvas_transform()
-	c = xf * _center_world
+	# FxLayer 是世界空间层（已统一施加相机变换），直接画玩家世界坐标即可，
+	# 不要再用 get_canvas_transform() 二次投影，否则会被甩到屏幕外。
+	var c: Vector2 = _center_world
 
-	# 1) 白光爆闪：以玩家为中心的径向圆形爆闪。
-	#    ⚠️ 之前这里是 draw_rect 铺满整屏 —— 玩家看到的爆炸因此是个"正方形"，
-	#       跟"以玩家为中心的圆形爆炸"完全对不上。改成多层同心圆向外铺，
-	#       中心最亮、边缘衰减，读起来就是一发圆形大爆炸。
+	# 1) 白光爆闪：以玩家为中心的径向圆形爆闪（多层同心圆，中心最亮、边缘衰减）。
 	if k < FLASH_T:
 		var fa: float = 1.0 - k / FLASH_T
 		var fr: float = lerpf(70.0, MAXR * 0.95, k / FLASH_T)

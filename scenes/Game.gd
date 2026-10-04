@@ -277,11 +277,5 @@ func _on_skill_requested(id: String) -> void:
 	if skill_sys != null:
 		skill_sys.cast(id)
 
-func _draw() -> void:
-	if world.shock_t < 0.0 or world.shock_t > world.shock_dur:
-		return
-	var k := clampf(world.shock_t / world.shock_dur, 0.0, 1.0)
-	var r := world.shock_max * k
-	var a := 1.0 - k
-	draw_arc(world.shock_pos, r, 0.0, TAU, 36, Color(1.0, 0.78, 0.42, a), 7.0, true)
-	draw_arc(world.shock_pos, r * 0.7, 0.0, TAU, 36, Color(1.0, 0.92, 0.7, a * 0.7), 4.0, true)
+# 颠勺冲击波环已并入 FxBlast（ui/Fx/FxBlast.gd）：整发爆炸统一画在玩家当前位置，
+# 不再单独在 Game 里画一圈——否则场中央/左上角会出现两个对不上的爆炸范围。

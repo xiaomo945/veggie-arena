@@ -14,16 +14,22 @@ extends RefCounted
 static var _until_usec := 0
 static var _armed := false
 
-# 触发一次定帧。连击时顺延（不叠加），保证节奏不被拖成慢动作。
+# 单帧内大量命中（如颠勺清屏瞬间触发几十次 kill/damage）时，定帧总时长封顶，
+# 避免把几十次"顺延"累加成 1~2 秒的 0.05 倍速（玩家感知就是"开了慢镜头"）。
+const MAX_HITSTOP := 0.10
+
+# 触发一次定帧。连击时顺延（不叠加倍速，只延长到点），但总时长不超过 MAX_HITSTOP。
 static func hit(sec: float, scale := 0.05) -> void:
 	if sec <= 0.0:
 		return
 	var now := Time.get_ticks_usec()
+	var dur_us := int(sec * 1000000.0)
+	var cap_us := int(MAX_HITSTOP * 1000000.0)
 	if _armed and now < _until_usec:
-		_until_usec += int(sec * 1000000.0)
+		_until_usec = mini(_until_usec + dur_us, now + cap_us)
 		return
 	Engine.time_scale = scale
-	_until_usec = now + int(sec * 1000000.0)
+	_until_usec = mini(now + dur_us, now + cap_us)
 	_armed = true
 
 # 每帧调用（放在不会暂停的 _process 里）：到点恢复 1.0

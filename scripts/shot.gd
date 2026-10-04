@@ -41,6 +41,7 @@ var _hud_n := 6
 var _stats := false
 var _pause := false
 var _no_run := false
+var _wok := false
 
 const AUTOLOADS := {
 	"Art": "res://autoload/Art.gd",
@@ -88,6 +89,8 @@ func _initialize() -> void:
 			_stats = true
 		elif a == "--pause":
 			_pause = true
+		elif a == "--wok":
+			_wok = true
 		elif a.begins_with("--series="):
 			_series = float(a.substr(9))
 		elif a == "--rise":
@@ -147,6 +150,11 @@ func _initialize() -> void:
 		await _wait(0.4)
 	_save(_out)
 	quit(0)
+	if _wok:
+		_fire_wok(main)
+		await _wait(0.06)
+		_save(_out)
+		quit(0)
 
 func _bus(name: String) -> Node:
 	return root.get_node(name)
@@ -254,6 +262,12 @@ func _fire_stats() -> void:
 	root.add_child(ss)
 	ss.show_menu()
 	_stats_node = ss
+
+# 颠勺爆炸目检：把锅气充满，真触发一次颠勺，截一帧看爆炸是否钉在玩家位置。
+func _fire_wok(main: Node) -> void:
+	var gs := _bus("GameState")
+	gs.add_wok(100000.0)
+	_bus("Events").wok_toss_requested.emit()
 
 var _stats_node: Node = null
 
