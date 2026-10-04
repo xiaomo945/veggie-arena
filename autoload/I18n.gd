@@ -63,6 +63,8 @@ const UI := {
   "shop_sold": {"en": "SOLD", "zh": "已售"},
   "shop_reroll": {"en": "REROLL (%d)", "zh": "刷新 (%d)"},
   "shop_next": {"en": "NEXT WAVE →", "zh": "下一波 →"},
+  "shop_slots_full_hint": {"en": "SLOTS FULL — sell one to roll new weapons", "zh": "槽位已满：先卖掉一把，才能刷出新武器"},
+  "shop_big_tag": {"en": "★ BIG SALE  −%d%% ALL", "zh": "★ 大促销  全场 −%d%%"},
 
   # ---- 暂停 ----
   "pause_title": {"en": "PAUSED", "zh": "暂停"},

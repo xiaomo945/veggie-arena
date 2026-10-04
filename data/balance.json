@@ -264,7 +264,13 @@
     "reroll_step": 2,
     "max_slot": 6,
     "max_lv": 6,
-    "price_inflation": 0.22
+    "price_inflation": 0.22,
+    "_doc_rhythm": "Q5：每 big_every 波开一次大商店（卡更多 + 全场打折），其余波次只开 2 张小卡，快速选完回战斗。Q6：single_reroll_ratio 是单张刷新价占整店刷新的比例；整店刷新会保留锁定的卡。",
+    "big_every": 3,
+    "big_offer_count": 6,
+    "small_offer_count": 2,
+    "big_discount_pct": 0.15,
+    "single_reroll_ratio": 0.5
   },
   "combat": {
     "min_damage": 1,

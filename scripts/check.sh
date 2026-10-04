@@ -14,7 +14,9 @@ fail=0
 n=0
 skip=0
 while IFS= read -r f; do
-  if grep -qE '\b(Art|Data|Events|GameState|Settings|Steam|SaveMgr|Sfx|Bgm|Gamepad)\.' "$f" 2>/dev/null; then
+  # 名单要与 project.godot 的 autoload 完全一致：漏一个就会把"用了 autoload 的文件"
+  # 当成语法错误误报（HudLayout / ScreenMode 曾被漏掉，误报过 2 个文件）。
+  if grep -qE '\b(Art|Data|Events|GameState|Settings|Steam|SaveMgr|Sfx|Bgm|Gamepad|I18n|HudLayout|ScreenMode)\.' "$f" 2>/dev/null; then
     skip=$((skip+1))
     continue
   fi

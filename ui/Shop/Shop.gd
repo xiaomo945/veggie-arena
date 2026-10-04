@@ -1,40 +1,31 @@
 extends CanvasLayer
 
-# 补给站：波次结束后弹出。手机竖屏单列：顶部金币/属性 → 我的武器(可售) → 4 张购买卡 → 合成/刷新/下一波。
-# 卡片画法交给 ShopCard（哑组件）；本文件只做：算报价 → 组装展示 → 接线购买/合成/售出 → 刷新。
+# 补给站：波次结束后弹出。手机竖屏单列：顶部金币/属性 → 我的武器(可售) → 购买卡 → 合成/刷新/下一波。
+# 骨架与样式在 ShopPanel.gd（纯 UI）；卡片画法在 ShopCard.gd（哑组件）；
+# 本文件只做业务：算报价 → 组装展示 → 接线购买/合成/售出 → 刷新。
+#
+# 节奏（core/ShopPlan.gd）：每 big_every 波开一次"大商店"（卡多 + 打折），其余波次只有
+# 2 张卡快速选完；单卡可锁定（整店刷新时保留）/ 单独刷新（半价只换这一张）。
 
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
 const ShopCardScript := preload("res://ui/Shop/ShopCard.gd")
+const ShopPanelScript := preload("res://ui/Shop/ShopPanel.gd")
 const ShopTiers := preload("res://core/ShopTiers.gd")
-const InventoryPanelScript := preload("res://ui/Shop/InventoryPanel.gd")
+const ShopPlan := preload("res://core/ShopPlan.gd")
 
-const PANEL_W := 496.0
-const PANEL_H := 762.0
-const CARD_H := 100.0
-const CARD_GAP := 8.0
-const INV_H := 104.0      # 我的武器：6 个固定方格（含标题行）
-const CARDS_Y := 224.0
-
-const GOLD := Color(0.99, 0.87, 0.40)
-const GOLD_DK := Color(0.80, 0.60, 0.26)
 const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
 
 var _root: Control
-var _panel: Panel
-var _gold_lbl: Label
-var _stats_lbl: Label
-var _cards: Array = []
-var _reroll_btn: Button
-var _next_btn: Button
-var _merge_btn: Button
-var _inv: Control
+var _panel: ShopPanelScript
 var _offers: Array = []
 var _reroll_times := 0
+var _locked: Array = []        # 被锁定的卡位下标（整店刷新时保留）
+var _card_count := 4          # 本场开了几张（大商店 6 / 小商店 2）
 var _sold := []
 var _rng := RandomNumberGenerator.new()
 var _max_slot := 6
-var _max_lv := 4
+var _max_lv := 6
 
 func _ready() -> void:
 	layer = 30
@@ -56,126 +47,73 @@ func _build() -> void:
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.color = Color(0, 0, 0, 0.62)
 	_root.add_child(shade)
-	_panel = Panel.new()
-	_panel.set_size(Vector2(PANEL_W, PANEL_H))
-	_panel.set_position(Vector2((540 - PANEL_W) * 0.5, (900 - PANEL_H) * 0.5))
-	_panel.add_theme_stylebox_override("panel", _flat_box(Color(0.14, 0.10, 0.07, 0.985), GOLD_DK, 18))
+	_panel = ShopPanelScript.new()
+	_panel.build()
 	_root.add_child(_panel)
-	_panel.add_child(_coin_rect(Vector2(18, 16), 30))
-	var title := Label.new()
-	title.text = I18n.t("shop_title")
-	title.set_position(Vector2(58, 17))
-	title.add_theme_font_size_override("font_size", 25)
-	title.add_theme_color_override("font_color", GOLD)
-	_panel.add_child(title)
-	var pill := Panel.new()
-	pill.set_size(Vector2(152, 38)); pill.set_position(Vector2(PANEL_W - 166, 12))
-	pill.add_theme_stylebox_override("panel", _flat_box(Color(0.30, 0.21, 0.06, 0.95), Color(0.85, 0.66, 0.22), 19))
-	_panel.add_child(pill)
-	pill.add_child(_coin_rect(Vector2(7, 6), 26))
-	_gold_lbl = Label.new(); _gold_lbl.set_position(Vector2(40, 5))
-	_gold_lbl.add_theme_font_size_override("font_size", 19)
-	_gold_lbl.add_theme_color_override("font_color", Color(1.0, 0.90, 0.50))
-	pill.add_child(_gold_lbl)
-	# 基础属性名牌
-	var stats_bg := Panel.new()
-	stats_bg.set_size(Vector2(PANEL_W - 28, 48)); stats_bg.set_position(Vector2(14, 60))
-	stats_bg.add_theme_stylebox_override("panel", _flat_box(Color(0.20, 0.16, 0.09, 0.92), Color(0.42, 0.34, 0.18, 0.9), 10))
-	_panel.add_child(stats_bg)
-	_stats_lbl = Label.new(); _stats_lbl.set_size(Vector2(PANEL_W - 40, 44)); _stats_lbl.set_position(Vector2(22, 64))
-	_stats_lbl.add_theme_font_size_override("font_size", 13)
-	_stats_lbl.add_theme_color_override("font_color", Color(0.62, 0.90, 0.63))
-	_panel.add_child(_stats_lbl)
-	# 我的武器（可售出）面板
-	_inv = InventoryPanelScript.new()
-	_inv.set_size(Vector2(PANEL_W - 28, INV_H)); _inv.set_position(Vector2(14, 112))
-	_inv.sell_requested.connect(_sell)
-	_inv.merge_requested.connect(_merge_at)
-	_panel.add_child(_inv)
-	# 4 张购买卡
-	var y := CARDS_Y
-	for i in 4:
-		var card = ShopCardScript.new()
-		card.set_size(Vector2(PANEL_W - 28, CARD_H)); card.set_position(Vector2(14, y))
-		card.on_click = _buy.bind(i)
-		_panel.add_child(card); _cards.append(card)
-		y += CARD_H + CARD_GAP
-	# 底部按钮：合成（橙，可合并时点亮）/ 刷新（绿）/ 下一波（金）
-	var by := 674.0
-	_merge_btn = Button.new(); _merge_btn.set_size(Vector2(126, 58)); _merge_btn.set_position(Vector2(14, by))
-	_merge_btn.add_theme_font_size_override("font_size", 17)
-	_style_btn(_merge_btn, Color(0.95, 0.62, 0.16), Color(0.22, 0.13, 0.03), Color(0.86, 0.56, 0.14))
-	_merge_btn.pressed.connect(_merge); _panel.add_child(_merge_btn)
-	_reroll_btn = Button.new(); _reroll_btn.set_size(Vector2(144, 58)); _reroll_btn.set_position(Vector2(146, by))
-	_reroll_btn.add_theme_font_size_override("font_size", 17)
-	_style_btn(_reroll_btn, Color(0.24, 0.33, 0.18), Color(0.74, 0.91, 0.54), Color(0.48, 0.64, 0.32))
-	_reroll_btn.pressed.connect(_reroll_bought); _panel.add_child(_reroll_btn)
-	_next_btn = Button.new(); _next_btn.set_size(Vector2(180, 58)); _next_btn.set_position(Vector2(296, by))
-	_next_btn.text = I18n.t("shop_next"); _next_btn.add_theme_font_size_override("font_size", 19)
-	_style_btn(_next_btn, Color(0.98, 0.80, 0.22), Color(0.24, 0.15, 0.04), Color(0.88, 0.66, 0.16))
-	_next_btn.pressed.connect(_next_wave); _panel.add_child(_next_btn)
-
-func _flat_box(bg: Color, border: Color, radius: float) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg; sb.set_corner_radius_all(int(radius)); sb.border_color = border; sb.set_border_width_all(2)
-	return sb
-
-func _coin_rect(pos: Vector2, sz: float) -> TextureRect:
-	var tr := TextureRect.new()
-	tr.texture = Art.coin_icon(); tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.set_size(Vector2(sz, sz)); tr.set_position(pos)
-	return tr
-
-func _style_btn(b: Button, bg: Color, fg: Color, border: Color) -> void:
-	var n := _flat_box(bg, border, 14); n.shadow_color = Color(0, 0, 0, 0.35); n.shadow_size = 4; n.shadow_offset = Vector2(0, 2)
-	b.add_theme_stylebox_override("normal", n)
-	var hov := n.duplicate() as StyleBoxFlat; hov.bg_color = bg.lightened(0.12); b.add_theme_stylebox_override("hover", hov)
-	var pre := n.duplicate() as StyleBoxFlat; pre.bg_color = bg.darkened(0.15); b.add_theme_stylebox_override("pressed", pre)
-	var dis := n.duplicate() as StyleBoxFlat; dis.bg_color = bg.darkened(0.45); b.add_theme_stylebox_override("disabled", dis)
-	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	b.add_theme_color_override("font_color", fg); b.add_theme_color_override("font_disabled_color", Color(fg, 0.45))
+	_panel.inv.sell_requested.connect(_sell)
+	_panel.inv.merge_requested.connect(_merge_at)
+	_panel.merge_btn.pressed.connect(_merge)
+	_panel.reroll_btn.pressed.connect(_reroll_bought)
+	_panel.next_btn.pressed.connect(_next_wave)
+	for i in _panel.cards.size():
+		var c: ShopCardScript = _panel.cards[i]
+		c.on_click = _buy.bind(i)
+		c.on_lock = _lock_toggle.bind(i)
+		c.on_reroll_one = _reroll_one.bind(i)
 
 func _open() -> void:
-	_reroll_times = 0; _roll(); _root.visible = true
+	_reroll_times = 0; _locked = []; _roll(); _root.visible = true
 
 func _on_locale_changed(_l: String = "") -> void:
 	_refresh()
 
 func _roll() -> void:
 	var cfg := Data.shop_cfg()
-	_max_slot = int(cfg.get("max_slot", 6)); _max_lv = int(cfg.get("max_lv", 4))
-	var infl := float(cfg.get("price_inflation", 0.0))
-	var pool := Economy.build_pool(GameState.weapons, Data.weapons, Data.upgrades,
-		_max_slot, _max_lv, SaveMgr.unlocked_weapons(), GameState.stat_value("shop_discount"),
-		GameState.wave, infl)
-	_offers = Economy.roll_offers(pool, int(cfg.get("offer_count", 4)), _rng)
+	_max_slot = int(cfg.get("max_slot", 6)); _max_lv = int(cfg.get("max_lv", 6))
+	_card_count = clampi(ShopPlan.offer_count(GameState.wave, cfg), 1, _panel.cards.size())
+	_offers = Economy.roll_offers(_pool_now(), _card_count, _rng)
 	_sold = []; for i in _offers.size(): _sold.append(false)
+	_panel.layout_cards(_offers.size())
 	_refresh()
 
 func _refresh() -> void:
-	_gold_lbl.text = I18n.t("shop_gold") % GameState.gold
+	_panel.gold_lbl.text = I18n.t("shop_gold") % GameState.gold
 	_refresh_stats()
-	for i in _cards.size():
-		var c: ShopCardScript = _cards[i]
+	for i in _panel.cards.size():
+		var c: ShopCardScript = _panel.cards[i]
 		if i >= _offers.size(): c.visible = false; continue
 		c.visible = true
 		var o: Dictionary = _offers[i]
 		var afford := Economy.can_buy(GameState.gold, int(o.get("cost", 0)))
-		c.setup(_card_data(o, _sold[i], afford))
-	_merge_btn.text = I18n.t("shop_merge_btn")
-	_merge_btn.disabled = not Inventory.has_mergeable(GameState.weapons, _max_lv)
+		var d := _card_data(o, _sold[i], afford)
+		# 单卡可控：锁 / 单张刷新（已售出的卡不给按钮）
+		d["can_lock"] = not _sold[i]
+		d["locked"] = _locked.has(i)
+		d["reroll_one_cost"] = ShopPlan.single_reroll_cost(_reroll_times, Data.shop_cfg())
+		c.setup(d)
+	_panel.merge_btn.text = I18n.t("shop_merge_btn")
+	_panel.merge_btn.disabled = not Inventory.has_mergeable(GameState.weapons, _max_lv)
 	# 刷新按钮的文字一直没人设置过（截图目检才发现是空白按钮），补上 + 显示当前刷新价
-	_reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, Data.shop_cfg())
-	_inv.refresh(GameState.weapons, _max_lv, _max_slot)
+	_panel.reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, Data.shop_cfg())
+	# 槽位满了还刷不出新武器时，明确告诉玩家"先卖一把"——否则只会以为商店坏了；
+	# 否则大商店亮出促销标识，让"攒钱这一波能大买"的节奏被看见。
+	var cfg := Data.shop_cfg()
+	if _slots_full():
+		_panel.hint_lbl.text = I18n.t("shop_slots_full_hint")
+	elif ShopPlan.is_big(GameState.wave, cfg):
+		_panel.hint_lbl.text = I18n.t("shop_big_tag") % int(round(ShopPlan.discount(GameState.wave, cfg) * 100.0))
+	else:
+		_panel.hint_lbl.text = ""
+	_panel.inv.refresh(GameState.weapons, _max_lv, _max_slot)
 
 func _refresh_stats() -> void:
-	if _stats_lbl == null: return
+	if _panel == null or _panel.stats_lbl == null: return
 	var spd := int(round(float(Data.player_cfg().get("speed", 180)) * (1.0 + GameState.stat_value("speed_pct"))))
 	var g1 := "生命 %d   护甲 %d   移速 %d" % [GameState.max_hp, int(GameState.stat_value("armor")), spd]
 	var g2 := "攻击 +%d%%   射速 +%d%%   范围 +%d%%   暴击 %d%%" % [
 		int(GameState.stat_value("dmg_pct") * 100.0), int(GameState.stat_value("rate_pct") * 100.0),
 		int(GameState.stat_value("range_pct") * 100.0), int(GameState.stat_value("crit_chance") * 100.0)]
-	_stats_lbl.text = g1 + "\n" + g2
+	_panel.stats_lbl.text = g1 + "\n" + g2
 
 func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 	var kind := str(o.get("kind", "")); var key := str(o.get("key", ""))
@@ -250,15 +188,58 @@ func _sell(index: int) -> void:
 	_refresh()
 
 func _flash_card(index: int, ok: bool) -> void:
-	if index < 0 or index >= _cards.size(): return
-	var c: ShopCardScript = _cards[index]
+	if index < 0 or index >= _panel.cards.size(): return
+	var c: ShopCardScript = _panel.cards[index]
 	c.modulate = Color(0.45, 1.0, 0.55) if ok else Color(1.0, 0.45, 0.45)
 	create_tween().tween_property(c, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.4)
 
+func _slots_full() -> bool:
+	var n := 0
+	for w in GameState.weapons:
+		if int(w.get("lv", 1)) > 0:
+			n += 1
+	return n >= _max_slot
+
+func _lock_toggle(index: int) -> void:
+	if index >= _offers.size():
+		return
+	if _locked.has(index):
+		_locked.erase(index)
+	else:
+		_locked.append(index)
+	_refresh()
+
+func _reroll_one(index: int) -> void:
+	if index >= _offers.size() or _locked.has(index):
+		return
+	var cfg := Data.shop_cfg()
+	var cost := ShopPlan.single_reroll_cost(_reroll_times, cfg)
+	if not Economy.can_buy(GameState.gold, cost):
+		return
+	var pool := _pool_now()
+	GameState.spend_gold(cost); _reroll_times += 1
+	_offers = ShopPlan.reroll_one(_offers, index, pool, _rng)
+	_sold[index] = false
+	_refresh()
+
+func _pool_now() -> Array:
+	var cfg := Data.shop_cfg()
+	var infl := float(cfg.get("price_inflation", 0.0))
+	var disc := GameState.stat_value("shop_discount") + ShopPlan.discount(GameState.wave, cfg)
+	return Economy.build_pool(GameState.weapons, Data.weapons, Data.upgrades,
+		_max_slot, _max_lv, SaveMgr.unlocked_weapons(), disc, GameState.wave, infl)
+
+# 整店刷新：锁定的卡保留
 func _reroll_bought() -> void:
 	var cfg := Data.shop_cfg(); var cost := Economy.reroll_cost(_reroll_times, cfg)
 	if not Economy.can_buy(GameState.gold, cost): return
-	GameState.spend_gold(cost); _reroll_times += 1; _roll()
+	GameState.spend_gold(cost); _reroll_times += 1
+	if _locked.is_empty():
+		_roll()
+	else:
+		_offers = ShopPlan.reroll_keep(_offers, _locked, _pool_now(), _card_count, _rng)
+		_sold = []; for i in _offers.size(): _sold.append(false)
+		_refresh()
 
 func _next_wave() -> void:
 	_root.visible = false; Events.shop_closed.emit()
