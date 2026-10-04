@@ -13,20 +13,23 @@ extends RefCounted
 #   反转后相机中心被钳到一个死值 → 镜头彻底不动、玩家跑出屏幕（真机踩过）。
 #   所以任何一维出现 min > max 时，该维退化为场地中心（锁死这一维，另一维仍可跟随）。
 #
-# 入参 a：场地矩形 {x,y,w,h}；view：相机可见的世界尺寸（宽, 高）。
+# 入参 a：场地矩形 {x,y,w,h}；view：相机可见的世界尺寸（宽, 高）；
+#       margin：允许视野超出场地边界的宽度（用来把围栏露出来，默认 0=严格贴边）。
 # 返回：{left, right, top, bottom}，均为相机【中心点】的允许范围。
 
-static func limits(a: Dictionary, view: Vector2) -> Dictionary:
+static func limits(a: Dictionary, view: Vector2, margin: float = 0.0) -> Dictionary:
 	var ax := float(a.get("x", 0))
 	var ay := float(a.get("y", 0))
 	var aw := float(a.get("w", 540))
 	var ah := float(a.get("h", 900))
 	var hw := view.x * 0.5
 	var hh := view.y * 0.5
-	var left := ax + hw
-	var right := ax + aw - hw
-	var top := ay + hh
-	var bottom := ay + ah - hh
+	# margin：允许镜头再多往外让一点，把场地外的"围栏 + 一点灶台地面"露出来。
+	# 露的是深色厨房地面（不是黑框），这样边界读起来是有围栏的战场，而不是画面被切断。
+	var left := ax + hw - margin
+	var right := ax + aw - hw + margin
+	var top := ay + hh - margin
+	var bottom := ay + ah - hh + margin
 	# 视口比场地宽/高：内缩后区间反转，锁到该维的场地中心（而不是留下一个反转区间）
 	if left > right:
 		left = ax + aw * 0.5

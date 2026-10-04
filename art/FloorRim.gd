@@ -13,20 +13,22 @@ const SHADOW := Color(0.0, 0.0, 0.0, 0.30)
 const BAND := 15.0        # 钢边带宽
 const RIVET_STEP := 88.0  # 铆钉间距（稀疏一点：每帧都要随地面重画，省不少 draw call）
 
-# ⚠️ 包边全部画在场地【内侧】，不是外侧。
-#   镜头贴边后"屏幕边 = 场地边"，画在外侧的部分会被裁到屏幕外（用户实测：边框整条消失）。
-#   从边界往里依次是：ink 外沿 → 钢带（亮上暗下）→ ink 内沿 → 砧板内侧投影 → 铆钉。
+# ⚠️ 包边画在场地【外侧】（BAND 宽），不能画进场地里。
+#   试过画在内侧：那 19px 玩家和怪照样能站进去，看着就像"陷进围栏里"、怪从围栏里
+#   钻出来，而且贴边的武器会被钢带盖住。画在外面 = 围栏是场地之外的东西，谁也踩不到。
+#   外侧能被看到的前提：镜头限位要多让出 RIM_MARGIN（见 CamLimits.limits 的 margin 参数），
+#   让屏幕边比场地边多探出一圈，否则贴边时整条围栏会被裁到屏幕外。
 static func draw_rim(c: CanvasItem, arena: Rect2) -> void:
 	if not _near_edge(c, arena):
 		return
-	_band(c, arena, INK, 4.0)                    # 外沿描边（贴着边界往里 4px）
-	var m := arena.grow(-4.0)
-	_band(c, m, STEEL_M, BAND)                   # 钢带本体
-	_edge_line(c, m.grow(-1.5), STEEL_L, 2.4)    # 上缘高光
-	var inner := m.grow(-BAND)
-	_edge_line(c, inner.grow(1.5), STEEL_D, 2.0) # 下缘暗边
-	_band(c, inner, INK, 2.0)                    # 内描边
-	_shadow_band(c, inner.grow(-2.0))            # 砧板内侧投影（往里 11px）
+	var o := arena.grow(BAND + 3.0)
+	_shadow_band(c, arena)                       # 砧板内侧投影（贴边往里一圈暗带）
+	_band(c, o, INK)                             # 外描边
+	var m := arena.grow(BAND)
+	_band(c, m, STEEL_M)                         # 钢带本体
+	_edge_line(c, o.grow(-2.0), STEEL_L, 2.4)    # 上缘高光
+	_edge_line(c, m.grow(1.0), STEEL_D, 2.0)     # 下缘暗边
+	_band(c, arena.grow(1.5), INK)               # 内描边
 	_rivets(c, arena)
 
 # 只在镜头看得见任一边时才画（视野中心到边界的距离 < 半屏 + 带宽）
@@ -73,8 +75,7 @@ static func _shadow_band(c: CanvasItem, r: Rect2) -> void:
 
 # 铆钉：钢带上一颗颗小圆钉（亮面 + 暗底），让包边读起来是金属而不是色条
 static func _rivets(c: CanvasItem, arena: Rect2) -> void:
-	# 铆钉走在钢带中线：钢带现在是往里 4 ~ 4+BAND，所以中线是往里 4 + BAND*0.5
-	var mid := arena.grow(-4.0 - BAND * 0.5)
+	var mid := arena.grow(BAND * 0.5)
 	var cam := _cam(c)
 	var view := c.get_viewport_rect().size
 	var half := view * 0.5 + Vector2(24.0, 24.0)

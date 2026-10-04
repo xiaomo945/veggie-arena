@@ -263,7 +263,7 @@
     "reroll_base": 3,
     "reroll_step": 2,
     "max_slot": 6,
-    "max_lv": 4,
+    "max_lv": 6,
     "price_inflation": 0.22
   },
   "combat": {

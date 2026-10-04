@@ -37,6 +37,9 @@ window/size/viewport_height=900
 window/handheld/orientation=1
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
+# 手机 DPR 常常是 2~3，开 HiDPI 等于每帧要画 1179x2619 个像素（填充率直接吃掉帧率）。
+# 2D 像素风/矢量风在 DPR=1 下观感差别极小，帧率收益很大 —— 怪多时从 29 帧往 60 帧靠。
+window/dpi/allow_hidpi=false
 
 [input_devices]
 

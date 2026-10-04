@@ -4,7 +4,7 @@
   "tier_price_floor": {"1": 20, "2": 40, "3": 80, "4": 160, "5": 320, "6": 640},
   "sell_ratio": 0.8,
   "max_tier": 6,
-  "weapon_tier_from_wave": {"1": 1, "2": 2, "3": 6, "4": 10, "5": 14, "6": 18},
+  "weapon_tier_from_wave": {"1": 1, "2": 2, "3": 5, "4": 8, "5": 11, "6": 14},
   "weapon_tier_weight": {"1": 7.0, "2": 3.4, "3": 1.5, "4": 0.66, "5": 0.28, "6": 0.1},
   "upgrade_rarity_from_wave": {"1": 0, "2": 0, "3": 8},
   "tier_colors": {

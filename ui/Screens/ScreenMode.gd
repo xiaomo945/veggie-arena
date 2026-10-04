@@ -13,6 +13,10 @@ const LANDSCAPE_SIZE := Vector2i(960, 540)
 const CamLimits := preload("res://core/CamLimits.gd")
 # 相机跟随平滑速度（等效原 Camera2D.position_smoothing_speed）
 const CAM_FOLLOW_SPEED := 9.0
+# 镜头允许越过场地边界的宽度：把钢边围栏（画在场地外 BAND≈18px）完整露出来。
+# 露的是深色灶台地面而非黑框，玩家能看清"这里是战场边界"，又不会像之前那样
+# 露出半屏黑区。改这个值只需动这里，CamLimits 已经把它做成参数。
+const RIM_MARGIN := 24.0
 
 func _win_size() -> Vector2:
 	return Vector2(DisplayServer.window_get_size())
@@ -58,7 +62,7 @@ func follow_camera(cam: Camera2D, target: Node2D, delta: float) -> void:
 		return
 	if target == null or not is_instance_valid(target):
 		return
-	var m := CamLimits.limits(Data.arena(), CamLimits.view_world_size(cam))
+	var m := CamLimits.limits(Data.arena(), CamLimits.view_world_size(cam), RIM_MARGIN)
 	var p := target.global_position
 	var want := Vector2(clampf(p.x, m["left"], m["right"]), clampf(p.y, m["top"], m["bottom"]))
 	cam.global_position = cam.global_position.lerp(want, 1.0 - exp(-CAM_FOLLOW_SPEED * delta))
