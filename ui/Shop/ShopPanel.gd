@@ -11,13 +11,14 @@ extends Panel
 const InventoryPanelScript := preload("res://ui/Shop/InventoryPanel.gd")
 const ShopCardScript := preload("res://ui/Shop/ShopCard.gd")
 const ShopCardCtl := preload("res://ui/Shop/ShopCardCtl.gd")
+const SetBarScript := preload("res://ui/Shop/SetBar.gd")
 
 const PANEL_W := 496.0
 const PANEL_H := 762.0
 const CARD_H := 100.0
 const CARD_GAP := 8.0
 const CARD_MAX_H := 132.0      # 卡少时不要撑成巨无霸，剩下的空间居中留白
-const INV_H := 104.0           # 我的武器：6 个固定方格（含标题行）
+const INV_H := 96.0            # 我的武器：6 个固定方格（含标题行；上方留 18px 给提示行）
 const CARDS_Y := 224.0
 const CARDS_BOTTOM := 674.0    # 底部按钮上沿：卡片区总高度 = 674 - 224
 const MAX_CARDS := 6           # 大商店最多 6 张（卡片会变矮）
@@ -31,6 +32,7 @@ var stats_lbl: Label
 var hint_lbl: Label
 var cards: Array = []
 var inv: Control
+var sets_bar: Control
 var merge_btn: Button
 var reroll_btn: Button
 var next_btn: Button
@@ -44,6 +46,13 @@ func build() -> void:
 	_build_inventory()
 	_build_cards()
 	_build_buttons()
+	_build_sets()
+
+# 套装条：面板最底一条（按钮下方还剩 30px），常驻显示五套的件数进度
+func _build_sets() -> void:
+	sets_bar = SetBarScript.new()
+	sets_bar.set_size(Vector2(PANEL_W - 28, 24)); sets_bar.set_position(Vector2(14, 736))
+	add_child(sets_bar)
 
 func _build_header() -> void:
 	add_child(coin_rect(Vector2(18, 16), 30))
@@ -72,9 +81,11 @@ func _build_stats() -> void:
 	stats_lbl.add_theme_font_size_override("font_size", 13)
 	stats_lbl.add_theme_color_override("font_color", Color(0.62, 0.90, 0.63))
 	add_child(stats_lbl)
-	# 满槽提示条：只在"槽位满了还刷不出新武器"时亮，否则玩家只会以为商店坏了
+	# 满槽提示条：只在"槽位满了还刷不出新武器"时亮，否则玩家只会以为商店坏了。
+	# ⚠️ 位置压着"我的武器"最后一排往下 8px：以前放在 y=200，正好盖住格子里的
+	#    "售 N"按钮（按钮占 195~212），提示一出来售出就点不到了。
 	hint_lbl = Label.new()
-	hint_lbl.set_size(Vector2(PANEL_W - 40, 22)); hint_lbl.set_position(Vector2(22, 200))
+	hint_lbl.set_size(Vector2(PANEL_W - 40, 18)); hint_lbl.set_position(Vector2(22, 206))
 	hint_lbl.add_theme_font_size_override("font_size", 13)
 	hint_lbl.add_theme_color_override("font_color", Color(1.0, 0.72, 0.40))
 	add_child(hint_lbl)

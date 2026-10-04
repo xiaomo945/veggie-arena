@@ -59,6 +59,53 @@ static func active_sets(weapons: Array, defs: Dictionary, sets: Dictionary) -> D
 		out[tag] = {"count": n, "tier": tier, "need_next": need_next}
 	return out
 
+# 距离下一档还差【几件】（已满级返回 0）。UI 上写"3/4"用的就是这个。
+static func next_need(count: int, set_def: Dictionary) -> int:
+	var tiers = set_def.get("tiers", [])
+	for i in tiers.size():
+		var t = tiers[i]
+		if not (t is Dictionary):
+			continue
+		var need := int((t as Dictionary).get("need", 99))
+		if count < need:
+			return need
+	return 0
+
+# 第 tier 档给出的加成表（tier 从 1 起；0 或越界返回空表）
+static func tier_stats(set_def: Dictionary, tier: int) -> Dictionary:
+	var tiers = set_def.get("tiers", [])
+	if tier <= 0 or tier > tiers.size():
+		return {}
+	var t = tiers[tier - 1]
+	if not (t is Dictionary):
+		return {}
+	return t.get("stats", {}) as Dictionary
+
+# 五套的当前进度，给 UI 画"套装条"用。
+# 返回 [{tag, count, tier, need_next, color}]，件数多、已激活的排前面 —— 玩家
+# 最关心的那套一眼就看到。core 层不碰 I18n，名字由 UI 层取 data/weapon_sets.json。
+static func progress(weapons: Array, defs: Dictionary, sets: Dictionary) -> Array:
+	var counts := tag_counts(weapons, defs)
+	var out: Array = []
+	for tag in sets:
+		var sd = sets[tag]
+		if not (sd is Dictionary):
+			continue
+		var s := sd as Dictionary
+		var n := int(counts.get(tag, 0))
+		out.append({"tag": str(tag), "count": n, "tier": tier_of(n, s),
+			"need_next": next_need(n, s), "color": str(s.get("color", "#8a7a5a"))})
+	out.sort_custom(_cmp_progress)
+	return out
+
+# 排序：先比件数（多在前），件数相同比档位（高在前），保证顺序稳定
+static func _cmp_progress(a, b) -> bool:
+	var da := a as Dictionary
+	var db := b as Dictionary
+	if int(da.get("count", 0)) != int(db.get("count", 0)):
+		return int(da.get("count", 0)) > int(db.get("count", 0))
+	return int(da.get("tier", 0)) > int(db.get("tier", 0))
+
 # 把所有激活档位的加成汇总成一个 {stat: value}（同名属性相加）。
 # 这个结果要并进 GameState.stat_value，套装才算真的生效。
 static func bonuses(weapons: Array, defs: Dictionary, sets: Dictionary) -> Dictionary:

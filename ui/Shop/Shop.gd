@@ -13,6 +13,7 @@ const ShopCardScript := preload("res://ui/Shop/ShopCard.gd")
 const ShopPanelScript := preload("res://ui/Shop/ShopPanel.gd")
 const ShopTiers := preload("res://core/ShopTiers.gd")
 const ShopPlan := preload("res://core/ShopPlan.gd")
+const WeaponSets := preload("res://core/WeaponSets.gd")
 
 const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
 
@@ -105,6 +106,17 @@ func _refresh() -> void:
 	else:
 		_panel.hint_lbl.text = ""
 	_panel.inv.refresh(GameState.weapons, _max_lv, _max_slot)
+	_panel.sets_bar.refresh(_set_progress())
+
+# 套装条数据：件数 + 下一档 + 颜色 + 已翻译好的名字（SetBar 自己不碰 I18n）
+func _set_progress() -> Array:
+	var out: Array = []
+	for p in WeaponSets.progress(GameState.weapons, Data.weapons, Data.weapon_sets):
+		var it := p as Dictionary
+		out.append({"label": I18n.t("set_" + str(it.get("tag", ""))),
+			"count": int(it.get("count", 0)), "need": int(it.get("need_next", 0)),
+			"tier": int(it.get("tier", 0)), "color": str(it.get("color", "#8a7a5a"))})
+	return out
 
 func _refresh_stats() -> void:
 	if _panel == null or _panel.stats_lbl == null: return
@@ -135,6 +147,12 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 		var set_name := I18n.t("set_" + str(tags[0])) if tags.size() > 0 else ""
 		var state := I18n.t("shop_merge") if _owned_lv(key) > 0 else I18n.t("shop_new")
 		d["tag"] = (set_name + "·" if set_name != "" else "") + state
+		# 左侧套装色竖条：整套已激活就亮起来（与 HUD 武器槽同一套视觉语言）
+		if tags.size() > 0:
+			var sd := Data.weapon_set(str(tags[0]))
+			var cnt := int(WeaponSets.tag_counts(GameState.weapons, Data.weapons).get(str(tags[0]), 0))
+			d["set_color"] = Color(str(sd.get("color", "#8a7a5a")))
+			d["set_on"] = WeaponSets.tier_of(cnt, sd) > 0
 		d["disabled"] = not Inventory.can_accept_tier(GameState.weapons, key, lv, _max_slot, _max_lv)
 	else:
 		var rar := clampi(int(def.get("rarity", 1)), 1, 3)

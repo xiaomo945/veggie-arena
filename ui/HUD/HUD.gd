@@ -18,6 +18,7 @@ const WaveSkipScript := preload("res://ui/HUD/WaveSkip.gd")
 const DebugMode := preload("res://core/DebugMode.gd")
 const Weapon := preload("res://core/Weapon.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
+const Stats := preload("res://core/Stats.gd")
 
 # 竖屏安全区：顶部内容下移避让刘海 / 状态栏，底部按钮上移避让手势条。
 const TOP_SHIFT := 34.0
@@ -34,6 +35,7 @@ var _wok_charges_n := 0     # 当前已存颠勺充能数（按钮常驻显示�
 var _combo := 0             # 连击数（短时间连续击杀累加）
 var _combo_t := 0.0         # 连击剩余有效时间
 var _run_total := 20        # 总波次（来自 balance.json）
+var _set_tiers := {}        # 上一帧各套装的档位（用于侦测"刚跨档"）
 
 func _ready() -> void:
 	layer = 20
@@ -57,6 +59,7 @@ func _ready() -> void:
 	Events.wave_started.connect(_on_wave_started)
 	Events.wave_progress.connect(_on_wave_progress)
 	Events.weapons_changed.connect(_on_weapons)
+	Events.run_started.connect(_on_run_started)
 	Events.run_started.connect(_on_weapons)
 	Events.boss_wave.connect(_on_boss_wave)
 	Events.final_boss_wave.connect(_on_final_boss_wave)
@@ -100,6 +103,10 @@ func _on_wave_progress(elapsed: float, length: float) -> void:
 	_top.set_bar("run_wave", GameState.wave)
 	_top.set_wave_text(_wave_text())
 
+# 新局的套装档位从零算起，别把上一局残留的档位带进来（否则开局不会弹提示）
+func _on_run_started() -> void:
+	_set_tiers = {}
+
 func _on_weapons(_ignored: Array = []) -> void:
 	var slots: Array = []
 	# Q1 套装：武器槽的描边按套装上色，凑够件数的那套会亮起来
@@ -122,6 +129,32 @@ func _on_weapons(_ignored: Array = []) -> void:
 			"set_color": Color(str(Data.weapon_set(_set_tag(def)).get("color", "#8a7a5a"))),
 		})
 	_top.set_bar("slots", slots)
+	_check_set_tier_up()
+
+# 套装档位刚跨过去时弹一条横幅：不弹的话，"我凑齐了一套"这件大事
+# 只表现为属性面板里的一行数字，玩家根本注意不到。
+func _check_set_tier_up() -> void:
+	var now := WeaponSets.active_sets(GameState.weapons, Data.weapons, Data.weapon_sets)
+	var tiers: Dictionary = {}    # 只存档位：存整个 active_sets 会拿 Dictionary 去 int() 崩掉
+	for tag in now:
+		var d := now[tag] as Dictionary
+		var tier := int(d.get("tier", 0))
+		tiers[tag] = tier
+		if tier <= int(_set_tiers.get(tag, 0)):
+			continue
+		var sd := Data.weapon_set(str(tag))
+		_banners.pop_set(I18n.t("set_tier_up") % [I18n.t("set_" + str(tag)),
+			int(d.get("count", 0))] + _set_gain(sd, tier),
+			Color(str(sd.get("color", "#ffd08a"))))
+	_set_tiers = tiers
+
+# 这一档给了什么（取第一条加成写进横幅，全写会太长）
+func _set_gain(sd: Dictionary, tier: int) -> String:
+	var st := WeaponSets.tier_stats(sd, tier)
+	for k in st:
+		var e := Stats.entry(str(k))
+		return "  " + I18n.t(str(e.get("name", ""))) + " " + Stats.fmt_value(str(e.get("fmt", "")), float(st[k]))
+	return ""
 
 # 一把武器的主套装（取第一个 tag；没有 tag 的老数据返回空串）
 func _set_tag(def: Dictionary) -> String:

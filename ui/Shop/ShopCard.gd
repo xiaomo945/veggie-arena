@@ -126,6 +126,13 @@ func _draw() -> void:
 	var compact := Ctl.is_compact(r.size.y)
 	var ib := Ctl.icon_box(r.size.y)
 
+	# 左侧套装色竖条：这把属于哪一套、这套凑够了没有（凑够=亮+粗）
+	if _d.has("set_color"):
+		var sc: Color = _d.get("set_color", GOLD)
+		var lit := bool(_d.get("set_on", false))
+		draw_style_box(_sb(sc.lightened(0.20) if lit else sc.darkened(0.35),
+			Color(0, 0, 0, 0), 3.0, 0), Rect2(3.0, 8.0, 4.0, r.size.y - 16.0))
+
 	# 左侧图标 / 稀有度宝石（底座染色呼应主色）
 	_draw_icon(r, accent, ib)
 

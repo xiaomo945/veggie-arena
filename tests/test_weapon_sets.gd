@@ -12,6 +12,7 @@ extends RefCounted
 
 const WeaponSets := preload("res://core/WeaponSets.gd")
 const Stats := preload("res://core/Stats.gd")
+const SetBar := preload("res://ui/Shop/SetBar.gd")
 
 var _p := 0
 var _f := 0
@@ -117,5 +118,48 @@ func run(data) -> Dictionary:
 	chk(absf(WeaponSets.damage_mult(pistol, st) - 1.30) < 0.0001, "手枪叠满：+10%% 全局 +20%% 远程 = ×1.3")
 	chk(absf(WeaponSets.damage_mult(cleaver, st) - 1.10) < 0.0001, "菜刀只吃到 +10%% 全局")
 	chk(WeaponSets.damage_mult(pistol, {"dmg_pct": -5.0}) > 0.0, "负属性堆到离谱也不会打出负伤害")
+
+	# --- 进度可见（商店套装条 / 横幅靠这个算文本）---
+	chk(WeaponSets.next_need(0, sb) == 2 and WeaponSets.next_need(1, sb) == 2,
+		"0~1 件：下一档还差到 2 件")
+	chk(WeaponSets.next_need(2, sb) == 4 and WeaponSets.next_need(4, sb) == 6, "2 件→差 4；4 件→差 6")
+	chk(WeaponSets.next_need(6, sb) == 0, "满级没有下一档（返回 0）")
+	var ts := WeaponSets.tier_stats(sb, 2)
+	chk(absf(float(ts.get("melee_pct", 0.0)) - 0.18) < 0.0001, "第 2 档加成表 = +18%% 近战")
+	chk(WeaponSets.tier_stats(sb, 0).is_empty() and WeaponSets.tier_stats(sb, 9).is_empty(),
+		"档位 0 / 越界返回空表（不会崩）")
+
+	var prog := WeaponSets.progress([six[0], six[1], six[2]], defs, sets)
+	chk(prog.size() == known.size(), "进度表给出全部 %d 套（实测 %d）" % [known.size(), prog.size()])
+	chk(str((prog[0] as Dictionary).get("tag", "")) == "blade", "件数最多的那套排在最前")
+	chk(int((prog[0] as Dictionary).get("count", 0)) == 3 and int((prog[0] as Dictionary).get("need_next", 0)) == 4,
+		"3 件刀工：进度写 3/4")
+	var sorted := true
+	for i in range(1, prog.size()):
+		if int((prog[i] as Dictionary).get("count", 0)) > int((prog[i - 1] as Dictionary).get("count", 0)):
+			sorted = false
+	chk(sorted, "按件数降序排（主力套装永远在最前）")
+	chk(Color(str((prog[0] as Dictionary).get("color", "#ffffff"))) != Color(1, 1, 1),
+		"每套都带自己的颜色（UI 靠它上色）")
+	chk(WeaponSets.progress([], defs, sets).size() == known.size(), "空背包也返回 5 套（进度条一直可见）")
+
+	# 套装条徽章布局：5 枚横排不越界、不重叠、0 枚不除零
+	var bs := SetBar.badges(5, 468.0, 24.0)
+	chk(bs.size() == 5, "5 枚徽章")
+	var last: Rect2 = bs[4]
+	chk(last.position.x + last.size.x <= 468.5, "最后一枚不超出面板宽度（右沿 %.1f）" % (last.position.x + last.size.x))
+	var overlap := false
+	for i in range(1, bs.size()):
+		if float((bs[i] as Rect2).position.x) < float((bs[i - 1] as Rect2).position.x) + float((bs[i - 1] as Rect2).size.x) - 0.01:
+			overlap = true
+	chk(not overlap, "徽章之间不重叠")
+	chk(SetBar.badges(0, 468.0, 24.0).is_empty(), "0 枚徽章不除零、返回空")
+
+	# 横幅里那句"近战伤害 +18%"：数值格式化与属性目录取条目
+	chk(Stats.fmt_value("pct", 0.18) == "+18%", "百分比属性格式化为 +18%%（实测 %s）" % Stats.fmt_value("pct", 0.18))
+	chk(Stats.fmt_value("flat", 8.0) == "+8", "整数属性格式化为 +8")
+	chk(Stats.fmt_value("lvl", 2.0) == "×2", "层数属性格式化为 ×2")
+	chk(str(Stats.entry("melee_pct").get("name", "")) == "stat_melee", "按 key 能查到属性条目")
+	chk(Stats.entry("nope").is_empty(), "查不到返回空字典（不会崩）")
 
 	return {"pass": _p, "fail": _f, "failures": _failures}

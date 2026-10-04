@@ -2,45 +2,29 @@ extends SceneTree
 
 # 真渲染截图工具（美术目检专用）
 #
-# headless 跑不出任何像素，美术问题（背景糊成一团、描边看不见、层级盖错）
-# 只能靠真渲染截图看。跑法：
+# headless 跑不出任何像素，美术问题只能靠真渲染截图看。跑法：
 #   xvfb-run -s "-screen 0 540x900x24" /opt/godot/Godot_v4.3-stable_linux.x86_64 \
 #       --path /workspace/veggie-arena --script res://scripts/shot.gd -- \
 #       --t=6 --out=/tmp/shot.png
 #
-# 参数：
-#   --t=秒数        开跑后渲染多少秒再截图（默认 6）
-#   --out=路径      PNG 输出路径（默认 /tmp/va_shot.png）
-#   --boss          截图前发一次 boss_wave（看 Boss 登场演出）
-#   --final         截图前发一次 final_boss_wave
-#   --elite         截图前把场上第一只怪标成精英并重发出场信号（看精英出场）
-#   --shop          截图前塞一组"有两对可合成"的武器并打开补给站（看 6 格物品栏 / 合成高亮）
-#   --hud[=N]       截图前塞一组"七种打法各一把"的武器，只看 HUD 武器槽的行为符文
-#   --series=秒     连拍：每 1 秒一张（文件名自动加序号）
-#   --to=x,y        玩家一直朝这个世界坐标走（看地图边缘 / 围栏用）
+# 参数：--t=秒数(默认6) --out=路径 --boss/--final(Boss演出) --elite(精英出场)
+#   --shop(合成高亮) --sets(套装条) --hud[=N](行为符文) --stats(属性页)
+#   --pause --wok(颠勺) --series=秒(连拍) --to=x,y(走位) --rise(Boss破土) --no-run
 #
-# ⚠️ --script 模式不注册 autoload，且 autoload 是**编译期**标识符，
-#    运行时 add_child 也救不了（会 Compile Error: Identifier not found）。
-#    所以这里统一走 root.get_node("Events") 这种运行时取节点的方式。
+# ⚠️ --script 模式不注册 autoload，且它是编译期标识符（运行时 add_child 也救不了，
+#    会 Compile Error）。所以统一走 root.get_node("Events") 运行时取节点。
 
 var _out := "/tmp/va_shot.png"
 var _secs := 6.0
-var _boss := false
-var _final := false
-var _elite := false
 var _series := 0.0
 var _to := Vector2.INF
 var _boss_wait := 0.45
 var _elite_wait := 0.3
-var _rise := false
 var _rise_wait := 0.42
-var _shop := false
-var _shop_n := 6
-var _hud := false
-var _hud_n := 6
-var _stats := false
-var _pause := false
-var _no_run := false
+# 开关旗标一行一个太占行，合并写（都是互不依赖的 bool）
+var _boss := false; var _final := false; var _elite := false; var _rise := false
+var _shop := false; var _shop_n := 6; var _hud := false; var _hud_n := 6
+var _stats := false; var _sets := false; var _pause := false; var _no_run := false
 var _wok := false
 
 const AUTOLOADS := {
@@ -55,6 +39,7 @@ const AUTOLOADS := {
 	"Bgm": "res://autoload/Bgm.gd",
 	"Gamepad": "res://autoload/Gamepad.gd",
 	"I18n": "res://autoload/I18n.gd",
+	"Perf": "res://autoload/Perf.gd",
 }
 
 func _initialize() -> void:
@@ -85,6 +70,8 @@ func _initialize() -> void:
 			_hud_n = maxi(0, int(a.substr(6)))
 		elif a == "--no-run":
 			_no_run = true
+		elif a == "--sets":
+			_sets = true
 		elif a == "--stats":
 			_stats = true
 		elif a == "--pause":
@@ -141,6 +128,9 @@ func _initialize() -> void:
 	if _shop:
 		_fire_shop()
 		await _wait(0.6)
+	if _sets:
+		_fire_sets()
+		await _wait(0.6)
 	if _stats:
 		_fire_stats()
 		await _wait(0.5)
@@ -174,7 +164,7 @@ func _walk_towards(main: Node) -> bool:
 	main.player.set_move_dir(d.normalized())
 	return false
 
-# Boss 登场演出：直接发信号（Fx 层订阅的就是这两个信号）
+# Boss 登场演出：直接发信号（Fx 层订阅的就是这两个）
 func _fire_boss() -> void:
 	var ev := _bus("Events")
 	var w := int(_bus("GameState").wave)
@@ -191,7 +181,7 @@ func _fire_elite(main: Node) -> void:
 			_bus("Events").enemy_spawned.emit(e)
 			return
 
-# Boss 升起演出：真刷一只 Boss 并把它拽到玩家旁边（保证在屏幕内），看破土动画
+# Boss 升起演出：真刷一只 Boss 拽到玩家旁边（保证在屏幕内），看破土动画
 func _fire_rise(main: Node) -> void:
 	main.game.enemy_system.spawn_boss()
 	var world = main.game.world
@@ -200,8 +190,7 @@ func _fire_rise(main: Node) -> void:
 			e.global_position = main.player.global_position + Vector2(150.0, -40.0)
 			return
 
-# 武器槽目检：七种打法各来一把，只看 HUD 顶部那排槽里的行为符文有没有画对。
-# 等级故意错开（1~4），顺便看等级点数得清不清楚。
+# 武器槽目检：七种打法各来一把、等级错开（1~4），看行为符文与等级点数。
 func _fire_hud() -> void:
 	var gs := _bus("GameState")
 	var plan := [["pistol", 1], ["cleaver", 2], ["microwave", 3], ["pan", 2],
@@ -213,10 +202,8 @@ func _fire_hud() -> void:
 		gs.weapons.append({"key": str(p[0]), "lv": int(p[1])})
 	_bus("Events").weapons_changed.emit(gs.weapons)
 
-# 补给站：塞一组"两对同 key 同等级"的武器（触发金色可合成高亮），再开店。
-# 6 格全满 + 2 对可合，正好把"满槽样式 / 空槽样式 / 合成高亮"三种状态里前两种都照到。
+# 补给站：塞"两对同 key 同等级"武器（触发金色可合成高亮）再开店。
 func _fire_shop() -> void:
-	var gs := _bus("GameState")
 	var defs: Dictionary = _bus("Data").weapons
 	var keys := defs.keys()
 	if keys.size() < 4:
@@ -224,20 +211,39 @@ func _fire_shop() -> void:
 	var plan := [[0, 1], [0, 1], [1, 2], [2, 3], [2, 3], [3, 1]]
 	if _shop_n < plan.size():
 		plan = plan.slice(0, _shop_n)
-	gs.weapons.clear()
+	var pairs: Array = []
 	for p in plan:
-		var d: Dictionary = defs[keys[p[0]]]
-		gs.weapons.append({
-			"key": str(keys[p[0]]), "lv": p[1],
+		pairs.append([keys[p[0]], p[1]])
+	_grant_and_open(defs, pairs)
+
+# 套装条目检：刀工 3 件（差 1 到第 2 档）+ 枪械 2 件（已激活），看套装条与卡片竖条。
+func _fire_sets() -> void:
+	var defs: Dictionary = _bus("Data").weapons
+	var want := {"blade": 3, "gun": 2}
+	var pairs: Array = []
+	for k in defs:
+		var tags: Array = (defs[k] as Dictionary).get("tags", []) as Array
+		var t := str(tags[0]) if not tags.is_empty() else ""
+		if t == "" or not want.has(t) or int(want[t]) <= 0:
+			continue
+		want[t] = int(want[t]) - 1
+		pairs.append([k, 1 + (pairs.size() % 2)])
+	_grant_and_open(defs, pairs)
+
+# 把 [key,lv] 塞进背包（补全 dmg/cd/color/buy_cost），发 weapons_changed 并开店
+func _grant_and_open(defs: Dictionary, pairs: Array) -> void:
+	var gs := _bus("GameState")
+	gs.weapons.clear()
+	for p in pairs:
+		var d: Dictionary = defs[p[0]]
+		gs.weapons.append({"key": str(p[0]), "lv": int(p[1]),
 			"dmg": int(d.get("dmg", 10)), "cd": float(d.get("cd", 0.5)),
-			"color": d.get("color", Color(1, 1, 1)), "buy_cost": 40 * int(p[1]),
-		})
+			"color": d.get("color", Color(1, 1, 1)), "buy_cost": 40 * int(p[1])})
 	gs.gold = 500
 	_bus("Events").weapons_changed.emit(gs.weapons)
 	_bus("Events").shop_opened.emit()
 
-# 属性页目检：把每个 stat 的第一个升级 key 各买 1 层，让目录里所有行都亮起来
-# （顺带验证"亮/灰"两种样式、中文分组标题与滚动区是否溢出屏幕）。
+# 属性页目检：每个 stat 的第一个升级 key 各买 1 层，看亮/灰样式与滚动区溢出。
 func _fire_stats() -> void:
 	var gs := _bus("GameState")
 	var data: Node = _bus("Data")
@@ -263,7 +269,7 @@ func _fire_stats() -> void:
 	ss.show_menu()
 	_stats_node = ss
 
-# 颠勺爆炸目检：把锅气充满，真触发一次颠勺，截一帧看爆炸是否钉在玩家位置。
+# 颠勺爆炸目检：充满锅气真触发一次，看爆炸是否钉在玩家位置。
 func _fire_wok(main: Node) -> void:
 	var gs := _bus("GameState")
 	gs.add_wok(100000.0)
@@ -271,7 +277,7 @@ func _fire_wok(main: Node) -> void:
 
 var _stats_node: Node = null
 
-# DEBUG：布局跑完后再遍历，打印非空 Label 的最终位置
+# DEBUG：遍历打印非空 Label 的最终位置（布局排错用）
 func _dump_labels(from: Node) -> void:
 	if from == null:
 		return

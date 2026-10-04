@@ -86,6 +86,21 @@ static func catalog() -> Array:
 		{"key": "ifr_pct",           "cat": "move", "name": "stat_ifr",        "fmt": "pct"},
 	]
 
+# 某条属性的"加成值"怎么显示（+18% / +8 / ×2）。core 层不碰 I18n，
+# 所以这里只格式化数值部分，属性名由 UI 层自己翻译。
+static func fmt_value(fmt: String, value: float) -> String:
+	match fmt:
+		"pct": return "+%d%%" % int(round(value * 100.0))
+		"lvl": return "×%d" % int(round(value))
+		_: return "+%d" % int(round(value))
+
+# 按 key 查目录条目（没有返回空字典）
+static func entry(key: String) -> Dictionary:
+	for s in catalog():
+		if str((s as Dictionary).get("key", "")) == key:
+			return s as Dictionary
+	return {}
+
 # 按分组聚好、按目录顺序排列，方便 UI 直接遍历渲染。
 static func grouped() -> Array:
 	var out: Array = []

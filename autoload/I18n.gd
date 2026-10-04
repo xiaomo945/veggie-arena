@@ -29,6 +29,7 @@ const UI := {
   "set_elemental": {"en": "Elemental", "zh": "元素"},
   "set_kitchen": {"en": "Kitchenware", "zh": "厨具"},
   "set_tier": {"en": "%s %d", "zh": "%s %d"},
+  "set_tier_up": {"en": "%s ×%d!", "zh": "%s %d 件！"},
   "stat_melee": {"en": "Melee DMG", "zh": "近战伤害"},
   "stat_ranged": {"en": "Ranged DMG", "zh": "远程伤害"},
   "stat_elem": {"en": "Elemental DMG", "zh": "元素伤害"},

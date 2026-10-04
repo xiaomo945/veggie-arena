@@ -12,6 +12,7 @@ const UNLOCK_FADE := 0.5 # 解锁提示渐隐稍快一点
 const BOSS_HOLD := 2.6   # Boss 横幅停留
 const WOK_HOLD := 1.6    # 锅气弹窗停留
 const UNLOCK_HOLD := 2.2 # 解锁提示停留
+const SET_HOLD := 2.0    # 套装凑齐提示停留
 
 var _banner: Label
 var _banner_t := 0.0
@@ -20,6 +21,8 @@ var _wok_banner_t := 0.0
 var _unlock: Label
 var _unlock_t := 0.0
 var _unlock_queue: Array = []   # 待展示的解锁提示（一次一条，避免刷屏）
+var _set: Label                 # 套装凑齐提示（Q1）
+var _set_t := 0.0
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
@@ -31,6 +34,8 @@ func _ready() -> void:
 	_wok_banner = _mk(Vector2(0, 96), HudLayout.banner_w(), 40.0, 30, Color(1, 1, 1))
 	# 解锁横幅
 	_unlock = _mk(Vector2(0, 340), HudLayout.banner_w(), 40.0, 24, Color(1.0, 0.84, 0.36))
+	# 套装凑齐横幅（放在锅气弹窗下方、Boss 横幅上方，三条互不遮挡）
+	_set = _mk(Vector2(0, 150), HudLayout.banner_w(), 36.0, 22, Color(1.0, 0.92, 0.70))
 
 func _mk(pos: Vector2, w: float, h: float, fs: int, c: Color) -> Label:
 	var l := Label.new()
@@ -63,6 +68,13 @@ func pop_wok(text: String, c: Color) -> void:
 	_wok_banner.modulate.a = 1.0
 	_wok_banner_t = WOK_HOLD
 
+# 套装凑齐：件数刚跨过一档时弹一次，让"我凑出了一套"这件事被看见
+func pop_set(text: String, c: Color) -> void:
+	_set.text = text
+	_set.add_theme_color_override("font_color", c)
+	_set.modulate.a = 1.0
+	_set_t = SET_HOLD
+
 # 解锁提示：一次显示一条，UNLOCK_HOLD 秒后换下一条（多条时排队，不叠在一起）
 func queue_unlock(key: String) -> void:
 	_unlock_queue.append(key)
@@ -78,6 +90,11 @@ func tick(delta: float) -> void:
 		_wok_banner.modulate.a = clampf(_wok_banner_t / FADE, 0.0, 1.0)
 		if _wok_banner_t <= 0.0:
 			_wok_banner.text = ""
+	if _set_t > 0.0:
+		_set_t -= delta
+		_set.modulate.a = clampf(_set_t / FADE, 0.0, 1.0)
+		if _set_t <= 0.0:
+			_set.text = ""
 	if _unlock_t > 0.0:
 		_unlock_t -= delta
 		_unlock.modulate.a = clampf(_unlock_t / UNLOCK_FADE, 0.0, 1.0)
