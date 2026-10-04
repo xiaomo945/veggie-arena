@@ -43,14 +43,12 @@ func _ready() -> void:
 	player.z_index = 6
 	add_child(player)
 
-	# 相机：直接挂在玩家身上（最稳的跟随方式，引擎原生支持，不用每帧手动算位置）
-	# 不要再写 root.canvas_transform —— 那会和 stretch 模式冲突，导致镜头完全不动
+	# 相机：独立节点 + 每帧手动跟随（不能挂在玩家身上 —— 挂上去后 Camera2D.limit 会被
+	# 当成父节点局部坐标，内缩限位反而把镜头钉死、玩家跑出屏幕；已用探针实测确认）
 	_cam = Camera2D.new()
-	_cam.position_smoothing_enabled = true
-	_cam.position_smoothing_speed = 9.0
-	player.add_child(_cam)
+	add_child(_cam)
 	_cam.make_current()   # 必须在 add_child 之后调用，否则节点还没进树会报 is_inside_tree 错误
-	ScreenMode.clamp_camera(_cam, a)   # 相机限位到竞技场边界（防边缘过冲露黑边）
+	_cam.global_position = player.global_position
 
 	# 战斗管理器（刷怪/子弹/命中/波次）
 	game = GameScene.instantiate()
@@ -91,8 +89,9 @@ func _on_hp_shake(hp: int, _m: int) -> void:
 	_prev_hp = hp
 
 func _process(delta: float) -> void:
-	# 相机跟随由"挂在玩家身上"自动完成（引擎原生，拉伸/平滑都管好了，不碰 stretch）
-	# 这里只管受击震屏：衰减后作为相机 offset 叠加，不影响跟随
+	# 相机跟随玩家；玩家到场地边缘时镜头停跟，屏幕边贴住场地边（不露黑框）
+	ScreenMode.follow_camera(_cam, player, delta)
+	# 受击震屏：衰减后作为相机 offset 叠加，不影响跟随
 	if _cam != null and is_instance_valid(_cam):
 		if _shake > 0.1:
 			_shake = maxf(0.0, _shake - delta * 42.0)
