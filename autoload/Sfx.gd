@@ -126,7 +126,9 @@ func _on_kill(type: String, _pos: Vector2) -> void:
 		_play_pitched("kill_boss", 120, 1.0)
 
 func _on_pickup(_pos: Vector2, _value: int) -> void:
-	_play("pickup", 60)
+	# 捡钱是最高频触发的音效：节流 60->110ms，避免一地金币连续"叮叮叮"像机关枪。
+	# 配合 sfx_coin 已重做为柔和版（降调去非谐分音 + 音量压到 0.32）。
+	_play("pickup", 110)
 
 func _on_wave(_w: int) -> void:
 	_play("wave", 200)

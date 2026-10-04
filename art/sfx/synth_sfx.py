@@ -4,12 +4,15 @@
 纯代码合成 11 个短音效 -> Ogg Vorbis (44100, mono, 峰值<=0.85)
 """
 import os
+import sys
 import numpy as np
 import soundfile as sf
 
 SR = 44100
 PEAK = 0.85
-OUT = os.path.join(os.path.dirname(__file__), "..", "art", "sfx")
+# ⚠️ 本脚本就在 art/sfx/ 下，输出目录必须就是脚本所在目录。
+# 旧写法拼成 art/sfx/../art/sfx = art/art/sfx（错误目录），会导致重生成写不到真实音效上。
+OUT = os.path.dirname(os.path.abspath(__file__))
 
 # 中式五声音阶频率表 (宫商角徵羽: C D E G A)，含跨八度
 PENTA = {
@@ -119,18 +122,22 @@ def sfx_shoot():
     n = int(SR * 0.16)
     t = np.arange(n) / SR
     f = np.linspace(720, 320, n)            # 下滑
+    # 柔和化（2026-10-04）：二次泛音 0.25->0.18，起音咔哒 0.25->0.14，
+    # 开火是最高频的音效，尖刺感主要来自这两处。
     s = np.sin(2 * np.pi * np.cumsum(f) / SR) * 0.8
-    s += 0.25 * np.sin(2 * np.pi * 2 * np.cumsum(f) / SR)
+    s += 0.18 * np.sin(2 * np.pi * 2 * np.cumsum(f) / SR)
     env = np.exp(-t / 0.04)
     env[:int(SR*0.003)] = np.linspace(0, 1, int(SR*0.003))
     s = s * env
-    click = noise(0.012, 0.25)
+    click = noise(0.012, 0.14)
     return norm(add_silence(s[:int(SR*0.16)] + np.concatenate([click, np.zeros(max(0, int(SR*0.16)-len(click)))])[:int(SR*0.16)], 0.005))
 
 def sfx_hit():
     # 闷脆"啪"：低撞击 thud + 短促带通噪声
+    # 柔和化（2026-10-04）：亮噪扫频 1800->1100Hz、幅度 0.6->0.32，
+    # 命中音每秒可能响十几次，高频成分压下去后整体不再"炸耳"。
     thud = note(150, 0.10, "sine", amp=0.9, attack=0.001, decay=0.05, release=0.02)
-    nz = bp_sweep_noise(0.06, 1800, 600, amp=0.6, q=1.0)[:int(SR*0.06)]
+    nz = bp_sweep_noise(0.06, 1100, 500, amp=0.32, q=1.0)[:int(SR*0.06)]
     x = thud + np.concatenate([nz, np.zeros(int(SR*0.10)-len(nz))])
     return norm(add_silence(x[:int(SR*0.13)], 0.004))
 
@@ -147,15 +154,29 @@ def sfx_kill():
     return norm(add_silence(x, 0.004))
 
 def sfx_coin():
-    # 铜钱"叮"：金属双分音（明亮、五声高区）+ 短亮衰
-    base = PENTA["E6"]  # 1318.51
-    x = metallic([(base, 1.0), (base*2.76, 0.5), (base*5.4, 0.18)], dur=0.16, amp=0.9, attack=0.001, decay=0.06)
-    # 叠一个干净基音让"叮"更明确
-    L = int(SR*0.16)
+    # 柔和版铜钱"叮"（2026-10-04 按玩家反馈重做）
+    # 旧版 base=E6(1318Hz) 且叠 2.76x(3639Hz)/5.4x(7120Hz) 非谐分音 —— 高频尖啸，
+    # 加上捡钱触发极密，听感是烦躁的"叮叮叮"。改法四步：
+    #   1) 降调：E6 -> A5(880Hz)，音高柔和一大截
+    #   2) 去非谐：只留 2x/3x 整数倍泛音，删掉 2.76x/5.4x 尖啸分音
+    #   3) 慢起音 attack 0.001 -> 0.012，去掉起音"咔哒"
+    #   4) 轻度低通 + 整体压到 0.42 音量（捡钱太频繁，响度必须让位）
+    base = PENTA["A5"]  # 880.00
+    x = metallic([(base, 1.0), (base * 2.0, 0.30), (base * 3.0, 0.10)],
+                 dur=0.17, amp=0.85, attack=0.012, decay=0.10)
+    L = int(SR * 0.17)
     x = align(x, L)
-    x += align(note(base, 0.16, "triangle", amp=0.4, attack=0.001, decay=0.05), L)
-    x += align(note(base*1.5, 0.12, "sine", amp=0.18, attack=0.001, decay=0.04), L)
-    return norm(add_silence(x, 0.004))
+    x += align(note(base, 0.17, "sine", amp=0.35, attack=0.012, decay=0.09), L)
+    x += align(note(base * 1.5, 0.13, "sine", amp=0.10, attack=0.015, decay=0.06), L)
+    # 轻度一阶低通（截止约 2.5kHz）：保留基音与 2 倍泛音，磨掉高频毛刺
+    a = 0.7
+    y = np.zeros(len(x))
+    prev = 0.0
+    for i in range(len(x)):
+        prev = a * prev + (1 - a) * x[i]
+        y[i] = prev
+    x = norm(y) * 0.42
+    return add_silence(x, 0.006)
 
 def sfx_dash():
     # whoosh 风声上滑
@@ -264,10 +285,15 @@ LIMITS = {
     "sfx_defeat": 0.90, "sfx_button": 0.08, "sfx_wok": 0.25,
 }
 
-def main():
+def main(names=None):
     os.makedirs(OUT, exist_ok=True)
+    # 固定种子：噪声类音效（开火咔哒/命中/冲刺/颠勺/按钮）每次重生成都一致，
+    # 只改某一个音效时不会把别的音效"顺手改掉"。
+    np.random.seed(20261004)
     report = []
     for name, fn in BUILDERS.items():
+        if names and name not in names:
+            continue
         x = fn()
         path = os.path.join(OUT, name + ".ogg")
         sf.write(path, x, SR, format="OGG", subtype="VORBIS")
@@ -286,4 +312,5 @@ def main():
     print("RESULT:", "ALL OK" if not bad else f"FAIL {bad}")
 
 if __name__ == "__main__":
-    main()
+    # 可只重建个别音效：python3 art/sfx/synth_sfx.py sfx_coin sfx_hit
+    main(sys.argv[1:] or None)
