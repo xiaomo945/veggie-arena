@@ -1,50 +1,56 @@
 {
   "turnip": {
-    "zh": "萝卜",
-    "en": "Turnip",
+    "zh": "田园萝卜",
+    "en": "Garden Turnip",
     "color": "#f4f1e8",
-    "tip": "Balanced. No penalty, no bonus.",
-    "tip_zh": "均衡，没有加成也没有惩罚，新手首选",
+    "affinity": "mixed",
+    "tip": "均衡新手：没有加成也没有代价，样样都行。",
+    "tip_en": "Balanced starter: no bonus, no penalty. Jack of all trades.",
     "stats": {}
   },
-  "potato": {
-    "zh": "土豆",
-    "en": "Potato",
-    "color": "#c9a25c",
-    "tip": "Tanky but slow: +40 HP, -10% speed",
-    "tip_zh": "厚实耐揍但跑得慢：生命 +40，移速 -10%",
-    "stats": { "max_hp": 40, "speed_pct": -0.10 }
+  "archer": {
+    "zh": "神射萝卜",
+    "en": "Archer Turnip",
+    "color": "#5fb0e0",
+    "affinity": "ranged",
+    "tip": "远程专精：远程伤害 +25%、攻速 +10%，但生命 -20（脆皮炮台）。",
+    "tip_en": "Ranged expert: +25% ranged dmg, +10% rate, but -20 HP (glass cannon).",
+    "stats": {"ranged_pct": 0.25, "rate_pct": 0.10, "max_hp": -20}
   },
-  "tomato": {
-    "zh": "番茄",
-    "en": "Tomato",
-    "color": "#e24a3c",
-    "tip": "Glass cannon: +18% fire rate, -20 HP",
-    "tip_zh": "脆皮炮台：攻速 +18%，生命 -20",
-    "stats": { "rate_pct": 0.18, "max_hp": -20 }
+  "bruiser": {
+    "zh": "铁壁萝卜",
+    "en": "Iron Turnip",
+    "color": "#d98a5a",
+    "affinity": "melee",
+    "tip": "近战专精：近战伤害 +25%、生命 +50、护甲 +2，但移速 -12%。",
+    "tip_en": "Melee tank: +25% melee dmg, +50 HP, +2 armor, but -12% speed.",
+    "stats": {"melee_pct": 0.25, "max_hp": 50, "armor": 2, "speed_pct": -0.12}
   },
-  "chili": {
-    "zh": "辣椒",
-    "en": "Chili",
-    "color": "#d7263d",
-    "tip": "Speedster: +15% speed, -10% damage",
-    "tip_zh": "灵活跑酷：移速 +15%，伤害 -10%",
-    "stats": { "speed_pct": 0.15, "dmg_pct": -0.10 }
+  "mage": {
+    "zh": "灵能萝卜",
+    "en": "Mage Turnip",
+    "color": "#b06bff",
+    "affinity": "elem",
+    "tip": "法师专精：元素伤害 +35%，但基础伤害 -12%（元素武器越强）。",
+    "tip_en": "Elemental caster: +35% elemental dmg, but -12% base dmg.",
+    "stats": {"elem_pct": 0.35, "dmg_pct": -0.12}
   },
-  "eggplant": {
-    "zh": "茄子",
-    "en": "Eggplant",
-    "color": "#7b3f9e",
-    "tip": "Glass cannon: +22% damage, +12% speed, -25 HP",
-    "tip_zh": "紫皮炮台：伤害 +22%，移速 +12%，生命 -25",
-    "stats": { "dmg_pct": 0.22, "speed_pct": 0.12, "max_hp": -25 }
+  "skirmisher": {
+    "zh": "疾风萝卜",
+    "en": "Swift Turnip",
+    "color": "#7ad06b",
+    "affinity": "mixed",
+    "tip": "机动专精：移速 +18%、拾取 +40%，但生命 -15（走位流）。",
+    "tip_en": "Skirmisher: +18% speed, +40% pickup, but -15 HP (kiting).",
+    "stats": {"speed_pct": 0.18, "pickup_pct": 0.40, "max_hp": -15}
   },
-  "corn": {
-    "zh": "玉米",
-    "en": "Corn",
-    "color": "#f2c84b",
-    "tip": "Gunner: +18% fire rate, +8% speed, -15 HP",
-    "tip_zh": "弹幕手：攻速 +18%，移速 +8%，生命 -15",
-    "stats": { "rate_pct": 0.18, "speed_pct": 0.08, "max_hp": -15 }
+  "hoarder": {
+    "zh": "招财萝卜",
+    "en": "Greedy Turnip",
+    "color": "#e0c24a",
+    "affinity": "mixed",
+    "tip": "金币专精：金币 +40%、吸血 +2，但基础伤害 -8%（滚雪球）。",
+    "tip_en": "Gold hoarder: +40% gold, +2 lifesteal, but -8% base dmg.",
+    "stats": {"gold_pct": 0.40, "lifesteal": 2, "dmg_pct": -0.08}
   }
 }

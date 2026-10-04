@@ -51,13 +51,21 @@ func _draw() -> void:
 		_draw_body(squash, stretch, alpha)
 	_draw_mounts()
 
+# 职业主色（当前角色的 characters.json color），用于给萝卜/贴图染色。
+# 主角永远是萝卜，职业只改颜色 —— 一眼能分清选了远程/近战/法师哪套。
+func _class_tint() -> Color:
+	return Color(str(Data.character(GameState.character).get("color", "#f4f1e8")))
+
 # 贴图版：squash/stretch 一样作用到贴图上，保证"贴图一接入，动画不会消失"
 func _draw_sprite(tex: Texture2D, squash: float, stretch: float, alpha: float) -> void:
 	var w: float = player.radius() * SPRITE_SCALE * stretch
 	var h: float = player.radius() * SPRITE_SCALE * squash
 	_draw_separators(maxf(w, h) * 0.5, alpha)
+	# 贴图也按职业染色：贴图是白模时 modulate 往职业色染 35%，保留萝卜轮廓
+	var tint := _class_tint()
+	var mod := Color(1.0, 1.0, 1.0, alpha).lerp(Color(tint.r, tint.g, tint.b, alpha), 0.35)
 	draw_texture_rect_region(tex, Rect2(-w * 0.5, -h * 0.5, w, h),
-		Rect2(Vector2.ZERO, tex.get_size()), Color(1, 1, 1, alpha))
+		Rect2(Vector2.ZERO, tex.get_size()), mod)
 
 # 贴纸分离圈：外亮内深两道描边。怪群从身下压过来时，靠这两道圈把主角"抠"出来，
 # 否则同色系的萝卜身子会和怪糊成一团。
@@ -66,17 +74,21 @@ func _draw_separators(r: float, alpha: float) -> void:
 	draw_circle(Vector2.ZERO, r + 2.4, Color(0.28, 0.15, 0.19, alpha * 0.95))
 
 func _draw_body(squash: float, stretch: float, alpha: float) -> void:
+	# 职业配色：把奶白萝卜身往当前职业主色染 30%，不同萝卜一眼能分清
+	var tint := _class_tint()
+	var skin := SKIN.lerp(tint, 0.30)
+	var root := Color(0.92, 0.78, 0.82).lerp(tint, 0.22)
 	var bw := 18.0 * stretch
 	var bh := 19.0 * squash
 	# 萝卜尾（根须）在身体下方
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(-3, bh * 0.62), Vector2(3, bh * 0.62), Vector2(0, bh + 9.0)]),
-		Color(0.92, 0.78, 0.82, alpha))
+		Color(root.r, root.g, root.b, alpha))
 	_draw_separators(maxf(bw, bh), alpha)
-	# 身体（奶白偏粉的萝卜身）
-	draw_circle(Vector2.ZERO, bh, Color(SKIN.r, SKIN.g, SKIN.b, alpha))
-	# 下半身淡粉红晕（萝卜根部的红）
-	draw_circle(Vector2(0, bh * 0.34), bh * 0.78, Color(0.98, 0.80, 0.84, alpha * 0.9))
+	# 身体（奶白偏粉的萝卜身，按职业染色）
+	draw_circle(Vector2.ZERO, bh, Color(skin.r, skin.g, skin.b, alpha))
+	# 下半身淡粉红晕（萝卜根部的红，同样带职业色）
+	draw_circle(Vector2(0, bh * 0.34), bh * 0.78, Color(root.r + 0.06, root.g + 0.02, root.b + 0.02, alpha * 0.9))
 	# 头顶两片小叶
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(-2, -bh), Vector2(-12, -bh - 13), Vector2(-1, -bh - 4)]),

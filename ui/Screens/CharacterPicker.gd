@@ -131,6 +131,21 @@ func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1, nfs,
 		Color(1, 1, 1, 0.96) if selected else Color(0.78, 0.82, 0.88, 0.9))
 
+	# 职业亲和标签：明确"这把萝卜适合哪种武器"（远程/近战/法师/均衡）
+	# 同样按卡片宽度自适应字号，超宽截断，避免糊到邻卡
+	var aff := Character.affinity_text(str(entry.get("affinity", "mixed")), I18n.locale)
+	var acol := Character.affinity_color(str(entry.get("affinity", "mixed")))
+	var afs := int(maxf(8.0, 10.0 * _k))
+	var aw := fs.get_string_size(aff, HORIZONTAL_ALIGNMENT_LEFT, -1, afs).x
+	while aw > _cw - 6.0 and afs > 8:
+		afs -= 1
+		aw = fs.get_string_size(aff, HORIZONTAL_ALIGNMENT_LEFT, -1, afs).x
+	while aw > _cw - 6.0 and aff.length() > 1:
+		aff = aff.substr(0, aff.length() - 1)
+		aw = fs.get_string_size(aff, HORIZONTAL_ALIGNMENT_LEFT, -1, afs).x
+	draw_string(fs, Vector2(c.x - aw * 0.5, r.position.y + _ch * 0.54), aff,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, afs, acol)
+
 	# 属性摘要：有加成才显示，纯基准角色显示 "BASE"
 	# 卡片不宽：超宽先缩字号（最小 8），仍超宽再截断，避免糊到邻卡
 	var desc := Character.describe(entry)

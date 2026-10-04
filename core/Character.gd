@@ -10,7 +10,11 @@ extends RefCounted
 const VALID_STATS := [
 	"max_hp", "speed_pct", "dmg_pct", "rate_pct",
 	"armor", "pickup_pct", "lifesteal", "wok_pct",
+	"ranged_pct", "melee_pct", "elem_pct", "gold_pct",
 ]
+
+# 职业亲和（决定"这把萝卜适合哪种武器"）：mixed=均衡，其余对应武器分域
+const AFFINITY := ["mixed", "ranged", "melee", "elem"]
 
 # 这些是绝对值（不是百分比），描述时不能用 % 显示
 const ABSOLUTE_STATS := ["max_hp", "armor", "lifesteal"]
@@ -77,4 +81,24 @@ static func _label(stat: String) -> String:
 		"pickup_pct": return "PICK"
 		"lifesteal": return "LIFE"
 		"wok_pct": return "HEAT"
+		"ranged_pct": return "RANGED"
+		"melee_pct": return "MELEE"
+		"elem_pct": return "ELEM"
+		"gold_pct": return "GOLD"
 	return stat
+
+# 职业亲和的短标签（中文/英文），供选角卡片显示"这把萝卜适合哪种武器"
+static func affinity_text(affinity: String, locale: String = "zh") -> String:
+	match affinity:
+		"ranged": return "远程" if locale != "en" else "RANGED"
+		"melee": return "近战" if locale != "en" else "MELEE"
+		"elem": return "法师" if locale != "en" else "MAGE"
+		_: return "均衡" if locale != "en" else "BALANCED"
+
+# 职业亲和的配色（选角卡片的亲和标签用，和武器分域色一致）
+static func affinity_color(affinity: String) -> Color:
+	match affinity:
+		"ranged": return Color(0.37, 0.69, 0.88)
+		"melee": return Color(0.85, 0.54, 0.35)
+		"elem": return Color(0.69, 0.42, 1.0)
+		_: return Color(0.48, 0.82, 0.42)

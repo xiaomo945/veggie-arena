@@ -73,15 +73,16 @@ func run(data = null) -> Dictionary:
 		chk(not d.is_empty(), "%s 的属性摘要非空：%s" % [str(k), d.replace("\n", " / ")])
 
 	# 6) 具体数值抽查（这几条是玩法卖点，改坏了要有提示）
-	var potato: Dictionary = table.get("potato", {}) as Dictionary
-	var tomato: Dictionary = table.get("tomato", {}) as Dictionary
-	var chili: Dictionary = table.get("chili", {}) as Dictionary
-	chk(Character.stats_of(potato).get("max_hp", 0.0) > 0.0, "土豆生命为正加成（坦克流）")
-	chk(Character.stats_of(potato).get("speed_pct", 0.0) < 0.0, "土豆移速为负（坦克的代价）")
-	chk(Character.stats_of(tomato).get("rate_pct", 0.0) > 0.0, "番茄攻速为正加成（输出流）")
-	chk(Character.stats_of(tomato).get("max_hp", 0.0) < 0.0, "番茄生命为负（脆皮的代价）")
-	chk(Character.stats_of(chili).get("speed_pct", 0.0) > 0.0, "辣椒移速为正加成（跑酷流）")
-	chk(Character.stats_of(chili).get("dmg_pct", 0.0) < 0.0, "辣椒伤害为负（跑酷的代价）")
+	# 现在所有主角都是萝卜，区别在于"职业亲和"：远程/近战/法师
+	var archer: Dictionary = table.get("archer", {}) as Dictionary
+	var bruiser: Dictionary = table.get("bruiser", {}) as Dictionary
+	var mage: Dictionary = table.get("mage", {}) as Dictionary
+	chk(Character.stats_of(archer).get("ranged_pct", 0.0) > 0.0, "神射萝卜远程伤害为正（远程专精）")
+	chk(Character.stats_of(archer).get("max_hp", 0.0) < 0.0, "神射萝卜生命为负（脆皮的代价）")
+	chk(Character.stats_of(bruiser).get("melee_pct", 0.0) > 0.0, "铁壁萝卜近战伤害为正（近战专精）")
+	chk(Character.stats_of(bruiser).get("speed_pct", 0.0) < 0.0, "铁壁萝卜移速为负（坦克的代价）")
+	chk(Character.stats_of(mage).get("elem_pct", 0.0) > 0.0, "灵能萝卜元素伤害为正（法师专精）")
+	chk(Character.stats_of(mage).get("dmg_pct", 0.0) < 0.0, "灵能萝卜基础伤害为负（法师的代价）")
 
 	# 7) 不同角色之间不能是同一个套路（玩法要有区分度）
 	var kinds := {}
