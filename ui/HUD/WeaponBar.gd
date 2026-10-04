@@ -39,9 +39,12 @@ func _draw() -> void:
 func _draw_slot(x: float, y: float, s: Dictionary) -> void:
 	var c: Color = s.get("color", Color(1, 1, 1))
 	var beh := str(s.get("behavior", "projectile"))
-	# 凹槽：深色底 + 暖色描边（和背包格一套视觉语言）
+	# 凹槽：深色底 + 套装色描边（同一套的武器一眼看得出是"一伙的"）；
+	# 凑够件数的套装描边更亮更粗 —— 不用读数字就知道这套生效了
+	var on := bool(s.get("set_on", false))
+	var sc: Color = s.get("set_color", Color(0.34, 0.27, 0.16))
 	_round(x, y, SLOT_SIZE, SLOT_SIZE, Color(0.04, 0.04, 0.06, 0.62),
-		Color(0.34, 0.27, 0.16), 2, 8.0)
+		sc.lightened(0.30) if on else sc.darkened(0.15), 3 if on else 2, 8.0)
 	# 武器色本体：上半原色、下半压暗，卡通塑料的体积感
 	var inset := 2.0
 	var iw := SLOT_SIZE - inset * 2.0

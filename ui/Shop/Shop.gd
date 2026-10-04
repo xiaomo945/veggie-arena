@@ -130,7 +130,11 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 		var lv := int(o.get("lv", 1))
 		d["accent"] = ShopTiers.new().tier_color(lv)
 		d["lv"] = lv; d["icon"] = Art.icon("weapon_" + key)
-		d["tag"] = I18n.t("shop_merge") if _owned_lv(key) > 0 else I18n.t("shop_new")
+		# 套装名前置：买之前就知道"这把属于哪一套"
+		var tags: Array = def.get("tags", [])
+		var set_name := I18n.t("set_" + str(tags[0])) if tags.size() > 0 else ""
+		var state := I18n.t("shop_merge") if _owned_lv(key) > 0 else I18n.t("shop_new")
+		d["tag"] = (set_name + "·" if set_name != "" else "") + state
 		d["disabled"] = not Inventory.can_accept_tier(GameState.weapons, key, lv, _max_slot, _max_lv)
 	else:
 		var rar := clampi(int(def.get("rarity", 1)), 1, 3)

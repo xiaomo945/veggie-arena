@@ -18,9 +18,8 @@ var endless: bool = false    # 是否已进入无尽段（通关后选了"继续
 var character: String = "turnip"
 
 # 开局自选的初始武器（data/weapons.json 的键）。在标题页"选武器页"落地。
-# 空串 = 未选，reset() 退回默认的 pistol+smg 双武器起步（保证 headless 模拟等
-# 不走选武器页的路径行为不变）。选了则"所选 1 把 + 手枪保底"，手枪永远在，
-# 避免新手只拿一把近战被围死。
+# 空串 = 未选，reset() 退回 pistol+smg 双武器起步；选了则"所选 1 把 + 手枪保底"，
+# 手枪永远在，避免新手只拿一把近战被围死。
 var start_weapon: String = ""
 
 # 装备：元素形如 {"key": "pistol", "lv": 1}
@@ -35,6 +34,7 @@ var upgrades: Dictionary = {}
 const Wok := preload("res://core/Wok.gd")
 const Run := preload("res://core/Run.gd")
 const Inventory := preload("res://core/Inventory.gd")
+const WeaponSets := preload("res://core/WeaponSets.gd")
 var wok: Dictionary = {}
 var wok_heat: float = 0.0
 var _wok_tier: int = 0
@@ -175,14 +175,12 @@ func buy_upgrade(key: String) -> void:
 			max_hp += int(val)
 			hp += int(val)
 			Events.player_hp_changed.emit(hp, max_hp)
-		# ⚠️ stat 名必须和 upgrades.json 一致（是 heal_now 不是 heal），
-		#    之前写 "heal" 导致买回血强化时静默不生效
+		# ⚠️ stat 名必须和 upgrades.json 一致（是 heal_now 不是 heal），写错会静默不生效
 		"heal_now":
 			heal(int(val))
-		# 锅气上限 +N：直接抬高当前这局可存的颠勺充能上限
+		# 锅气上限 +N：抬高本局可存的颠勺充能上限，不影响已存充能数，但要同步展示
 		"wok_charges":
 			wok["max_charges"] = int(wok.get("max_charges", 3)) + int(val)
-			# 上限变动不影响已存充能数，但同步一下就绪/充能展示
 			Events.wok_charges_changed.emit(Wok.charges_of(wok))
 		_:
 			pass
@@ -190,7 +188,7 @@ func buy_upgrade(key: String) -> void:
 	Events.weapons_changed.emit(weapons)
 
 # 某个属性的总加成值（如 dmg_pct、speed_pct）
-# 同时支持单属性道具（stat/value）与多属性道具（stats 字典），见 core/Inventory。
+# 单属性道具（stat/value）与多属性道具（stats 字典）都支持，见 core/Inventory。
 func stat_value(stat: String) -> float:
 	var total := _char_stat(stat)
 	for k in upgrades:
@@ -198,6 +196,9 @@ func stat_value(stat: String) -> float:
 		for en in Inventory.stat_entries(Data.upgrade(k)):
 			if str(en.get("stat", "")) == stat:
 				total += float(en.get("value", 0)) * n
+	# Q1 武器套装：凑够件数触发的加成等价"白送一件道具"，必须并进属性里，
+	# 否则套装只是 UI 上一行字（HUD 显示 +30% 而实际伤害不变）。
+	total += float(WeaponSets.bonuses(weapons, Data.weapons, Data.weapon_sets).get(stat, 0.0))
 	return total
 
 # ---- 颠勺附带的两条全局状态：护盾 / 狂暴 ----
@@ -276,8 +277,7 @@ func toss_wok() -> bool:
 	return ok
 
 # ---- 金币拾取 ----
-# 当前磁吸半径（px）：全屏自动拾取=全屏；自动拾取=较大的固定半径×范围强化；
-# 否则仅贴近才捡（逼玩家走位收钱）。pickup_pct 来自升级 pick(拾取范围+30%)。
+# 磁吸半径（px）：全屏自动拾取=全屏；自动拾取=较大的固定半径×范围强化；否则仅贴近才捡。
 func pickup_magnet() -> float:
 	var b: Dictionary = Data.balance.get("pickup", {}) as Dictionary
 	var pct := stat_value("pickup_pct")

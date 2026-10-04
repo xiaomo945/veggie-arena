@@ -13,7 +13,10 @@
     "color": "#f7d24e",
     "tip": "稳定的单体输出，开局自带",
     "tip_en": "Steady single-target. Your starter.",
-    "en": "Pistol"
+    "en": "Pistol",
+    "tags": [
+      "gun"
+    ]
   },
   "smg": {
     "zh": "冲锋枪",
@@ -29,7 +32,10 @@
     "color": "#8fd482",
     "tip": "射速极快，清小怪",
     "tip_en": "Fires fast, shreds small fry.",
-    "en": "SMG"
+    "en": "SMG",
+    "tags": [
+      "gun"
+    ]
   },
   "shotgun": {
     "zh": "霰弹枪",
@@ -45,7 +51,10 @@
     "color": "#e79ada",
     "tip": "一次 4 发，贴脸伤害高",
     "tip_en": "4 pellets up close, brutal.",
-    "en": "Shotgun"
+    "en": "Shotgun",
+    "tags": [
+      "gun"
+    ]
   },
   "bow": {
     "zh": "长弓",
@@ -61,7 +70,10 @@
     "color": "#6fa8e0",
     "tip": "穿透 2 个敌人，打直线",
     "tip_en": "Pierces 2 foes in a line.",
-    "en": "Long Bow"
+    "en": "Long Bow",
+    "tags": [
+      "gun"
+    ]
   },
   "staff": {
     "zh": "法杖",
@@ -79,7 +91,13 @@
     "color": "#b0aad0",
     "tip": "法术链：命中后弹向附近另一只怪，跳 2 次，每跳伤害衰减",
     "tip_en": "Arcs to a nearby foe on hit. 2 jumps, damage decays each hop.",
-    "en": "Magic Staff"
+    "en": "Magic Staff",
+    "tags": [
+      "elemental"
+    ],
+    "scl": {
+      "elem": 1.0
+    }
   },
   "rocket": {
     "zh": "火箭筒",
@@ -97,7 +115,10 @@
     "color": "#e06a6a",
     "tip": "制导弹头：自己会拐弯咬住最近的怪，大范围爆炸",
     "tip_en": "Homing warhead: curves into the nearest foe, then blows up.",
-    "en": "Rocket"
+    "en": "Rocket",
+    "tags": [
+      "gun"
+    ]
   },
   "cleaver": {
     "zh": "菜刀",
@@ -115,7 +136,10 @@
     "cost": 22,
     "color": "#d8dee6",
     "tip": "贴身重砍：高伤慢速，近身清怪；扇形弧内全中，无需瞄准",
-    "tip_en": "Heavy close-range chop: high dmg, slow swing. Hits everything in the arc."
+    "tip_en": "Heavy close-range chop: high dmg, slow swing. Hits everything in the arc.",
+    "tags": [
+      "blade"
+    ]
   },
   "skewer": {
     "zh": "竹签",
@@ -131,7 +155,10 @@
     "color": "#d9b27c",
     "tip": "一串穿 3 个，排队来的怪最怕它",
     "tip_en": "Impales 3 in a row.",
-    "en": "Skewer"
+    "en": "Skewer",
+    "tags": [
+      "blade"
+    ]
   },
   "ladle": {
     "zh": "汤勺",
@@ -147,7 +174,14 @@
     "color": "#8ec7d2",
     "tip": "舀一勺泼出去，小范围溅伤",
     "tip_en": "Splashes a small puddle.",
-    "en": "Ladle"
+    "en": "Ladle",
+    "tags": [
+      "elemental",
+      "kitchen"
+    ],
+    "scl": {
+      "elem": 1.0
+    }
   },
   "teapot": {
     "zh": "茶壶",
@@ -163,7 +197,13 @@
     "color": "#c9a27e",
     "tip": "一次泼出 5 道水柱，扇形覆盖",
     "tip_en": "Fans out 5 streams.",
-    "en": "Teapot"
+    "en": "Teapot",
+    "tags": [
+      "elemental"
+    ],
+    "scl": {
+      "elem": 1.0
+    }
   },
   "chili": {
     "zh": "辣椒炮",
@@ -181,7 +221,13 @@
     "color": "#e04b3a",
     "tip": "热追踪：火星自己会飘向怪，射速快到发烫",
     "tip_en": "Heat-seeking sparks that drift into foes. Blazing fire rate.",
-    "en": "Chili Cannon"
+    "en": "Chili Cannon",
+    "tags": [
+      "elemental"
+    ],
+    "scl": {
+      "elem": 1.0
+    }
   },
   "blender": {
     "zh": "搅拌机",
@@ -197,7 +243,10 @@
     "color": "#7fc4a0",
     "tip": "双刀头高速搅碎，近身持续输出",
     "tip_en": "Twin blades, close-range grind.",
-    "en": "Blender"
+    "en": "Blender",
+    "tags": [
+      "kitchen"
+    ]
   },
   "pan": {
     "zh": "煎锅",
@@ -214,7 +263,10 @@
     "color": "#cfa46b",
     "tip": "不用瞄准：以自己为心炸一圈，围上来的怪全吃到",
     "tip_en": "No aiming needed: a ring of force bursts from you in every direction.",
-    "en": "Frying Pan"
+    "en": "Frying Pan",
+    "tags": [
+      "heavy"
+    ]
   },
   "microwave": {
     "zh": "微波炉",
@@ -231,7 +283,13 @@
     "color": "#b8c0c8",
     "tip": "瞬发光束：一照到底，一条直线上全中，不用等子弹飞",
     "tip_en": "Instant beam: hits everything on one line, no travel time.",
-    "en": "Microwave"
+    "en": "Microwave",
+    "tags": [
+      "elemental"
+    ],
+    "scl": {
+      "elem": 1.0
+    }
   },
   "fork": {
     "zh": "餐叉",
@@ -249,7 +307,11 @@
     "color": "#d7dde6",
     "tip": "叉中一只就串到下一只：命中后连跳 2 次",
     "tip_en": "Skewers one, then hops to two more.",
-    "en": "Fork"
+    "en": "Fork",
+    "tags": [
+      "blade",
+      "kitchen"
+    ]
   },
   "pepper": {
     "zh": "胡椒瓶",
@@ -265,7 +327,10 @@
     "color": "#9b3b2e",
     "tip": "一次撒三道，扇形覆盖近身",
     "tip_en": "3 streams in a fan.",
-    "en": "Pepper Shaker"
+    "en": "Pepper Shaker",
+    "tags": [
+      "gun"
+    ]
   },
   "whisk": {
     "zh": "打蛋器",
@@ -281,7 +346,10 @@
     "color": "#e8d39a",
     "tip": "双股搅打，近身持续输出",
     "tip_en": "Twin whisks, close grind.",
-    "en": "Whisk"
+    "en": "Whisk",
+    "tags": [
+      "kitchen"
+    ]
   },
   "grater": {
     "zh": "擦丝器",
@@ -298,7 +366,10 @@
     "color": "#c9b89a",
     "tip": "一擦到底：瞬发细光束，排队来的怪整串刮掉",
     "tip_en": "Instant thin beam: shreds a whole queue at once.",
-    "en": "Grater"
+    "en": "Grater",
+    "tags": [
+      "blade"
+    ]
   },
   "spatula": {
     "zh": "锅铲",
@@ -316,7 +387,10 @@
     "cost": 12,
     "color": "#c9a06b",
     "tip": "便宜又极快，贴脸狂铲：低伤但挥得飞起，开局就能买",
-    "tip_en": "Cheap and frantic: low dmg but swings like crazy. Buyable from the start."
+    "tip_en": "Cheap and frantic: low dmg but swings like crazy. Buyable from the start.",
+    "tags": [
+      "kitchen"
+    ]
   },
   "rolling_pin": {
     "zh": "擀面杖",
@@ -334,7 +408,10 @@
     "cost": 18,
     "color": "#e8d7a8",
     "tip": "中伤中速，一棍把怪轰开：大击退，专治贴脸围殴",
-    "tip_en": "Mid dmg/speed with a big knockback: shove swarming foes away."
+    "tip_en": "Mid dmg/speed with a big knockback: shove swarming foes away.",
+    "tags": [
+      "heavy"
+    ]
   },
   "strainer": {
     "key": "strainer",
@@ -354,7 +431,9 @@
     "color": "#b0b8c0",
     "tip": "捞出去再捞回来：回旋一勺，来回都能捞中",
     "tip_en": "Scoops out and scoops back: hits on both trips.",
-    "en": "Strainer"
+    "tags": [
+      "kitchen"
+    ]
   },
   "peeler": {
     "key": "peeler",
@@ -374,7 +453,9 @@
     "color": "#cdb38b",
     "tip": "回旋削：刀飞出去会转回来，围着你的怪挨两遍",
     "tip_en": "Boomerang peeler: flies out, curves back, hits twice.",
-    "en": "Peeler"
+    "tags": [
+      "blade"
+    ]
   },
   "egg_beater": {
     "key": "egg_beater",
@@ -392,7 +473,10 @@
     "cost": 18,
     "color": "#e8d9a0",
     "tip": "转速拉满的连射",
-    "tip_en": "Spins up a rapid stream."
+    "tip_en": "Spins up a rapid stream.",
+    "tags": [
+      "kitchen"
+    ]
   },
   "garlic_press": {
     "key": "garlic_press",
@@ -410,7 +494,10 @@
     "cost": 22,
     "color": "#c9c9d4",
     "tip": "一压一团，带穿透与溅射",
-    "tip_en": "One squeeze, pierces and splashes."
+    "tip_en": "One squeeze, pierces and splashes.",
+    "tags": [
+      "blade"
+    ]
   },
   "chopsticks": {
     "key": "chopsticks",
@@ -428,7 +515,10 @@
     "cost": 24,
     "color": "#d8a86a",
     "tip": "一次夹三发，扇形铺开",
-    "tip_en": "Flicks three pellets in a fan."
+    "tip_en": "Flicks three pellets in a fan.",
+    "tags": [
+      "blade"
+    ]
   },
   "griddle": {
     "key": "griddle",
@@ -447,7 +537,14 @@
     "cost": 20,
     "color": "#9aa0a6",
     "tip": "热浪脉冲：身周一圈灼烧，贴脸围殴的克星",
-    "tip_en": "Heat pulse: burns everything around you, anti-swarm."
+    "tip_en": "Heat pulse: burns everything around you, anti-swarm.",
+    "tags": [
+      "heavy",
+      "elemental"
+    ],
+    "scl": {
+      "elem": 1.0
+    }
   },
   "clay_pot": {
     "key": "clay_pot",
@@ -466,7 +563,11 @@
     "cost": 26,
     "color": "#b5764a",
     "tip": "闷一圈：慢，但身周的怪一起挨一记重闷",
-    "tip_en": "Slow, but everything nearby takes the hit at once."
+    "tip_en": "Slow, but everything nearby takes the hit at once.",
+    "tags": [
+      "heavy",
+      "kitchen"
+    ]
   },
   "tongs": {
     "key": "tongs",
@@ -485,7 +586,10 @@
     "cost": 18,
     "color": "#8f9aa3",
     "tip": "近身一夹一甩，舒服的击退",
-    "tip_en": "Melee pinch with a satisfying knockback."
+    "tip_en": "Melee pinch with a satisfying knockback.",
+    "tags": [
+      "blade"
+    ]
   },
   "mortar": {
     "key": "mortar",
@@ -503,7 +607,10 @@
     "cost": 22,
     "color": "#c2a878",
     "tip": "捣碎一片，小范围爆",
-    "tip_en": "Pounds a small area."
+    "tip_en": "Pounds a small area.",
+    "tags": [
+      "heavy"
+    ]
   },
   "oil_sprayer": {
     "key": "oil_sprayer",
@@ -521,7 +628,10 @@
     "cost": 20,
     "color": "#e3d27a",
     "tip": "超远喷射，先手消耗",
-    "tip_en": "Long-range poke."
+    "tip_en": "Long-range poke.",
+    "tags": [
+      "gun"
+    ]
   },
   "baking_tray": {
     "key": "baking_tray",
@@ -540,7 +650,10 @@
     "cost": 24,
     "color": "#cdb89a",
     "tip": "当飞盘甩出去：飞到头会掉头飞回来，来回各能刮一次",
-    "tip_en": "Thrown like a frisbee: it curves back and hits twice."
+    "tip_en": "Thrown like a frisbee: it curves back and hits twice.",
+    "tags": [
+      "heavy"
+    ]
   },
   "wok_scoop": {
     "key": "wok_scoop",
@@ -558,6 +671,9 @@
     "cost": 28,
     "color": "#cf9a4a",
     "tip": "颠勺同款，带小范围",
-    "tip_en": "Wok-flavored splash."
+    "tip_en": "Wok-flavored splash.",
+    "tags": [
+      "heavy"
+    ]
   }
 }

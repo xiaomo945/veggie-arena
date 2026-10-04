@@ -1,0 +1,63 @@
+{
+  "_doc": "Q1 武器套装：凑件触发加成。need=需要的件数（同 tag 的武器件数，不看等级），stats=该档位给出的【总】加成（不是累加，达到 6 件就只看 6 件那一档）。槽位只有 6 个，所以 6 件=全套。",
+  "blade": {
+    "zh": "刀工",
+    "en": "Sharpened",
+    "tip": "锐器与穿刺：越凑越快、越容易暴击",
+    "tip_en": "Blades and skewers: sharper crits as you commit.",
+    "color": "#ff6b5e",
+    "tiers": [
+      {"need": 2, "stats": {"melee_pct": 0.08}},
+      {"need": 4, "stats": {"melee_pct": 0.18, "crit_chance": 0.05}},
+      {"need": 6, "stats": {"melee_pct": 0.30, "crit_chance": 0.12}}
+    ]
+  },
+  "heavy": {
+    "zh": "重家伙",
+    "en": "Heavy",
+    "tip": "钝击与范围：把怪推开、溅得更远",
+    "tip_en": "Blunt force: shove them back, splash wider.",
+    "color": "#f0a04b",
+    "tiers": [
+      {"need": 2, "stats": {"knock_pct": 0.10}},
+      {"need": 4, "stats": {"knock_pct": 0.20, "aoe_add": 8.0}},
+      {"need": 6, "stats": {"knock_pct": 0.35, "aoe_add": 16.0}}
+    ]
+  },
+  "gun": {
+    "zh": "枪械",
+    "en": "Firearms",
+    "tip": "远程弹丸：打得更远、飞得更快",
+    "tip_en": "Ranged rounds: longer reach, faster travel.",
+    "color": "#7fc8ff",
+    "tiers": [
+      {"need": 2, "stats": {"ranged_pct": 0.08}},
+      {"need": 4, "stats": {"ranged_pct": 0.18, "bullet_speed_pct": 0.10}},
+      {"need": 6, "stats": {"ranged_pct": 0.30, "bullet_speed_pct": 0.20}}
+    ]
+  },
+  "elemental": {
+    "zh": "元素",
+    "en": "Elemental",
+    "tip": "火电蒸汽：伤害更高、锅气涨得更快",
+    "tip_en": "Fire, spark, steam: more burn, faster wok heat.",
+    "color": "#c78bff",
+    "tiers": [
+      {"need": 2, "stats": {"elem_pct": 0.08}},
+      {"need": 4, "stats": {"elem_pct": 0.18, "wok_pct": 0.10}},
+      {"need": 6, "stats": {"elem_pct": 0.30, "wok_pct": 0.20}}
+    ]
+  },
+  "kitchen": {
+    "zh": "厨具",
+    "en": "Kitchenware",
+    "tip": "杂活小工具：手更勤快、钱捡得更干净",
+    "tip_en": "Everyday tools: faster hands, cleaner pickup.",
+    "color": "#8fd482",
+    "tiers": [
+      {"need": 2, "stats": {"rate_pct": 0.08}},
+      {"need": 4, "stats": {"rate_pct": 0.18, "pickup_pct": 0.15}},
+      {"need": 6, "stats": {"rate_pct": 0.30, "pickup_pct": 0.30}}
+    ]
+  }
+}

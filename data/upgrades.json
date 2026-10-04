@@ -1478,5 +1478,77 @@
     "tip_en": "Damage & speed up after hit.",
     "cat": "passive",
     "rarity": 2
+  },
+  "melee_dmg": {
+    "zh": "近战伤害 +12%",
+    "en": "Melee Damage +12%",
+    "stat": "melee_pct",
+    "value": 0.12,
+    "cost": 22,
+    "cat": "passive",
+    "rarity": 2,
+    "tip": "只加成近战与脉冲类武器",
+    "tip_en": "Only boosts melee and pulse weapons."
+  },
+  "ranged_dmg": {
+    "zh": "远程伤害 +12%",
+    "en": "Ranged Damage +12%",
+    "stat": "ranged_pct",
+    "value": 0.12,
+    "cost": 22,
+    "cat": "passive",
+    "rarity": 2,
+    "tip": "只加成弹丸与光束类武器",
+    "tip_en": "Only boosts projectile and beam weapons."
+  },
+  "elem_dmg": {
+    "zh": "元素伤害 +12%",
+    "en": "Elemental Damage +12%",
+    "stat": "elem_pct",
+    "value": 0.12,
+    "cost": 22,
+    "cat": "passive",
+    "rarity": 2,
+    "tip": "只加成火/电/蒸汽类武器",
+    "tip_en": "Only boosts fire, spark and steam weapons."
+  },
+  "melee_focus": {
+    "zh": "专精：近战",
+    "en": "Focus: Melee",
+    "cost": 30,
+    "cat": "passive",
+    "rarity": 3,
+    "stats": {
+      "melee_pct": 0.26,
+      "ranged_pct": -0.12
+    },
+    "tip": "近战 +26%，远程 -12%",
+    "tip_en": "+26% melee, -12% ranged."
+  },
+  "ranged_focus": {
+    "zh": "专精：远程",
+    "en": "Focus: Ranged",
+    "cost": 30,
+    "cat": "passive",
+    "rarity": 3,
+    "stats": {
+      "ranged_pct": 0.26,
+      "melee_pct": -0.12
+    },
+    "tip": "远程 +26%，近战 -12%",
+    "tip_en": "+26% ranged, -12% melee."
+  },
+  "elem_focus": {
+    "zh": "专精：元素",
+    "en": "Focus: Elemental",
+    "cost": 30,
+    "cat": "passive",
+    "rarity": 3,
+    "stats": {
+      "elem_pct": 0.26,
+      "dmg_pct": -0.08
+    },
+    "tip": "元素 +26%，全武器 -8%",
+    "tip_en": "+26% elemental, -8% all damage."
   }
 }

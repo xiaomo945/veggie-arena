@@ -9,6 +9,7 @@ extends RefCounted
 # ⚠️ 不用 class_name：check.sh 会清 .godot/editor，headless 下全局类表不重建。
 
 const Weapon := preload("res://core/Weapon.gd")
+const WeaponSets := preload("res://core/WeaponSets.gd")
 
 # 武器绕着角色转的站位半径（Brotato 式）
 const MOUNT_RADIUS := 42.0
@@ -31,7 +32,14 @@ func _init(owner: Node2D) -> void:
 func rebuild() -> void:
 	_weapons = []
 	var cfg := Data.combat_cfg()
-	var dmg_pct := GameState.stat_value("dmg_pct")
+	# Q2 属性缩放：伤害不再一律吃 dmg_pct，而是按武器自身吃的属性分别计算
+	#（近战吃 melee_pct、远程吃 ranged_pct、元素额外吃 elem_pct，见 core/WeaponSets）。
+	var dmg_stats := {
+		"dmg_pct": GameState.stat_value("dmg_pct"),
+		"melee_pct": GameState.stat_value("melee_pct"),
+		"ranged_pct": GameState.stat_value("ranged_pct"),
+		"elem_pct": GameState.stat_value("elem_pct"),
+	}
 	var rate_pct := GameState.stat_value("rate_pct")
 	var range_pct := GameState.stat_value("range_pct")
 	var bspd_pct := GameState.stat_value("bullet_speed_pct")
@@ -51,7 +59,7 @@ func rebuild() -> void:
 		if def.is_empty():
 			continue
 		var st := Weapon.merged_stats(def, lv, cfg)
-		st["dmg"] = float(st.get("dmg", 0)) * (1.0 + dmg_pct)
+		st["dmg"] = float(st.get("dmg", 0)) * WeaponSets.damage_mult(def, dmg_stats)
 		st["cd"] = float(st.get("cd", 1.0)) / maxf(0.05, 1.0 + rate_pct)
 		st["range"] = float(st.get("range", 300)) * (1.0 + range_pct)
 		st["bullet_speed"] = float(st.get("bullet_speed", 600)) * (1.0 + bspd_pct)

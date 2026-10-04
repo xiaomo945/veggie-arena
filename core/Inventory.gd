@@ -7,6 +7,7 @@ extends RefCounted
 
 const Combat := preload("res://core/Combat.gd")
 const Weapon := preload("res://core/Weapon.gd")
+const Stats := preload("res://core/Stats.gd")
 
 # 还有没有空槽（任何"新买一把"都需要一个空槽，因为不再自动合成）
 static func can_accept_slot(weapons: Array, max_slot: int) -> bool:
@@ -233,29 +234,31 @@ static func stat_entries(up: Dictionary) -> Array:
 	return out
 
 static func _add_one(stats: Dictionary, stat: String, value) -> Dictionary:
+	var v := float(value)
 	match stat:
+		# 血上限要连带把当前血一起抬，否则每买一次 +15 上限就要自己去补血
 		"max_hp":
-			stats["max_hp"] = float(stats.get("max_hp", 0)) + float(value)
-			stats["hp"] = minf(float(stats.get("hp", 0)) + float(value), float(stats.get("max_hp", 0)))
+			stats["max_hp"] = float(stats.get("max_hp", 0)) + v
+			stats["hp"] = minf(float(stats.get("hp", 0)) + v, float(stats.get("max_hp", 0)))
 		"heal_now":
-			stats["hp"] = minf(float(stats.get("hp", 0)) + float(value), float(stats.get("max_hp", 100)))
-		"speed_pct":
-			stats["speed_pct"] = float(stats.get("speed_pct", 0)) + float(value)
-		"dmg_pct":
-			stats["dmg_pct"] = float(stats.get("dmg_pct", 0)) + float(value)
-		"rate_pct":
-			stats["rate_pct"] = float(stats.get("rate_pct", 0)) + float(value)
-		"armor":
-			stats["armor"] = float(stats.get("armor", 0)) + float(value)
-		"pickup_pct":
-			stats["pickup_pct"] = float(stats.get("pickup_pct", 0)) + float(value)
-		"lifesteal":
-			stats["lifesteal"] = float(stats.get("lifesteal", 0)) + float(value)
-		"wok_pct":
-			stats["wok_pct"] = float(stats.get("wok_pct", 0)) + float(value)
+			stats["hp"] = minf(float(stats.get("hp", 0)) + v, float(stats.get("max_hp", 100)))
 		_:
-			push_warning("Inventory: 未知强化类型 " + stat)
+			# 其余属性一律走"同名累加"。白名单来自 core/Stats 的属性目录：
+			# 以前这里是逐条 match，漏一条（crit_chance / melee_pct 就漏过）道具就
+			# 静默失效 —— 买了强化、数字不变、还查不出原因。现在目录里有的就能加，
+			# 目录里没有的照旧报警，下次加属性不用再回来改这里。
+			if not is_known_stat(stat):
+				push_warning("Inventory: 未知强化类型 " + stat)
+				return stats
+			stats[stat] = float(stats.get(stat, 0)) + v
 	return stats
+
+# 这条属性在目录里登记过吗（登记过 = 有真实供给源，见 core/Stats 顶部说明）
+static func is_known_stat(stat: String) -> bool:
+	for s in Stats.catalog():
+		if str((s as Dictionary).get("key", "")) == stat:
+			return true
+	return false
 
 # 当前武器总 DPS（用于配平模拟）
 static func total_dps(weapons: Array, dmg_pct: float = 0.0, rate_pct: float = 0.0) -> float:

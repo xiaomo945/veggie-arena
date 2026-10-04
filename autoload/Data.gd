@@ -12,6 +12,7 @@ var upgrades: Dictionary = {}
 var characters: Dictionary = {}
 var unlocks: Dictionary = {}
 var skills: Dictionary = {}
+var weapon_sets: Dictionary = {}   # Q1 武器套装：data/weapon_sets.json
 var _landscape := false     # 横屏标志：宽屏窗口下由 ScreenMode.apply() 置 true（竖屏默认 false）
 
 func _ready() -> void:
@@ -25,6 +26,7 @@ func load_all() -> void:
 	characters = _read("res://data/characters.json")
 	unlocks = _read("res://data/unlocks.json")
 	skills = _read("res://data/skills.json")
+	weapon_sets = _read("res://data/weapon_sets.json")
 
 func _read(path: String) -> Dictionary:
 	var f := FileAccess.open(path, FileAccess.READ)
@@ -122,6 +124,13 @@ func enemy(key: String) -> Dictionary:
 
 func upgrade(key: String) -> Dictionary:
 	return upgrades.get(key, {})
+
+# 武器套装表（Q1）。键 "_doc" 是说明，取用时跳过。
+func weapon_sets_cfg() -> Dictionary:
+	return weapon_sets
+
+func weapon_set(tag: String) -> Dictionary:
+	return weapon_sets.get(tag, {})
 
 func weapon_keys() -> Array:
 	return weapons.keys()

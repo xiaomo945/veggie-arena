@@ -104,9 +104,20 @@ func run(data) -> Dictionary:
 				missing.append("enemy." + k + "." + f)
 	for k in data.upgrade_keys():
 		var u: Dictionary = data.upgrade(k)
-		for f in ["zh", "stat", "value", "cost"]:
+		# 单属性道具写 stat/value，多属性道具（"有取舍"类）写 stats 字典，二选一即可
+		var multi_stats: Dictionary = u.get("stats", {}) as Dictionary
+		for f in ["zh", "cost"]:
 			if not u.has(f):
 				missing.append("upgrade." + k + "." + f)
+		if multi_stats.is_empty():
+			for f in ["stat", "value"]:
+				if not u.has(f):
+					missing.append("upgrade." + k + "." + f)
+		else:
+			# 多属性道具的每一条也必须落在属性目录里，不然买了没效果
+			for sk in multi_stats:
+				if not Inventory.is_known_stat(str(sk)):
+					missing.append("upgrade." + k + ".stats." + str(sk))
 	chk(missing.is_empty(), "三张数据表字段完整" + ("" if missing.is_empty() else " 缺: " + str(missing)))
 
 	# 10) 玩家初始属性合理

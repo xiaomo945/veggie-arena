@@ -17,6 +17,7 @@ const HudButtonsScript := preload("res://ui/HUD/HudButtons.gd")
 const WaveSkipScript := preload("res://ui/HUD/WaveSkip.gd")
 const DebugMode := preload("res://core/DebugMode.gd")
 const Weapon := preload("res://core/Weapon.gd")
+const WeaponSets := preload("res://core/WeaponSets.gd")
 
 # 竖屏安全区：顶部内容下移避让刘海 / 状态栏，底部按钮上移避让手势条。
 const TOP_SHIFT := 34.0
@@ -101,6 +102,8 @@ func _on_wave_progress(elapsed: float, length: float) -> void:
 
 func _on_weapons(_ignored: Array = []) -> void:
 	var slots: Array = []
+	# Q1 套装：武器槽的描边按套装上色，凑够件数的那套会亮起来
+	var act := WeaponSets.active_sets(GameState.weapons, Data.weapons, Data.weapon_sets)
 	for w in GameState.weapons:
 		if not (w is Dictionary):
 			continue
@@ -114,8 +117,16 @@ func _on_weapons(_ignored: Array = []) -> void:
 			"name": I18n.pick(def),
 			# 打法分支（光束/脉冲/链式/回旋/制导…）：武器槽要画对应符文
 			"behavior": Weapon.behavior_of(def),
+			"tag": _set_tag(def),
+			"set_on": act.has(_set_tag(def)),
+			"set_color": Color(str(Data.weapon_set(_set_tag(def)).get("color", "#8a7a5a"))),
 		})
 	_top.set_bar("slots", slots)
+
+# 一把武器的主套装（取第一个 tag；没有 tag 的老数据返回空串）
+func _set_tag(def: Dictionary) -> String:
+	var tags: Array = def.get("tags", [])
+	return str(tags[0]) if tags.size() > 0 else ""
 
 func _refresh() -> void:
 	_top.set_wave_text(_wave_text())
