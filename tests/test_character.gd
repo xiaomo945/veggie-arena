@@ -83,6 +83,25 @@ func run(data = null) -> Dictionary:
 	chk(Character.stats_of(bruiser).get("speed_pct", 0.0) < 0.0, "铁壁萝卜移速为负（坦克的代价）")
 	chk(Character.stats_of(mage).get("elem_pct", 0.0) > 0.0, "灵能萝卜元素伤害为正（法师专精）")
 	chk(Character.stats_of(mage).get("dmg_pct", 0.0) < 0.0, "灵能萝卜基础伤害为负（法师的代价）")
+	# 扩充后的三类身份萝卜：暴击 / 连击 / 反刺
+	var commando: Dictionary = table.get("commando", {}) as Dictionary
+	var martial: Dictionary = table.get("martial", {}) as Dictionary
+	var hedgehog: Dictionary = table.get("hedgehog", {}) as Dictionary
+	chk(Character.stats_of(commando).get("crit_chance", 0.0) > 0.0, "特种兵萝卜暴击为正（暴击专精）")
+	chk(Character.stats_of(commando).get("max_hp", 0.0) < 0.0, "特种兵萝卜生命为负")
+	chk(Character.stats_of(martial).get("rate_pct", 0.0) > 0.0, "武术家萝卜攻速为正（连击专精）")
+	chk(Character.stats_of(martial).get("armor", 0.0) < 0.0, "武术家萝卜护甲为负（连击的代价）")
+	chk(Character.stats_of(hedgehog).get("armor", 0.0) > 0.0, "刺猬萝卜护甲为正（反刺专精）")
+	chk(Character.stats_of(hedgehog).get("speed_pct", 0.0) < 0.0, "刺猬萝卜移速为负")
+	# 扩充规模守卫：主角已从 6 扩到 10 个（未来目标 60）
+	chk(table.size() >= 10, "萝卜职业已扩充到至少 10 个（实有 %d 个）" % table.size())
+	# 每个职业都要有玩法特征与最佳武器提示（深度：告诉玩家该怎么玩）
+	for k in keys:
+		var e5: Dictionary = table[k] as Dictionary
+		chk(not str(e5.get("trait", "")).is_empty(), "%s 有玩法特征 trait" % str(k))
+		chk(not str(e5.get("best", "")).is_empty(), "%s 有最佳武器提示 best" % str(k))
+		chk(str(e5.get("affinity", "mixed")) in ["mixed", "ranged", "melee", "elem"],
+			"%s 亲和合法" % str(k))
 
 	# 7) 不同角色之间不能是同一个套路（玩法要有区分度）
 	var kinds := {}

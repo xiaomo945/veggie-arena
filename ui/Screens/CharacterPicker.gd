@@ -16,30 +16,40 @@ const CARD_H := 118.0
 const GAP := 10.0
 # 整行最大宽度（540 设计宽 - 左右各 10px 余量）
 const ROW_MAX_W := 520.0
+# 网格：每行最多几张（10 个萝卜 → 5 列 2 行）
+const COLS := 5
 
 var _keys: Array = []
 var _selected := "turnip"
 var _hover := -1
-# 实际使用的卡片尺寸（_ready 里按卡数缩放）
+# 实际使用的卡片尺寸（_ready 里按网格与卡数缩放）
 var _cw := CARD_W
 var _ch := CARD_H
 var _gap := GAP
 var _k := 1.0   # 缩放系数（图标/角标等内部布局同比例跟随）
+var _cols := 1  # 网格列数（10 个萝卜 = 5 列 2 行，未来扩到 60 仍用同一套）
+var _rows := 1
+# 网格内容实际尺寸。注意：ScreenMode.fit_overlay 会把本控件 size 撑成整屏 540x900
+# （卡片只画在左上角），所以对外暴露内容高度，TitleScreen 用它摆 START，别读 size。
+var content_size := Vector2.ZERO
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
 	_keys = Data.characters.keys()
 	_keys.sort()
 	_selected = GameState.character
-	var n := float(_keys.size())
-	var total := n * CARD_W + maxf(0.0, n - 1.0) * GAP
-	if total > ROW_MAX_W:
-		_k = ROW_MAX_W / total
-		_cw = CARD_W * _k
-		_ch = CARD_H * _k
-		_gap = GAP * _k
-		total = ROW_MAX_W
-	size = Vector2(total, _ch)
+	# 网格布局：每行最多 COLS 张，整体宽度封顶 ROW_MAX_W。
+	# 单行塞 10 张会把每张压到 ~47px（名字/属性全糊），所以 10 个=5 列 2 行。
+	var n := _keys.size()
+	_cols = maxi(1, mini(n, COLS))
+	_rows = int(ceil(float(n) / float(_cols)))
+	_cw = minf(CARD_W, (ROW_MAX_W - float(_cols - 1) * GAP) / float(_cols))
+	_k = _cw / CARD_W
+	_ch = CARD_H * _k
+	_gap = GAP * _k
+	content_size = Vector2(float(_cols) * _cw + float(_cols - 1) * _gap,
+		float(_rows) * _ch + float(_rows - 1) * _gap)
+	size = content_size
 	Events.character_changed.connect(_on_changed)
 	I18n.locale_changed.connect(_on_locale_changed)
 	queue_redraw()
@@ -53,15 +63,21 @@ func _on_locale_changed(_l: String = "") -> void:
 	queue_redraw()
 
 func _key_at(p: Vector2) -> String:
-	var pitch := _cw + _gap
-	var i := int(p.x / pitch)
-	if i < 0 or i >= _keys.size():
+	var pitch_x := _cw + _gap
+	var pitch_y := _ch + _gap
+	if pitch_x <= 0.0 or pitch_y <= 0.0:
 		return ""
-	# 落在间隙里不算
-	var x0 := float(i) * pitch
-	if p.x > x0 + _cw:
+	var col := int(p.x / pitch_x)
+	var row := int(p.y / pitch_y)
+	if col < 0 or col >= _cols or row < 0 or row >= _rows:
 		return ""
-	return str(_keys[i])
+	# 落在行列间隙里不算
+	if p.x > float(col) * pitch_x + _cw or p.y > float(row) * pitch_y + _ch:
+		return ""
+	var idx := row * _cols + col
+	if idx < 0 or idx >= _keys.size():
+		return ""
+	return str(_keys[idx])
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
@@ -89,11 +105,14 @@ func _gui_input(event: InputEvent) -> void:
 			queue_redraw()
 
 func _draw() -> void:
-	var pitch := _cw + _gap
+	var pitch_x := _cw + _gap
+	var pitch_y := _ch + _gap
 	for i in _keys.size():
 		var key := str(_keys[i])
-		var x := float(i) * pitch
-		_draw_card(Rect2(x, 0.0, _cw, _ch), key, i == _hover, key == _selected)
+		var col := i % _cols
+		var row := i / _cols
+		var r := Rect2(float(col) * pitch_x, float(row) * pitch_y, _cw, _ch)
+		_draw_card(r, key, i == _hover, key == _selected)
 
 func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 	var entry: Dictionary = Data.character(key)

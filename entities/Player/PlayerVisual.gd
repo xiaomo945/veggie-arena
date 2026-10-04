@@ -8,6 +8,7 @@ extends Node2D
 # 因此 draw_* 画出来的位置与原 Player._draw 完全重合。
 
 var player: Node = null
+var _anim_t := 0.0   # 动画时钟：驱动呼吸/眨眼（idle 也要有"活着"的呼吸感）
 
 const Weapon := preload("res://core/Weapon.gd")
 const MOUNT_RADIUS := 42.0
@@ -24,6 +25,11 @@ const EYE := Color(0.16, 0.14, 0.12)
 
 func _ready() -> void:
 	player = get_parent()
+
+# 每帧推进动画并重绘：呼吸/眨眼必须连续，攒帧画会看出"一顿一顿"
+func _process(delta: float) -> void:
+	_anim_t += delta
+	queue_redraw()
 
 func _draw() -> void:
 	_draw_trails()
@@ -45,6 +51,16 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		_draw_mounts()
 		return
+	# 呼吸 + 眨眼（仅非冲刺时；冲刺已有拉伸形变，叠加会抖）。
+	# 呼吸 = 缓慢整体缩放（一直有，站着也呼吸）；眨眼 = 每 ~3 秒一次快速纵向压扁，
+	# 50px 左右的体型下读起来就是"眨了一下眼"，比静态图多一份生气。
+	var breath := 1.0 + 0.02 * sin(_anim_t * 2.3)
+	var blink := 1.0
+	var cyc := fmod(_anim_t, 3.1)
+	if cyc > 2.94:
+		blink = 1.0 - 0.24 * sin((cyc - 2.94) / 0.16 * PI)
+	squash *= breath * blink
+	stretch *= breath
 	if tex != null:
 		_draw_sprite(tex, squash, stretch, alpha)
 	else:

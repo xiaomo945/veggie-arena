@@ -10,7 +10,7 @@ extends RefCounted
 const VALID_STATS := [
 	"max_hp", "speed_pct", "dmg_pct", "rate_pct",
 	"armor", "pickup_pct", "lifesteal", "wok_pct",
-	"ranged_pct", "melee_pct", "elem_pct", "gold_pct",
+	"ranged_pct", "melee_pct", "elem_pct", "gold_pct", "crit_chance",
 ]
 
 # 职业亲和（决定"这把萝卜适合哪种武器"）：mixed=均衡，其余对应武器分域
@@ -85,6 +85,7 @@ static func _label(stat: String) -> String:
 		"melee_pct": return "MELEE"
 		"elem_pct": return "ELEM"
 		"gold_pct": return "GOLD"
+		"crit_chance": return "CRIT"
 	return stat
 
 # 职业亲和的短标签（中文/英文），供选角卡片显示"这把萝卜适合哪种武器"

@@ -141,14 +141,17 @@ func _build() -> void:
 	var picker = Control.new()
 	picker.set_script(CharacterPickerScript)
 	_root.add_child(picker)
-	picker.set_position(Vector2((540.0 - picker.size.x) * 0.5, 500.0))
+	picker.set_position(Vector2((540.0 - (picker.get("content_size") as Vector2).x) * 0.5, 488.0))
+	# 角色网格底部：START 与"下一把解锁"提示都按它定位（角色变多、网格变高也不会被盖）。
+	# 用 content_size（网格真实高度），不能用 picker.size —— fit_overlay 已把它撑成整屏。
+	var p_bottom: float = 488.0 + (picker.get("content_size") as Vector2).y
 
 	var pick_hint := Label.new()
 	pick_hint.text = I18n.t("title_pick")
 	pick_hint.add_theme_font_size_override("font_size", 13)
 	pick_hint.add_theme_color_override("font_color", Color(0.60, 0.64, 0.72))
 	pick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pick_hint.set_position(Vector2(0, 476))
+	pick_hint.set_position(Vector2(0, 466))
 	pick_hint.set_size(Vector2(540, 20))
 	_pick_lbl = pick_hint
 	_root.add_child(pick_hint)
@@ -157,7 +160,8 @@ func _build() -> void:
 	var btn := Button.new()
 	btn.text = I18n.t("title_start")
 	btn.set_size(Vector2(280, 78))
-	btn.set_position(Vector2((540 - 280) * 0.5, 646))
+	# 跟随角色网格底部（网格 2 行时不再被 START 压住）
+	btn.set_position(Vector2((540 - 280) * 0.5, p_bottom + 8.0))
 	btn.add_theme_font_size_override("font_size", 28)
 	btn.add_theme_color_override("font_color", Color(0.07, 0.08, 0.05))
 	var n := StyleBoxFlat.new()
@@ -171,6 +175,9 @@ func _build() -> void:
 	btn.pressed.connect(_on_start)
 	_start_btn = btn
 	_root.add_child(btn)
+	# "下一把解锁"提示挪到 START 之下（同样跟随网格高度）
+	if _next_lbl != null:
+		_next_lbl.position.y = p_bottom + 8.0 + 78.0 + 6.0
 	I18n.locale_changed.connect(_on_locale_changed)
 
 	# 开局选武器页：包进 layer=45 的 CanvasLayer，压在 HUD(20) 之上、标题(50)之下。
