@@ -103,7 +103,41 @@ func run(data = null) -> Dictionary:
 		chk(str(e5.get("affinity", "mixed")) in ["mixed", "ranged", "melee", "elem"],
 			"%s 亲和合法" % str(k))
 
-	# 7) 不同角色之间不能是同一个套路（玩法要有区分度）
+	# 8) 每个角色都必须有专属贴图 art/sprite_char_<key>.png
+	# 缺图不会崩，但会静默回落成同一个通用萝卜，玩家看到的就是"10 个角色长得一样"，
+	# 职业辨识度直接归零 —— 所以这里当硬失败守卫。贴图要抠掉背景（alpha 有真透明）、
+	# 画布一致（512×512），否则游戏里大小不一。
+	for k in keys:
+		var kn2 := str(k)
+		var p := "res://art/sprite_char_%s.png" % kn2
+		if not ResourceLoader.exists(p):
+			chk(false, "%s 有专属贴图 sprite_char_%s.png" % [kn2, kn2])
+			continue
+		var tex: Texture2D = load(p)
+		chk(tex != null, "%s 贴图可加载" % kn2)
+		if tex == null:
+			continue
+		chk(tex.get_width() == 512 and tex.get_height() == 512,
+			"%s 贴图画布 512×512（实 %d×%d）" % [kn2, tex.get_width(), tex.get_height()])
+		# 抽样统计 alpha：必须既有真透明（背景抠掉了）也有不透明（角色实体）
+		var img := tex.get_image()
+		var opaque := 0
+		var clear := 0
+		var total := 0
+		for y in range(0, img.get_height(), 8):
+			for x in range(0, img.get_width(), 8):
+				total += 1
+				var a := img.get_pixel(x, y).a
+				if a < 0.1:
+					clear += 1
+				elif a > 0.6:
+					opaque += 1
+		chk(opaque > total * 0.05, "%s 贴图有实体像素（不透明 %.0f%%）" % [
+			kn2, 100.0 * float(opaque) / maxf(1.0, float(total))])
+		chk(clear > total * 0.30, "%s 贴图背景已抠透明（空白 %.0f%%）" % [
+			kn2, 100.0 * float(clear) / maxf(1.0, float(total))])
+
+	# 9) 不同角色之间不能是同一个套路（玩法要有区分度）
 	var kinds := {}
 	for k in keys:
 		var st := Character.stats_of(table[k] as Dictionary)
@@ -114,7 +148,7 @@ func run(data = null) -> Dictionary:
 		kinds[pos_key] = int(kinds.get(pos_key, 0)) + 1
 	chk(kinds.size() >= 3, "角色流派有区分度（%d 种不同正向加成组合）" % kinds.size())
 
-	# 8) 反向用例：纯加强角色必须被判为不合格（守卫测试本身要有效）
+	# 10) 反向用例：纯加强角色必须被判为不合格（守卫测试本身要有效）
 	var op := {"stats": {"dmg_pct": 0.5, "rate_pct": 0.5}}
 	chk(not Character.is_balanced(op), "守卫有效：纯加强角色被判为不合格")
 	var op2 := {"stats": {"dmg_pct": -0.5}}
