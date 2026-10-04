@@ -27,6 +27,8 @@ Sfx="*res://autoload/Sfx.gd"
 Bgm="*res://autoload/Bgm.gd"
 Gamepad="*res://autoload/Gamepad.gd"
 I18n="*res://autoload/I18n.gd"
+HudLayout="*res://ui/HUD/HudLayout.gd"
+ScreenMode="*res://ui/Screens/ScreenMode.gd"
 
 [display]
 

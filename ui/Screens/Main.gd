@@ -23,6 +23,9 @@ const FloorScene := preload("res://art/ArenaFloor.gd")
 func _ready() -> void:
 	if OS.has_environment("SIM_SEED"):
 		_rng.seed = int(OS.get_environment("SIM_SEED")) + 5
+	# 横屏地基：宽屏窗口自动切 960x540 + 放大竞技场（竖屏 / 沙箱 / 单测零改动）。
+	# 必须在读取 arena 之前调用，保证下面读到的就是横屏竞技场。
+	ScreenMode.apply()
 	var a := Data.arena()
 	var cx := float(a.get("x", 0)) + float(a.get("w", 540)) * 0.5
 	var cy := float(a.get("y", 0)) + float(a.get("h", 900)) * 0.5
@@ -36,10 +39,7 @@ func _ready() -> void:
 
 	player = PlayerScene.instantiate()
 	player.position = Vector2(cx, cy)
-	# ⚠️ 主角必须画在敌人/子弹之上：game 节点（含 110 个敌人 + 90 发子弹的池）是在
-	#    player 之后 add_child 的，默认按树序绘制会把主角整个埋进怪堆里 ——
-	#    "主角看不见了，只能靠感觉"就是这么来的。抬 z_index 让主角永远压在战斗层之上
-	#    （HUD/Fx 是 CanvasLayer，不受影响，依旧盖在最上层）。
+	# 主角抬 z_index，永远压在战斗层（敌/弹）之上；HUD/Fx 是 CanvasLayer 不受影响。
 	player.z_index = 6
 	add_child(player)
 
@@ -50,6 +50,7 @@ func _ready() -> void:
 	_cam.position_smoothing_speed = 9.0
 	player.add_child(_cam)
 	_cam.make_current()   # 必须在 add_child 之后调用，否则节点还没进树会报 is_inside_tree 错误
+	ScreenMode.clamp_camera(_cam, a)   # 相机限位到竞技场边界（防边缘过冲露黑边）
 
 	# 战斗管理器（刷怪/子弹/命中/波次）
 	game = GameScene.instantiate()

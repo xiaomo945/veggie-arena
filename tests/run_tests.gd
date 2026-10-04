@@ -22,6 +22,7 @@ const TBgm := preload("res://tests/test_bgm.gd")
 const TGamepad := preload("res://tests/test_gamepad.gd")
 const TShopTiers := preload("res://tests/test_shop_tiers.gd")
 const TStats := preload("res://tests/test_stats.gd")
+const TOrientation := preload("res://tests/test_orientation.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -56,6 +57,7 @@ func _initialize() -> void:
 	_run("Gamepad(手柄)", TGamepad)
 	_run("ShopTiers(武器分级商店)", TShopTiers)
 	_run("Stats(属性目录)", TStats, data)
+	_run("Orientation(横屏竞技场)", TOrientation, data)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告
 	data.free()

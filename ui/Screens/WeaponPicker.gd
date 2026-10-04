@@ -59,6 +59,7 @@ func _ready() -> void:
 	I18n.locale_changed.connect(_on_locale_changed)
 	_build_rects()
 	queue_redraw()
+	ScreenMode.fit_overlay(self)   # 横屏下把竖屏选武器页缩放到 960x540 视口内、居中
 
 func _build_rects() -> void:
 	_card_rects = []

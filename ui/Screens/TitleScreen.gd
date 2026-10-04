@@ -22,6 +22,7 @@ var _start_btn: Button
 func _ready() -> void:
 	layer = 50
 	_build()
+	ScreenMode.fit_overlay(_root)   # 横屏下把竖屏菜单缩放到 960x540 视口内、居中
 	Events.run_requested.connect(_on_run_requested)
 	Events.quit_to_title_requested.connect(_on_quit_to_title)
 

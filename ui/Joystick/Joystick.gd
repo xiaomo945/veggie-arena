@@ -11,16 +11,16 @@ extends CanvasLayer
 
 const Movement := preload("res://core/Movement.gd")
 
-# 固定底盘位置（屏幕坐标，左下角）。不随落点漂移。
-const FIXED_BASE := Vector2(118, 786)
+# 固定底盘位置（屏幕坐标，左下角）。不随落点漂移。横屏下移到左下、避开水技能簇。
+var FIXED_BASE := Vector2(118.0, 786.0)
 # 底盘半径（满舵距离）与死区：默认从手感配置读，这里给兜底值
 const RADIUS := 54.0
 const DEADZONE := 4.0
 
 # 左下 generous 移动区：左 ~46% 宽、y 在下半屏。右侧按钮（锅气/冲刺/快进）都
-# 在 x>MOVE_ZONE_W 的区外，互不抢指。
-const MOVE_ZONE_W := 250.0
-const MOVE_ZONE_Y := 400.0
+# 在 x>MOVE_ZONE_W 的区外，互不抢指。横屏下随宽屏放宽。
+var MOVE_ZONE_W := 250.0
+var MOVE_ZONE_Y := 400.0
 
 var _active := false
 var _index := -1
@@ -37,6 +37,10 @@ func _ready() -> void:
 	var f := Movement.feel(Data.feel_cfg())
 	_radius = float(f["radius"])
 	_deadzone = float(f["deadzone"])
+	# 横屏：底盘挪到左下、移动区随宽屏放宽（竖屏保持原值）
+	FIXED_BASE = HudLayout.joy_fixed_base()
+	MOVE_ZONE_W = HudLayout.joy_move_zone_w()
+	MOVE_ZONE_Y = HudLayout.joy_move_zone_y()
 	_view.radius = _radius
 	_view.base = FIXED_BASE
 	_view.visible = bool(f.get("joystick_visible", true))

@@ -15,24 +15,9 @@ extends Control
 
 const SkillButtonScript := preload("res://ui/HUD/SkillButton.gd")
 
-const PIVOT := Vector2(468.0, 762.0)   # 圆心 = 手动攻击键的位置
-# 技能环半径：按钮是"轴对齐方块"，斜向排布时不能只看圆心距 ——
-# 必须让相邻两块的 |dx| 或 |dy| 大于两者半径之和，否则边角会叠，
-# 一根手指同时落进两个按钮的矩形里就会被重复触发。152 是实测刚好拉开的值。
-const ARC_R := 152.0
-
-# 绕圆心的半圆扇面（顺序即绘制顺序）
-const FAN := [
-	{"type": "wok",   "deg": 240.0},
-	{"type": "skill", "id": "frost",  "deg": 195.0},
-	{"type": "skill", "id": "poison", "deg": 150.0},
-]
-
-# 圆心上的攻击键 + 移到扇面外的冲刺
-const EXTRA := [
-	{"type": "attack", "center": PIVOT},
-	{"type": "dash",   "center": Vector2(455.0, 500.0)},
-]
+# 圆心 / 半径 / 扇面角度 / 冲刺位 全部走 HudLayout（竖屏 540x900 / 横屏 960x540 双布局）。
+# 按钮是"轴对齐方块"，斜向排布时不能只看圆心距 —— 必须让相邻两块的 |dx| 或 |dy|
+# 大于两者半径之和，否则边角会叠、一根手指落进两个按钮被重复触发。
 
 var _btns: Array = []          # [{type, node}]
 var _wok_btn = null
@@ -40,21 +25,24 @@ var _dash_btn = null
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
-	size = Vector2(540.0, 900.0)
+	size = HudLayout.design_size()
 	for s in _slots():
 		_add(s)
 
-# 扇面中心由 (PIVOT, ARC_R, 角度) 算出，仍是固定值 —— 只是写成一眼能调的形
+# 扇面中心由 (圆心, 半径, 角度) 算出，全部取自 HudLayout（竖屏 / 横屏两套坐标）
 func _slots() -> Array:
+	var pivot := HudLayout.buttons_pivot()
+	var arc_r := HudLayout.buttons_arc_r()
 	var out: Array = []
-	for s in FAN:
+	for s in HudLayout.buttons_fan():
 		var a: float = deg_to_rad(float(s["deg"]))
 		out.append({
 			"type": s["type"],
 			"id": str(s.get("id", "")),
-			"center": PIVOT + Vector2(cos(a), sin(a)) * ARC_R,
+			"center": pivot + Vector2(cos(a), sin(a)) * arc_r,
 		})
-	out.append_array(EXTRA)
+	out.append({"type": "attack", "center": pivot})
+	out.append({"type": "dash", "center": HudLayout.buttons_dash_center()})
 	return out
 
 func _add(s: Dictionary) -> void:

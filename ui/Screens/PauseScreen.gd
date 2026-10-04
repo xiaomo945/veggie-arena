@@ -24,6 +24,7 @@ func _ready() -> void:
 	layer = 30
 	_build()
 	_root.visible = false
+	ScreenMode.fit_overlay(_root)   # 横屏下把竖屏菜单缩放到 960x540 视口内、居中
 	Events.run_paused.connect(_on_paused)
 	# 设置菜单 / 属性页作为同级 CanvasLayer 挂到 Game 下（layer 35/36 > 本菜单 30）
 	var p := get_parent()

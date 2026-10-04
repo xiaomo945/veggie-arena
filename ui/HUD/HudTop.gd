@@ -19,11 +19,12 @@ var _gold: Label
 var _kill: Label
 var _combo_label: Label
 var _pause_btn: Button
+var _fs_btn: Button
 
 func _ready() -> void:
 	# 容器本身不吃触摸：让事件穿透到按钮 / Joystick（否则整块会挡住摇杆）
 	mouse_filter = MOUSE_FILTER_IGNORE
-	size = Vector2(540.0, 900.0)
+	size = HudLayout.design_size()
 
 	_bars = HudBarsScript.new()
 	add_child(_bars)
@@ -51,7 +52,7 @@ func _ready() -> void:
 	_pause_btn = Button.new()
 	_pause_btn.custom_minimum_size = Vector2(48, 48)
 	_pause_btn.size = Vector2(48, 48)
-	_pause_btn.position = Vector2(540 - 56, 16)
+	_pause_btn.position = HudLayout.top_pause_pos()
 	var iv := Art.ui_icon("pause")
 	if iv != null:
 		_pause_btn.icon = iv
@@ -61,6 +62,17 @@ func _ready() -> void:
 	_pause_btn.pressed.connect(_on_pause_pressed)
 	_pause_btn.visible = false
 	add_child(_pause_btn)
+
+	# 全屏切换按钮：仅横屏显示（桌面 / 平板方便切全屏；手机本就全屏，平时隐藏）
+	if Data.is_landscape():
+		_fs_btn = Button.new()
+		_fs_btn.custom_minimum_size = Vector2(48, 48)
+		_fs_btn.size = Vector2(48, 48)
+		_fs_btn.position = Vector2(960.0 - 110.0, 16.0)
+		_fs_btn.text = "▢"
+		_fs_btn.add_theme_font_size_override("font_size", 18)
+		_fs_btn.pressed.connect(_on_fs_pressed)
+		add_child(_fs_btn)
 
 func _mk_label(pos: Vector2, size: int, c: Color) -> Label:
 	var l := Label.new()
@@ -126,3 +138,8 @@ func apply_safe_area(top: float) -> void:
 
 func _on_pause_pressed() -> void:
 	Events.pause_requested.emit()
+
+func _on_fs_pressed() -> void:
+	var w := get_window()
+	if w != null:
+		w.mode = Window.MODE_WINDOWED if w.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN

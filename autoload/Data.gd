@@ -12,6 +12,7 @@ var upgrades: Dictionary = {}
 var characters: Dictionary = {}
 var unlocks: Dictionary = {}
 var skills: Dictionary = {}
+var _landscape := false     # 横屏标志：宽屏窗口下由 ScreenMode.apply() 置 true（竖屏默认 false）
 
 func _ready() -> void:
 	load_all()
@@ -42,8 +43,32 @@ func _read(path: String) -> Dictionary:
 	return {}
 
 # ---- 便捷取值（缺键时给默认值，避免崩溃） ----
+
+# 横屏标志读写（由 Orientation 在启动时设定，全局只读查询）
+func set_landscape(v: bool) -> void:
+	_landscape = v
+
+func is_landscape() -> bool:
+	return _landscape
+
 func arena() -> Dictionary:
-	return balance.get("arena", {})
+	var a: Dictionary = balance.get("arena", {})
+	# 横屏：用 arena.landscape 覆盖尺寸 / 中心（竞技场 1620x1080，居中于原点），
+	# 让相机在更宽的视口里仍有多余空间平移；竖屏走原值，零改动。
+	if _landscape and a.has("landscape"):
+		var l: Dictionary = a["landscape"]
+		return {
+			"x": float(l.get("x", a.get("x", 0))),
+			"y": float(l.get("y", a.get("y", 0))),
+			"w": float(l.get("w", a.get("w", 540))),
+			"h": float(l.get("h", a.get("h", 900))),
+		}
+	return {
+		"x": float(a.get("x", 0)),
+		"y": float(a.get("y", 0)),
+		"w": float(a.get("w", 540)),
+		"h": float(a.get("h", 900)),
+	}
 
 func player_cfg() -> Dictionary:
 	return balance.get("player", {})

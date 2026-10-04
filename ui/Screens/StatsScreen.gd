@@ -25,6 +25,7 @@ func _ready() -> void:
 	layer = 36
 	_build()
 	_root.visible = false
+	ScreenMode.fit_overlay(_root)   # 横屏下把竖屏菜单缩放到 960x540 视口内、居中
 	I18n.locale_changed.connect(_on_locale_changed)
 
 func _build() -> void:

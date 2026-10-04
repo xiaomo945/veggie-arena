@@ -23,14 +23,14 @@ var _unlock_queue: Array = []   # 待展示的解锁提示（一次一条，避�
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
-	size = Vector2(540.0, 900.0)
+	size = HudLayout.design_size()
 
 	# Boss 波居中横幅
-	_banner = _mk(Vector2(0, 288), 540.0, 44.0, 34, Color(0.96, 0.34, 0.46))
+	_banner = _mk(Vector2(0, 288), HudLayout.banner_w(), 44.0, 34, Color(0.96, 0.34, 0.46))
 	# 锅气档位弹窗（顶部偏下，火候上档时弹出"翻炒!"/"爆炒!"）
-	_wok_banner = _mk(Vector2(0, 96), 540.0, 40.0, 30, Color(1, 1, 1))
+	_wok_banner = _mk(Vector2(0, 96), HudLayout.banner_w(), 40.0, 30, Color(1, 1, 1))
 	# 解锁横幅
-	_unlock = _mk(Vector2(0, 340), 540.0, 40.0, 24, Color(1.0, 0.84, 0.36))
+	_unlock = _mk(Vector2(0, 340), HudLayout.banner_w(), 40.0, 24, Color(1.0, 0.84, 0.36))
 
 func _mk(pos: Vector2, w: float, h: float, fs: int, c: Color) -> Label:
 	var l := Label.new()

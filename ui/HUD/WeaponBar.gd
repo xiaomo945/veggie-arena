@@ -16,7 +16,11 @@ var slots: Array = []    # [{key, lv, color, name, behavior}]
 const SLOT_SIZE := 32.0
 const SLOT_GAP := 6.0
 const SLOT_Y := 30.0
-const SLOT_RIGHT := 528.0
+var SLOT_RIGHT := 528.0
+
+func _ready() -> void:
+	# 横屏（960 宽）把武器槽右锚定到更右边；竖屏保持 528。
+	SLOT_RIGHT = HudLayout.slot_right()
 
 const INK := Color(0.05, 0.04, 0.08, 0.92)
 const LIT := Color(1.0, 1.0, 1.0, 0.95)

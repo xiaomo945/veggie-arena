@@ -12,21 +12,27 @@ var run_total := 20        # 总波次
 
 const BAR_X := 40.0
 const BAR_Y := 8.0
-const BAR_W := 486.0
+var BAR_W := 486.0
 const BAR_H := 14.0
 
 # 武器槽不在这里画了：搬去 ui/HUD/WeaponBar.gd（带行为符文，单独一层）
 # 锅气条放在顶部 HUD 区（与血条并排，全宽），手机底部会被浏览器底栏遮挡，不能放下面
 const WOK_X := 40.0
 const WOK_Y := 24.0
-const WOK_W := 486.0
+var WOK_W := 486.0
 const WOK_H := 16.0
 
 # 总波次进度条（"这局打到第几波了"），贴最顶，全宽细条，避开刘海区
 const RUN_X := 8.0
 const RUN_Y := 4.0
-const RUN_W := 524.0
+var RUN_W := 524.0
 const RUN_H := 3.0
+
+func _ready() -> void:
+	# 横屏（960 宽）把顶部三条进度条铺满宽度；竖屏保持原 540 宽。
+	BAR_W = HudLayout.bar_w()
+	WOK_W = HudLayout.wok_w()
+	RUN_W = HudLayout.run_w()
 
 func _draw() -> void:
 	_draw_run_progress()
