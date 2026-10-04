@@ -218,7 +218,8 @@ func _step_world(delta: float) -> void:
 	if enemy_system.boss_wave():
 		rate *= float(cfg.get("boss_rate_mult", 0.55))
 	_spawn_acc += rate * delta
-	var cap := int(cfg.get("max_alive", 88))
+	# 同屏敌人上限 = 配置值 ∩ 当前画质档位的上限（掉帧时自动砍，见 core/PerfGuard.gd）
+	var cap := mini(int(cfg.get("max_alive", 88)), Perf.int_cap("max_alive", 88))
 	while _spawn_acc >= 1.0:
 		_spawn_acc -= 1.0
 		if world.alive_enemy_count() < cap:

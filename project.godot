@@ -29,6 +29,7 @@ Gamepad="*res://autoload/Gamepad.gd"
 I18n="*res://autoload/I18n.gd"
 HudLayout="*res://ui/HUD/HudLayout.gd"
 ScreenMode="*res://ui/Screens/ScreenMode.gd"
+Perf="*res://autoload/Perf.gd"
 
 [display]
 

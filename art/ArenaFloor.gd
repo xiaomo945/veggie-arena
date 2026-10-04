@@ -78,6 +78,8 @@ func _draw_far(vis: Rect2) -> void:
 	var off := _cam * (1.0 - FAR_K)
 	draw_set_transform(off, 0.0, Vector2.ONE)
 	var vis_far := Rect2(vis.position - off, vis.size)
+	# 掉帧时只画一层：远景柔影是纯氛围，砍一半的 draw_circle 玩家几乎看不出来
+	var layers := 2 if Perf.bool_cap("far_detail", true) else 1
 	for b in _far:
 		var p: Vector2 = b[0]
 		var r: float = b[1]
@@ -87,7 +89,8 @@ func _draw_far(vis: Rect2) -> void:
 			continue
 		# 三圈同心圆叠出"软阴影"（draw_circle 没有渐变，只能这么糊）
 		draw_circle(p, r, Color(SHADOW_FAR.r, SHADOW_FAR.g, SHADOW_FAR.b, 0.14))
-		draw_circle(p, r * 0.55, Color(SHADOW_FAR.r, SHADOW_FAR.g, SHADOW_FAR.b, 0.20))
+		if layers > 1:
+			draw_circle(p, r * 0.55, Color(SHADOW_FAR.r, SHADOW_FAR.g, SHADOW_FAR.b, 0.20))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # 灶台外的大方格地砖（很淡，只是别让外面是一整块死黑）

@@ -3,10 +3,9 @@ extends CanvasLayer
 # 打击感特效层（Juice）：只订阅 Events 做表现，不认识 Player/Game/Enemy，也不写回玩法状态。
 # 删掉这个文件游戏照样能玩（验收标准）。四件事：飘字 / 爆环 / 全屏晕染 / 过关彩纸
 
-const MAX_FLOATS := 28
-const MAX_RINGS := 18
+# 飘字/爆环/迸溅的并发上限不再写死：掉帧时由画质档位自动收紧
+#（见 core/PerfGuard.gd）。它们是"看得见的开销"，降档先砍这些，最后才动同屏敌人。
 const MAX_CRACKS := 24
-const MAX_POPS := 24
 
 const FLOAT_LIFE := 0.62
 const FLOAT_RISE := 46.0
@@ -127,10 +126,12 @@ func _mk_flash(c: Color) -> Control:
 
 # ---- 信号：飘伤害数字 ----
 func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
-	# 重击定帧：单发大伤害让世界"卡"半帧，读成"这一下很沉"
+	# 顿帧：重击每次都停；普通命中要节流，否则连射武器会顿成幻灯片
 	if amount >= 30:
 		HitStop.hit(0.045, 0.08)
-	if _floats.size() >= MAX_FLOATS:
+	else:
+		HitStop.hit_throttled(0.02, 0.5)
+	if _floats.size() >= Perf.int_cap("floats", 24):
 		return          # 高射速时宁可少飘几个，也不能拖帧
 	var lab := _take_label()
 	if lab == null:
@@ -147,14 +148,14 @@ func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
 	lab.visible = true
 	_floats.append({"label": lab, "t": 0.0})
 	# 命中迸溅：和飘字一起冒，给每次打击一点卡通星芒
-	if _pops.size() < MAX_POPS:
+	if _pops.size() < Perf.int_cap("pops", 24):
 		var pc := Color(1.0, 0.86, 0.35) if critical else Color(1.0, 1.0, 1.0)
 		_pops.append({"pos": pos, "t": 0.0, "life": 0.18,
 			"kind": "impact", "color": pc})
 
 # ---- 信号：远程开火 → 枪口火光（按武器做专属） ----
 func _on_fired(_pos: Vector2, _dir: Vector2, _stats: Dictionary, color: Color, key: String) -> void:
-	if _pops.size() >= MAX_POPS:
+	if _pops.size() >= Perf.int_cap("pops", 24):
 		return
 	var pop := {"pos": _pos, "t": 0.0, "life": 0.12, "kind": "muzzle", "color": color}
 	# 武器专属火光：火箭筒更大更橙、霰弹更宽
@@ -170,17 +171,17 @@ func _on_fired(_pos: Vector2, _dir: Vector2, _stats: Dictionary, color: Color, k
 # ---- 信号：击杀 → 三层迸溅（碎块/汁液/爆环，画在 FxRings）+ 击杀定帧 ----
 func _on_killed(_type: String, pos: Vector2) -> void:
 	HitStop.hit(0.05, 0.12)      # 击杀是最值得"顿一下"的时刻
-	if _rings.size() >= MAX_RINGS:
+	if _rings.size() >= Perf.int_cap("rings", 18):
 		return
 	_rings.append({"pos": pos, "t": 0.0, "life": 0.5, "big": (_type == "boss"),
 		"color": Color(1.0, 0.88, 0.55)})
 
 # 自爆怪贴脸爆炸：橙红冲击环 + 迸溅（复用击杀环/迸溅视图，删掉也不影响玩法）
 func _on_enemy_exploded(pos: Vector2, _radius: float) -> void:
-	if _rings.size() < MAX_RINGS:
+	if _rings.size() < Perf.int_cap("rings", 18):
 		_rings.append({"pos": pos, "t": 0.0, "life": 0.45, "big": true,
 			"color": Color(1.0, 0.45, 0.35)})
-	if _pops.size() < MAX_POPS:
+	if _pops.size() < Perf.int_cap("pops", 24):
 		_pops.append({"pos": pos, "t": 0.0, "life": 0.22, "kind": "impact",
 			"color": Color(1.0, 0.5, 0.4), "scale": 1.6})
 
@@ -295,5 +296,5 @@ func _take_label() -> Label:
 
 func _give_label(lab: Label) -> void:
 	lab.visible = false
-	if _pool.size() < MAX_FLOATS:
+	if _pool.size() < Perf.int_cap("floats", 24):
 		_pool.append(lab)

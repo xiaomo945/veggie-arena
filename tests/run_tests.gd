@@ -25,6 +25,8 @@ const TStats := preload("res://tests/test_stats.gd")
 const TOrientation := preload("res://tests/test_orientation.gd")
 const TCamLimits := preload("res://tests/test_cam_limits.gd")
 const TShopPlan := preload("res://tests/test_shop_plan.gd")
+const TPerfGuard := preload("res://tests/test_perf_guard.gd")
+const THitFeel := preload("res://tests/test_hit_feel.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -62,6 +64,8 @@ func _initialize() -> void:
 	_run("Orientation(横屏竞技场)", TOrientation, data)
 	_run("CamLimits(相机跟随/防黑边)", TCamLimits, data)
 	_run("ShopPlan(商店节奏/单卡可控)", TShopPlan, data)
+	_run("PerfGuard(帧率自适应降级)", TPerfGuard, data)
+	_run("HitFeel(命中顿帧节流)", THitFeel, data)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告
 	data.free()

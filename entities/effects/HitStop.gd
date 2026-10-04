@@ -32,6 +32,29 @@ static func hit(sec: float, scale := 0.05) -> void:
 	_until_usec = mini(now + dur_us, now + cap_us)
 	_armed = true
 
+# ---- 普通命中的顿帧必须节流 ----
+# 连射武器一秒十几次命中，每次都顿到 0.05 倍速，画面就成了幻灯片（比不顿还难受）。
+# 所以轻顿帧走"每 gap 秒最多一次"；重击（大伤害 / 击杀）不节流 ——
+# 那是"这一下真沉"的读法，每次都该停。
+const THROTTLE_GAP := 0.12
+
+static var _last_hit_sec := -10.0
+
+# 返回是否真的顿了（false = 被节流吃掉，调用方无需处理）
+static func hit_throttled(sec: float, scale: float, gap: float = THROTTLE_GAP) -> bool:
+	var now := float(Time.get_ticks_usec()) / 1000000.0
+	if _armed:
+		# 还没到点 = 真的在顿帧里，别再叠；已过点但 tick() 还没跑（暂停/切后台
+		# 回来）就按"已恢复"处理，否则一次漏 tick 会把顿帧永久卡住。
+		if Time.get_ticks_usec() < _until_usec:
+			return false
+		_armed = false
+	if now - _last_hit_sec < gap:
+		return false
+	_last_hit_sec = now
+	hit(sec, scale)
+	return true
+
 # 每帧调用（放在不会暂停的 _process 里）：到点恢复 1.0
 static func tick() -> void:
 	if _armed and Time.get_ticks_usec() >= _until_usec:
@@ -41,4 +64,5 @@ static func tick() -> void:
 # 场景切换 / 结算时兜底，避免把 0.05 倍速带到别的界面
 static func reset() -> void:
 	_armed = false
+	_last_hit_sec = -10.0     # 节流窗口也要清：否则换场景第一发会被上局的窗口吃掉
 	Engine.time_scale = 1.0

@@ -24,6 +24,7 @@ var _music_slider: HSlider
 var _sfx_slider: HSlider
 var _move_slider: HSlider
 var _quality_btns: Array = []      # [{btn, val}]
+var _perf_lbl: Label
 var _shake_btn: Button
 var _particle_btn: Button
 var _fps_option: OptionButton
@@ -86,6 +87,9 @@ func _build() -> void:
 	# 画质档 / 语言：三选一、二选一的按钮行
 	_labels["quality"] = Widgets.label(_root, _advance(44.0), 16, Color(0.85, 0.88, 0.92))
 	_quality_btns = Widgets.button_row(_root, 3, _advance(30.0), _on_quality)
+	# 自动降级档位：掉帧会自己往下降，必须让玩家看得见，否则只会以为游戏偷偷变糊
+	_perf_lbl = Widgets.label(_root, _advance(24.0), 13, Color(0.62, 0.90, 0.63))
+	Perf.level_changed.connect(_on_perf_level)
 
 	# 震屏开关
 	_labels["shake"] = Widgets.label(_root, _advance(80.0), 16, Color(0.85, 0.88, 0.92))
@@ -138,6 +142,7 @@ func _refresh_texts() -> void:
 	_labels["particles"].text = I18n.t("settings_particles")
 	_labels["fps"].text = I18n.t("settings_fps")
 	_labels["lang"].text = I18n.t("settings_language")
+	_refresh_perf_label()
 	_refresh_move_label()
 	_back_btn.text = I18n.t("settings_back")
 	var qnames := [I18n.t("quality_low"), I18n.t("quality_mid"), I18n.t("quality_high")]
@@ -156,6 +161,13 @@ func _refresh_texts() -> void:
 	_fps_option.clear()
 	for i in FPS_OPTIONS.size():
 		_fps_option.add_item(_fps_label(i), FPS_OPTIONS[i])
+
+# 自动画质档位（每帧可能变，档位变化时也要刷新）
+func _refresh_perf_label() -> void:
+	_perf_lbl.text = "%s：%s" % [I18n.t("settings_perf"), Perf.label()]
+
+func _on_perf_level(_lv: int) -> void:
+	_refresh_perf_label()
 
 # 移动速度标题带实时百分比（滑块拖动时要跟着变）
 func _refresh_move_label() -> void:
@@ -212,6 +224,7 @@ func _on_move_scale(v: float) -> void:
 
 func _on_quality(v: int) -> void:
 	Settings.set_quality(v)
+	Perf.sync_quality()      # 手选"低画质"要当场降到保底档，不能等自动
 	_refresh_from_settings()
 	if v == 0:
 		# 低画质：强制关粒子 / 震屏并禁用开关（降级）

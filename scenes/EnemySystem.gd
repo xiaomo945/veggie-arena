@@ -21,8 +21,9 @@ const EnemyMind := preload("res://scenes/EnemyMind.gd")
 # 命中飘字走 FxLayer 的池化飘字（Events.damage_dealt），不再每命中 new 一个
 # Node2D+Tween 再 queue_free —— 高频开火时那才是"打怪卡"的真正元凶（节点抖动 + GC）。
 
-# 同屏击杀特效并发上限（防密集击杀时 Node/Tween 暴涨拖帧）
-const MAX_DEATH_FX := 16
+# 同屏击杀特效并发上限：走画质档位，掉帧时自动收紧（见 core/PerfGuard.gd）
+func _death_fx_cap() -> int:
+	return Perf.int_cap("death_fx", 6)
 
 const LIFESTEAL_CHANCE := 0.08
 const SEPARATION_FORCE := 90.0
@@ -203,34 +204,34 @@ func damage_enemy(e, amount: float) -> bool:
 		GameState.add_kill()
 		if _mind != null:
 			_mind.on_kill(e, epos)
-	# 击杀碎屑 + 冲击波环（Boss 更大）。并发上限：密集击杀时宁可少画几团，
-	# 也不让 Node/Tween 爆炸拖垮手机帧率
-	if Settings.get_setting("particles_enabled", true) and _death_fx_count() < MAX_DEATH_FX:
+	# ---- 击杀结算（玩法）----
+	# ⚠️ 必须在特效门控之外：以前整段被"粒子开关 + 并发上限"包着，关粒子或特效
+	#    一满，击杀就不掉钱不涨锅气（真 bug，是特效降级把它逼出来的）。
+	# 钱掉在地上（不是直接入账）：玩家要走进磁吸圈才收得到
+	var ov: int = world.pickups.drop(epos, e.gold)
+	if ov > 0:
+		world.gold_picked += ov
+		GameState.add_gold(ov)
+	# 击杀回血（lifesteal 强化：续航流玩法）
+	# ⚠️ 必须概率触发：按击杀固定回血时，一局 1300+ 杀能回几千血，
+	#    实测"站着不动"都能满血通关，难度被彻底抵消
+	var ls: float = GameState.stat_value("lifesteal")
+	if ls > 0.0 and world.rng.randf() < LIFESTEAL_CHANCE:
+		GameState.heal(int(ls))
+	# 击杀按金币攒锅气：普通怪一点点，Boss 一大口，火候涨得有节奏
+	var heat: float = float(Data.wok_cfg().get("kill_heat", 9)) * (1.0 + 0.2 * float(e.gold))
+	GameState.add_wok(heat * (1.0 + GameState.stat_value("wok_pct")))
+	# 终局 Boss（第 20 波）被击杀 = 直接通关，不必再熬计时
+	if e.etype == "boss" and GameState.is_last_wave() and GameState.running:
+		Events.run_won.emit()
+	# ---- 击杀表现（可以限流）----
+	# 爆环事件照发（FxLayer 自己有并发上限）；只有碎屑节点要限，密集击杀时
+	# 宁可少画几团，也不让 Node/Tween 爆炸拖垮手机帧率
+	Events.enemy_killed.emit(str(e.etype), epos)
+	if Settings.get_setting("particles_enabled", true) and _death_fx_count() < _death_fx_cap():
 		var spark = HitSpark.new()
 		game.add_child(spark)
 		spark.init(epos, e.etype == "boss")
-		# 钱掉在地上（不是直接入账）：玩家要走进磁吸圈才收得到
-		# drop 的返回值 = 池满时被直接结算的金额（钱不会凭空蒸发）
-		var ov: int = world.pickups.drop(epos, e.gold)
-		if ov > 0:
-			world.gold_picked += ov
-			GameState.add_gold(ov)
-		# 击杀爆环（Boss 的环更大）
-		Events.enemy_killed.emit(str(e.etype), epos)
-		# 终局 Boss（第 20 波）被击杀 = 直接通关，不必再熬计时
-		if e.etype == "boss" and GameState.is_last_wave() and GameState.running:
-			Events.run_won.emit()
-		# 击杀回血（lifesteal 强化：续航流玩法）
-		# ⚠️ 必须概率触发：按击杀固定回血时，一局 1300+ 杀能回几千血，
-		#    实测"站着不动"都能满血通关，难度被彻底抵消
-		var ls: float = GameState.stat_value("lifesteal")
-		if ls > 0.0 and world.rng.randf() < LIFESTEAL_CHANCE:
-			GameState.heal(int(ls))
-		# 击杀按金币攒锅气：普通怪一点点，Boss 一大口，火候涨得有节奏
-		# 再乘上 wok_pct 强化（锅气获取 +X%）
-		var heat: float = float(Data.wok_cfg().get("kill_heat", 9)) * (1.0 + 0.2 * float(e.gold))
-		heat *= 1.0 + GameState.stat_value("wok_pct")
-		GameState.add_wok(heat)
 		return true
 	return false
 

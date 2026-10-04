@@ -39,7 +39,8 @@ ALLOW_PRIVATE = {}
 
 # 名单与 project.godot 的 autoload 段保持一致（漏了就等于放行）。
 AUTOLOADS = ["Art", "Data", "Events", "GameState", "Settings", "Steam",
-             "SaveMgr", "Sfx", "Bgm", "Gamepad", "I18n", "HudLayout", "ScreenMode"]
+             "SaveMgr", "Sfx", "Bgm", "Gamepad", "I18n", "HudLayout", "ScreenMode",
+             "Perf"]
 
 REPORT = "--report" in sys.argv
 
