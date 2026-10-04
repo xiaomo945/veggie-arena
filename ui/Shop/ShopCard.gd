@@ -136,6 +136,10 @@ func _draw() -> void:
 	# 左侧图标 / 稀有度宝石（底座染色呼应主色）
 	_draw_icon(r, accent, ib)
 
+	# 行为类型：买之前就知道这把"怎么打"（局内武器槽有几何符文，这里补文字）
+	if not compact and str(_d.get("behavior_zh", "")) != "":
+		_draw_behavior(str(_d.get("behavior_zh", "")), r, ib)
+
 	# 名称（为右上角 Lv/稀有度角标预留 84px，避免文字压到角标）
 	var tx := 14.0 + ib + 10.0
 	var name_c := Color(1,1,1,0.97) if not dim else Color(0.6,0.63,0.67,0.8)
@@ -193,6 +197,19 @@ func _draw_icon(r: Rect2, accent: Color, ib: float) -> void:
 		draw_colored_polygon(PackedVector2Array([
 			c + Vector2(0, -rad*0.5), c + Vector2(rad*0.5, 0), c + Vector2(0, rad*0.5), c + Vector2(-rad*0.5, 0)]),
 			Color(1,1,1,0.35))
+
+# 行为小药丸：画在图标底座正下方（仅高卡有空间；矮卡塞不下，靠局内符文看）
+func _draw_behavior(text: String, r: Rect2, ib: float) -> void:
+	var fs := 11
+	var tw := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var pad := 5.0
+	var w := tw + pad * 2.0
+	var h := 16.0
+	var bx := 14.0 + ib * 0.5 - w * 0.5
+	var by := (r.size.y - ib) * 0.5 + ib + 3.0
+	draw_style_box(_sb(Color(0.10, 0.08, 0.05, 0.92), Color(0.85, 0.66, 0.22), 8.0, 1),
+		Rect2(bx, by, w, h))
+	_center(text, bx + w * 0.5, by + h * 0.5 + fs * 0.34, fs, Color(1.0, 0.90, 0.70))
 
 func _draw_lv(compact: bool) -> void:
 	var lv := int(_d.get("lv", 1))

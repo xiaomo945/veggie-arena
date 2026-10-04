@@ -219,6 +219,8 @@ func _fire_shop() -> void:
 # 套装条目检：刀工 3 件（差 1 到第 2 档）+ 枪械 2 件（已激活），看套装条与卡片竖条。
 func _fire_sets() -> void:
 	var defs: Dictionary = _bus("Data").weapons
+	# 拨到第 2 波（非大商店）：刷 2 张高卡，正好目检武器卡的"行为类型"药丸
+	_bus("GameState").wave = 2
 	var want := {"blade": 3, "gun": 2}
 	var pairs: Array = []
 	for k in defs:

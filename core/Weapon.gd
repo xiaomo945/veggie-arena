@@ -38,6 +38,18 @@ static func behavior_of(def: Dictionary) -> String:
 		return b
 	return "melee" if is_melee(def) else "projectile"
 
+# 行为中文短名（商店卡展示用）：让玩家"买之前"就知道这把怎么打。
+# 局内武器槽已经有几何符文，这里补文字版，两者对照看。
+static func behavior_zh(def: Dictionary) -> String:
+	match behavior_of(def):
+		"melee": return "近战"
+		"beam": return "光束"
+		"pulse": return "脉冲"
+		"chain": return "连锁"
+		"boomerang": return "回旋"
+		"homing": return "追踪"
+		_: return "弹丸"
+
 # 是不是"以自己为圆心的扇形"结算（近战 / 光束 / 脉冲）
 static func is_sector(def: Dictionary) -> bool:
 	match behavior_of(def):

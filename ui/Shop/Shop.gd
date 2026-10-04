@@ -14,6 +14,7 @@ const ShopPanelScript := preload("res://ui/Shop/ShopPanel.gd")
 const ShopTiers := preload("res://core/ShopTiers.gd")
 const ShopPlan := preload("res://core/ShopPlan.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
+const Weapon := preload("res://core/Weapon.gd")
 
 const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
 
@@ -153,6 +154,8 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 			var cnt := int(WeaponSets.tag_counts(GameState.weapons, Data.weapons).get(str(tags[0]), 0))
 			d["set_color"] = Color(str(sd.get("color", "#8a7a5a")))
 			d["set_on"] = WeaponSets.tier_of(cnt, sd) > 0
+		# 行为类型：买之前就知道这把"怎么打"（追踪/弹射/连锁…）
+		d["behavior_zh"] = Weapon.behavior_zh(def)
 		d["disabled"] = not Inventory.can_accept_tier(GameState.weapons, key, lv, _max_slot, _max_lv)
 	else:
 		var rar := clampi(int(def.get("rarity", 1)), 1, 3)
