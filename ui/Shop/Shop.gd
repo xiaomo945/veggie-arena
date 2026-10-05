@@ -14,6 +14,7 @@ const ShopPlan := preload("res://core/ShopPlan.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
 const Weapon := preload("res://core/Weapon.gd")
 const Stats := preload("res://core/Stats.gd")
+const ItemIcons := preload("res://core/ItemIcons.gd")
 
 const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
 
@@ -97,8 +98,7 @@ func _refresh() -> void:
 	_panel.merge_btn.disabled = not Inventory.has_mergeable(GameState.weapons, _max_lv)
 	# 刷新按钮的文字一直没人设置过（截图目检才发现是空白按钮），补上 + 显示当前刷新价
 	_panel.reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, Data.shop_cfg())
-	# 槽位满了还刷不出新武器时，明确告诉玩家"先卖一把"——否则只会以为商店坏了；
-	# 否则大商店亮出促销标识，让"攒钱这一波能大买"的节奏被看见。
+	# 槽满提示"先卖一把"；大商店亮促销标识（攒钱这一波能大买的节奏要被看见）
 	var cfg := Data.shop_cfg()
 	if _slots_full():
 		_panel.hint_lbl.text = I18n.t("shop_slots_full_hint")
@@ -161,6 +161,9 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 	else:
 		var rar := clampi(int(def.get("rarity", 1)), 1, 3)
 		d["accent"] = RARITY_COLORS[rar - 1]; d["rarity"] = rar; d["tag"] = I18n.t("shop_upgrade")
+		# 道具也有真图标了（18 类覆盖 136 个）；没配映射的 stat 落回宝石画法
+		var ik := str(ItemIcons.key_for_def(def))
+		if ik != "": d["icon"] = Art.icon(ik)
 	return d
 
 func _owned_lv(key: String) -> int:
@@ -219,7 +222,7 @@ func _sell(index: int) -> void:
 		GameState.add_gold(gain)
 		Events.weapons_changed.emit(GameState.weapons)
 	else:
-		# 最后一把武器不让卖（Inventory 已做"至少留 1 把"保护）：给个红色提示，避免玩家以为"卖不掉是 bug"
+		# 最后一把不让卖（Inventory 已保护"至少留 1 把"）：红字提示，免得以为卖不掉是 bug
 		_pop_effect(I18n.t("shop_keep_one"), Color(0.95, 0.42, 0.40))
 	_refresh()
 
@@ -243,15 +246,13 @@ func _pop_effect(text: String, col: Color) -> void:
 func _is_pickup(def: Dictionary) -> bool:
 	for e in Inventory.stat_entries(def):
 		var s := str(e.get("stat", ""))
-		if s == "pickup_pct" or s == "autopick" or s == "fullauto":
-			return true
+		if s == "pickup_pct" or s == "autopick" or s == "fullauto": return true
 	return false
 
 func _slots_full() -> bool:
 	var n := 0
 	for w in GameState.weapons:
-		if int(w.get("lv", 1)) > 0:
-			n += 1
+		if int(w.get("lv", 1)) > 0: n += 1
 	return n >= _max_slot
 
 func _lock_toggle(index: int) -> void:
@@ -268,8 +269,7 @@ func _reroll_one(index: int) -> void:
 		return
 	var cfg := Data.shop_cfg()
 	var cost := ShopPlan.single_reroll_cost(_reroll_times, cfg)
-	if not Economy.can_buy(GameState.gold, cost):
-		return
+	if not Economy.can_buy(GameState.gold, cost): return
 	var pool := _pool_now()
 	GameState.spend_gold(cost); _reroll_times += 1
 	_offers = ShopPlan.reroll_one(_offers, index, pool, _rng, GameState.gold)

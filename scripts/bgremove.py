@@ -9,7 +9,7 @@ from collections import deque
 import numpy as np
 from PIL import Image
 
-def process(src, dst, thr=42.0, out_size=256):
+def process(src, dst, thr=42.0, out_size=256, square=False):
     im = Image.open(src).convert("RGBA")
     arr = np.array(im).astype(np.int16)
     h, w = arr.shape[:2]
@@ -75,10 +75,19 @@ def process(src, dst, thr=42.0, out_size=256):
     x0, x1 = max(0, xs.min()-pad), min(w, xs.max()+1+pad)
     out = np.dstack([rgb, alpha]).astype(np.uint8)[y0:y1, x0:x1]
     img = Image.fromarray(out, "RGBA")
+    if square and img.width != img.height:
+        # 按长边 pad 成正方形再缩：直接 resize 会把宽扁/细高的主体拉变形
+        # （实测：火焰图标 868x360 被硬缩成 256x256，纵向拉了 2.4 倍）
+        side = max(img.width, img.height)
+        pad = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+        pad.paste(img, ((side - img.width) // 2, (side - img.height) // 2))
+        img = pad
     img = img.resize((out_size, out_size), Image.LANCZOS)
     img.save(dst)
     kept = best_size / (h * w) * 100
     print(f"OK {dst}  bbox=({x0},{y0},{x1},{y1}) 主体占比 {kept:.0f}%  尺寸 {w}x{h} -> {out_size}")
 
 if __name__ == "__main__":
-    process(sys.argv[1], sys.argv[2], float(sys.argv[3]) if len(sys.argv) > 3 else 42.0)
+    process(sys.argv[1], sys.argv[2], float(sys.argv[3]) if len(sys.argv) > 3 else 42.0,
+            int(sys.argv[4]) if len(sys.argv) > 4 else 256,
+            len(sys.argv) > 5 and sys.argv[5] == "square")

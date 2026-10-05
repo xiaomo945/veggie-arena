@@ -12,6 +12,7 @@ extends RefCounted
 # 顺带守住升级道具：道具目前用宝石兜底（有意为之），但 Map key 变了同样要被发现。
 
 const Art := preload("res://autoload/Art.gd")
+const ItemIcons := preload("res://core/ItemIcons.gd")
 
 var _p := 0
 var _f := 0
@@ -23,6 +24,7 @@ func run(weapons: Dictionary = {}) -> Dictionary:
 	_weapon_keys = weapons.keys()
 	_check_weapons()
 	_check_sizes()
+	_check_items()
 	return {"pass": _p, "fail": _f, "failures": _failures}
 
 # 每把武器都必须有一张 art/icon_weapon_<key>.png
@@ -53,6 +55,30 @@ func _check_sizes() -> void:
 			bad.append("%s(%dx%d)" % [k, int(s.x), int(s.y)])
 	chk(checked >= 32, "武器图标全部能被 Godot 加载（实测 %d 张）" % checked)
 	chk(bad.is_empty(), "所有武器图标 ≥128px（异常：%s）" % (", ".join(bad) if bad.size() > 0 else "无"))
+
+# 道具侧：upgrades.json 每条都必须能映射到一张存在的图标。
+# 映射在 core/ItemIcons.gd（18 类覆盖 136 条，wok 类复用 icon_wok.png）；
+# 谁往 upgrades.json 加新 stat 而忘了配图标，这里直接红 —— 不许静默退回宝石。
+func _check_items() -> void:
+	var src := FileAccess.get_file_as_string("res://data/upgrades.json")
+	var ups: Dictionary = JSON.parse_string(src) if src != "" else {}
+	chk(ups.size() > 100, "道具表非空（拿到 %d 条）" % ups.size())
+	var no_map: Array = []
+	var miss_file: Array = []
+	for k in ups:
+		var ik := ItemIcons.key_for_def(ups[k] as Dictionary)
+		if ik == "":
+			no_map.append(str(k))
+		elif not ResourceLoader.exists("res://art/icon_%s.png" % ik):
+			miss_file.append("%s(%s)" % [k, ik])
+	chk(no_map.is_empty(), "每条道具都有图标映射（未映射：%s）"
+		% (", ".join(no_map) if no_map.size() > 0 else "无"))
+	chk(miss_file.is_empty(), "道具图标文件齐全（缺：%s）"
+		% (", ".join(miss_file) if miss_file.size() > 0 else "无"))
+	chk(ItemIcons.POOLS.size() <= 20,
+		"图标分类数 %d ≤ 20（分类是手造资产，膨胀失控就该警惕）" % ItemIcons.POOLS.size())
+	var tex := ResourceLoader.load("res://art/icon_item_hp.png", "Texture2D") as Texture2D
+	chk(tex != null and int(tex.get_size().x) >= 128, "道具图标能被 Godot 加载且 ≥128px")
 
 func chk(cond: bool, msg: String) -> void:
 	if cond:
