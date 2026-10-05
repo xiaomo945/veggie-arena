@@ -20,9 +20,13 @@ var level := 0
 var _hold := 0.0
 var _ema := 60.0
 var _warm := 0.0
+# 性能测量用：true 时冻结档位（不自动降级）。
+# 为什么需要：scripts/perf_probe.gd 要测"未降级时的真实开销"才能定位瓶颈 ——
+# 不冻结的话测到的是"降级后"的性能，看不出到底哪一层是原凶。
+var _frozen := false
 
 func _process(delta: float) -> void:
-	if delta <= 0.0:
+	if delta <= 0.0 or _frozen:
 		return
 	_warm += delta
 	if _warm < WARMUP:
@@ -58,3 +62,7 @@ func sync_quality() -> void:
 # 供设置面板显示当前档位（自动降级的档位对玩家可见，才不会以为游戏偷偷变糊）
 func label() -> String:
 	return I18n.t("perf_level_%d" % level)
+
+# 冻结/解冻自动降级。只给性能测量脚本用，正常游戏路径不该调。
+func debug_freeze(v: bool) -> void:
+	_frozen = v
