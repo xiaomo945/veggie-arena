@@ -104,6 +104,7 @@ const UI := {
   "stats_cat_move": {"en": "Mobility", "zh": "机动闪避"},
   "stat_max_hp": {"en": "Max HP", "zh": "生命上限"},
   "stat_armor": {"en": "Armor", "zh": "护甲"},
+  "stat_attack": {"en": "Attack Power", "zh": "攻击力"},
   "stat_speed": {"en": "Move Speed", "zh": "移动速度"},
   "stat_dmg": {"en": "Damage", "zh": "伤害"},
   "stat_rate": {"en": "Attack Speed", "zh": "攻击速度"},

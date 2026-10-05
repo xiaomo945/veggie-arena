@@ -1,5 +1,8 @@
 extends RefCounted
 
+const Weapon := preload("res://core/Weapon.gd")
+const WeaponSets := preload("res://core/WeaponSets.gd")
+
 # 玩家属性目录（纯数据，不依赖任何 autoload —— 取值在 ui 层做）。
 # "玩家属性做全"的单一真相源：这一局里玩家能堆的所有属性都登记在这里，
 # 属性页、商店摘要、成就都从这张表取，加新属性只改这一处。
@@ -10,6 +13,7 @@ extends RefCounted
 #   name —— I18n 译文键（stat_xxx）
 #   fmt  —— 显示格式：
 #           pct  百分比加成，value 是 0..1 小数，显示为 +N%（×100 取整）
+#           atk  攻击力实数（全武器齐射一轮的伤害合计，值在 UI 层算），显示为 N
 #           flat 整数加成，显示为 +N
 #           lvl  拥有层数（从 0 起的整数，如颠勺强化 / 全屏拾取），显示为 ×N
 #           hp   生命上限特例，直接读 GameState.max_hp，显示为 N
@@ -18,6 +22,11 @@ extends RefCounted
 #    否则属性页会显示一堆永远是 0 的假属性。下面这 7 个曾被代码消费却无供给的
 #    "孤儿属性"（homing_pct / knock_pct / low_hp_dmg / wave_heal / ricochet /
 #    shop_discount / hit_boost）已在 data/upgrades.json 补了供给源，现在都是真机制。
+
+# 派生属性：值不是"这件道具加了多少"，而是由当前装备/角色实时算出的实数。
+# 它们天然没有升级表供给源（给它们配道具反而是错的），所以单独登记：
+# 测试据此豁免"必有供给源"检查，UI 也据此用不同的取值路径。
+const DERIVED := ["max_hp", "attack"]
 
 const CATS := [
 	{"id": "core", "title": "stats_cat_core"},
@@ -30,6 +39,7 @@ static func catalog() -> Array:
 	return [
 		# ---- 核心战斗 ----
 		{"key": "max_hp",            "cat": "core", "name": "stat_max_hp",     "fmt": "hp"},
+		{"key": "attack",            "cat": "core", "name": "stat_attack",     "fmt": "atk"},
 		{"key": "armor",             "cat": "core", "name": "stat_armor",      "fmt": "flat"},
 		{"key": "speed_pct",         "cat": "core", "name": "stat_speed",      "fmt": "pct"},
 		{"key": "dmg_pct",           "cat": "core", "name": "stat_dmg",        "fmt": "pct"},
@@ -85,6 +95,33 @@ static func catalog() -> Array:
 		{"key": "dash_dist_pct",     "cat": "move", "name": "stat_dash_dist",  "fmt": "pct"},
 		{"key": "ifr_pct",           "cat": "move", "name": "stat_ifr",        "fmt": "pct"},
 	]
+
+# ---- 派生属性怎么算 ----
+# 攻击力（真实数字，不再只有"+N%"）：全武器齐射一轮的理论伤害合计。
+# 口径与实战一致 —— 每把武器取合成后的 dmg×pellets，再乘 WeaponSets.damage_mult
+# （全局伤害% + 近战/远程/元素分类加成，与 entities 层开火时用同一把尺），
+# 否则属性页上的数字会和手感对不上（"写着 300 结果打不动"）。
+# 不含暴击期望（暴击单独一行展示），不含攻速 —— 攻速是"每秒打几轮"，另算。
+#
+# 三个回调都是为了守住"core 层不许碰 autoload"（R2）：
+#   stat_of  —— GameState.stat_value（属性查谁不为我知）
+#   def_of   —— Data.weapon（武器表在哪不为我知）
+#   cfg      —— Data.combat_cfg()（合成系数从 balance.json 来）
+static func attack_power(weapons: Array, stat_of: Callable, def_of: Callable, cfg: Dictionary) -> float:
+	var stats := {}
+	for s in ["dmg_pct", "melee_pct", "ranged_pct", "elem_pct"]:
+		stats[s] = stat_of.call(s)
+	var total := 0.0
+	for w in weapons:
+		if not (w is Dictionary):
+			continue
+		var def: Dictionary = def_of.call(str((w as Dictionary).get("key", "")))
+		if def.is_empty():
+			continue
+		var ms := Weapon.merged_stats(def, int((w as Dictionary).get("lv", 1)), cfg)
+		total += float(ms.get("dmg", 0.0)) * maxf(1.0, float(ms.get("pellets", 1))) \
+			* WeaponSets.damage_mult(def, stats)
+	return total
 
 # 某条属性的"加成值"怎么显示（+18% / +8 / ×2）。core 层不碰 I18n，
 # 所以这里只格式化数值部分，属性名由 UI 层自己翻译。

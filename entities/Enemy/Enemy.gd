@@ -281,7 +281,7 @@ func _draw_poly(pts: PackedVector2Array, c: Color) -> void:
 	EnemyShape.poly(self, pts, c)
 # 缺图时的手绘造型：委托给 EnemyShape（升起变换已在 _draw_body 里设好）
 func _draw_shape(c: Color) -> void:
-	EnemyShape.body(self, etype, radius, c)
+	EnemyShape.body(self, etype, radius, c, Perf.bool_cap("deco", true))
 
 func _draw_sprite(tex: Texture2D, size: float, c: Color) -> void:
 	var half := size * 0.5

@@ -41,10 +41,10 @@ func run(data) -> Dictionary:
 		var key: String = str(e["key"])
 		seen[key] = true
 		chk(cat_ids.has(str(e["cat"])), "分组合法：%s" % str(e["cat"]))
-		if key != "max_hp":
-			chk(stat_keys.has(key), "属性 %s 在升级表有供给源" % key)
+		if Stats.DERIVED.has(key):
+			chk(true, "%s 是派生属性（实时算出，豁免供给源检查）" % key)
 		else:
-			chk(true, "max_hp 为特例读 GameState.max_hp")
+			chk(stat_keys.has(key), "属性 %s 在升级表有供给源" % key)
 
 	# ② 分类键合法
 	chk(true, "CATS 分组数 = %d" % Stats.CATS.size())

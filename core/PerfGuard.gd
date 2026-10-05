@@ -17,16 +17,19 @@ const MAX_LEVEL := 3          # 0=满配 1=轻降 2=中降 3=保底（只求能�
 
 # 每档的开销上限。数值来自实测顺序：先砍"看得见的"（飘字/特效），
 # 最后才砍"影响玩法的"（同屏敌人数）—— 玩法被削是最后的手段。
+# "deco"：敌人装饰 LOD —— 低档关掉脚下内圈影/顶部高光/腮红这些纯装饰 draw，
+# 每只怪每帧少 ~40% 的 draw 调用（脸和本体形状永远保留，辨识度不受影响）。
 const CAPS: Array = [
-	{"max_alive": 88, "death_fx": 6, "floats": 24, "pops": 24, "rings": 18, "far_detail": true},
-	{"max_alive": 64, "death_fx": 4, "floats": 16, "pops": 16, "rings": 12, "far_detail": true},
-	{"max_alive": 48, "death_fx": 2, "floats": 10, "pops": 10, "rings": 8, "far_detail": false},
-	{"max_alive": 32, "death_fx": 1, "floats": 6, "pops": 6, "rings": 5, "far_detail": false},
+	{"max_alive": 88, "death_fx": 6, "floats": 24, "pops": 24, "rings": 18, "far_detail": true, "deco": true},
+	{"max_alive": 64, "death_fx": 4, "floats": 16, "pops": 16, "rings": 12, "far_detail": true, "deco": true},
+	{"max_alive": 48, "death_fx": 2, "floats": 10, "pops": 10, "rings": 8, "far_detail": false, "deco": false},
+	{"max_alive": 32, "death_fx": 1, "floats": 6, "pops": 6, "rings": 5, "far_detail": false, "deco": false},
 ]
 
 const DOWN_FPS := 50.0
 const UP_FPS := 58.0          # 比降档阈值高 8fps → 迟滞带，防抖档
-const HOLD_DOWN := 1.0        # 掉帧持续 1 秒才降（躲开偶发的一两帧卡顿）
+const HOLD_DOWN := 0.4        # 掉帧持续 0.4 秒就降（原 1.0 秒太钝：玩家已经感觉到卡，
+                              # 还要再忍 1 秒才见效；0.4 依然躲得开偶发的一两帧尖峰）
 const HOLD_UP := 6.0          # 升档要稳 6 秒：刚升上去又掉下来最难受
 
 # 玩家手选画质 → 允许的最高画质（= 自动降级的地板档位）

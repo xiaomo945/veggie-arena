@@ -109,15 +109,19 @@ func _add_row(parent: VBoxContainer, entry: Dictionary) -> void:
 func _fmt(fmt: String, v: float) -> String:
 	match fmt:
 		"pct": return "+%d%%" % int(round(v * 100.0))
+		"atk": return "%d" % int(round(v))
 		"flat": return "+%d" % int(round(v))
 		"lvl": return "×%d" % int(round(v))
 		"hp": return "%d" % int(round(v))
 		_: return str(v)
 
-# 取某条属性的当前值（max_hp 特例）
+# 取某条属性的当前值（max_hp / attack 特例）
 func _value(entry: Dictionary) -> float:
 	if entry["key"] == "max_hp":
 		return float(GameState.max_hp)
+	if entry["key"] == "attack":
+		return Stats.attack_power(GameState.weapons, GameState.stat_value,
+			Data.weapon, Data.combat_cfg())
 	return GameState.stat_value(entry["key"])
 
 func show_menu() -> void:
@@ -127,11 +131,11 @@ func show_menu() -> void:
 		var v := _value(entry)
 		var vl: Label = r["val_l"]
 		vl.text = _fmt(entry["fmt"], v)
-		# 0 值的可选强化半透明（hp 永不透明）。
+		# 0 值的可选强化半透明（hp / attack 永不透明）。
 		# ⚠️ 零判定要按显示口径来：pct 的 v 是 0..1 小数，直接 round(v) 会把
 		#    +5% 这种小加成误判成 0 而置灰，必须先 ×100 再取整。
 		var eff := v * 100.0 if entry["fmt"] == "pct" else v
-		var dim: bool = (entry["fmt"] != "hp") and (int(round(eff)) == 0)
+		var dim: bool = (entry["fmt"] != "hp" and entry["fmt"] != "atk") and (int(round(eff)) == 0)
 		vl.modulate.a = 0.35 if dim else 1.0
 		(r["name_l"] as Label).modulate.a = 0.35 if dim else 1.0
 	_root.visible = true

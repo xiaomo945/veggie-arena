@@ -139,7 +139,12 @@ def main():
 
         # ---- R3 不得读写其他对象的私有字段 X._yyy ----
         # 自身私有字段写作 _yyy 或 self._yyy，所以 "实例._yyy" 一定是越界。
-        hits = re.findall(r'\b(?!self\b)[a-zA-Z_][a-zA-Z0-9_]*\._[a-zA-Z_]', code)
+        # ⚠️ 必须在【剥掉注释后】的代码上匹配：注释里写"复刻了 EnemyMind._collect_neighbors"
+        #    这种解释性文字会被误判成越界读写（scripts/perf_bench.gd 就撞过一次）。
+        # ⚠️ 已知边界：字符串**内部**提到 "Obj._field" 仍会被计数 —— 字符串必须
+        #    原样保留（否则 R1 抓不到 preload 路径），只能规范书写：诊断打印里
+        #    把它写成 "Obj 的 field"（perf_bench.gd 已改）。
+        hits = re.findall(r'\b(?!self\b)[a-zA-Z_][a-zA-Z0-9_]*\._[a-zA-Z_]', strip_code(code))
         if hits:
             base = ALLOW_PRIVATE.get(rel, 0)
             if len(hits) > base:

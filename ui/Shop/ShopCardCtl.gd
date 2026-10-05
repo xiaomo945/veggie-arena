@@ -44,6 +44,67 @@ static func rects(size: Vector2) -> Array:
 	var y := 30.0
 	return [Rect2(x - b - gap, y, b, b), Rect2(x, y, b, b)]
 
+# ---- 价格药丸 ----
+# 金底 + 币图标 + 数字；买不起/槽满换红底，一眼分清"买得起吗"。
+# 高度收到 24px 并贴底 y=size.y-28：给描述行（y=60 起）让出垂直空间，二者不再叠
+# （旧版 30px 高、y=size.y-30，100px 矮卡上会压住描述第一行）。
+const PRICE_FS := 15
+const PRICE_H := 24.0
+const PRICE_COIN := 17.0
+
+static func price_rect(size: Vector2, text_w: float, compact: bool, tx: float) -> Rect2:
+	var w := PRICE_COIN + text_w + 18.0
+	var px := (size.x - 14.0 - w) if not compact else tx
+	var py := (size.y - 28.0) if not compact else (size.y - 34.0)
+	return Rect2(px, py, w, PRICE_H)
+
+static func draw_price(c: Control, size: Vector2, font: Font, cost: String, ok: bool,
+		compact: bool, tx: float, gold: Color, coin: Texture2D) -> void:
+	if font == null:
+		return
+	var tw := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, PRICE_FS).x
+	var rr := price_rect(size, tw, compact, tx)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.30, 0.21, 0.06, 0.96) if ok else Color(0.28, 0.10, 0.08, 0.96)
+	sb.set_corner_radius_all(14)
+	sb.border_color = (Color(0.85, 0.66, 0.22) if ok else Color(0.95, 0.42, 0.40))
+	sb.set_border_width_all(2)
+	c.draw_style_box(sb, rr)
+	if coin != null:
+		c.draw_texture_rect_region(coin,
+			Rect2(rr.position.x + 8.0, rr.position.y + 4.0, PRICE_COIN, PRICE_COIN),
+			Rect2(Vector2.ZERO, coin.get_size()))
+	_center(c, font, cost, rr.position.x + 8.0 + PRICE_COIN + 4.0 + tw * 0.5,
+		rr.position.y + PRICE_H * 0.5 + PRICE_FS * 0.35, PRICE_FS,
+		gold if ok else Color(1.0, 0.72, 0.66))
+
+# ---- 道具兜底宝石 ----
+# 道具没有专属贴图时画这颗切面宝石（比原来的纯色菱形更有"这是件装备"的分量）：
+# 冠部亮 face + 亭部暗 face + 左上高光，外面套一圈深色 rim。
+static func draw_gem(c: CanvasItem, box: Rect2, accent: Color) -> void:
+	var ctr := box.position + box.size * 0.5
+	var rad := box.size.y * 0.34
+	var crown := PackedVector2Array([
+		ctr + Vector2(-rad * 0.72, -rad * 0.38), ctr + Vector2(-rad * 0.44, -rad),
+		ctr + Vector2(rad * 0.44, -rad), ctr + Vector2(rad * 0.72, -rad * 0.38)])
+	var table := PackedVector2Array([
+		ctr + Vector2(-rad * 0.44, -rad), ctr + Vector2(rad * 0.44, -rad),
+		ctr + Vector2(rad * 0.34, -rad * 0.52), ctr + Vector2(-rad * 0.34, -rad * 0.52)])
+	# 深色 rim（外扩一圈省一次描边 draw）
+	var rim := PackedVector2Array([ctr + Vector2(-rad * 0.86, -rad * 0.46),
+		ctr + Vector2(-rad * 0.52, -rad * 1.14), ctr + Vector2(rad * 0.52, -rad * 1.14),
+		ctr + Vector2(rad * 0.86, -rad * 0.46), ctr + Vector2(0, rad * 1.12)])
+	c.draw_colored_polygon(rim, accent.darkened(0.62))
+	# 亭部（下半，压暗）+ 冠部
+	c.draw_colored_polygon(PackedVector2Array([crown[0], crown[3], ctr + Vector2(0, rad)]),
+		accent.darkened(0.18))
+	c.draw_colored_polygon(crown, accent)
+	# 台面 + 左上高光
+	c.draw_colored_polygon(table, accent.lightened(0.22))
+	c.draw_colored_polygon(PackedVector2Array([table[0], table[1],
+		ctr + Vector2(rad * 0.16, -rad * 0.72), ctr + Vector2(-rad * 0.30, -rad * 0.70)]),
+		Color(1, 1, 1, 0.40))
+
 # 命中哪个：1=锁定 2=单张刷新 0=都不是（走购买）
 static func hit(size: Vector2, p: Vector2) -> int:
 	var r := rects(size)

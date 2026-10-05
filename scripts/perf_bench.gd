@@ -83,7 +83,9 @@ func _bench_collect(n: int, iters: int) -> float:
 func _initialize() -> void:
 	print("=== 性能微基准（headless，纯 CPU；单位 ms/帧）===")
 	print()
-	print("【A】敌人分离 = EnemyMind._collect_neighbors(O(n²)) + Hit.separation")
+	# 注意：这里不要写 "EnemyMind._collect_neighbors" 这种带下划线前缀的写法 ——
+	# 架构守卫 R3 会把字符串里的 "对象._字段" 当成跨模块读私有字段而硬失败。
+	print("【A】敌人分离 = EnemyMind 邻居收集(O(n²)) + Hit.separation")
 	print("   怪数   ms/帧     距离检查次数/帧   60fps预算占比")
 	print("   " + "-".repeat(58))
 	# 迭代次数按 n 缩放，保证总工作量恒定（否则 n=88 要跑 88²×1000 次）

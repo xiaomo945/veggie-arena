@@ -15,6 +15,7 @@ const ShopTiers := preload("res://core/ShopTiers.gd")
 const ShopPlan := preload("res://core/ShopPlan.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
 const Weapon := preload("res://core/Weapon.gd")
+const Stats := preload("res://core/Stats.gd")
 
 const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
 
@@ -122,10 +123,11 @@ func _set_progress() -> Array:
 func _refresh_stats() -> void:
 	if _panel == null or _panel.stats_lbl == null: return
 	var spd := int(round(float(Data.player_cfg().get("speed", 180)) * (1.0 + GameState.stat_value("speed_pct"))))
+	# 攻击力是派生实数（全武器齐射一轮的伤害），不是道具加成 —— 走 Stats 聚合口径，
+	# 与 entities 层开火时的乘法完全一致，属性页/商店的数字才不会和手感对不上。
+	var atk := Stats.attack_power(GameState.weapons, GameState.stat_value, Data.weapon, Data.combat_cfg())
 	var g1 := "生命 %d   护甲 %d   移速 %d" % [GameState.max_hp, int(GameState.stat_value("armor")), spd]
-	var g2 := "攻击 +%d%%   射速 +%d%%   范围 +%d%%   暴击 %d%%" % [
-		int(GameState.stat_value("dmg_pct") * 100.0), int(GameState.stat_value("rate_pct") * 100.0),
-		int(GameState.stat_value("range_pct") * 100.0), int(GameState.stat_value("crit_chance") * 100.0)]
+	var g2 := "攻击力 %d(+%d%%)   射速 +%d%%   范围 +%d%%   暴击 %d%%" % [int(atk), int(GameState.stat_value("dmg_pct") * 100.0), int(GameState.stat_value("rate_pct") * 100.0), int(GameState.stat_value("range_pct") * 100.0), int(GameState.stat_value("crit_chance") * 100.0)]
 	_panel.stats_lbl.text = g1 + "\n" + g2
 
 func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:

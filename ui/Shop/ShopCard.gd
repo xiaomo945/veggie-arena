@@ -145,19 +145,26 @@ func _draw() -> void:
 	var name_c := Color(1,1,1,0.97) if not dim else Color(0.6,0.63,0.67,0.8)
 	_center(_d.get("name", ""), tx + 8.0, 26, 18, name_c, r.size.x - tx - 92.0)
 
-	# 类型 + 状态标签
-	var tag := str(_d.get("tag", ""))
-	var tag_c := accent if not dim else Color(0.55,0.58,0.62,0.8)
-	_center(tag, tx + 8.0, 47, 12, tag_c, r.size.x - tx - 92.0)
+	# 类型 + 状态标签 —— 只在高卡画：矮卡（大商店 6 张，h≈68）时标签行 y=47
+	# 会与左下价格药丸（y=34~58）叠在一起，"UPG" 被金币盖成"UPC"；
+	# 矮卡空间不够，套装/状态信息由套装条与角标承担，这里直接省略。
+	if not compact:
+		var tag := str(_d.get("tag", ""))
+		var tag_c := accent if not dim else Color(0.55,0.58,0.62,0.8)
+		_center(tag, tx + 8.0, 47, 12, tag_c, r.size.x - tx - 92.0)
 
-	# 描述（按字符换行，最多 2 行；右侧留 110px 给价格药丸，避免文字钻到药丸底下）
+	# 描述（按字符换行；卡矮就只画 1 行并上移，底部整条留给价格药丸，避免重叠）
+	# 验算：100 高卡 desc y=60（1 行，字底 ~72），药丸 y=72 起 → 分毫不压；
+	#       132 高卡 desc 两行 60/76（字底 ~88），药丸 y=104 起 → 同样安全。
 	if not compact:
 		var desc := str(_d.get("tip", ""))
-		_draw_wrap(desc, tx, 66, 12, Color(0.76,0.72,0.64,0.95) if not dim else Color(0.5,0.47,0.43,0.7),
-			r.size.x - tx - 110.0, 2)
+		var lines := 1 if r.size.y < 120.0 else 2
+		_draw_wrap(desc, tx, 60, 12, Color(0.76,0.72,0.64,0.95) if not dim else Color(0.5,0.47,0.43,0.7),
+			r.size.x - tx - 110.0, lines)
 
 	# 价格（"金币药丸"；买不起/槽满标红）—— 矮卡时挪到左下，给右上角的按钮让位
-	_draw_price(str(_d.get("cost", 0)), afford and not disabled, compact, tx)
+	Ctl.draw_price(self, size, _font, str(_d.get("cost", 0)), afford and not disabled,
+		compact, tx, GOLD, Art.coin_icon())
 
 	# 通胀角标：本店比原价贵时画一个暖橙"涨 N%"圆角标（把物价上涨显式呈现）
 	var infl_pct := int(_d.get("infl_pct", 0))
@@ -188,15 +195,8 @@ func _draw_icon(r: Rect2, accent: Color, ib: float) -> void:
 		draw_texture_rect_region(tex, Rect2(box.position.x + 5.0, box.position.y + 5.0, s, s),
 			Rect2(Vector2.ZERO, (tex as Texture2D).get_size()))
 	else:
-		# 无图标（道具）：画一个稀有度/主色菱形宝石 + 高光
-		var c := box.position + box.size * 0.5
-		var rad := ib * 0.32
-		draw_colored_polygon(PackedVector2Array([
-			c + Vector2(0, -rad), c + Vector2(rad, 0), c + Vector2(0, rad), c + Vector2(-rad, 0)]),
-			accent)
-		draw_colored_polygon(PackedVector2Array([
-			c + Vector2(0, -rad*0.5), c + Vector2(rad*0.5, 0), c + Vector2(0, rad*0.5), c + Vector2(-rad*0.5, 0)]),
-			Color(1,1,1,0.35))
+		# 无图标的道具：画一颗切面宝石（轮廓/明暗/高光，比纯色菱形更像"一件装备"）
+		Ctl.draw_gem(self, box, accent)
 
 # 行为小药丸：画在图标底座正下方（仅高卡有空间；矮卡塞不下，靠局内符文看）
 func _draw_behavior(text: String, r: Rect2, ib: float) -> void:
@@ -235,26 +235,6 @@ func _draw_rarity(compact: bool) -> void:
 	for i in rar:
 		draw_style_box(_sb(col, col.darkened(0.35), 3.0, 1),
 			Rect2(x0 + float(i) * (pip + gap), y, pip, pip))
-
-# 价格药丸：金底 + 币图标 + 数字；买不起/槽满换红底，一眼分清"买得起吗"
-func _draw_price(text: String, ok: bool, compact: bool, tx: float) -> void:
-	var fs := 16
-	var tw := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var coin := Art.coin_icon()
-	var coin_s := 20.0
-	var h := 28.0
-	var w := coin_s + tw + 18.0
-	var px := (size.x - 14.0 - w) if not compact else tx
-	# 价格药丸固定贴在卡片最底部一行（专属底部条带），不与上方描述/图标重叠
-	var py := (size.y - 30.0) if not compact else (size.y - 34.0)
-	var rr := Rect2(px, py, w, h)
-	draw_style_box(_sb(Color(0.30, 0.21, 0.06, 0.96) if ok else Color(0.28, 0.10, 0.08, 0.96),
-		Color(0.85, 0.66, 0.22) if ok else RED, 14.0, 2), rr)
-	if coin != null:
-		draw_texture_rect_region(coin, Rect2(rr.position.x + 8.0, rr.position.y + 4.0, coin_s, coin_s),
-			Rect2(Vector2.ZERO, coin.get_size()))
-	_center(text, rr.position.x + 8.0 + coin_s + 4.0 + tw * 0.5,
-		rr.position.y + h * 0.5 + fs * 0.35, fs, GOLD if ok else Color(1.0, 0.72, 0.66))
 
 # 通胀角标："涨 N%" 暖橙圆角小标，呼应商店整体卡通暖色调
 func _draw_infl(pct: int, afford: bool, compact: bool, tx: float) -> void:

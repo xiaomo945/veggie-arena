@@ -15,16 +15,18 @@ const OUTLINE := Color(0.18, 0.10, 0.12, 1.0)
 
 # ---- 怒萌脸：怒眼 + 斜眉 + 龇牙，所有怪物共用 ----
 # 这次加了瞳孔高光（卡通眼）和腮红，比原来"两个黑点"精神多了
-static func angry_face(c: CanvasItem, sz: float, look: Vector2, alpha: float) -> void:
+# deco=false（性能低档）时跳过腮红 —— 眼/眉/牙是辨识度核心，永远保留。
+static func angry_face(c: CanvasItem, sz: float, look: Vector2, alpha: float, deco: bool = true) -> void:
 	var ex := sz * 0.40
 	var ey := -sz * 0.16
 	for sgn in [-1, 1]:
 		var x: float = sgn * ex + look.x * sz * 0.10
 		var y: float = ey + look.y * sz * 0.08
 		# 腮红（先画，压在眼下）
-		c.draw_set_transform(Vector2(x, y + sz * 0.34), 0.0, Vector2(1.0, 0.62))
-		c.draw_circle(Vector2.ZERO, sz * 0.17, Color(1.0, 0.45, 0.42, alpha * 0.35))
-		c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		if deco:
+			c.draw_set_transform(Vector2(x, y + sz * 0.34), 0.0, Vector2(1.0, 0.62))
+			c.draw_circle(Vector2.ZERO, sz * 0.17, Color(1.0, 0.45, 0.42, alpha * 0.35))
+			c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		# 眼白 + 瞳孔 + 高光
 		c.draw_circle(Vector2(x, y), sz * 0.24, Color(1, 1, 1, alpha))
 		var px: float = x + look.x * sz * 0.07
@@ -50,12 +52,18 @@ static func angry_face(c: CanvasItem, sz: float, look: Vector2, alpha: float) ->
 			Vector2(tx, my + sz * 0.22)]), Color(1, 1, 1, alpha))
 
 # ---- 卡通体积：底部阴影 + 顶部高光 ----
-static func _shade(c: CanvasItem, radius: float) -> void:
+# deco=false（性能低档）时只画阴影外圈、跳过高光 —— 阴影留着（ grounding 不会"飘"），
+# 高光和阴影内圈是纯装饰，砍掉省一半 draw。
+static func _shade(c: CanvasItem, radius: float, deco: bool = true) -> void:
 	c.draw_set_transform(Vector2(0.0, radius * 0.44), 0.0, Vector2(1.0, 0.5))
 	c.draw_circle(Vector2.ZERO, radius * 0.80, Color(0.05, 0.02, 0.04, 0.20))
+	if deco:
+		c.draw_circle(Vector2.ZERO, radius * 0.62, Color(0.05, 0.02, 0.04, 0.16))
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-static func _gloss(c: CanvasItem, radius: float) -> void:
+static func _gloss(c: CanvasItem, radius: float, deco: bool = true) -> void:
+	if not deco:
+		return
 	c.draw_set_transform(Vector2(-radius * 0.30, -radius * 0.40), 0.0, Vector2(1.0, 0.60))
 	c.draw_circle(Vector2.ZERO, radius * 0.28, Color(1.0, 1.0, 1.0, 0.34))
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -63,13 +71,15 @@ static func _gloss(c: CanvasItem, radius: float) -> void:
 # 落地阴影：脚下软椭圆（与 Boss 出场的土坑区分——这是"站在地上"的投影）。
 # 用显式多边形点画，不碰 draw_set_transform，所以无论被调用时本体处于
 # squash/rise 的什么变换下都不会打乱后续绘制，也不会被缩放乱跑。
-static func ground_shadow(c: CanvasItem, radius: float) -> void:
+static func ground_shadow(c: CanvasItem, radius: float, deco: bool = true) -> void:
 	var cy := radius * 0.95
 	var outer := PackedVector2Array()
 	for i in 18:
 		var a := TAU * float(i) / 18.0
 		outer.append(Vector2(cos(a) * radius * 0.95, cy + sin(a) * radius * 0.27))
 	c.draw_colored_polygon(outer, Color(0.0, 0.0, 0.0, 0.13))
+	if not deco:
+		return   # 低档：只画一圈影，省一个 16 点多边形
 	var inner := PackedVector2Array()
 	for i in 16:
 		var a := TAU * float(i) / 16.0
@@ -88,26 +98,28 @@ static func poly(c: CanvasItem, pts: PackedVector2Array, col: Color) -> void:
 	c.draw_colored_polygon(pts, col)
 
 # ---- 凶萌造型：每种怪一个形状 + 专属装饰 ----
-static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> void:
-	ground_shadow(c, radius)   # 先画脚下投影，本体随后压在上面
+# deco（装饰 LOD）：性能低档（PerfGuard CAPS.deco=false）时由调用方传 false，
+# 跳过腮红/高光/阴影内圈 —— 本体形状与脸永远保留，怪还是那只怪。
+static func body(c: CanvasItem, etype: String, radius: float, col: Color, deco: bool = true) -> void:
+	ground_shadow(c, radius, deco)   # 先画脚下投影，本体随后压在上面
 	var look := Vector2(0.0, 0.2)
 	match etype:
 		"fast":
 			poly(c, PackedVector2Array([
 				Vector2(0, -radius * 1.25), Vector2(radius * 0.95, radius * 0.75),
 				Vector2(-radius * 0.95, radius * 0.75)]), col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 冲刺残影小尾巴
 			c.draw_line(Vector2(-radius * 0.5, radius * 0.2), Vector2(-radius * 1.1, radius * 0.5),
 				Color(1, 1, 1, 0.45), maxf(1.6, radius * 0.12))
-			angry_face(c, radius * 0.95, look, 1.0)
+			angry_face(c, radius * 0.95, look, 1.0, deco)
 		"tank":
 			var pts := PackedVector2Array()
 			for i in range(6):
 				var a := TAU * float(i) / 6.0 - PI * 0.5
 				pts.append(Vector2(cos(a), sin(a)) * radius)
 			poly(c, pts, col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 铆钉装甲带
 			for i in 4:
 				var rx: float = -radius * 0.6 + float(i) * radius * 0.4
@@ -115,7 +127,7 @@ static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> voi
 					Color(0.25, 0.14, 0.18, 0.8))
 			c.draw_arc(Vector2.ZERO, radius + 3.0, 0.0, TAU, 14,
 				Color(0.20, 0.10, 0.26, 0.6), 3.0, true)
-			angry_face(c, radius * 0.85, look, 1.0)
+			angry_face(c, radius * 0.85, look, 1.0, deco)
 		"fly":
 			c.draw_colored_polygon(PackedVector2Array([Vector2(-radius*0.5,0),
 				Vector2(-radius*1.6,-radius*0.5), Vector2(-radius*1.2,radius*0.45)]),
@@ -125,7 +137,7 @@ static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> voi
 				Color(1,1,1,0.55))
 			poly(c, PackedVector2Array([Vector2(0,-radius*1.3), Vector2(radius*0.55,0),
 				Vector2(0,radius*1.3), Vector2(-radius*0.55,0)]), col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 触角
 			for s in [-1, 1]:
 				c.draw_line(Vector2(float(s) * radius * 0.18, -radius * 1.15),
@@ -133,29 +145,29 @@ static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> voi
 					OUTLINE, maxf(1.4, radius * 0.1))
 				c.draw_circle(Vector2(float(s) * radius * 0.42, -radius * 1.66),
 					radius * 0.10, Color(1.0, 0.9, 0.3, 0.95))
-			angry_face(c, radius * 0.6, look, 1.0)
+			angry_face(c, radius * 0.6, look, 1.0, deco)
 		"boss":
 			var sp := PackedVector2Array()
 			for i in range(24):
 				var a2 := TAU * float(i) / 24.0
 				sp.append(Vector2(cos(a2), sin(a2)) * radius * (0.62 if i % 2 == 0 else 1.0))
 			poly(c, sp, col)
-			_shade(c, radius); _gloss(c, radius)
-			angry_face(c, radius * 0.92, look, 1.0)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
+			angry_face(c, radius * 0.92, look, 1.0, deco)
 		"swarm":
 			poly(c, PackedVector2Array([Vector2(-radius,0), Vector2(0,-radius),
 				Vector2(radius,0), Vector2(0,radius)]), col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 小细腿（虫群感）
 			for s in [-1, 1]:
 				c.draw_line(Vector2(float(s) * radius * 0.45, radius * 0.55),
 					Vector2(float(s) * radius * 0.85, radius * 1.05),
 					OUTLINE, maxf(1.4, radius * 0.1))
-			angry_face(c, radius * 0.9, look, 1.0)
+			angry_face(c, radius * 0.9, look, 1.0, deco)
 		"brute":
 			poly(c, PackedVector2Array([Vector2(-radius,-radius*0.9), Vector2(radius,-radius*0.9),
 				Vector2(radius,radius*0.9), Vector2(-radius,radius*0.9)]), col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 肩甲尖刺
 			for s in [-1, 1]:
 				c.draw_colored_polygon(PackedVector2Array([
@@ -163,12 +175,12 @@ static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> voi
 					Vector2(float(s) * radius * 1.0, -radius * 1.45),
 					Vector2(float(s) * radius * 1.05, -radius * 0.75)]), OUTLINE)
 			c.draw_arc(Vector2.ZERO, radius * 1.25, 0.0, TAU, 6, Color(0.2, 0.1, 0.14, 0.5), 3.0, true)
-			angry_face(c, radius * 0.9, look, 1.0)
+			angry_face(c, radius * 0.9, look, 1.0, deco)
 		"shambler":
 			poly(c, PackedVector2Array([Vector2(-radius,-radius*0.8), Vector2(-radius*0.7,-radius),
 				Vector2(radius*0.7,-radius), Vector2(radius,-radius*0.8),
 				Vector2(radius,radius), Vector2(-radius,radius)]), col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 缝合线（丧尸感）
 			c.draw_line(Vector2(-radius * 0.8, -radius * 0.15), Vector2(radius * 0.8, -radius * 0.15),
 				Color(0.1, 0.08, 0.1, 0.85), maxf(1.4, radius * 0.09))
@@ -176,12 +188,12 @@ static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> voi
 				var sx: float = -radius * 0.55 + float(i) * radius * 0.37
 				c.draw_line(Vector2(sx, -radius * 0.32), Vector2(sx, radius * 0.02),
 					Color(0.1, 0.08, 0.1, 0.85), maxf(1.2, radius * 0.07))
-			angry_face(c, radius * 0.9, look, 1.0)
+			angry_face(c, radius * 0.9, look, 1.0, deco)
 		"charger":
 			poly(c, PackedVector2Array([Vector2(0,-radius*1.3), Vector2(radius*1.05,radius*0.9),
 				Vector2(radius*0.5,radius*0.7), Vector2(-radius*0.5,radius*0.7),
 				Vector2(-radius*1.05,radius*0.9)]), col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 速度线 + 双角（"要撞过来了"）
 			for i in 3:
 				var yy: float = -radius * 0.1 + float(i) * radius * 0.42
@@ -192,50 +204,50 @@ static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> voi
 					Vector2(float(s) * radius * 0.35, -radius * 1.0),
 					Vector2(float(s) * radius * 0.78, -radius * 1.62),
 					Vector2(float(s) * radius * 0.62, -radius * 0.92)]), OUTLINE)
-			angry_face(c, radius * 0.85, look, 1.0)
+			angry_face(c, radius * 0.85, look, 1.0, deco)
 		"shooter":
 			var so := PackedVector2Array()
 			for i in range(8):
 				var a := TAU * float(i) / 8.0
 				so.append(Vector2(cos(a), sin(a)) * radius)
 			poly(c, so, col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 炮口 + 蓄能光点（朝玩家）
 			var mz: Vector2 = look * radius * 0.95
 			c.draw_circle(mz, radius * 0.30, Color(0.12, 0.10, 0.12, 0.85))
 			c.draw_circle(mz, radius * 0.17, Color(0.85, 0.6, 1.0, 0.9))
-			angry_face(c, radius * 0.70, look, 1.0)
+			angry_face(c, radius * 0.70, look, 1.0, deco)
 		"splitter":
 			poly(c, PackedVector2Array([Vector2(-radius,-radius*0.9), Vector2(radius,-radius*0.9),
 				Vector2(radius,radius*0.9), Vector2(-radius,radius*0.9)]), col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 中缝：虚线（暗示"一分为二"）
 			for i in 6:
 				var sy: float = -radius * 0.75 + float(i) * radius * 0.3
 				c.draw_line(Vector2(0, sy), Vector2(0, sy + radius * 0.16),
 					Color(0.12, 0.10, 0.12, 0.85), maxf(1.5, radius * 0.12))
-			angry_face(c, radius * 0.9, look, 1.0)
+			angry_face(c, radius * 0.9, look, 1.0, deco)
 		"bomber":
 			poly(c, PackedVector2Array([Vector2(-radius*0.95,0), Vector2(0,-radius),
 				Vector2(radius*0.95,0), Vector2(0,radius*0.95)]), col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 引线 + 火花（"我马上炸"）
 			c.draw_line(Vector2(0,-radius), Vector2(0,-radius*1.4),
 				Color(0.3,0.2,0.1,0.9), maxf(1.6, radius*0.12))
 			c.draw_circle(Vector2(0,-radius*1.5), radius*0.18, Color(1.0,0.8,0.3,1.0))
 			c.draw_circle(Vector2(0,-radius*1.5), radius*0.32, Color(1.0,0.55,0.2,0.35))
-			angry_face(c, radius * 0.7, look, 1.0)
+			angry_face(c, radius * 0.7, look, 1.0, deco)
 		"splitling":
 			poly(c, PackedVector2Array([Vector2(-radius,0), Vector2(0,-radius),
 				Vector2(radius,0), Vector2(0,radius)]), col)
-			_shade(c, radius); _gloss(c, radius)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
 			# 头顶两片小嫩叶（"刚分出来的芽"）
 			for s in [-1, 1]:
 				c.draw_colored_polygon(PackedVector2Array([
 					Vector2(0.0, -radius * 0.95),
 					Vector2(float(s) * radius * 0.62, -radius * 1.55),
 					Vector2(float(s) * radius * 0.18, -radius * 0.85)]), Color(0.45, 0.85, 0.35, 0.95))
-			angry_face(c, radius * 0.8, look, 1.0)
+			angry_face(c, radius * 0.8, look, 1.0, deco)
 		_:
 			# 小兵：圆身 + 两只小角 + 凶萌脸
 			poly(c, PackedVector2Array([Vector2(-radius*0.4,-radius*0.9),
@@ -245,8 +257,8 @@ static func body(c: CanvasItem, etype: String, radius: float, col: Color) -> voi
 			poly(c, PackedVector2Array([Vector2(-radius,0), Vector2(radius,0),
 				Vector2(radius*0.85,radius), Vector2(0,radius*1.15),
 				Vector2(-radius*0.85,radius)]), col)
-			_shade(c, radius); _gloss(c, radius)
-			angry_face(c, radius * 0.95, look, 1.0)
+			_shade(c, radius, deco); _gloss(c, radius, deco)
+			angry_face(c, radius * 0.95, look, 1.0, deco)
 
 # Boss 出场时的土坑：脚下越裂越大的黑坑 + 坑沿一圈崩出的土块
 static func rise_hole(c: CanvasItem, radius: float, k: float) -> void:
