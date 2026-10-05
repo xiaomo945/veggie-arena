@@ -19,8 +19,20 @@
 #
 # 公式全部镜像 core/ 与 data/，与 balance_model.py 保持一致的口径。
 #
-# 用法：python3 scripts/econ_probe.py [--max 30] [--greedy]
-#   --greedy  模拟"贪心玩家"：每波把钱花到买不了为止，看真实spent
+# 用法：python3 scripts/econ_probe.py [--max 30] [--greedy] [--wavelen 60] [--waves 12]
+#   --greedy   模拟"贪心玩家"：每波先进账，再把商店按价格从低到高买光为止，
+#              看真实花掉多少、还剩多少、武器推到几级 —— 这才是判断"钱有没有去处"的主判据
+#   --wavelen  覆盖每波时长（配合 balance.json 的 wave.length 做改前/改后对比）
+#   --waves    贪心模式跑多少波（默认跟 balance.json 的 wave.total）
+#
+# =====================================================================
+# 为什么加 --greedy（2026-10-05 经济改造）：
+#   上面那张表里第 20 波"收入/购买力 = 21.8x"看着吓人，但它有两个盲区：
+#     1) 购买力那列**没乘波次通胀**（漏了 Economy.price_of），实际价格是它的 10 倍；
+#     2) 它假设玩家"能 100% 清场"，从不看玩家到底钱花得掉花不掉。
+#   所以真正的判据是：一个什么都想买的玩家，跑到第 N 波时**兜里还剩多少**。
+#   剩得下两波以上的收入 → 钱确实没去处；剩不到半波 → 经济健康。
+# =====================================================================
 
 import json
 import os
@@ -148,8 +160,220 @@ def catalog_cost(w, rng, n_slots=MAX_SLOT):
     return sum(costs) + med_up * n
 
 
+# ---------------------------------------------------------------------
+# 贪心模拟：真实 Implement=I Economy.price_of / ShopPlan.offer_count / Inventory 合成规则
+# ---------------------------------------------------------------------
+
+INFL = float(SHOPD["price_inflation"])
+BIG_DISCOUNT = float(SHOPD["big_discount_pct"])
+RARITY_WEIGHT = {1: 6.0, 2: 3.0, 3: 1.0}
+WEAPON_WEIGHT = 4.0
+TIER_WEIGHT = {int(k): float(v) for k, v in TIERS["weapon_tier_weight"].items()}
+RARITY_FROM_WAVE = {int(k): int(v) for k, v in TIERS["upgrade_rarity_from_wave"].items()}
+
+
+def inflation_mult(w):
+    if INFL <= 0.0 or w <= 1:
+        return 1.0
+    return 1.0 + float(w - 1) * INFL
+
+
+def shop_discount(w):
+    return BIG_DISCOUNT if (w <= 1 or w % BIG_EVERY == 0) else 0.0
+
+
+def price_of(base, w):
+    """镜像 core/Economy.price_of：先叠波次通胀，再打折，最后取整（≥1）。"""
+    p = float(base) * inflation_mult(w)
+    d = shop_discount(w)
+    if d > 0.0:
+        p *= (1.0 - d)
+    return max(1, int(round(p)))
+
+
+def max_rarity_for_wave(w):
+    top = 1
+    for r in (1, 2, 3):
+        if w >= int(RARITY_FROM_WAVE.get(r, 999)):
+            top = r
+    return top
+
+
+def build_build(rng, n=MAX_SLOT):
+    """挑 n 把代表武器（取成本中位数附近的，不吃极端贵/极端便宜的偏差）。"""
+    items = sorted(WEAPONS.items(), key=lambda kv: float(kv[1].get("cost", 20)))
+    mid = len(items) // 2
+    lo = max(0, mid - n // 2)
+    return [(k, v) for k, v in items[lo:lo + n]]
+
+
+def offers_for_wave(state, w, rng, max_lv):
+    """镜像 Economy.build_pool + Economy.roll_offers：
+   武器按"持有等级"刷可买的档位，道具按稀有度门禁 + 权重抽，
+   且保底塞 1 张最高等级的"合成搭档"（没有它玩家永远合不出下一档）。"""
+    n = BIG_N if (w <= 1 or w % BIG_EVERY == 0) else SMALL_N
+    max_rar = max_rarity_for_wave(w)
+
+    # 武器候选：已持有 L 级 → 刷 L 级（买下即合成 L+1）；槽位没满时才给新武器
+    wp = []
+    for key, lv in state["weapons"].items():
+        if lv >= max_lv:
+            continue
+        wp.append({"kind": "weapon", "key": key, "lv": lv,
+                   "base": price_for_tier(float(WEAPONS[key].get("cost", 20)), lv),
+                   "partner": True})
+    if len(state["weapons"]) < MAX_SLOT:
+        for key, cfg in WEAPONS.items():
+            if key in state["weapons"]:
+                continue
+            wp.append({"kind": "weapon", "key": key, "lv": 1, "fresh": True,
+                       "base": price_for_tier(float(cfg.get("cost", 20)), 1)})
+
+    # 道具候选：按稀有度门禁 + 权重
+    up = []
+    for key, cfg in UPGRADES.items():
+        rar = int(cfg.get("rarity", 1))
+        if rar > max_rar:
+            continue
+        up.append({"kind": "upgrade", "key": key,
+                   "base": float(cfg.get("cost", 10)),
+                   "wt": RARITY_WEIGHT.get(rar, 3.0)})
+
+    def card(o):
+        c = dict(o)
+        c["cost"] = price_of(c["base"], w)
+        return c
+
+    out = []
+    # 保底 1 张"买得起的最高档"搭档：镜像 core/Economy.partner_score。
+    #   旧行为是无脑给最高档，结果后期每张店都被一张几万的卡占着买不动 → 金币越攒越多。
+    partners = [o for o in wp if o.get("partner")]
+    if partners:
+        gold = state["gold"]
+
+        def score(o):
+            c = price_of(o["base"], w)
+            if c <= gold:
+                return 1000000 + o["lv"] * 1000
+            return -c
+
+        best = max(partners, key=score)
+        out.append(card(best))
+        wp.remove(best)
+    quota = max(0, min(2, len(wp) + 1) - 1)
+    for _ in range(quota):
+        if not wp:
+            break
+        pick = rng.choice(wp)
+        out.append(card(pick))
+        wp.remove(pick)
+    # 其余名额：从"剩下的武器 + 全部道具"里按权重抽（镜像 Economy._weighted_pick）
+    rest = wp + up
+
+    def wt(o):
+        if o["kind"] == "weapon":
+            return WEAPON_WEIGHT * TIER_WEIGHT.get(int(o["lv"]), 1.0)
+        return o.get("wt", 3.0)
+
+    while len(out) < n and rest:
+        total = sum(wt(o) for o in rest)
+        r = rng.random() * total
+        pick = rest[0]
+        for idx, o in enumerate(rest):
+            r -= wt(o)
+            if r <= 0.0:
+                pick = o
+                break
+        out.append(card(pick))
+        rest.remove(pick)
+    return out
+
+
+def greedy_run(max_w, rng, wave_len, max_lv, verbose=True):
+    state = {"weapons": {}, "gold": 0, "spent": 0, "upgrades": 0}
+    rows = []
+    total_income = 0
+    for w in range(1, max_w + 1):
+        n_spawn = int(spawn_rate(w) * wave_len)
+        income = int(n_spawn * expected_gold_per_spawn(w, rng) * endless_gold_pct(w)) + wave_bonus(w)
+        state["gold"] += income
+        total_income += income
+
+        offers = offers_for_wave(state, w, rng, max_lv)
+        # 贪心：便宜的先买，买到买不动为止 —— 这代表"最能花钱"的玩家上限
+        offers.sort(key=lambda o: o["cost"])
+        bought = 0
+        wave_spent = 0
+        for o in offers:
+            if state["gold"] < o["cost"]:
+                continue
+            state["gold"] -= o["cost"]
+            wave_spent += o["cost"]
+            bought += 1
+            if o["kind"] == "weapon":
+                if o["key"] in state["weapons"]:
+                    state["weapons"][o["key"]] = o["lv"] + 1   # 合成 +1
+                elif len(state["weapons"]) < MAX_SLOT:
+                    state["weapons"][o["key"]] = 1
+            else:
+                state["upgrades"] += 1
+        lvls = sorted(state["weapons"].values())
+        top = lvls[-1] if lvls else 0
+        rows.append((w, income, wave_spent, state["gold"], top, len(state["weapons"]), bought,
+                     len(offers)))
+        if verbose:
+            print("  %2d  收入%6d   本波花%6d   结余%7d   武器 %d 把 最高Lv%-2d   买 %d/%d 张"
+                  % (w, income, wave_spent, state["gold"], len(state["weapons"]), top,
+                     bought, len(offers)))
+    return rows, state, total_income
+
+
+def main_greedy(args):
+    max_w = WAVE_TOTAL
+    if "--waves" in args:
+        max_w = int(args[args.index("--waves") + 1])
+    wave_len = WAVE_LEN
+    if "--wavelen" in args:
+        wave_len = float(args[args.index("--wavelen") + 1])
+    max_lv = MAX_LV
+    if "--maxlv" in args:
+        max_lv = int(args[args.index("--maxlv") + 1])
+    if "--infl" in args:
+        globals()["INFL"] = float(args[args.index("--infl") + 1])
+    rng = random.Random(11)
+
+    print("=" * 78)
+    print("贪心模拟：每波先把商店从便宜到贵买光（代表最能花钱的玩家）")
+    print("  波数上限 %d   每波 %.0fs   武器等级上限 %d   通胀 %.2f/波"
+          % (max_w, wave_len, max_lv, INFL))
+    print("=" * 78)
+    print("  波   本波收入   本波花销    结余金币   持有武器   买到几张")
+    print("  " + "-" * 68)
+    rows, st, total_income = greedy_run(max_w, rng, wave_len, max_lv)
+
+    print()
+    print("=" * 78)
+    print("关键读数")
+    print("=" * 78)
+    print("  总进账 %d   总花销 %d   兜里还剩 %d（占 %.0f%%）"
+          % (total_income, sum(r[2] for r in rows), st["gold"],
+             100.0 * st["gold"] / max(1, total_income)))
+    last = rows[-1]
+    print("  终局：%d 把武器，最高 Lv%d，等级分布 %s" % (len(st["weapons"]), last[4],
+                                                 sorted(st["weapons"].values(), reverse=True)))
+    print("  最后 3 波平均能买几张（商店越到后期越买不动=挡位深）：%.1f/%d"
+          % (sum(r[6] for r in rows[-3:]) / 3.0, rows[-1][7]))
+    print()
+    print("  → 结余占比 >40% ：钱明显没去处（玩家会感到金币过剩）")
+    print("  → 结余占比 10~25%：健康 —— 花得掉，但每波仍有取舍")
+    print("  → 结余占比 <10% 且武器已顶到等级上限：钱坑反倒卡住了成长")
+
+
 def main():
     args = sys.argv[1:]
+    if "--greedy" in args:
+        main_greedy(args)
+        return
     max_w = 30
     if "--max" in args:
         max_w = int(args[args.index("--max") + 1])

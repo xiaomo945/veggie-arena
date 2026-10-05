@@ -70,6 +70,31 @@ func run(arg = null) -> Dictionary:
 		cols[st.tier_color(L).to_html()] = true
 	chk(cols.size() == 6, "6 档武器 6 种不同颜色")
 
+	# 4b) 档位表完整性（2026-10-05 经济改造：max_lv 6 → 10）
+	#     tier_floor 漏配一档只会静默返回 0，不会报错 —— 但那意味着"高级武器可能比
+	#     低级还便宜"，是会一路糊到玩家脸上的错。这里把三张表全扫一遍。
+	var mt := st.max_tier()
+	chk(mt >= 10, "档位上限 %d（经济改造后 10 档）" % mt)
+	var no_floor := []
+	for L in range(1, mt + 1):
+		if st.tier_floor(L) <= 0:
+			no_floor.append(L)
+	chk(no_floor.is_empty(), "每档都有底价（缺配：%s）" % str(no_floor))
+	var mono := true
+	for L in range(2, mt + 1):
+		if st.tier_floor(L) < st.tier_floor(L - 1) * 2:
+			mono = false
+	chk(mono, "底价每档至少 ×2 严格递增（高级绝不便宜）")
+	var cols_all := {}
+	for L in range(1, mt + 1):
+		cols_all[st.tier_color(L).to_html()] = true
+	chk(cols_all.size() == mt, "%d 档配 %d 种颜色（实际 %d 种）" % [mt, mt, cols_all.size()])
+	var named := true
+	for L in range(1, mt + 1):
+		if st.tier_name_zh(L) == ("Lv%d" % L):
+			named = false
+	chk(named, "每档都有中文名（没落到 LvN 兜底）")
+
 	# 5) build_pool：未持有时第 N 波也只出 1 级；持有 3 级时才出 [2,3]
 	var wd := {"pistol": {"key": "pistol", "dmg": 9, "cost": 10}, "bow": {"key": "bow", "dmg": 18, "cost": 20}}
 	var ud := {"hp": {"stat": "max_hp", "value": 15, "rarity": 2}}

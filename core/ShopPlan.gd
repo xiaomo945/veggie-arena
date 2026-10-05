@@ -40,7 +40,7 @@ static func single_reroll_cost(times: int, cfg: Dictionary) -> int:
 # 整店刷新但【保留锁定的卡】：先在池子里把锁定项排除，再补足剩下的卡位。
 # locked: Array[int] = 被锁定的卡位下标（对应 offers 的下标）
 static func reroll_keep(offers: Array, locked: Array, pool: Array, count: int,
-		rng: RandomNumberGenerator) -> Array:
+		rng: RandomNumberGenerator, gold: int = -1) -> Array:
 	var keep: Array = []
 	var keep_keys: Array = []
 	for i in locked:
@@ -56,7 +56,7 @@ static func reroll_keep(offers: Array, locked: Array, pool: Array, count: int,
 			continue
 		rest.append(it)
 	var need := maxi(0, count - keep.size())
-	var fresh := Economy.roll_offers(rest, need, rng) if need > 0 else []
+	var fresh := Economy.roll_offers(rest, need, rng, gold) if need > 0 else []
 	var out: Array = []
 	out.append_array(keep)
 	out.append_array(fresh)
@@ -64,7 +64,7 @@ static func reroll_keep(offers: Array, locked: Array, pool: Array, count: int,
 
 # 单张刷新：只换 index 这一张（已被锁定的卡不参与刷新）
 static func reroll_one(offers: Array, index: int, pool: Array,
-		rng: RandomNumberGenerator) -> Array:
+		rng: RandomNumberGenerator, gold: int = -1) -> Array:
 	if index < 0 or index >= offers.size():
 		return offers
 	var cur: Variant = offers[index]
@@ -78,7 +78,7 @@ static func reroll_one(offers: Array, index: int, pool: Array,
 		if skip.has(key_of(it)):
 			continue
 		rest.append(it)
-	var fresh := Economy.roll_offers(rest, 1, rng)
+	var fresh := Economy.roll_offers(rest, 1, rng, gold)
 	if fresh.is_empty():
 		return offers
 	var out: Array = offers.duplicate()

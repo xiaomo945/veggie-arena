@@ -1,9 +1,7 @@
 extends CanvasLayer
 
 # 补给站：波次结束后弹出。手机竖屏单列：顶部金币/属性 → 我的武器(可售) → 购买卡 → 合成/刷新/下一波。
-# 骨架与样式在 ShopPanel.gd（纯 UI）；卡片画法在 ShopCard.gd（哑组件）；
-# 本文件只做业务：算报价 → 组装展示 → 接线购买/合成/售出 → 刷新。
-#
+# 骨架与样式在 ShopPanel.gd（纯 UI）；卡片画法在 ShopCard.gd（哑组件）；本文件只做业务。
 # 节奏（core/ShopPlan.gd）：每 big_every 波开一次"大商店"（卡多 + 打折），其余波次只有
 # 2 张卡快速选完；单卡可锁定（整店刷新时保留）/ 单独刷新（半价只换这一张）。
 
@@ -72,9 +70,10 @@ func _on_locale_changed(_l: String = "") -> void:
 
 func _roll() -> void:
 	var cfg := Data.shop_cfg()
-	_max_slot = int(cfg.get("max_slot", 6)); _max_lv = int(cfg.get("max_lv", 6))
+	_max_slot = int(cfg.get("max_slot", 6)); _max_lv = int(cfg.get("max_lv", 10))
 	_card_count = clampi(ShopPlan.offer_count(GameState.wave, cfg), 1, _panel.cards.size())
-	_offers = Economy.roll_offers(_pool_now(), _card_count, _rng)
+	# 钱包交给 roll_offers：保底的那张"合成搭档"得挑玩家买得起的最高档
+	_offers = Economy.roll_offers(_pool_now(), _card_count, _rng, GameState.gold)
 	_sold = []; for i in _offers.size(): _sold.append(false)
 	_panel.layout_cards(_offers.size())
 	_refresh()
@@ -273,7 +272,7 @@ func _reroll_one(index: int) -> void:
 		return
 	var pool := _pool_now()
 	GameState.spend_gold(cost); _reroll_times += 1
-	_offers = ShopPlan.reroll_one(_offers, index, pool, _rng)
+	_offers = ShopPlan.reroll_one(_offers, index, pool, _rng, GameState.gold)
 	_sold[index] = false
 	_refresh()
 
@@ -292,7 +291,8 @@ func _reroll_bought() -> void:
 	if _locked.is_empty():
 		_roll()
 	else:
-		_offers = ShopPlan.reroll_keep(_offers, _locked, _pool_now(), _card_count, _rng)
+		_offers = ShopPlan.reroll_keep(_offers, _locked, _pool_now(), _card_count, _rng,
+			GameState.gold)
 		_sold = []; for i in _offers.size(): _sold.append(false)
 		_refresh()
 

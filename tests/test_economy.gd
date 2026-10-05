@@ -137,6 +137,36 @@ func run() -> Dictionary:
 				break
 	chk(seen_partner >= 95, "100 次大商店里 knife Lv5 至少出现 95 次（保底生效，实际 %d）" % seen_partner)
 
+	# 5b) 保底搭档要给"买得起的最高档"（2026-10-05 经济改造）
+	#     旧逻辑无脑保底最高档：max_lv 提到 10 之后，后期一张 8 级搭档标价几万，
+	#     等于每间店白占一个卡位买不动 —— 金币因此花不出去（实测结余 43%）。
+	#     现在改成"买得起的最高档"，谁都买不起时退给最便宜的那张。
+	var ppool: Array = [
+		{"kind": "weapon", "key": "hi", "lv": 8, "merge_partner": true, "cost": 25600},
+		{"kind": "weapon", "key": "lo", "lv": 2, "merge_partner": true, "cost": 120},
+		{"kind": "upgrade", "key": "u1", "cost": 40},
+		{"kind": "upgrade", "key": "u2", "cost": 60},
+	]
+	var r3 := RandomNumberGenerator.new(); r3.seed = 4242
+	var rich := Economy.roll_offers(ppool, 4, r3, 999999)
+	chk(str(rich[0].get("key", "")) == "hi",
+		"钱够时保底给最高档 hi（实际 %s）" % str(rich[0].get("key", "")))
+	var poor := Economy.roll_offers(ppool, 4, r3, 200)
+	chk(str(poor[0].get("key", "")) == "lo",
+		"只有 200 金时保底降级到买得起的 lo（实际 %s）" % str(poor[0].get("key", "")))
+	var broke := Economy.roll_offers(ppool, 4, r3, 30)
+	chk(str(broke[0].get("key", "")) == "lo",
+		"全都买不起时保底给最便宜的那张（实际 %s）" % str(broke[0].get("key", "")))
+	chk(Economy.partner_score({"cost": 120, "lv": 2}, 200)
+		> Economy.partner_score({"cost": 25600, "lv": 8}, 200),
+		"partner_score：买得起的优先于买不起的")
+	chk(Economy.partner_score({"cost": 25600, "lv": 8}, 999999)
+		> Economy.partner_score({"cost": 120, "lv": 2}, 999999),
+		"partner_score：钱够时高档优先")
+	# 向后兼容：不传钱包（-1）时退回"最高档优先"，老调用方的行为不变
+	var legacy := Economy.roll_offers(ppool, 4, r3)
+	chk(str(legacy[0].get("key", "")) == "hi", "不传钱包时保持旧行为（最高档优先）")
+
 	# 6) 一波收入
 	var inc := Economy.wave_income(1, 15, 1.0, WAVE_CFG)
 	chk(inc == 29, "第1波：15 杀 ×1 金币 + 14 奖励 = 29（实际 %d）" % inc)

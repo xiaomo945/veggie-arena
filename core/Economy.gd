@@ -33,7 +33,7 @@ static func weight_of(item) -> float:
 # 道具（权重 6/3/1）稀释到 ~1%，玩家几乎刷不到武器、只能买到道具。这里把池子拆成
 # "武器 / 非武器"两堆，先保底抽 1~2 把武器，再用原加权逻辑补齐其余，保证每间商店
 # 都能看到武器（像 Brotato 那样武器和道具混着出）。
-static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator) -> Array:
+static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator, gold: int = -1) -> Array:
 	var weapons := []
 	var others := []
 	var partners := []   # 合成搭档：买下去能直接跟已持有武器凑成对（同 key 同等级）
@@ -51,13 +51,20 @@ static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator) -> 
 		w_quota = clampi(int(ceil(float(count) * 0.5)), 1, mini(2, weapons.size()))
 	# 先强制塞 1 把"合成搭档"：玩家持有 L 级，商店就必须 reliably 给得出 L 级去合 L+1。
 	# 否则高级武器权重极低（5 级 0.28 vs 1 级 7），随机抽几乎永远抽不到那把关键的搭档，
-	# "持有 5 级却合不出 6 级"。优先选等级最高的搭档（玩家最该推进的"前沿"那把），
-	# 其余武器位仍走原加权，保证还能看到新武器。
+	# "持有 5 级却合不出 6 级"。
+	#
+	# ⚠️ 保底选哪把 = user-facing 的经济阀门（2026-10-05 实测）：
+	#   旧行为是无脑给"等级最高"的搭档。`max_lv` 提到 10 之后，最高档搭档到后期能标价几万
+	#   （等级 ×2 复利 × 波次通胀），一张卡吃掉玩家两三波的全部收入 —— 结果是每间店有
+	#   整整一个卡位永远买不动，金币就这么攒下来花不出去。
+	#   现在改成给"买得起的最高那一档"；谁都买不起时退而求其次给"最便宜"的那张。
+	#   保底位因此永远是一张玩家真能下单的卡，而不是一张纯观赏的贵卡。
+	#   （`gold < 0` = 调用方没传钱包，退回旧的"最高级优先"，保持向后兼容。）
 	var took_partner := 0
 	if partners.size() > 0 and w_quota >= 1:
 		var best: Variant = partners[0]
 		for pp in partners:
-			if int(pp.get("lv", 1)) > int(best.get("lv", 1)):
+			if partner_score(pp, gold) > partner_score(best, gold):
 				best = pp
 		out.append(best)
 		weapons.erase(best)
@@ -77,6 +84,13 @@ static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator) -> 
 		out.append(pick)
 		rest.erase(pick)
 	return out
+
+# 保底搭档的排序键：买得起的优先（其中等级越高越好）；全都买不起时给最便宜的那张。
+static func partner_score(it: Dictionary, gold: int) -> int:
+	var cost := int(it.get("cost", 0))
+	if gold < 0 or cost <= gold:
+		return 1000000 + int(it.get("lv", 1)) * 1000
+	return -cost
 
 # 加权抽一个（从 items 里移除被抽中的，保证不重复）
 static func _weighted_pick(items: Array, rng: RandomNumberGenerator) -> Variant:

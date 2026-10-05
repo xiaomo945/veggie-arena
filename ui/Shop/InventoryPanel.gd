@@ -25,7 +25,7 @@ const EMPTY_BD := Color(0.40, 0.36, 0.29, 0.55)
 const MERGE_TXT := "合"
 
 var _weapons: Array = []
-var _max_lv := 4
+var _max_lv := 10
 var _max_slot := 6
 var _font: Font
 var _tiers := ShopTiers.new()
