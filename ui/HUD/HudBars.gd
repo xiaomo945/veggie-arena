@@ -134,15 +134,16 @@ func _draw_xp() -> void:
 	var fw := XP_W * r
 	if fw > 4.0:
 		_round(XP_X + 1.5, XP_Y + 1.5, fw - 3.0, XP_H - 3.0, c, Color(0, 0, 0, 0), 0, 3.0)
-	# 等级号：画在条左外侧（与血条区不重叠，血条在 y=8、锅气在 y=24，这里是 y=44）
+	# 等级号 + 经验数字：画在条左外侧下方。
+	# ⚠️ 别画到右端：右上角是武器槽（WeaponBar，x 306~528 / y 68~100），
+	# 数字画右边会跟最右那把武器图标叠在一起（真踩过）。
 	var lv_txt := I18n.t("hud_level") % xp_level
-	var w := ThemeDB.fallback_font.get_string_size(lv_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	draw_string(ThemeDB.fallback_font, Vector2(XP_X + XP_W - w, XP_Y + XP_H + 11.0),
+	draw_string(ThemeDB.fallback_font, Vector2(XP_X, XP_Y + XP_H + 11.0),
 		lv_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.88, 0.82, 1.0, 0.95))
-	# 经验数字：条右侧（等级号左边），低对比度，不抢视线
+	# 经验数字紧跟等级号右侧，低对比度，不抢视线
 	var xp_txt := I18n.t("hud_xp") % [xp_into, xp_need]
-	var w2 := ThemeDB.fallback_font.get_string_size(xp_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-	draw_string(ThemeDB.fallback_font, Vector2(XP_X + XP_W - w - w2 - 8.0, XP_Y + XP_H + 11.0),
+	var w := ThemeDB.fallback_font.get_string_size(lv_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+	draw_string(ThemeDB.fallback_font, Vector2(XP_X + w + 6.0, XP_Y + XP_H + 11.0),
 		xp_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.72, 0.68, 0.82, 0.75))
 
 func _draw_tick(frac: float, c: Color) -> void:

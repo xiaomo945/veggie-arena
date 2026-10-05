@@ -12,15 +12,19 @@ extends Node2D
 
 var slots: Array = []    # [{key, lv, color, name, behavior}]
 
-# 位置与 HudBars 的旧槽位完全一致（顶部 HUD 区右侧，避开左边的心/金币/波次文字）
+# 位置：槽宽/间距/右边距是本地常量，Y 走 HudLayout（布局表的唯一权威入口）。
+# ⚠️ 别再写死 SLOT_Y：之前这里有个 SLOT_Y=30 的常量没被用上，实际画在 y=30，
+# 和暂停按钮（y=16~64）整块重叠，第 4/5 个槽被盖住 —— 玩家看到"只有 3 把武器"。
+# 槽位的 Y / 右边界一律走 HudLayout，守卫在 tests/test_hud_layout.gd。
 const SLOT_SIZE := 32.0
 const SLOT_GAP := 6.0
-const SLOT_Y := 30.0
 var SLOT_RIGHT := 528.0
+var SLOT_Y := 80.0
 
 func _ready() -> void:
-	# 横屏（960 宽）把武器槽右锚定到更右边；竖屏保持 528。
+	# 横屏（960 宽）把武器槽右锚定到更右边；竖屏保持 528。Y 两套布局共用。
 	SLOT_RIGHT = HudLayout.slot_right()
+	SLOT_Y = HudLayout.slot_y()
 
 const INK := Color(0.05, 0.04, 0.08, 0.92)
 const LIT := Color(1.0, 1.0, 1.0, 0.95)
@@ -31,6 +35,10 @@ func _draw() -> void:
 	var n := slots.size()
 	var total_w := float(n) * SLOT_SIZE + float(n - 1) * SLOT_GAP
 	var x0 := SLOT_RIGHT - total_w
+	# 槽太多时宁可左移也不要画出屏（max_slot 目前是 6，6*38=228 远小于屏宽，
+	# 但这个下限是为了以后加槽位时不会静默画到屏幕外看不见）
+	if x0 < 4.0:
+		x0 = 4.0
 	for i in n:
 		if not (slots[i] is Dictionary):
 			continue

@@ -20,8 +20,13 @@ func run_x() -> float: return 8.0
 func run_w() -> float: return 944.0 if Data.is_landscape() else 524.0
 
 # ---- WeaponBar：武器槽，右上锚定 ----
+# ⚠️ slot_y 的坑（真实 bug 修的）：武器槽原本在 y=30，而暂停按钮占 y=16~64，
+# 于是第 4/5 个槽被暂停按钮整块盖住 —— 玩家看到"只有 3 把武器"。
+# 往下挪还要躲开第二排：经验条 y=44~50、GOLD/KILLS/COMBO 文字行 y=62~76。
+# 槽高 32，所以 y 必须 ≥78，取 80 → 占 y 80~112，下面是空的战斗区。
+# 守卫在 tests/test_hud_layout.gd：谁再把槽位挪进任何控件，立刻红。
 func slot_right() -> float: return 948.0 if Data.is_landscape() else 528.0
-func slot_y() -> float: return 30.0
+func slot_y() -> float: return 80.0
 
 # ---- HudButtons：右下技能簇（圆心 + 扇面半径 + 冲刺位 + 扇面角度）----
 func buttons_pivot() -> Vector2:
