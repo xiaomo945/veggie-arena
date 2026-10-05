@@ -12,14 +12,15 @@ extends Node2D
 
 var slots: Array = []    # [{key, lv, color, name, behavior}]
 
-# 位置：槽宽/间距/右边距是本地常量，Y 走 HudLayout（布局表的唯一权威入口）。
+# 位置：槽宽/间距/Y / 右边界全部走 HudLayout（布局表的唯一权威入口）。
 # ⚠️ 别再写死 SLOT_Y：之前这里有个 SLOT_Y=30 的常量没被用上，实际画在 y=30，
 # 和暂停按钮（y=16~64）整块重叠，第 4/5 个槽被盖住 —— 玩家看到"只有 3 把武器"。
-# 槽位的 Y / 右边界一律走 HudLayout，守卫在 tests/test_hud_layout.gd。
-const SLOT_SIZE := 32.0
-const SLOT_GAP := 6.0
+# 槽位尺寸 32→26 是为了让顶部 HUD 整体变矮：顶部每少 1px，相机就能多让 1px，
+# 玩家在场地最上沿时能用的屏幕高度就多 1px（角色不会被 HUD 压住）。
+const SLOT_SIZE := 26.0
+const SLOT_GAP := 5.0
 var SLOT_RIGHT := 528.0
-var SLOT_Y := 80.0
+var SLOT_Y := 50.0
 
 func _ready() -> void:
 	# 横屏（960 宽）把武器槽右锚定到更右边；竖屏保持 528。Y 两套布局共用。
@@ -65,13 +66,16 @@ func _draw_slot(x: float, y: float, s: Dictionary) -> void:
 	_pips(x, y, int(s.get("lv", 1)))
 
 func _pips(x: float, y: float, lv: int) -> void:
+	# 槽缩到 26px 后，等级点间距必须从 6 降到 5、直径从 6 降到 5：
+	# 4 颗点原来占 24px，26px 的槽已经装不下了（会溢出到隔壁槽）。
 	var n := clampi(lv, 1, 4)
-	var w := float(n) * 6.0
-	var px := x + (SLOT_SIZE - w) * 0.5 + 3.0
+	var step := 5.0
+	var w := float(n - 1) * step
+	var px := x + (SLOT_SIZE - w) * 0.5
 	var py := y + SLOT_SIZE - 6.0
 	for k in n:
-		draw_circle(Vector2(px + float(k) * 6.0, py), 3.0, INK)
-		draw_circle(Vector2(px + float(k) * 6.0, py), 2.0, LIT)
+		draw_circle(Vector2(px + float(k) * step, py), 2.6, INK)
+		draw_circle(Vector2(px + float(k) * step, py), 1.7, LIT)
 
 # ---- 行为符文 ----
 # 每个符文都画两遍：先粗的暗描边、再细的亮线 —— 武器底色花花绿绿，

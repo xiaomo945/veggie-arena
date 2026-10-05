@@ -17,7 +17,6 @@ const CAM_FOLLOW_SPEED := 9.0
 # 露的是深色灶台地面而非黑框，玩家能看清"这里是战场边界"，又不会像之前那样
 # 露出半屏黑区。改这个值只需动这里，CamLimits 已经把它做成参数。
 const RIM_MARGIN := 24.0
-
 func _win_size() -> Vector2:
 	return Vector2(DisplayServer.window_get_size())
 
@@ -62,10 +61,29 @@ func follow_camera(cam: Camera2D, target: Node2D, delta: float) -> void:
 		return
 	if target == null or not is_instance_valid(target):
 		return
-	var m := CamLimits.limits(Data.arena(), CamLimits.view_world_size(cam), RIM_MARGIN)
+	var m := CamLimits.limits(Data.arena(), CamLimits.view_world_size(cam), _cam_margin())
 	var p := target.global_position
 	var want := Vector2(clampf(p.x, m["left"], m["right"]), clampf(p.y, m["top"], m["bottom"]))
 	cam.global_position = cam.global_position.lerp(want, 1.0 - exp(-CAM_FOLLOW_SPEED * delta))
+
+# 相机四边的越界余量：顶部按 HUD 实际高度让位，其余三边只露围栏。
+#
+# 【为什么顶部要让位 —— 用户报"玩家走到最上边时被 HUD 盖住"】
+#   竖屏实测：场地 y −360~1260，视口 900 → 相机中心 Y 下限 = −360+450−24 = 66；
+#   玩家世界 y 最小 = −360+22 = −338 → 屏幕 y = −338−(66−450) = 46，角色占 y 24~68。
+#   而顶部 HUD 一路占到 y=112（还有刘海避让的 34px 下移），角色整个活在 HUD 底下。
+#   顶部多让出 HUD 那一档高度后，玩家贴顶时角色中心落到 HUD 下沿之外，
+#   镜头探出的那截场外地面正好被 HUD 盖住 —— 视觉上不损失任何战斗视野，
+#   反而让 HUD 背后的深色灶台地面比花花绿绿的砧板地砖更好读。
+#   ⚠️ 底部不能给大余量：底部是拇指操作区（HudButtons 技能簇 + 摇杆），
+#   露太多等于把操作按钮推到屏幕外。
+func _cam_margin() -> Dictionary:
+	return {
+		"left": RIM_MARGIN,
+		"right": RIM_MARGIN,
+		"top": RIM_MARGIN + HudLayout.hud_block_h(),
+		"bottom": RIM_MARGIN,
+	}
 
 # 把"按 540x900 竖屏设计"的整屏菜单（CanvasLayer 下的 _root Control）缩放到当前视口内。
 # 竖屏：dst=540x900，scale=1 原样。横屏：dst=960x540 比竖屏设计矮，按高度 fit

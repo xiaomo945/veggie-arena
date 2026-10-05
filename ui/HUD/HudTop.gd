@@ -7,7 +7,8 @@ extends Control
 #   - 只提供"被塞数据"的接口（set_*），不订阅任何 Events、不认识 Player / Game；
 #   - 订阅与编排全部交给 HUD.gd —— 这样这块 UI 可以单独改样式而不碰逻辑。
 #
-# 布局约束：手机竖屏 540x900，顶部 74px 是 HUD 区（竞技场从 y=74 开始）。
+# 布局约束：竖屏顶部 HUD 局部占 y 0~78（+ 安全区下移），相机按这个高度在上边让位，
+# 保证玩家走到场地最上沿时角色不会被 HUD 压住。数值全部走 HudLayout，别写死。
 
 const HudBarsScript := preload("res://ui/HUD/HudBars.gd")
 const WeaponBarScript := preload("res://ui/HUD/WeaponBar.gd")
@@ -34,31 +35,34 @@ func _ready() -> void:
 	_weapon_bar.name = "WeaponBar"
 	add_child(_weapon_bar)
 
-	# 血条左侧红心图标（代表血量），血条已右移到 x=40 给图标腾出空间
-	_mk_icon("heart", Vector2(10, 4), 26)
+	# 血条左侧红心图标（代表血量），血条已左移到 x=36 给图标腾出空间
+	_mk_icon("heart", Vector2(6, 4), 22)
 
-	_wave = _mk_label(Vector2(40, 44), 16, Color(0.95, 0.95, 0.95))
-	_gold = _mk_label(Vector2(40, 62), 14, Color(0.98, 0.84, 0.35))
-	_kill = _mk_label(Vector2(180, 62), 12, Color(0.75, 0.75, 0.78))
+	# 文字行：波次 / 金币 / 击杀 / 连击，全挤在 y 56~73 一行。
+	# ⚠️ 以前是上下两行（波次一行、金币/击杀/连击一行），下面那行正好压着武器槽；
+	# 压成一行后右端收在 306，右边 347 起是武器槽，两者同一行互不相交。
+	var ty := HudLayout.text_row_y()
+	_wave = _mk_label(Vector2(36, ty), 13, Color(0.95, 0.95, 0.95))
+	_gold = _mk_label(Vector2(114, ty), 12, Color(0.98, 0.84, 0.35))
+	_kill = _mk_label(Vector2(180, ty), 11, Color(0.75, 0.75, 0.78))
 	# 连击显示（基于击杀信号，短时间内连续击杀累加）
-	_combo_label = _mk_label(Vector2(300, 62), 12, Color(1.0, 0.8, 0.3))
+	_combo_label = _mk_label(Vector2(238, ty), 11, Color(1.0, 0.8, 0.3))
 	_combo_label.text = ""
 
-	# 金币左侧金币图标，金币标签已右移到 x=40 避免遮挡
-	# （用 Art.coin_icon 的卡通金饼替换旧的 48px 方块coin；缩小到 16px 不再显大）
-	_mk_icon("coin", Vector2(14, 60), 16, Art.coin_icon())
+	# 金币左侧金币图标（用 Art.coin_icon 的卡通金饼替换旧的 48px 方块coin；缩到 14px 不再显大）
+	_mk_icon("coin", Vector2(98, ty + 1), 14, Art.coin_icon())
 
 	# 暂停按钮：右上角，游戏中显示，暂停 / 结算时隐藏
 	_pause_btn = Button.new()
-	_pause_btn.custom_minimum_size = Vector2(48, 48)
-	_pause_btn.size = Vector2(48, 48)
+	_pause_btn.custom_minimum_size = Vector2(40, 40)
+	_pause_btn.size = Vector2(40, 40)
 	_pause_btn.position = HudLayout.top_pause_pos()
 	var iv := Art.ui_icon("pause")
 	if iv != null:
 		_pause_btn.icon = iv
 	else:
 		_pause_btn.text = "II"
-	_pause_btn.add_theme_font_size_override("font_size", 18)
+	_pause_btn.add_theme_font_size_override("font_size", 16)
 	_pause_btn.pressed.connect(_on_pause_pressed)
 	_pause_btn.visible = false
 	add_child(_pause_btn)
@@ -68,7 +72,7 @@ func _ready() -> void:
 		_fs_btn = Button.new()
 		_fs_btn.custom_minimum_size = Vector2(48, 48)
 		_fs_btn.size = Vector2(48, 48)
-		_fs_btn.position = Vector2(960.0 - 110.0, 16.0)
+		_fs_btn.position = Vector2(852.0, 2.0)
 		_fs_btn.text = "▢"
 		_fs_btn.add_theme_font_size_override("font_size", 18)
 		_fs_btn.pressed.connect(_on_fs_pressed)

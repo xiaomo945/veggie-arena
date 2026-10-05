@@ -33,13 +33,15 @@ func _ready() -> void:
 	size = HudLayout.design_size()
 
 	# Boss 波居中横幅
-	_banner = _mk(Vector2(0, 288), HudLayout.banner_w(), 44.0, 34, Color(0.96, 0.34, 0.46))
+	_banner = _mk(Vector2(0, 300), HudLayout.banner_w(), 44.0, 34, Color(0.96, 0.34, 0.46))
 	# 锅气档位弹窗（顶部偏下，火候上档时弹出"翻炒!"/"爆炒!"）
-	_wok_banner = _mk(Vector2(0, 96), HudLayout.banner_w(), 40.0, 30, Color(1, 1, 1))
+	# ⚠️ 别往上摆：玩家贴到场地最上沿时角色占屏幕 y 142~186（相机按
+	#    HudLayout 的 hud_block_h 让位后算出来的），横幅压进这条带会盖住角色头顶。
+	_wok_banner = _mk(Vector2(0, 196), HudLayout.banner_w(), 40.0, 30, Color(1, 1, 1))
 	# 解锁横幅
-	_unlock = _mk(Vector2(0, 340), HudLayout.banner_w(), 40.0, 24, Color(1.0, 0.84, 0.36))
+	_unlock = _mk(Vector2(0, 360), HudLayout.banner_w(), 40.0, 24, Color(1.0, 0.84, 0.36))
 	# 套装凑齐横幅（放在锅气弹窗下方、Boss 横幅上方，三条互不遮挡）
-	_set = _mk(Vector2(0, 150), HudLayout.banner_w(), 36.0, 22, Color(1.0, 0.92, 0.70))
+	_set = _mk(Vector2(0, 244), HudLayout.banner_w(), 36.0, 22, Color(1.0, 0.92, 0.70))
 	# 强化反馈横幅（屏幕中部偏下，买完强化弹出，明确"这东西干嘛用的"）
 	_effect = _mk(Vector2(0, 560), HudLayout.banner_w(), 40.0, 22, Color(1.0, 0.84, 0.36))
 

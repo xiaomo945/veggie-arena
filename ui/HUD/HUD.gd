@@ -21,7 +21,8 @@ const WeaponSets := preload("res://core/WeaponSets.gd")
 const Stats := preload("res://core/Stats.gd")
 
 # 竖屏安全区：顶部内容下移避让刘海 / 状态栏，底部按钮上移避让手势条。
-const TOP_SHIFT := 34.0
+# ⚠️ 顶部这个值原来写死在这里（TOP_SHIFT=34），现已搬到 HudLayout.safe_top()：
+# 相机要按"HUD 到底占多高"来让位，两处各写一份必然漂移（真踩过：角色被 HUD 盖死）。
 const BOTTOM_SHIFT := 34.0
 
 const COMBO_WINDOW := 2.5   # 连击有效窗口（秒）
@@ -267,8 +268,8 @@ func _on_killed(_type: String, _pos: Vector2) -> void:
 # - 底部按钮（颠勺、冲刺）上移 BOTTOM，避开全面屏手势条 / Home Indicator；
 # - 平移后同步更新共享给 Joystick 的避让区，避免"按钮挪走了摇杆还守旧坐标"。
 func _apply_safe_area() -> void:
-	_top.apply_safe_area(TOP_SHIFT)
-	_banners.apply_safe_area(TOP_SHIFT)
+	_top.apply_safe_area(HudLayout.safe_top())
+	_banners.apply_safe_area(HudLayout.safe_top())
 	_buttons.apply_safe_area(BOTTOM_SHIFT)
 	GameState.wok_toss_rect = _buttons.toss_rect()
 	GameState.dash_rect = _buttons.dash_rect()

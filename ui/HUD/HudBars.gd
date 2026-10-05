@@ -15,28 +15,29 @@ var xp_into := 0           # 当前等级内已攒经验
 var xp_need := 1           # 升下一级所需经验
 var xp_flash := 0.0        # 升级闪光余量（HUD 每帧衰减，>0 时整条往白色插值）
 
-const BAR_X := 40.0
+const BAR_X := 36.0
 const BAR_Y := 8.0
-var BAR_W := 486.0
+var BAR_W := 440.0
 const BAR_H := 14.0
 
 # 武器槽不在这里画了：搬去 ui/HUD/WeaponBar.gd（带行为符文，单独一层）
-# 锅气条放在顶部 HUD 区（与血条并排，全宽），手机底部会被浏览器底栏遮挡，不能放下面
-const WOK_X := 40.0
-const WOK_Y := 24.0
-var WOK_W := 486.0
-const WOK_H := 16.0
+# 锅气条放在顶部 HUD 区（与血条并排），手机底部会被浏览器底栏遮挡，不能放下面
+const WOK_X := 36.0
+const WOK_Y := 29.0
+var WOK_W := 440.0
+const WOK_H := 14.0
 
-# 经验条：贴在锅气条正下方（顶部 HUD 区还有空间），紫色系与血条/火候区分开
-const XP_X := 40.0
-const XP_Y := 44.0
-var XP_W := 486.0
+# 经验条：紫色系与血条/火候区分开。只画到 x=230，右边留给"LV n + 经验数字"。
+# ⚠️ 别拉满宽：右边的数字 + 再往右的武器槽（x 347 起）会一起被挤掉。
+const XP_X := 36.0
+const XP_Y := 45.0
+var XP_W := 194.0
 const XP_H := 6.0
 
 # 总波次进度条（"这局打到第几波了"），贴最顶，全宽细条，避开刘海区
 const RUN_X := 8.0
-const RUN_Y := 4.0
-var RUN_W := 524.0
+const RUN_Y := 1.0
+var RUN_W := 480.0
 const RUN_H := 3.0
 
 func _ready() -> void:
@@ -45,6 +46,7 @@ func _ready() -> void:
 	BAR_W = HudLayout.bar_w()
 	WOK_W = HudLayout.wok_w()
 	RUN_W = HudLayout.run_w()
+	XP_W = HudLayout.xp_w()
 
 func _draw() -> void:
 	_draw_run_progress()
@@ -134,16 +136,17 @@ func _draw_xp() -> void:
 	var fw := XP_W * r
 	if fw > 4.0:
 		_round(XP_X + 1.5, XP_Y + 1.5, fw - 3.0, XP_H - 3.0, c, Color(0, 0, 0, 0), 0, 3.0)
-	# 等级号 + 经验数字：画在条左外侧下方。
-	# ⚠️ 别画到右端：右上角是武器槽（WeaponBar，x 306~528 / y 68~100），
-	# 数字画右边会跟最右那把武器图标叠在一起（真踩过）。
+	# 等级号 + 经验数字：画在经验条【右侧空白】里，与条同高（基线对齐条底）。
+	# ⚠️ 原来画在条的正下方，而那一行现在是武器槽（y=50），数字会正好落在
+	# 最右那把武器图标上（真踩过）。经验条也为此缩短，把右侧空出来放数字。
 	var lv_txt := I18n.t("hud_level") % xp_level
-	draw_string(ThemeDB.fallback_font, Vector2(XP_X, XP_Y + XP_H + 11.0),
+	var ty := XP_Y + XP_H - 1.0
+	draw_string(ThemeDB.fallback_font, Vector2(XP_X + XP_W + 8.0, ty),
 		lv_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.88, 0.82, 1.0, 0.95))
 	# 经验数字紧跟等级号右侧，低对比度，不抢视线
 	var xp_txt := I18n.t("hud_xp") % [xp_into, xp_need]
 	var w := ThemeDB.fallback_font.get_string_size(lv_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	draw_string(ThemeDB.fallback_font, Vector2(XP_X + w + 6.0, XP_Y + XP_H + 11.0),
+	draw_string(ThemeDB.fallback_font, Vector2(XP_X + XP_W + 14.0 + w, ty),
 		xp_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.72, 0.68, 0.82, 0.75))
 
 func _draw_tick(frac: float, c: Color) -> void:
