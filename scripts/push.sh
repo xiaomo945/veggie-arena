@@ -97,7 +97,13 @@ reachable() {
 }
 code="$(probe)"
 if [ "$code" != "000" ] && [ -n "$code" ]; then
-	say "  ✅ GitHub 可达（HTTP $code）"
+	# ⚠️ 踩过的坑：这里拿到 HTTP 403/200 只说明"链路通"，不代表"git 能推上去"。
+	# 实测遇到过 hosts 正常、curl 正常，但 git push 报
+	#   GnuTLS recv error (-110) / Failed to connect to port 443
+	# 那是大包（本仓库有 2.9MB 字体二进制）传输被链路掐断，
+	# 属于传输层问题、不是 DNS 问题 —— 第 5 步的 http.postBuffer + HTTP/1.1 才是解药。
+	# 所以这里只报告状态，不在这里重试推送。
+	say "  ✅ GitHub 可达（HTTP $code）—— 仅代表链路通，push 仍可能因大包传输失败（见第 5 步加固）"
 else
 	say "  ⚠ GitHub 不可达（curl 返回 [$code]）—— 重新解析 DNS"
 	resolve() {
@@ -170,8 +176,41 @@ say "  ✅ 令牌有效：${login}（${REPO_OWNER}/${REPO_NAME}）"
 
 echo ""
 echo "=== 5. 推送 ==="
+# ---- 传输层加固（踩过坑才加的，2026-10）----
+# 现象：hosts 正常、TCP 443 也能连上，但 git push 反复报
+#   "GnuTLS recv error (-110): The TLS connection was non-properly terminated"
+#   或 "Failed to connect to github.com port 443 after 133025 ms"
+# 根因：本仓库要传 2.9MB 的字体二进制 + 若干 MB 美术资源，
+#   走 git 默认的 HTTP/2 + chunked 传输时大包容易被中间链路掐断。
+# 修法（三个一起，只设 postBuffer 是不够的）：
+#   http.postBuffer   预先缓冲整个 pack，别边生成边发
+#   http.version      强制 HTTP/1.1，避开 HTTP/2 的多路复用掐流
+#   lowSpeedLimit=0   别因为"速度慢"在传输中途主动 abort
+git config http.postBuffer 524288000
+git config http.version HTTP/1.1
+git config http.lowSpeedLimit 0
+git config http.lowSpeedTime 999999
+
+# 推送重试：网络抖动是常态，重试 3 次比让人手动再敲一遍命令友好得多。
+# 只重试传输层错误（TLS/超时/连接断开）；权限/冲突类错误直接失败，不浪费 10 分钟。
 LOCAL="$(git rev-parse HEAD)"
-git push origin "$BRANCH" || die "git push 失败（上面网络/令牌都已检查过，看具体报错）"
+pushed=0
+for attempt in 1 2 3; do
+  if out="$(git push origin "$BRANCH" 2>&1)"; then
+    printf '%s\n' "$out" | sed 's/^/  /'
+    pushed=1
+    break
+  fi
+  printf '%s\n' "$out" | tail -2 | sed 's/^/  /'
+  # 分不清是传输抖动还是真错误时，权限/冲突关键词一律不当成抖动
+  if printf '%s' "$out" | grep -qiE 'permission denied|non-fast-forward|rejected|authentication failed'; then
+    die "git push 被拒绝（权限/冲突/认证问题，重试无意义），看上面报错"
+  fi
+  [ "$attempt" -lt 3 ] || break
+  say "  ! 第 ${attempt} 次推送失败（传输层抖动），重试..."
+  sleep $((attempt * 3))
+done
+[ "$pushed" = "1" ] || die "git push 连试 3 次都失败（网络传输层问题），上面是最后一次报错"
 say "  ✅ 已推送 $(git log --oneline -1)"
 
 echo ""
