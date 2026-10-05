@@ -101,6 +101,9 @@ func feel_cfg() -> Dictionary:
 func wok_cfg() -> Dictionary:
 	return balance.get("wok", {})
 
+func level_cfg() -> Dictionary:
+	return balance.get("level", {})
+
 func bullet_cfg() -> Dictionary:
 	return balance.get("bullet", {})
 

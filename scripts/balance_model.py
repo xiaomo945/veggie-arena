@@ -44,6 +44,7 @@ BAL = load("balance.json")
 ENEMIES = load("enemies.json")
 WEAPONS = load("weapons.json")
 UPGRADES = load("upgrades.json")
+TIERS = load("shop_tiers.json")   # 武器档位门禁/定价（镜像 core/ShopTiers.gd）
 
 WAVE_LEN = float(BAL["wave"]["length"])
 WAVE_TOTAL = int(BAL["wave"]["total"])
@@ -327,17 +328,72 @@ def apply_item(state, key):
         pass
 
 
-def shop_offer(state, rng=None, count=None):
-    """按加权池抽报价（镜像 core/Economy.build_pool：稀有度权重 6/3/1 + 武器权重 4）。"""
+def max_tier_for_wave(wave):
+    """当前波次允许出现的最高武器档位（镜像 core/ShopTiers.max_tier_for_wave）。"""
+    m = TIERS.get("weapon_tier_from_wave", {})
+    top = 1
+    for L in range(1, int(TIERS.get("max_tier", 6)) + 1):
+        if wave >= int(m.get(str(L), 999)):
+            top = L
+    return top
+
+
+def offer_tiers(owned_lv, max_lv):
+    """该给某把武器刷出哪些档位（镜像 core/ShopTiers.offer_tiers）。
+    未持有 → 只刷 1 级；已持有 L → 刷 [L-1, L]。已持有等级永远可买。"""
+    if owned_lv <= 0:
+        return [1]
+    hi = min(owned_lv, max_lv)
+    lo = max(1, owned_lv - 1)
+    return list(range(lo, hi + 1))
+
+
+def price_for_tier(base_cost, lv):
+    """档位底价（镜像 core/ShopTiers.price_for_tier）。"""
+    mult = float(TIERS.get("tier_price_mult", 2.0))
+    raw = int(round(float(base_cost) * (mult ** (max(1, lv) - 1))))
+    return max(raw, int(TIERS.get("tier_price_floor", {}).get(str(lv), 0)))
+
+
+def tier_weight(lv):
+    """档位稀有度权重（镜像 core/ShopTiers.tier_weight）。"""
+    return float(TIERS.get("weapon_tier_weight", {}).get(str(lv), 1.0))
+
+
+def max_rarity_for_wave(wave):
+    """当前波次允许的最高道具稀有度（镜像 core/ShopTiers.max_rarity_for_wave）。"""
+    m = TIERS.get("upgrade_rarity_from_wave", {})
+    top = 1
+    for r in range(1, 4):
+        if wave >= int(m.get(str(r), 999)):
+            top = r
+    return top
+
+
+def shop_offer(state, rng=None, count=None, wave=1):
+    """按加权池抽报价（镜像 core/Economy.build_pool）。
+    武器按"已持有等级"决定刷出哪些档位（core/ShopTiers.offer_tiers），
+    档位底价走 price_for_tier、档位权重走 tier_weight —— 这三样合起来才是
+    "玩家第 N 波能拿到几级武器"的真正闸门，也就是用户抱怨的"第 5 波就满级"根源。
+    wave 形参必需：档位门禁是按波次生效的，不传 wave 等于门禁失效。"""
     n = count or int(SHOP["offer_count"])
     rw = {1: 6.0, 2: 3.0, 3: 1.0}
+    max_lv = int(SHOP["max_lv"])
+    rar_top = max_rarity_for_wave(wave)
     pool = []
     for k, d in WEAPONS.items():
         w = 4.0 if len(state["weapons"]) < int(SHOP["max_slot"]) else 0.4
-        pool.append({"kind": "weapon", "key": k, "cost": int(d["cost"]), "weight": w})
+        owned = max([lv for kk, lv in state["weapons"] if kk == k], default=0)
+        for lv in offer_tiers(owned, max_lv):
+            pool.append({"kind": "weapon", "key": k, "tier": lv,
+                         "cost": price_for_tier(int(d["cost"]), lv),
+                         "weight": w * tier_weight(lv)})
     for k, d in UPGRADES.items():
+        rar = int(d.get("rarity", 2))
+        if rar > rar_top:
+            continue
         pool.append({"kind": "item", "key": k, "cost": int(d["cost"]),
-                     "weight": rw.get(int(d.get("rarity", 2)), 3.0)})
+                     "weight": rw.get(rar, 3.0)})
     pool = [p for p in pool if p["weight"] > 0]
     out = []
     for _ in range(n):
@@ -381,12 +437,19 @@ def buy(state, offer, strategy, rng, mistake_prob=0.0):
     state["gold"] -= o["cost"]
     state["spent"] += o["cost"]
     if o["kind"] == "weapon":
+        # 档位语义（镜像 core/Inventory.merge_or_add）：买到同款同级 → 合成 +1 级。
+        # 买到的是 1 级且没持有 → 新增一把。
+        tier = int(o.get("tier", 1))
         for i, (k, lv) in enumerate(state["weapons"]):
-            if k == o["key"] and lv < int(SHOP["max_lv"]):
+            if k != o["key"]:
+                continue
+            if lv == tier and lv < int(SHOP["max_lv"]):
                 state["weapons"][i] = (k, lv + 1)
                 return True
+            if lv == tier:
+                return False
         if len(state["weapons"]) < int(SHOP["max_slot"]):
-            state["weapons"].append((o["key"], 1))
+            state["weapons"].append((o["key"], tier))
             return True
         return False
     apply_item(state, o["key"])
@@ -440,7 +503,7 @@ def run(strategy, skill=0.5, max_wave=40, seed=1, trace=False):
         st["gold"] += r["income"]
         if strategy != "none":
             for _ in range(buys_per_wave):
-                if not buy(st, shop_offer(st, rng), strategy, rng, mistake_prob):
+                if not buy(st, shop_offer(st, rng, wave=wave), strategy, rng, mistake_prob):
                     break
     return {"death": None, "rows": rows, "state": st}
 

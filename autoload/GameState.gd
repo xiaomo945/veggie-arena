@@ -8,6 +8,7 @@ var gold: int = 0
 var hp: int = 100
 var max_hp: int = 100
 var kills: int = 0
+var xp: int = 0            # 累计经验（core/Level 换算成等级）
 var elapsed_in_wave: float = 0.0
 var running: bool = false
 var paused: bool = false     # 暂停菜单是否打开（Joystick 据此停止接管触摸，避免暂停时还在走位）
@@ -34,6 +35,8 @@ var upgrades: Dictionary = {}
 const Wok := preload("res://core/Wok.gd")
 const Run := preload("res://core/Run.gd")
 const Inventory := preload("res://core/Inventory.gd")
+const Pickup := preload("res://core/Pickup.gd")
+const Level := preload("res://core/Level.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
 var wok: Dictionary = {}
 var wok_heat: float = 0.0
@@ -48,25 +51,25 @@ var pause_rect := Rect2(0, 0, 0, 0)
 
 func _ready() -> void:
 	reset()
-	# ⚠️ reset() 会把 running 置 true（那是给"正式开跑"用的）。
-	#    启动时必须停下：否则标题页还没点，背后就已经在刷怪开打了。
+	# reset() 把 running 置 true（"正式开跑"用）；启动时必须停下，
+	# 否则标题页还没点，背后就已经在刷怪开打了。
 	running = false
 
 func reset() -> void:
 	var p := Data.player_cfg()
-	# 角色自带的生命加成在这里并入上限（其它属性走 stat_value）
+	# 角色自带的生命加成并入上限（其它属性走 stat_value）
 	max_hp = int(p.get("max_hp", 100)) + int(_char_stat("max_hp"))
 	hp = max_hp
 	wave = 1
 	gold = 0
 	kills = 0
+	xp = 0
 	elapsed_in_wave = 0.0
 	running = true
 	won = false
 	endless = false
 	weapons = []
 	upgrades = {}
-	# 锅气参数从 balance.json 读，避免数值写死在代码里
 	wok = Wok.make(Data.wok_cfg())
 	wok_heat = 0.0
 	_wok_tier = 0
@@ -74,9 +77,7 @@ func reset() -> void:
 	shield = 0
 	frenzy_left = 0.0
 	Events.shield_changed.emit(shield)
-	# 开局武器：标题页"选武器页"选的 1 把 + 手枪保底（手枪永远在，避免只拿一把近战被围死）。
-	# 没走过选武器页（如 headless 模拟 / 死亡页"再来一局"复用上次选择前的默认）则退回
-	# 原 piston+smg 双武器起步，保证旧路径数值表现不变。
+	# 开局武器：标题页选的 1 把 + 手枪保底（没选则 pistol+smg 双武器起步）
 	weapons = []
 	if start_weapon != "" and start_weapon != "pistol":
 		weapons.append({"key": start_weapon, "lv": 1})
@@ -90,8 +91,7 @@ func set_character(key: String) -> void:
 		return
 	character = key
 	Events.character_changed.emit(key)
-	# 立刻重算一局状态：标题页换角色后，开局的血量上限要跟着变
-	var p := Data.player_cfg()
+	var p := Data.player_cfg()   # 换角色后立刻重算血量上限
 	max_hp = int(p.get("max_hp", 100)) + int(_char_stat("max_hp"))
 	hp = max_hp
 	Events.player_hp_changed.emit(hp, max_hp)
@@ -105,7 +105,7 @@ func _char_stat(stat: String) -> float:
 
 # ---- 血量 ----
 func take_damage(amount: int) -> void:
-	# 护甲（armor）在所有伤害源的统一入口做扁平减免，强化终于不只是商店里的数字
+	# 护甲在所有伤害源的统一入口做扁平减免，强化不只是商店里的数字
 	hp = maxi(0, hp - maxi(0, int(amount) - int(stat_value("armor"))))
 	Events.player_hp_changed.emit(hp, max_hp)
 	if hp <= 0:
@@ -123,7 +123,7 @@ func heal_percent(pct: float) -> int:
 
 # ---- 金币 ----
 func add_gold(amount: int) -> void:
-	# 金币加成道具（gold_pct）在这里统一结算：所有进账都吃，包括波末奖励和爆金币
+	# gold_pct 在这里统一结算：所有进账都吃（波末奖励、爆金币）
 	gold += int(round(float(amount) * (1.0 + stat_value("gold_pct"))))
 	Events.gold_changed.emit(gold)
 
@@ -147,8 +147,7 @@ func tick_wave(delta: float) -> void:
 func wave_finished() -> bool:
 	return elapsed_in_wave >= float(Data.wave_cfg().get("length", 20))
 
-# 是否到了通关波（撑过这一波即胜利）。波数阈值走 balance.json 的 wave.total。
-# 无尽段（已越过最终波）不再算通关波 —— 否则第 21 波一结束又会弹一次胜利页。
+# 是否到了通关波。无尽段（越过最终波）不再算 —— 否则又会弹一次胜利页。
 func is_last_wave() -> bool:
 	var cfg := Data.wave_cfg()
 	return Run.is_last_wave(wave, cfg) and not Run.is_endless_wave(wave, cfg)
@@ -157,12 +156,34 @@ func is_last_wave() -> bool:
 func add_kill() -> void:
 	kills += 1
 
-# 通关/阵亡的统一结算分（与死亡页同口径）
+# ---- 经验 / 等级（击杀掉经验；升级奖励也在这里结算，爽点集中一处）----
+func add_xp(amount: int) -> void:
+	var cfg := Data.level_cfg()
+	var r := Level.add(xp, amount, cfg)
+	xp = int(r["xp"])
+	var lv := int(r["level"])
+	var bd := Level.breakdown(xp, cfg)
+	Events.xp_changed.emit(lv, int(bd["into"]), int(bd["need"]), float(bd["pct"]))
+	var gained := int(r["gained"])
+	if gained > 0:
+		_heal_on_level_up(gained)
+		Events.level_up.emit(lv, gained)
+# 升级奖励：回血 + 短暂狂暴（数值算法在 core/Level）
+func _heal_on_level_up(gained: int) -> void:
+	var r := Level.level_up_reward(gained, max_hp, Data.level_cfg())
+	if int(r["heal"]) > 0:
+		heal(int(r["heal"]))
+	if float(r["frenzy"]) > 0.0:
+		start_frenzy(float(r["frenzy"]))
+
+# 当前等级明细 {level, into, need, pct}。要等级号直接读 ["level"]，不要另开一个方法。
+func level_info() -> Dictionary:
+	return Level.breakdown(xp, Data.level_cfg())
+
 func run_score() -> int:
 	return Run.score(kills, gold, wave)
 
-# ---- 强化（属性加成）----
-# 所有加成都由 upgrades.json 的 "stat" 字段驱动，加新强化不用改代码
+# ---- 强化（属性加成）---- 加成都由 upgrades.json 的 "stat" 驱动，加新强化不用改代码
 func buy_upgrade(key: String) -> void:
 	if key.is_empty():
 		return
@@ -175,20 +196,16 @@ func buy_upgrade(key: String) -> void:
 			max_hp += int(val)
 			hp += int(val)
 			Events.player_hp_changed.emit(hp, max_hp)
-		# ⚠️ stat 名必须和 upgrades.json 一致（是 heal_now 不是 heal），写错会静默不生效
-		"heal_now":
+		"heal_now":   # ⚠️ stat 名必须与 upgrades.json 一致，写错会静默不生效
 			heal(int(val))
-		# 锅气上限 +N：抬高本局可存的颠勺充能上限，不影响已存充能数，但要同步展示
-		"wok_charges":
+		"wok_charges":   # 抬高颠勺充能上限，不影响已存数，但要同步展示
 			wok["max_charges"] = int(wok.get("max_charges", 3)) + int(val)
 			Events.wok_charges_changed.emit(Wok.charges_of(wok))
 		_:
 			pass
-	# 伤害/攻速等加成通过武器重建生效
-	Events.weapons_changed.emit(weapons)
+	Events.weapons_changed.emit(weapons)   # 伤害/攻速等加成靠武器重建生效
 
-# 某个属性的总加成值（如 dmg_pct、speed_pct）
-# 单属性道具（stat/value）与多属性道具（stats 字典）都支持，见 core/Inventory。
+# 某个属性的总加成值。单属性道具（stat/value）与多属性道具（stats 字典）都支持。
 func stat_value(stat: String) -> float:
 	var total := _char_stat(stat)
 	for k in upgrades:
@@ -196,19 +213,17 @@ func stat_value(stat: String) -> float:
 		for en in Inventory.stat_entries(Data.upgrade(k)):
 			if str(en.get("stat", "")) == stat:
 				total += float(en.get("value", 0)) * n
-	# Q1 武器套装：凑够件数触发的加成等价"白送一件道具"，必须并进属性里，
+	# 武器套装：凑够件数触发的加成等价"白送一件道具"，必须并进属性里，
 	# 否则套装只是 UI 上一行字（HUD 显示 +30% 而实际伤害不变）。
 	total += float(WeaponSets.bonuses(weapons, Data.weapons, Data.weapon_sets).get(stat, 0.0))
 	return total
 
-# ---- 颠勺附带的两条全局状态：护盾 / 狂暴 ----
-# 这俩不是"属性"，是有时限的战斗状态，只能挂在 GameState 上：
-# Player（挨打扣血）和 PlayerWeapons（开火频率）都要读同一个倒计时。
+# ---- 颠勺附带的护盾 / 狂暴 ----
+# 不是"属性"而是有时限的战斗状态，只能挂在 GameState 上：Player（挨打扣血）
+# 和 PlayerWeapons（开火频率）都要读同一个倒计时，各自推进会对不上。
 var shield: int = 0              # 护盾：挨打先扣它，扣完才掉血
 var frenzy_left: float = 0.0     # 狂暴剩余秒数（攻速 + 移速）
 
-# 每帧推进狂暴倒计时。放在这里而不是 Player，是因为开火端（PlayerWeapons）
-# 和移动端（Player）都要读，各自推进就会对不上。
 func tick_buff(delta: float) -> void:
 	if frenzy_left > 0.0:
 		frenzy_left = maxf(0.0, frenzy_left - delta)
@@ -226,9 +241,7 @@ func start_frenzy(seconds: float) -> void:
 
 func frenzy_mult() -> float:
 	return float(Data.wok_cfg().get("frenzy_mult", 1.6)) if frenzy_left > 0.0 else 1.0
-
-# ---- 锅气 Wok Heat ----
-# 下面这些方法都是对 core/Wok.gd 纯逻辑的薄封装：改状态 + 同步公开字段 + 发信号。
+# ---- 锅气 Wok Heat（对 core/Wok.gd 的薄封装：改状态 + 同步公开字段 + 发信号）----
 func _sync_wok() -> void:
 	wok_heat = Wok.heat_of(wok)
 	var t := Wok.tier(wok)
@@ -276,25 +289,12 @@ func toss_wok() -> bool:
 		_sync_wok()
 	return ok
 
-# ---- 金币拾取 ----
-# 磁吸半径（px）：全屏自动拾取=全屏；自动拾取=较大的固定半径×范围强化；否则仅贴近才捡。
+# ---- 金币拾取（策略函数在 core/Pickup，这里只做"读属性 → 转发"）----
 func pickup_magnet() -> float:
-	var b: Dictionary = Data.balance.get("pickup", {}) as Dictionary
-	var pct := stat_value("pickup_pct")
-	if stat_value("fullauto") > 0.0:
-		return 9999.0
-	if stat_value("autopick") > 0.0:
-		return float(b.get("magnet_autopick", 120)) * (1.0 + pct)
-	return float(b.get("magnet_base", 30)) * (1.0 + pct * 0.4)
+	return Pickup.player_magnet(Data.balance.get("pickup", {}) as Dictionary,
+		stat_value("pickup_pct"), stat_value("fullauto") > 0.0, stat_value("autopick") > 0.0)
 
 # 波末散落金币未手动拾取时，自动入袋但"丢失"的比例。
-# 全屏自动拾取=0；自动拾取减半；其余按 wave_end_loss 基准，再随拾取范围小幅降低。
 func gold_sweep_loss() -> float:
-	var b: Dictionary = Data.balance.get("pickup", {}) as Dictionary
-	if stat_value("fullauto") > 0.0:
-		return 0.0
-	var loss := float(b.get("wave_end_loss", 0.25))
-	if stat_value("autopick") > 0.0:
-		loss *= 0.5
-	loss *= (1.0 - 0.2 * clampf(stat_value("pickup_pct"), 0.0, 1.0))
-	return clampf(loss, 0.0, 1.0)
+	return Pickup.sweep_loss(Data.balance.get("pickup", {}) as Dictionary,
+		stat_value("pickup_pct"), stat_value("fullauto") > 0.0, stat_value("autopick") > 0.0)

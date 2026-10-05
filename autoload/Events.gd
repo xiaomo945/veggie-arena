@@ -57,6 +57,12 @@ signal pickup_spawned(pos: Vector2, value: int)
 # 玩家吃到一枚金币（音效/特效订阅；加钱由 Game 直接调 GameState.add_gold）
 signal pickup_collected(pos: Vector2, value: int)
 
+# ---- 经验 / 等级 ----
+# xp_changed 在每次经验变动时发（HUD 刷新经验条），params = core/Level.breakdown 的返回
+signal xp_changed(level: int, into: int, need: int, pct: float)
+# 升级时发（可能一次连升多级，gained > 1）。HUD 弹横幅 + FxLayer 放金光。
+signal level_up(level: int, gained: int)
+
 # ---- 存档 / 解锁 ----
 # 一局结束后，新达成解锁的武器逐个发出（HUD 弹提示用）
 signal unlocked(key: String)

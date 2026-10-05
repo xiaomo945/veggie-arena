@@ -8,6 +8,7 @@ extends Node
 #   （以前 game._xxx 读写 64 处是全项目头号耦合源，现已全部搬进 BattleWorld）。
 
 const Spawner := preload("res://core/Spawner.gd")
+const Level := preload("res://core/Level.gd")
 const Run := preload("res://core/Run.gd")
 const Hit := preload("res://core/Hit.gd")
 const Movement := preload("res://core/Movement.gd")
@@ -187,33 +188,31 @@ func _bind_bullets() -> void:
 	_bullets.damage_fn = damage_enemy
 
 func damage_enemy(e, amount: float) -> bool:
-	# 破甲：受伤加深。放在这里而不是各伤害来源里 —— 所有伤害都吃这个加成，
-	# 以后加新伤害类型也不用记着乘一遍
+	# 破甲放在统一入口：所有伤害都吃，加新伤害类型不用记着乘一遍
 	amount *= 1.0 + e.fx("shred")
-	# 先取位置：hurt() 触发死亡后会 recycle，之后再取坐标就不稳了
-	var epos: Vector2 = e.global_position
-	# 伤害飘字统一走 FxLayer 池化飘字（Events.damage_dealt）；不再每命中 new 节点（打怪卡元凶）。
-	# 受击挤压回弹（squash & stretch）：沿"玩家→敌人"的打击方向压扁
+	var epos: Vector2 = e.global_position   # 先取位置：hurt() 死亡后会 recycle
+	# 飘字走 FxLayer 池化（不再每命中 new 节点，打怪卡元凶）；受击沿打击方向挤压回弹
 	e.squash(epos - world.player.global_position)
-	# 单次大伤害轻微震屏
-	if amount >= 35.0:
+	if amount >= 35.0:   # 单次大伤害轻微震屏
 		Shake.kick(4.0, 0.16)
 	# 飘伤害数字（特效层订阅，纯表现）
 	Events.damage_dealt.emit(int(amount), epos, false)
 	if e.hurt(amount):
 		GameState.add_kill()
+		# 经验：按敌人类型给不同权重（精英/Boss 给得多，"优先打精英"才有动机）
+		GameState.add_xp(Level.xp_for(str(e.etype),
+			int(Data.level_cfg().get("xp_per_kill", 1))))
 		if _mind != null:
 			_mind.on_kill(e, epos)
-	# ---- 击杀结算（玩法）----
+	# ---- 击杀结算 ----
 	# ⚠️ 必须在特效门控之外：以前整段被"粒子开关 + 并发上限"包着，关粒子或特效
-	#    一满，击杀就不掉钱不涨锅气（真 bug，是特效降级把它逼出来的）。
-	# 钱掉在地上（不是直接入账）：玩家要走进磁吸圈才收得到
+	#    一满，击杀就不掉钱不涨锅气（真 bug，是特效降级把它逼出来的）。钱掉在地上，
+	#    玩家要走进磁吸圈才收得到（走位正反馈的核心）
 	var ov: int = world.pickups.drop(epos, e.gold)
 	if ov > 0:
 		world.gold_picked += ov
 		GameState.add_gold(ov)
-	# 击杀回血（lifesteal 强化：续航流玩法）
-	# ⚠️ 必须概率触发：按击杀固定回血时，一局 1300+ 杀能回几千血，
+	# 击杀回血（lifesteal）。⚠️ 必须概率触发：按击杀固定回血时一局能回几千血，
 	#    实测"站着不动"都能满血通关，难度被彻底抵消
 	var ls: float = GameState.stat_value("lifesteal")
 	if ls > 0.0 and world.rng.randf() < LIFESTEAL_CHANCE:
@@ -224,9 +223,9 @@ func damage_enemy(e, amount: float) -> bool:
 	# 终局 Boss（第 20 波）被击杀 = 直接通关，不必再熬计时
 	if e.etype == "boss" and GameState.is_last_wave() and GameState.running:
 		Events.run_won.emit()
-	# ---- 击杀表现（可以限流）----
-	# 爆环事件照发（FxLayer 自己有并发上限）；只有碎屑节点要限，密集击杀时
-	# 宁可少画几团，也不让 Node/Tween 爆炸拖垮手机帧率
+	# ---- 击杀表现（可限流）----
+	# 爆环事件照发（FxLayer 自带并发上限）；只限碎屑节点，密集击杀时宁可少画几团，
+	# 也不让 Node/Tween 爆炸拖垮手机帧率
 	Events.enemy_killed.emit(str(e.etype), epos)
 	if Settings.get_setting("particles_enabled", true) and _death_fx_count() < _death_fx_cap():
 		var spark = HitSpark.new()

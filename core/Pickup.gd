@@ -82,3 +82,24 @@ static func split_values(value: int, pieces: int) -> Array:
 			rest -= 1
 		out.append(v)
 	return out
+
+# ---- 玩家侧的两个策略函数（原本写在 GameState 里，挪到这里保持 GameState 不超 300 行）----
+# 磁吸半径（px）：全屏自动拾取=全屏；自动拾取=较大的固定半径×范围强化；否则仅贴近才捡。
+# flags 由调用方从 stat_value 读出后传进来，保持本层不依赖 autoload。
+static func player_magnet(cfg: Dictionary, pickup_pct: float, has_fullauto: bool, has_autopick: bool) -> float:
+	if has_fullauto:
+		return 9999.0
+	if has_autopick:
+		return float(cfg.get("magnet_autopick", 120.0)) * (1.0 + pickup_pct)
+	return float(cfg.get("magnet_base", 30.0)) * (1.0 + pickup_pct * 0.4)
+
+# 波末散落金币未手动拾取时，自动入袋但"丢失"的比例。
+# 全屏自动拾取=0；自动拾取减半；其余按 wave_end_loss 基准，再随拾取范围小幅降低。
+static func sweep_loss(cfg: Dictionary, pickup_pct: float, has_fullauto: bool, has_autopick: bool) -> float:
+	if has_fullauto:
+		return 0.0
+	var loss := float(cfg.get("wave_end_loss", 0.25))
+	if has_autopick:
+		loss *= 0.5
+	loss *= (1.0 - 0.2 * clampf(pickup_pct, 0.0, 1.0))
+	return clampf(loss, 0.0, 1.0)

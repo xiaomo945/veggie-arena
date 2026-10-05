@@ -74,6 +74,8 @@ func _ready() -> void:
 	Events.player_died.connect(_hide_pause)
 	Events.run_won.connect(_hide_pause)
 	Events.run_paused.connect(_on_run_paused)
+	Events.xp_changed.connect(_on_xp)
+	Events.level_up.connect(_on_level_up)
 	# 语言切换时刷新静态文案（颠勺按钮文本等）
 	I18n.locale_changed.connect(_on_locale_changed)
 
@@ -103,6 +105,22 @@ func _on_wave_progress(elapsed: float, length: float) -> void:
 	_top.set_kills_text(I18n.t("hud_kills") % GameState.kills)
 	_top.set_bar("run_wave", GameState.wave)
 	_top.set_wave_text(_wave_text())
+
+# 经验条刷新：每次掉经验都来一次，直接把四个值塞给 HudBars
+func _on_xp(level: int, into: int, need: int, pct: float) -> void:
+	_top.set_bar("xp_level", level)
+	_top.set_bar("xp_into", into)
+	_top.set_bar("xp_need", need)
+	_top.set_bar("xp_pct", pct)
+
+# 升级：横幅（爽点的主入口）+ 经验条闪一下
+func _on_level_up(level: int, gained: int) -> void:
+	_top.set_bar("xp_flash", 1.0)
+	# 连升多级时横幅停久一点（信息量更大，值得多看一秒）
+	if gained > 1:
+		_banners.pop_effect(I18n.t("level_up_multi") % [gained, level], Color(0.85, 0.70, 1.0))
+	else:
+		_banners.pop_effect(I18n.t("level_up") % level, Color(0.85, 0.70, 1.0))
 
 # 新局的套装档位从零算起，别把上一局残留的档位带进来（否则开局不会弹提示）
 func _on_run_started() -> void:

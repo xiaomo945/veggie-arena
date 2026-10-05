@@ -47,11 +47,20 @@ func run(arg = null) -> Dictionary:
 	chk(_offer_eq(st, 3, 1, 6, [2, 3]), "波次不影响持有门禁（仍按持有刷）")
 
 	# 3) 波次门禁（高档的硬上限，早期波次不会冒出超过进度的货）
+	#    门禁整体推后 2~3 波（用户诉求："第5波我已经装备6级全满了"）：
+	#    3 档 5→7 波、4 档 8→11、5 档 11→15、6 档 14→19。
 	chk(st.max_tier_for_wave(1, 6) == 1, "第1波上限 1 级")
 	chk(st.max_tier_for_wave(2, 6) == 2, "第2波上限 2 级")
-	chk(st.max_tier_for_wave(6, 6) == 3, "第6波上限 3 级")
-	chk(st.max_tier_for_wave(10, 6) == 4, "第10波上限 4 级")
-	chk(st.max_tier_for_wave(18, 6) == 6, "第18波上限 6 级(传说)")
+	chk(st.max_tier_for_wave(5, 6) == 2, "第5波仍只有 2 档（实测 %d 档）—— 满级不可能在第 5 波发生"
+		% st.max_tier_for_wave(5, 6))
+	chk(st.max_tier_for_wave(6, 6) == 2, "第6波上限 2 级（实测 %d 档）" % st.max_tier_for_wave(6, 6))
+	chk(st.max_tier_for_wave(7, 6) == 3, "第7波才解锁 3 档（实测 %d 档）" % st.max_tier_for_wave(7, 6))
+	chk(st.max_tier_for_wave(10, 6) == 3, "第10波上限 3 档（实测 %d 档）" % st.max_tier_for_wave(10, 6))
+	chk(st.max_tier_for_wave(11, 6) == 4, "第11波才解锁 4 档（实测 %d 档）" % st.max_tier_for_wave(11, 6))
+	chk(st.max_tier_for_wave(15, 6) == 5, "第15波才解锁 5 档（实测 %d 档）" % st.max_tier_for_wave(15, 6))
+	chk(st.max_tier_for_wave(18, 6) == 5, "第18波还买不到满级 6 档（实测 %d 档）" % st.max_tier_for_wave(18, 6))
+	chk(st.max_tier_for_wave(19, 6) == 6, "第19波才解锁满级 6 档(传说)（实测 %d 档）"
+		% st.max_tier_for_wave(19, 6))
 	chk(st.max_rarity_for_wave(0) >= 2, "开局就有 1~2 级道具")
 	chk(st.max_rarity_for_wave(8) == 3, "第8波起才出 3 级道具（难度控制）")
 

@@ -29,14 +29,17 @@ func run(data) -> Dictionary:
 
 	# 1) 第 1 波：开局只有手枪，也要能造成"可观"伤害。
 	#    本作是生存计时制（撑满 60s 即过关，不要求清场），所以不要求手枪单独清掉整波血，
-	#    只要能砍掉至少 1/4 的整波血量就算"起手武器有效"，其余靠生存 + 商店养成补上。
+	#    只要起手配置能砍掉整波血量的一个明显份额就算"起手武器有效"，其余靠生存 + 商店养成补上。
+	#    口径用"开局真实配置"= 手枪 + 冲锋枪（镜像 GameState.reset），不是只看手枪。
+	#    门槛 30%（实测 58%）：用户要求血量大幅增加后，单看手枪只剩 ~21%，
+	#    那是"有意的难度提升"而不是"起手无效"，所以改用真实开局配置判定。
 	#    （真正的"打不打得完"由 2.5 整局集成验证的"推进到第 2 波"兜底。）
 	var pistol: Dictionary = data.weapon("pistol")
-	var start_dps := Combat.weapon_dps(pistol)
+	var start_dps := Combat.weapon_dps(pistol) + Combat.weapon_dps(data.weapon("smg"))
 	var h1 := Spawner.wave_total_hp(1, spawn_cfg, data.enemies, length)
 	var out1 := start_dps * length
-	chk(out1 > h1 * 0.25,
-		"第1波手枪能砍掉 ≥1/4 血量：手枪 %d 秒输出 %.0f vs 怪物总血 %.0f" % [int(length), out1, h1])
+	chk(out1 > h1 * 0.30,
+		"第1波起手配置能砍掉 ≥30% 血量：%.0f 秒输出 %.0f vs 怪物总血 %.0f" % [int(length), out1, h1])
 
 	# 2) 怪物密度受 max_alive 硬封顶（场上可见数不会超过它），整波刷怪量允许合理周转
 	#    （怪会死、会补，所以整波总量可比场上峰值大几倍，只要不超过 max_alive 的若干倍即可）。
@@ -150,10 +153,14 @@ func run(data) -> Dictionary:
 	var fs10 := float(f10.get("speed", 0))
 	chk(ps1 <= pspeed * 0.45,
 		"第1波小兵 %.0f ≤ 玩家 %.0f 的 45%%（开局能轻松拉开）" % [ps1, pspeed])
-	chk(ps20 >= pspeed * 0.55,
-		"第20波小兵 %.0f ≥ 玩家 %.0f 的 55%%（后期无脑绕圈躲不掉）" % [ps20, pspeed])
-	chk(fs10 >= pspeed * 0.55,
-		"第10波冲刺兵 %.0f ≥ 玩家 %.0f 的 55%%（快兵必须靠冲刺/预判）" % [fs10, pspeed])
+	# 下限从 55% 调到 45%：用户诉求"移动速度太快了"，speed_per_wave 已整体 ×0.45。
+	# 这里的下限只是"后期还得有点威胁、不能靠绕圈无脑躲"的保底，不是难度诉求本身。
+	chk(ps20 >= pspeed * 0.45,
+		"第20波小兵 %.0f ≥ 玩家 %.0f 的 45%%（后期仍构成威胁，但不再是 55%% 的压迫感）"
+		% [ps20, pspeed])
+	chk(fs10 >= pspeed * 0.45,
+		"第10波冲刺兵 %.0f ≥ 玩家 %.0f 的 45%%（快兵要靠冲刺/预判，但不该快到追死）"
+		% [fs10, pspeed])
 
 	# 12b) ⚠️ 这条是踩过坑才补的：上面只保证"敌人追得上玩家"，却没保证
 	# "玩家跑得掉"。旧数值下第20波冲刺兵 300 > 玩家 240 —— 后期玩家比怪还慢，
