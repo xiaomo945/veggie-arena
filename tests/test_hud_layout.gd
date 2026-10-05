@@ -123,6 +123,27 @@ func run(data) -> Dictionary:
 		"HudBars 的 RUN_W/XP_W 默认值有效（%.0f / %.0f，_ready() 会覆盖成 HudLayout 的值）"
 		% [run_w_def, xp_w_def])
 
+	# FPS 计数器（默认隐藏，设置里开）：它是 HUD 的子节点，坐标走 HUD 局部系
+	# （HUD 根节点整体下移 safe_top），所以只要 y 大于顶部内容高度就不会压住
+	# 血条 / 武器槽 / 波次文字那一条带 —— 那一条带上已经没有空位了。
+	var fps_line := SP.line_of(layout_src, "func fps_pos()")
+	var fps_re := RegEx.new()
+	fps_re.compile("Vector2\\(\\s*([0-9.]+)\\s*,\\s*([0-9.]+)\\s*\\)")
+	var fps_ys: Array = []
+	for m in fps_re.search_all(fps_line):
+		fps_ys.append(float(m.get_string(2)))
+	chk(fps_ys.size() >= 2, "fps_pos() 横竖两套坐标都解析出来了（找到 %d 组）" % fps_ys.size())
+	if fps_ys.size() >= 2:
+		# FpsMeter 直接挂在 HUD CanvasLayer 下 → fps_pos 是屏幕坐标，
+		# 必须躲开 safe_top + 顶部内容（竖屏 34+78=112 / 横屏 10+78=88）。
+		var st_l := SP.ternary_l(layout_src, "func safe_top()")
+		chk(float(fps_ys[1]) > safe_top + content_h,
+			"竖屏 FPS 行 y=%.0f 在顶部 HUD 块 %.0f 之下（不压血条/文字行）"
+			% [float(fps_ys[1]), safe_top + content_h])
+		chk(float(fps_ys[0]) > st_l + content_h,
+			"横屏 FPS 行 y=%.0f 也在顶部 HUD 块 %.0f 之下"
+			% [float(fps_ys[0]), st_l + content_h])
+
 	# WeaponBar 必须真的用 HudLayout 的值（防"布局表改了但节点没跟上"的漂移）
 	var wb_src := SP.read("res://ui/HUD/WeaponBar.gd")
 	chk(wb_src.length() > 0, "能读到 WeaponBar.gd 源码（实际 %d 字符）" % wb_src.length())

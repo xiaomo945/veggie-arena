@@ -34,6 +34,14 @@ func top_pause_pos() -> Vector2:
 	return Vector2(908.0, 2.0) if Data.is_landscape() else Vector2(492.0, 2.0)
 func top_pause_size() -> float: return 40.0
 
+# ---- FPS 计数器（默认隐藏）----
+# ⚠️ 屏幕绝对坐标：FpsMeter 直接挂在 HUD CanvasLayer 下，不经 HudTop 的 safe_top 偏移
+#    （第一版写 (8,80) 时正好压进 "WAVE 1/12" 那行文字 —— 截图目检抓出来的）。
+#    竖屏顶部块 = 34 + 78 = 112，放 118；横屏 = 10 + 78 = 88，放 96。
+#    都贴着相机让位线下沿，不压任何 HUD 控件，只占玩家不会久留的屏幕边缘。
+func fps_pos() -> Vector2:
+	return Vector2(8.0, 96.0) if Data.is_landscape() else Vector2(8.0, 118.0)
+
 # ---- HudBars：顶部三条进度条 ----
 # 右端停在 476（竖屏）/ 892（横屏），正好给暂停按钮左边缘留 16px 空当。
 # ⚠️ 别把条拉满宽：拉满就会从暂停按钮底下穿过去，看着像按钮压在条上（真踩过）。

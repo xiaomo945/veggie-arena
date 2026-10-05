@@ -8,9 +8,8 @@ extends SceneTree
 #       --t=6 --out=/tmp/shot.png
 #
 # 参数：--t=秒数(默认6) --out=路径 --boss/--final(Boss演出) --elite(精英出场)
-#   --shop(合成高亮) --sets(套装条) --hud[=N](行为符文) --stats(属性页)
-#   --pause --wok(颠勺) --series=秒(连拍) --to=x,y(走位) --rise(Boss破土) --no-run
-#
+#   --shop(合成高亮) --sets(套装条) --hud[=N](行为符文) --stats(属性页) --pause
+#   --settings(暂停→设置菜单) --wok(颠勺) --series=秒(连拍) --to=x,y(走位) --no-run
 # ⚠️ --script 模式不注册 autoload，且它是编译期标识符（运行时 add_child 也救不了，
 #    会 Compile Error）。所以统一走 root.get_node("Events") 运行时取节点。
 
@@ -25,7 +24,7 @@ var _rise_wait := 0.42
 var _boss := false; var _final := false; var _elite := false; var _rise := false
 var _shop := false; var _shop_n := 6; var _hud := false; var _hud_n := 6
 var _stats := false; var _sets := false; var _pause := false; var _no_run := false
-var _wok := false
+var _wok := false; var _settings := false; var _stats_node: Node = null
 
 const AUTOLOADS := {
 	"Art": "res://autoload/Art.gd",
@@ -76,6 +75,8 @@ func _initialize() -> void:
 			_stats = true
 		elif a == "--pause":
 			_pause = true
+		elif a == "--settings":
+			_settings = true   # 暂停 → 设置菜单（含帧率开关那一行）
 		elif a == "--wok":
 			_wok = true
 		elif a.begins_with("--series="):
@@ -135,8 +136,14 @@ func _initialize() -> void:
 		_fire_stats()
 		await _wait(0.5)
 		_dump_labels(_stats_node)
-	if _pause:
+	if _pause or _settings:
 		_bus("Events").run_paused.emit(true)
+		await _wait(0.4)
+	if _settings:
+		# 节点没起名（运行时匿名），按脚本路径找 SettingsMenu 再打开
+		for c in root.find_children("*", "Node", true, false):
+			if c.get_script() != null and str(c.get_script().resource_path).ends_with("SettingsMenu.gd"):
+				c.show_menu()
 		await _wait(0.4)
 	_save(_out)
 	quit(0)
@@ -150,14 +157,12 @@ func _bus(name: String) -> Node:
 	return root.get_node(name)
 
 func _wait(secs: float) -> void:
-	var frames := maxi(1, int(secs * 60.0))
-	for _i in frames:
+	for _i in maxi(1, int(secs * 60.0)):
 		await process_frame
 
 # 朝 --to 的目标点走；到了返回 true
 func _walk_towards(main: Node) -> bool:
-	var p: Vector2 = main.player.global_position
-	var d := _to - p
+	var d := _to - (main.player.global_position as Vector2)
 	if d.length() < 10.0:
 		main.player.set_move_dir(Vector2.ZERO)
 		return true
@@ -248,8 +253,7 @@ func _grant_and_open(defs: Dictionary, pairs: Array) -> void:
 # 属性页目检：每个 stat 的第一个升级 key 各买 1 层，看亮/灰样式与滚动区溢出。
 func _fire_stats() -> void:
 	var gs := _bus("GameState")
-	var data: Node = _bus("Data")
-	var ups: Dictionary = data.upgrades
+	var ups: Dictionary = _bus("Data").upgrades
 	var first_key: Dictionary = {}   # stat -> 第一个提供它的升级 key
 	for k in ups:
 		var u: Dictionary = ups[k] as Dictionary
@@ -276,8 +280,6 @@ func _fire_wok(main: Node) -> void:
 	var gs := _bus("GameState")
 	gs.add_wok(100000.0)
 	_bus("Events").wok_toss_requested.emit()
-
-var _stats_node: Node = null
 
 # DEBUG：遍历打印非空 Label 的最终位置（布局排错用）
 func _dump_labels(from: Node) -> void:

@@ -15,6 +15,7 @@ const HudTopScript := preload("res://ui/HUD/HudTop.gd")
 const HudBannersScript := preload("res://ui/HUD/HudBanners.gd")
 const HudButtonsScript := preload("res://ui/HUD/HudButtons.gd")
 const WaveSkipScript := preload("res://ui/HUD/WaveSkip.gd")
+const FpsMeterScript := preload("res://ui/HUD/FpsMeter.gd")
 const DebugMode := preload("res://core/DebugMode.gd")
 const Weapon := preload("res://core/Weapon.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
@@ -37,6 +38,7 @@ var _combo := 0             # 连击数（短时间连续击杀累加）
 var _combo_t := 0.0         # 连击剩余有效时间
 var _run_total := 20        # 总波次（来自 balance.json）
 var _set_tiers := {}        # 上一帧各套装的档位（用于侦测"刚跨档"）
+var _fps                   # FPS 计数器（默认隐藏）
 
 func _ready() -> void:
 	layer = 20
@@ -55,6 +57,11 @@ func _ready() -> void:
 	# 调试"跳到第 N 波"：只在测试模式创建节点（core/DebugMode），正式版玩家看不到
 	if DebugMode.enabled():
 		add_child(WaveSkipScript.new())
+
+	# FPS 计数器：默认隐藏，Settings 里打开后才显示（排查卡顿要玩家报 FPS + 同屏怪数）
+	_fps = FpsMeterScript.new()
+	_fps.set_position(HudLayout.fps_pos())
+	add_child(_fps)
 
 	Events.player_hp_changed.connect(_on_hp)
 	Events.gold_changed.connect(_on_gold)

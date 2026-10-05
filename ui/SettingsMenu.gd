@@ -28,6 +28,7 @@ var _perf_lbl: Label
 var _shake_btn: Button
 var _particle_btn: Button
 var _fps_option: OptionButton
+var _show_fps_btn: Button
 var _lang_btns: Array = []          # [{btn, val}] 0=中文 1=English
 var _back_btn: Button
 # 低画质强制降级标记：离开低画质时把被强制关的开关恢复为开
@@ -110,6 +111,11 @@ func _build() -> void:
 	_fps_option.item_selected.connect(_on_fps)
 	_root.add_child(_fps_option)
 
+	# 显示 FPS 计数器（排查卡顿用：打开后左上角显示 FPS + 同屏怪数）
+	_labels["show_fps"] = Widgets.label(_root, _advance(76.0), 16, Color(0.85, 0.88, 0.92))
+	_show_fps_btn = Widgets.toggle(_root, _advance(30.0))
+	_show_fps_btn.pressed.connect(_on_show_fps)
+
 	# 语言切换（中文 / English）
 	_labels["lang"] = Widgets.label(_root, _advance(60.0), 16, Color(0.85, 0.88, 0.92))
 	_lang_btns = Widgets.button_row(_root, 2, _advance(30.0), _on_lang)
@@ -141,6 +147,7 @@ func _refresh_texts() -> void:
 	_labels["shake"].text = I18n.t("settings_shake")
 	_labels["particles"].text = I18n.t("settings_particles")
 	_labels["fps"].text = I18n.t("settings_fps")
+	_labels["show_fps"].text = I18n.t("settings_show_fps")
 	_labels["lang"].text = I18n.t("settings_language")
 	_refresh_perf_label()
 	_refresh_move_label()
@@ -201,6 +208,10 @@ func _refresh_from_settings() -> void:
 			idx = i
 			break
 	_fps_option.select(idx)
+	if _show_fps_btn != null:
+		var on := bool(Settings.get_setting("show_fps", false))
+		_show_fps_btn.text = I18n.t("on") if on else I18n.t("off")
+		Widgets.set_active(_show_fps_btn, on)
 
 func show_menu() -> void:
 	_refresh_texts()
@@ -245,6 +256,10 @@ func _on_shake() -> void:
 
 func _on_particle() -> void:
 	Settings.set_particles(not Settings.particles_enabled)
+	_refresh_from_settings()
+
+func _on_show_fps() -> void:
+	Settings.set_show_fps(not bool(Settings.get_setting("show_fps", false)))
 	_refresh_from_settings()
 
 func _on_lang(i: int) -> void:

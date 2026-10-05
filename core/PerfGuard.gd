@@ -19,12 +19,27 @@ const MAX_LEVEL := 3          # 0=满配 1=轻降 2=中降 3=保底（只求能�
 # 最后才砍"影响玩法的"（同屏敌人数）—— 玩法被削是最后的手段。
 # "deco"：敌人装饰 LOD —— 低档关掉脚下内圈影/顶部高光/腮红这些纯装饰 draw，
 # 每只怪每帧少 ~40% 的 draw 调用（脸和本体形状永远保留，辨识度不受影响）。
+# ⚠️ max_alive 这一列必须按"同屏怪数"的量级来定，不能凭感觉写大数：
+#   实测同屏上限是 spawn.max_alive（现 38 只），而旧表里写的是 88/64/48/32 ——
+#   前两档比 38 还大，等于"降了两档，同屏一只怪没少"，只砍了飘字和装饰。
+#   所以改成 0 / 32 / 26 / 20：0 = 该档不额外限制（满配 = 完全交给 spawn 配置，
+#   满配时的体验与改动前逐帧一致）；往下每档都真的少 6 只怪。
+#   GPU 侧的开销几乎全部随"同屏怪数"线性增长（每只怪各自的 draw），
+#   所以这才是手机掉帧时最该砍的一项 —— 见 docs/08 的诊断结论。
 const CAPS: Array = [
-	{"max_alive": 88, "death_fx": 6, "floats": 24, "pops": 24, "rings": 18, "far_detail": true, "deco": true},
-	{"max_alive": 64, "death_fx": 4, "floats": 16, "pops": 16, "rings": 12, "far_detail": true, "deco": true},
-	{"max_alive": 48, "death_fx": 2, "floats": 10, "pops": 10, "rings": 8, "far_detail": false, "deco": false},
-	{"max_alive": 32, "death_fx": 1, "floats": 6, "pops": 6, "rings": 5, "far_detail": false, "deco": false},
+	{"max_alive": 0, "death_fx": 6, "floats": 24, "pops": 24, "rings": 18, "far_detail": true, "deco": true},
+	{"max_alive": 32, "death_fx": 4, "floats": 16, "pops": 16, "rings": 12, "far_detail": true, "deco": true},
+	{"max_alive": 26, "death_fx": 2, "floats": 10, "pops": 10, "rings": 8, "far_detail": false, "deco": false},
+	{"max_alive": 20, "death_fx": 1, "floats": 6, "pops": 6, "rings": 5, "far_detail": false, "deco": false},
 ]
+
+# 同屏敌人上限 = spawn 配置 ∩ 当前档位上限。
+# 档位写 0 时表示"这一档不额外限制"，直接沿用 spawn 配置（满配档就是这样）。
+static func alive_cap(spawn_cap: int, level: int) -> int:
+	var tier := int(cap(level, "max_alive", 0))
+	if tier <= 0:
+		return spawn_cap
+	return mini(spawn_cap, tier)
 
 const DOWN_FPS := 50.0
 const UP_FPS := 58.0          # 比降档阈值高 8fps → 迟滞带，防抖档

@@ -23,6 +23,8 @@ var particles_enabled: bool = true
 var screenshake_enabled: bool = true
 # 帧率目标：0 = 引擎默认（不限制/默认）
 var fps_target: int = 0
+# 屏幕上显示 FPS 计数器（排查卡顿用：玩家需要报"多少 FPS / 多少只怪"才能定位）
+var show_fps: bool = false
 # 音量 0..100（默认满）
 var music_volume: int = 100
 var sfx_volume: int = 100
@@ -50,6 +52,7 @@ func get_setting(key: String, default: Variant = null) -> Variant:
 		"particles_enabled": return particles_enabled
 		"screenshake_enabled": return screenshake_enabled
 		"fps_target": return fps_target
+		"show_fps": return show_fps
 		"music_volume": return music_volume
 		"sfx_volume": return sfx_volume
 		"move_scale": return move_scale
@@ -79,6 +82,7 @@ func _load() -> void:
 		particles_enabled = bool(d.get("particles_enabled", true))
 		screenshake_enabled = bool(d.get("screenshake_enabled", true))
 		fps_target = int(d.get("fps_target", 0))
+		show_fps = bool(d.get("show_fps", false))
 		music_volume = int(d.get("music_volume", 100))
 		sfx_volume = int(d.get("sfx_volume", 100))
 		move_scale = clampi(int(d.get("move_scale", 100)), 70, 180)
@@ -99,6 +103,7 @@ func _save() -> void:
 		"particles_enabled": particles_enabled,
 		"screenshake_enabled": screenshake_enabled,
 		"fps_target": fps_target,
+		"show_fps": show_fps,
 		"music_volume": music_volume,
 		"sfx_volume": sfx_volume,
 		"move_scale": move_scale,
@@ -158,6 +163,10 @@ func set_screenshake(on: bool) -> void:
 func set_fps_target(v: int) -> void:
 	fps_target = maxi(0, v)
 	apply_fps()
+	_save()
+
+func set_show_fps(on: bool) -> void:
+	show_fps = on
 	_save()
 
 # 音量：0..100，实时改对应音频总线，并持久化

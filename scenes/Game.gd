@@ -125,10 +125,14 @@ func _build_pools() -> void:
 		b.recycle()
 		add_child(b)
 		world.bullets.append(b)
+	# "enemies" 组：整个池子一次性挂上（对象池里的节点常驻，靠 alive 标记区分死活），
+	# 这样别处想数"场上有几只怪"只要一次 group 查询，不必每帧同步一个计数器。
+	# 现在唯一的用处是设置里打开 FPS 计数器时把同屏怪数一起显示出来。
 	for i in BattleWorld.MAX_ENEMIES:
 		var e = EnemyScene.instantiate()
 		e.recycle()
 		add_child(e)
+		e.add_to_group("enemies")
 		world.enemies.append(e)
 
 func _on_player_died() -> void:
@@ -219,7 +223,7 @@ func _step_world(delta: float) -> void:
 		rate *= float(cfg.get("boss_rate_mult", 0.55))
 	_spawn_acc += rate * delta
 	# 同屏敌人上限 = 配置值 ∩ 当前画质档位的上限（掉帧时自动砍，见 core/PerfGuard.gd）
-	var cap := mini(int(cfg.get("max_alive", 88)), Perf.int_cap("max_alive", 88))
+	var cap := Perf.alive_cap(int(cfg.get("max_alive", 88)))
 	while _spawn_acc >= 1.0:
 		_spawn_acc -= 1.0
 		if world.alive_enemy_count() < cap:

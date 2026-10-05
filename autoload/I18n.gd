@@ -43,6 +43,8 @@ const UI := {
   "settings_shake": {"en": "Screen Shake", "zh": "震屏"},
   "settings_particles": {"en": "Particles", "zh": "粒子"},
   "settings_fps": {"en": "Target FPS", "zh": "帧率目标"},
+  "settings_show_fps": {"en": "FPS Counter", "zh": "显示帧率"},
+  "settings_back": {"en": "Back", "zh": "返回"},
   "fps_default": {"en": "Default (Engine)", "zh": "默认 (引擎)"},
   "settings_language": {"en": "Language", "zh": "语言"},
   "lang_en": {"en": "English", "zh": "English"},

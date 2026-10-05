@@ -22,7 +22,9 @@ func setup(g: Node, w, es) -> void:
 func spawn_wave_burst() -> void:
 	var cfg := Data.spawn_cfg()
 	var n := int(cfg.get("spawn_burst", 14)) + GameState.wave
-	var cap := int(cfg.get("max_alive", 88))
+	# 走 Perf.alive_cap：开局这一批也得守当前画质档的上限（以前只读 spawn 配置，
+	# 结果"档位已降到保底，开局照旧撒满 38 只"）
+	var cap := Perf.alive_cap(int(cfg.get("max_alive", 88)))
 	for _i in n:
 		if world.alive_enemy_count() >= cap:
 			break

@@ -69,9 +69,25 @@ func run(_data) -> Dictionary:
 	for i in PerfGuard.MAX_LEVEL:
 		var a := PerfGuard.caps(i)
 		var b := PerfGuard.caps(i + 1)
-		if int(a.get("max_alive", 0)) <= int(b.get("max_alive", 0)): ok = false
 		if int(a.get("floats", 0)) <= int(b.get("floats", 0)): ok = false
-	chk(ok, "每降一档，同屏敌人数与飘字上限都严格变少")
+	chk(ok, "每降一档，飘字上限严格变少")
+
+	# --- 同屏怪上限：档位与 spawn 配置取交集，且必须真的少怪 ---
+	# ⚠️ 这里曾经踩过坑：档位表写 88/64/48/32，而 spawn.max_alive 实测只有 38，
+	# 于是"降了两档、同屏一只怪没少"。现在的判据是"按真实量级(38)算，每档真的少怪"。
+	var spawn_cap := 38
+	chk(PerfGuard.alive_cap(spawn_cap, 0) == spawn_cap,
+		"满配档不额外限制同屏怪数（= spawn 配置的 38，与改动前逐帧一致）")
+	chk(PerfGuard.alive_cap(spawn_cap, 1) == 32, "轻降档同屏上限 32")
+	chk(PerfGuard.alive_cap(spawn_cap, 2) == 26, "中降档同屏上限 26")
+	chk(PerfGuard.alive_cap(spawn_cap, 3) == 20, "保底档同屏上限 20")
+	var mono := true
+	for i in PerfGuard.MAX_LEVEL:
+		if PerfGuard.alive_cap(spawn_cap, i + 1) >= PerfGuard.alive_cap(spawn_cap, i): mono = false
+	chk(mono, "每降一档，同屏怪上限按 38 的真实量级严格变少（不许再出现 88 这种空档）")
+	# 档位上限比 spawn 配置更宽松时，取更小的那个（spawn 配置始终是硬顶）
+	chk(PerfGuard.alive_cap(10, 1) == 10, "spawn 配置比档位更小时，取 spawn 配置")
+	chk(PerfGuard.alive_cap(10, 0) == 10, "满配档下 spawn 配置依然是硬顶")
 	chk(PerfGuard.caps(9) == PerfGuard.caps(PerfGuard.MAX_LEVEL), "越界档位被钳到保底档")
 	chk(bool(PerfGuard.caps(0).get("far_detail", false)) \
 		and not bool(PerfGuard.caps(3).get("far_detail", true)), "只有中降以上才砍远景柔影")

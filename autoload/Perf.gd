@@ -51,6 +51,12 @@ func int_cap(key: String, fallback: int = 0) -> int:
 func bool_cap(key: String, fallback: bool = true) -> bool:
 	return bool(cap(key, fallback))
 
+# 同屏敌人上限：spawn 配置 ∩ 当前档位上限（掉帧时真正生效的那一个数）。
+# 刷怪的两处（持续刷 + 开局撒一批）都走这里，否则会出现
+# "档位已经降到保底，但开局那一批照旧撒 38 只"的漏网。
+func alive_cap(spawn_cap: int) -> int:
+	return PerfGuard.alive_cap(spawn_cap, level)
+
 # 玩家在设置里改了画质：下限提高时立刻对齐（手选低画质 → 当场降到保底档）
 func sync_quality() -> void:
 	var lo := PerfGuard.floor_from_quality(Settings.quality)
