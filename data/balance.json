@@ -19,12 +19,29 @@
     "touch_cooldown": 0.7
   },
   "wave": {
-    "length": 60,
+    "length": 45,
     "total": 20,
     "endless": true,
     "heal_percent": 0.12,
     "bonus_base": 14,
-    "bonus_per_wave": 6
+    "bonus_per_wave": 6,
+    "_doc_length": "2026-10-05：60s → 45s（用户诉求「单局 34 分钟太长」）。\n  每波少 15 秒，20 波省 5 分钟；配合下方 run_modes 的默认档改短局，\n  一局从 34 分钟降到约 11 分钟。注意：刷怪按 rate×length 计，\n  所以缩短每波 = 每波总血量与金币同步降 25%，难度与经济都跟着走（econ_probe 已复测）。",
+    "run_modes": {
+      "_doc": "三档单局时长。total=0 表示永不通关（Run.is_last_wave 对 total<=0 恒 false）。\n        minutes 只是给标题页看的预估时长（含商店停留），不参与任何计算。",
+      "short": {
+        "total": 12,
+        "minutes": 11
+      },
+      "classic": {
+        "total": 20,
+        "minutes": 19
+      },
+      "endless": {
+        "total": 0,
+        "minutes": 0
+      }
+    },
+    "default_run_mode": "short"
   },
   "final_boss": {
     "enabled": true,

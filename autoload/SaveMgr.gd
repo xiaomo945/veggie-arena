@@ -84,6 +84,17 @@ func total_runs() -> int:
 func last_character() -> String:
 	return str(data.get("character", ""))
 
+# 上次选的单局时长档（short / classic / endless）。玩过一次之后默认沿用，
+# 免得每次进游戏都要重新选 —— 但新档默认 short（一局约 11 分钟）。
+func run_mode() -> String:
+	return str(data.get("run_mode", "short"))
+
+func set_run_mode(mode: String) -> void:
+	if not Save.RUN_MODES.has(mode):
+		return
+	data["run_mode"] = mode
+	flush()
+
 # 清档（调试/隐私用）
 func wipe() -> void:
 	data = Save.defaults()

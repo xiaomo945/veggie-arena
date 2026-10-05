@@ -124,6 +124,15 @@ func run(data = null) -> Dictionary:
 	chk(str(kept["character"]) == "potato", "好档记住的角色被保留")
 	chk(int(kept["wins"]) == 1, "好档的通关次数被保留")
 
+	# ---- 7b) 单局时长档位（玩过一次之后默认沿用，但不能存进非法值）----
+	chk(str(Save.defaults().get("run_mode", "")) == "short", "新档默认短局")
+	var mode_good := Save.sanitize({"version": Save.VERSION, "run_mode": "classic"})
+	chk(str(mode_good["run_mode"]) == "classic", "好档记住的经典档被保留")
+	var mode_bad := Save.sanitize({"version": Save.VERSION, "run_mode": "ultra_mega"})
+	chk(str(mode_bad["run_mode"]) == "short", "存档里写了不存在的档 → 退回短局（不崩）")
+	var mode_num := Save.sanitize({"version": Save.VERSION, "run_mode": 7})
+	chk(str(mode_num["run_mode"]) == "short", "档位被手改成数字 → 退回短局")
+
 	# ---- 8) 下一条解锁目标（标题页"再来一局"的钩子）----
 	var s4 := Save.defaults()
 	var nx := Save.next_unlock(s4, unlocks)

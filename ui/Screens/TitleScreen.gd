@@ -6,6 +6,7 @@ extends CanvasLayer
 
 const CharacterPickerScript := preload("res://ui/Screens/CharacterPicker.gd")
 const WeaponPickerScript := preload("res://ui/Screens/WeaponPicker.gd")
+const RunModePickerScript := preload("res://ui/Screens/RunModePicker.gd")
 const Save := preload("res://core/Save.gd")
 
 var _root: Control
@@ -60,7 +61,7 @@ func _build() -> void:
 	title.add_theme_font_size_override("font_size", 44)
 	title.add_theme_color_override("font_color", Color(0.98, 0.86, 0.32))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.set_position(Vector2(0, 196))
+	title.set_position(Vector2(0, 172))
 	title.set_size(Vector2(540, 60))
 	_root.add_child(title)
 
@@ -70,7 +71,7 @@ func _build() -> void:
 	star_ico.custom_minimum_size = Vector2(28, 28)
 	star_ico.set_size(Vector2(28, 28))
 	star_ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	star_ico.set_position(Vector2(256, 152))
+	star_ico.set_position(Vector2(256, 128))
 	_root.add_child(star_ico)
 
 	# 中文品牌副标（仅中文环境显示，英文环境留白）
@@ -81,7 +82,7 @@ func _build() -> void:
 	sub.add_theme_font_size_override("font_size", 26)
 	sub.add_theme_color_override("font_color", Color(0.92, 0.94, 0.96))
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.set_position(Vector2(0, 258))
+	sub.set_position(Vector2(0, 234))
 	sub.set_size(Vector2(540, 40))
 	_sub_lbl = sub
 	_root.add_child(sub)
@@ -92,7 +93,7 @@ func _build() -> void:
 	tag.add_theme_font_size_override("font_size", 16)
 	tag.add_theme_color_override("font_color", Color(0.70, 0.74, 0.80))
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tag.set_position(Vector2(0, 304))
+	tag.set_position(Vector2(0, 280))
 	tag.set_size(Vector2(540, 28))
 	_tag_lbl = tag
 	_root.add_child(tag)
@@ -104,7 +105,7 @@ func _build() -> void:
 	best.add_theme_font_size_override("font_size", 14)
 	best.add_theme_color_override("font_color", Color(0.95, 0.82, 0.38))
 	best.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	best.set_position(Vector2(0, 332))
+	best.set_position(Vector2(0, 308))
 	best.set_size(Vector2(540, 22))
 	_best_lbl = best
 	_root.add_child(best)
@@ -130,10 +131,17 @@ func _build() -> void:
 	how.add_theme_font_size_override("font_size", 17)
 	how.add_theme_color_override("font_color", Color(0.82, 0.85, 0.90))
 	how.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	how.set_position(Vector2(0, 386))
-	how.set_size(Vector2(540, 96))
+	how.set_position(Vector2(0, 420))
+	how.set_size(Vector2(540, 84))
 	_how_lbl = how
 	_root.add_child(how)
+
+	# 单局时长三选一：放在"玩法说明"之上、角色卡之上 —— 开局前最后能改的一个决定，
+	# 不能埋在 START 底下（埋了就等于没有）。
+	var modes = Control.new()
+	modes.set_script(RunModePickerScript)
+	_root.add_child(modes)
+	modes.set_position(Vector2(0.0, 336.0))
 
 	# 角色选择：卡片横排，点一下换人（换的是属性加成 + 外观）
 	# ⚠️ 先 add_child 让 CharacterPicker._ready 算出真实宽度（卡数×卡宽），
@@ -141,17 +149,17 @@ func _build() -> void:
 	var picker = Control.new()
 	picker.set_script(CharacterPickerScript)
 	_root.add_child(picker)
-	picker.set_position(Vector2((540.0 - (picker.get("content_size") as Vector2).x) * 0.5, 488.0))
+	picker.set_position(Vector2((540.0 - (picker.get("content_size") as Vector2).x) * 0.5, 530.0))
 	# 角色网格底部：START 与"下一把解锁"提示都按它定位（角色变多、网格变高也不会被盖）。
 	# 用 content_size（网格真实高度），不能用 picker.size —— fit_overlay 已把它撑成整屏。
-	var p_bottom: float = 488.0 + (picker.get("content_size") as Vector2).y
+	var p_bottom: float = 530.0 + (picker.get("content_size") as Vector2).y
 
 	var pick_hint := Label.new()
 	pick_hint.text = I18n.t("title_pick")
 	pick_hint.add_theme_font_size_override("font_size", 13)
 	pick_hint.add_theme_color_override("font_color", Color(0.60, 0.64, 0.72))
 	pick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pick_hint.set_position(Vector2(0, 466))
+	pick_hint.set_position(Vector2(0, 508))
 	pick_hint.set_size(Vector2(540, 20))
 	_pick_lbl = pick_hint
 	_root.add_child(pick_hint)

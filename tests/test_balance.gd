@@ -7,6 +7,7 @@ const Combat := preload("res://core/Combat.gd")
 const Spawner := preload("res://core/Spawner.gd")
 const Inventory := preload("res://core/Inventory.gd")
 const Economy := preload("res://core/Economy.gd")
+const Run := preload("res://core/Run.gd")
 
 var _p := 0
 var _f := 0
@@ -195,6 +196,30 @@ func run(data) -> Dictionary:
 	chk(float(fb.get("gold_mult", 0)) > 2.0, "终局 Boss 金币倍率 %.1f 值得攒大招去打"
 		% float(fb.get("gold_mult", 0)))
 	chk(fb.has("phases"), "final_boss 有 phases 开关（是否分阶段走配置）")
+
+	# 13b) 单局时长三档（用户诉求："单局 34 分钟太长"）
+	#      锁死"新档默认短局"，因为它是"一局多久"的唯一默认值来源 ——
+	#      谁手改成 20 波，玩家的第一局就会立刻变回 30 分钟以上。
+	chk(int(wave_cfg.get("length", 60)) == 45,
+		"每波 45 秒（原 60 秒，实测 %d）" % int(wave_cfg.get("length", 60)))
+	var modes: Dictionary = wave_cfg.get("run_modes", {})
+	var mode_miss := []
+	for k in ["short", "classic", "endless"]:
+		if not modes.has(k):
+			mode_miss.append(k)
+	chk(mode_miss.is_empty(), "三档时长齐全"
+		+ ("" if mode_miss.is_empty() else " 缺: " + str(mode_miss)))
+	chk(str(wave_cfg.get("default_run_mode", "")) == "short",
+		"新玩家默认短局（实测 %s）" % str(wave_cfg.get("default_run_mode", "")))
+	chk(int(modes.get("short", {}).get("total", 99)) == 12, "短局 12 波")
+	chk(int(modes.get("classic", {}).get("total", 0)) == 20, "经典 20 波（仍可玩到原来的深度）")
+	chk(int(modes.get("endless", {}).get("total", -1)) == 0, "无尽档 total=0（永不通关）")
+	# 档位要真的生效：Run 的通关判定必须跟着当前档走，而不是读 wave.total
+	var short_cfg := {"total": int(modes.get("short", {}).get("total", 12)), "endless": true}
+	chk(Run.is_last_wave(12, short_cfg), "短局第 12 波就是最后一波")
+	chk(not Run.is_last_wave(11, short_cfg), "短局第 11 波还没通关")
+	var endless_cfg := {"total": 0, "endless": true}
+	chk(not Run.is_last_wave(999, endless_cfg), "无尽档永远不通关")
 
 	# 13c) 无尽段配置：默认开启 + 成长参数齐全
 	chk(bool(wave_cfg.get("endless", false)), "wave.endless 默认开启（通关后可继续）")

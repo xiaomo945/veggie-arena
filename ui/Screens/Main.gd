@@ -1,7 +1,6 @@
 extends Node2D
 
-# 主场景（阶段 2.1：竞技场 + 一个能跑的萝卜 + 摇杆）
-# 后面每加一个功能，只在这里加一行 add_child，不改已有逻辑。
+# 主场景：后面每加一个功能，只在这里加一行 add_child，不改已有逻辑。
 
 const PlayerScene := preload("res://entities/Player/Player.tscn")
 const JoystickScene := preload("res://ui/Joystick/Joystick.tscn")
@@ -26,6 +25,9 @@ func _ready() -> void:
 	# 横屏地基：宽屏窗口自动切 960x540 + 放大竞技场（竖屏 / 沙箱 / 单测零改动）。
 	# 必须在读取 arena 之前调用，保证下面读到的就是横屏竞技场。
 	ScreenMode.apply()
+	# 开局前把存档里记的时长档还给 Data（标题页那个选择器也会设一次，这里是兜底：
+	# 模拟/调试直开战斗时不经过标题页，也得跑对档位）
+	Data.set_run_mode(SaveMgr.run_mode())
 	var a := Data.arena()
 	var cx := float(a.get("x", 0)) + float(a.get("w", 540)) * 0.5
 	var cy := float(a.get("y", 0)) + float(a.get("h", 900)) * 0.5
@@ -139,8 +141,7 @@ func _dodge_dir(sense: float = 220.0, jitter: float = 0.22) -> Vector2:
 	away = away.rotated(_rng.randf_range(-jitter, jitter))
 	return away.limit_length(1.0)
 
-# 自动逛补给站：把"买得起的全买"跑一遍，等于把商店的购买运行期路径也测了。
-# 真实游戏里这一步由玩家手指完成，模拟只是代替点击。
+# 自动逛补给站：把"买得起的全买"跑一遍（真实游戏里这一步由玩家手指完成，模拟只是代替点击）
 func _auto_shop() -> void:
 	var cfg := Data.shop_cfg()
 	var max_slot := int(cfg.get("max_slot", 6))

@@ -22,7 +22,12 @@ const FIELDS := {
 	"runs": 0,
 	"wins": 0,
 	"character": "",
+	"run_mode": "short",
 }
+
+# 单局时长三档（与 balance.json 的 wave.run_modes 对齐）。
+# 存档里存的档位名若不在名单里（手改过 / 老档），sanitize 会退回 short。
+const RUN_MODES := ["short", "classic", "endless"]
 
 const UNLOCK_TYPES := ["total_kills", "total_gold", "best_wave", "wins"]
 
@@ -49,6 +54,8 @@ static func sanitize(raw) -> Dictionary:
 			s[k] = maxi(0, int(v))
 		elif FIELDS[k] is String:
 			s[k] = str(v)
+	if not RUN_MODES.has(str(s.get("run_mode", "short"))):
+		s["run_mode"] = "short"
 	return s
 
 # 某个统计值（给解锁判定用）

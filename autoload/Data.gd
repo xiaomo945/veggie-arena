@@ -20,6 +20,8 @@ func _ready() -> void:
 
 func load_all() -> void:
 	balance = _read("res://data/balance.json")
+	run_mode = str(balance.get("wave", {}).get("default_run_mode", "short"))
+	_wave_eff = {}
 	weapons = _read("res://data/weapons.json")
 	enemies = _read("res://data/enemies.json")
 	upgrades = _read("res://data/upgrades.json")
@@ -75,8 +77,39 @@ func arena() -> Dictionary:
 func player_cfg() -> Dictionary:
 	return balance.get("player", {})
 
+# ---------------------------------------------------------------------
+# 单局时长三档（短局 12 波 / 经典 20 波 / 无尽）
+#
+# 为什么把模式放在 Data 而不是 GameState：全项目读"总波数"的地方只有
+# `wave_cfg()["total"]` 这一个入口（HUD 进度条、WaveDirector 波次钳位、
+# Run.is_last_wave 通关判定、WaveSkip 调试滑杆）。在这里把 total 换成当前档的值，
+# 上面那些调用点一行都不用改 —— 改一处，全链路跟着走。
+#
+# 缓存的原因：wave_cfg() 每帧都被调（GameState 算波次进度），不能每次 duplicate。
+var run_mode := "short"
+var _wave_eff: Dictionary = {}
+
+func run_modes() -> Dictionary:
+	return balance.get("wave", {}).get("run_modes", {})
+
+func set_run_mode(mode: String) -> void:
+	if not run_modes().has(mode):
+		return
+	run_mode = mode
+	_wave_eff = {}
+
+# 当前档的总波数（0 = 永不通关）；配表里没这个档时退回 wave.total
+func run_total() -> int:
+	var m: Dictionary = run_modes().get(run_mode, {})
+	if m.is_empty():
+		return int(balance.get("wave", {}).get("total", 20))
+	return int(m.get("total", 20))
+
 func wave_cfg() -> Dictionary:
-	return balance.get("wave", {})
+	if _wave_eff.is_empty():
+		_wave_eff = balance.get("wave", {}).duplicate()
+		_wave_eff["total"] = run_total()
+	return _wave_eff
 
 func spawn_cfg() -> Dictionary:
 	return balance.get("spawn", {})

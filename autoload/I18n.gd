@@ -159,6 +159,13 @@ const UI := {
   "title_how": {"en": "Drag the joystick to move\nWeapons fire on their own\nClear waves · grab gold · get stronger",
                 "zh": "拖动摇杆移动\n武器自动开火\n清波次 · 捡金币 · 变强"},
   "title_pick": {"en": "CHOOSE YOUR VEG", "zh": "选择你的蔬菜"},
+  "mode_label": {"en": "RUN LENGTH", "zh": "单局时长"},
+  "mode_short": {"en": "SHORT", "zh": "短局"},
+  "mode_classic": {"en": "CLASSIC", "zh": "经典"},
+  "mode_endless": {"en": "ENDLESS", "zh": "无尽"},
+  "mode_waves": {"en": "%d waves", "zh": "%d 波"},
+  "mode_forever": {"en": "no end", "zh": "打不通关"},
+  "mode_minutes": {"en": "~%d min", "zh": "约 %d 分钟"},
   "title_start": {"en": "START", "zh": "开始"},
 
   # ---- 结算 ----
