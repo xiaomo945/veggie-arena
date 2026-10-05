@@ -42,6 +42,31 @@ rm -f "$BUILD"/*.gz "$BUILD"/*.br "$BUILD"/*.tmp
 echo "  ✅ 已清"
 
 echo
+echo "=== 2.5 发行包纯净度（把不该进包的东西拦在上传前）==="
+# ⚠️ 千万别改成 grep pck 二进制里的路径字符串 —— 那会误报。
+# 真踩过：pck 里确实能扫到 "res://art/store/og_image.png" 和 "res://tests/xxx.gd"，
+# 但用 Godot 自己 load_resource_pack + 列目录一看，包里 372 个文件、零泄漏。
+# 那些字符串来自 .import 重映射元数据（记录源文件路径），不是打包的资源本身。
+# 所以这里用 Godot 权威列目录，别自己解 pck 二进制（Godot 4.3 的目录项布局
+# 试了两版都解出垃圾 size）。
+PCK="$BUILD/index.pck"
+if [ -f "$PCK" ]; then
+  leak=$("$GODOT" --headless --path "$PROJ" --script res://scripts/pck_ls.gd -- \
+    "$PCK" res://tests/ res://scripts/ res://art/store/ res://art/raw/ 2>/dev/null \
+    | grep -E "^res://" | sed 's/^/     /')
+  if [ -n "$leak" ]; then
+    echo "  ❌ 发行包混进了不该有的文件："
+    echo "$leak"
+    echo "     若是带 class_name 的 .gd：全局脚本类表不受 export_presets 的"
+    echo "     exclude_filter 约束，去掉 class_name 改用 preload 引用即可。"
+    exit 1
+  fi
+  echo "  ✅ 发行包干净（无 tests/ scripts/ art/store/ art/raw/ 泄漏）"
+else
+  echo "  ⚠ 没有 $PCK，跳过"
+fi
+
+echo
 echo "=== 3. 重启预览服务器 ==="
 pkill -f "serve_web.py" 2>/dev/null
 sleep 1

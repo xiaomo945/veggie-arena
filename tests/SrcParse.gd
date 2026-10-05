@@ -1,4 +1,3 @@
-class_name SrcParse
 extends RefCounted
 
 # 源码解析小工具：给"读生产代码源码做断言"的单测用。
@@ -9,7 +8,12 @@ extends RefCounted
 # 所以只能 FileAccess.get_file_as_string 读源码，用正则/字符串切出坐标再断言。
 # test_bgm.gd / test_gamepad.gd / test_hud_layout.gd 都走这条路。
 #
-# 全部方法 static，测试里直接 SrcParse.ret(...) 调，不用先 new()。
+# 全部方法 static，测试里用 preload 拿到脚本后直接 SrcParse.ret(...) 调，不用 new()。
+# ⚠️ 故意不写 class_name：全局脚本类会被 Godot 登记进 class cache，
+#    多一份全局状态、也会让"这个工具到底被谁引用"更难查。
+#    （注意：曾怀疑 class_name 会让 tests/ 突破 exclude_filter 被打进发行包，
+#      用 scripts/pck_ls.gd 实测是误判 —— pck 里扫到路径字符串只是 .import
+#      元数据在记录源文件，包内并无该文件。校验发行包请用 pck_ls.gd，别 grep 二进制。）
 #
 # ⚠️ 这里踩过的两个坑，改动前先读：
 #
