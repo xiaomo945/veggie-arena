@@ -8,11 +8,13 @@ extends CanvasLayer
 # 统计收进圆角卡片，金色大按钮收官。
 
 const Run := preload("res://core/Run.gd")
+const Recap := preload("res://ui/Screens/RunSynergyRecap.gd")
 
 var _root: Control
 var _deco: Control
 var _title: Label
 var _stat: Label
+var _recap: Label
 var _btn: Button
 
 func _ready() -> void:
@@ -74,6 +76,15 @@ func _build() -> void:
 	_btn = Button.new()
 	_btn.text = I18n.t("victory_again")
 	_btn.set_size(Vector2(300, 76))
+	# 羁绊复盘：通关也要复盘（"我这次是靠堆满手枪赢的"，下一局才知道怎么复制）
+	_recap = Label.new()
+	_recap.add_theme_font_size_override("font_size", 13)
+	_recap.add_theme_color_override("font_color", Color(1.0, 0.84, 0.42))
+	_recap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_recap.set_size(Vector2(540, 22))
+	_recap.set_position(Vector2(0, 508))
+	_root.add_child(_recap)
+
 	_btn.set_position(Vector2(120, 536))
 	_btn.add_theme_font_size_override("font_size", 25)
 	Art.style_button(_btn, Color(0.98, 0.80, 0.22), Color(0.30, 0.19, 0.05), Color(0.88, 0.66, 0.16))
@@ -92,6 +103,7 @@ func _show() -> void:
 	var sc := Run.score(GameState.kills, GameState.gold, GameState.wave)
 	_stat.text = I18n.t("victory_stat") % [
 		GameState.wave, GameState.kills, GameState.gold, sc]
+	_recap.text = Recap.text()   # 羁绊复盘：这局堆到哪了，下一局才知道该往哪走
 	_root.visible = true
 	# 登场小动画：装饰从 0.4 弹到 1（一次性 Tween，弹完就不占性能）
 	_deco.scale = Vector2(0.4, 0.4)

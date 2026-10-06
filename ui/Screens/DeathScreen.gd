@@ -10,9 +10,11 @@ extends CanvasLayer
 var _root: Control
 var _title: Label
 var _stat: Label
+var _recap: Label
 var _btn: Button
 
 const Run := preload("res://core/Run.gd")
+const Recap := preload("res://ui/Screens/RunSynergyRecap.gd")
 
 func _ready() -> void:
 	layer = 40
@@ -64,6 +66,15 @@ func _build() -> void:
 	_stat.set_position(Vector2(86, 387))
 	_root.add_child(_stat)
 
+	# 羁绊复盘：这局堆到哪了（结算卡片之下、重开按钮之上的空档）
+	_recap = Label.new()
+	_recap.add_theme_font_size_override("font_size", 13)
+	_recap.add_theme_color_override("font_color", Color(1.0, 0.84, 0.42))
+	_recap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_recap.set_size(Vector2(540, 22))
+	_recap.set_position(Vector2(0, 508))
+	_root.add_child(_recap)
+
 	_btn = Button.new()
 	_btn.text = I18n.t("death_again")
 	_btn.set_size(Vector2(300, 76))
@@ -85,6 +96,7 @@ func _show() -> void:
 	var sc := Run.score(GameState.kills, GameState.gold, GameState.wave)
 	_stat.text = I18n.t("death_stat") % [
 		GameState.wave, GameState.kills, GameState.gold, sc]
+	_recap.text = Recap.text()   # 羁绊复盘：让"下一局该堆什么"有个明确的落点
 	_root.visible = true
 
 func _on_locale_changed(_l: String = "") -> void:

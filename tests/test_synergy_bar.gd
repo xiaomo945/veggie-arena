@@ -78,4 +78,16 @@ func run(_data) -> Dictionary:
 	chk("character_changed" in ts_src and "_pick_lbl.text" in ts_src,
 		"换角色时阶梯文本跟着换（不换就会一直显示上一个角色的 build）")
 
+	# ---- B4：结算页必须复盘"这局羁绊堆到哪了" ----
+	# 没有复盘，玩家只会把失败归因为运气，下一局还是随手买。
+	for f in ["res://ui/Screens/DeathScreen.gd", "res://ui/Screens/VictoryScreen.gd"]:
+		var src := SP.read(f)
+		chk("Recap.text()" in src,
+			"结算页 %s 复盘了本局羁绊（Recap.text）" % f.get_file())
+	var recap_src := SP.read("res://ui/Screens/RunSynergyRecap.gd")
+	chk("Synergy.progress(" in recap_src,
+		"复盘数字与局内同源（Synergy.progress），不会面板写 +15% 实际 +12%")
+	chk("SynText." in recap_src,
+		"复盘的属性文案走 SynText（与选角页阶梯共用一套格式，不会两处漂移）")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
