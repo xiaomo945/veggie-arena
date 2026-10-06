@@ -1550,5 +1550,38 @@
     },
     "tip": "元素 +26%，全武器 -8%",
     "tip_en": "+26% elemental, -8% all damage."
+  },
+  "skill_power_1": {
+    "zh": "技能强度 +15%",
+    "en": "Skill Power +15%",
+    "stat": "skill_power",
+    "value": 0.15,
+    "cost": 14,
+    "tip": "伤害/时长/减速一起放大，专属技能变狠",
+    "tip_en": "Damage, duration and slow all scale up — your signature skill bites harder.",
+    "cat": "skill",
+    "rarity": 2
+  },
+  "skill_power_2": {
+    "zh": "技能强度 +25%",
+    "en": "Skill Power +25%",
+    "stat": "skill_power",
+    "value": 0.25,
+    "cost": 26,
+    "tip": "大幅强化专属技能（稀有）",
+    "tip_en": "A big boost to your signature skill (rare).",
+    "cat": "skill",
+    "rarity": 3
+  },
+  "skill_cd_book": {
+    "zh": "技能冷却 -12%",
+    "en": "Skill Cooldown -12%",
+    "stat": "skill_cd_pct",
+    "value": -0.12,
+    "cost": 18,
+    "tip": "专属技能放得更频繁",
+    "tip_en": "Cast your signature skill more often.",
+    "cat": "skill",
+    "rarity": 2
   }
 }

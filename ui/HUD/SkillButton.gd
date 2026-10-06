@@ -14,6 +14,8 @@ const TYPE_FF := "ff"
 const TYPE_SKILL := "skill"      # 通用主动技能按钮（冰镇/毒雾…），由 skill_id 区分
 const TYPE_ATTACK := "attack"    # 手动攻击键：右下角大按钮，释放"最常用的技能"（primary）
 
+const SkillDef := preload("res://core/SkillDef.gd")
+
 var btn_type := "dash"
 var skill_id := ""               # TYPE_SKILL 时有效：对应 data/skills.json 的 id
 
@@ -51,13 +53,20 @@ func _ready() -> void:
 		Events.fast_forward_toggled.connect(_on_ff_sync)
 	elif btn_type == TYPE_SKILL:
 		size = SKILL_SIZE
+		# 没被外部指定的话，就用当前角色自己的专属技能
+		if skill_id.is_empty():
+			skill_id = _char_skill_id()
 		Events.skill_cooldown_changed.connect(_on_skill_cd)
 	elif btn_type == TYPE_ATTACK:
 		size = ATTACK_SIZE
-		# 攻击键释放的是"最常用的那一个"技能（skills.json 的 primary）
-		skill_id = Data.skills_primary()
+		# 攻击键释放当前角色的专属技能（换角色 = 换招，这是"换个角色像换个游戏"的一环）
+		skill_id = _char_skill_id()
 		Events.skill_cooldown_changed.connect(_on_skill_cd)
 	queue_redraw()
+
+# 当前角色该放哪个技能：角色表里写了 skill id；没写就退回通用技，按钮绝不变哑巴
+func _char_skill_id() -> String:
+	return SkillDef.skill_id_of(Data.character(GameState.character))
 
 func _on_heat(value: float, _tier: int) -> void:
 	_heat = value

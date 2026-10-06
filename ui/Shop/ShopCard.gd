@@ -122,6 +122,15 @@ func _draw() -> void:
 		border = Color(0.6, 0.5, 0.5, 0.9)
 	draw_style_box(_sb(CARD_BG if not dim else CARD_BG_DIM, border, 14.0, 4 if _hover else 2), r)
 
+	# 角色羁绊描边：本命武器整张卡描一圈金边、羁绊类描一圈淡蓝边。
+	# 这是"攒钱等它刷出来"的视觉钩子 —— 扫一眼货架就知道哪几张是给我的。
+	var syn := str(_d.get("syn", ""))
+	if syn != "" and not disabled:
+		var syn_col := Color(1.0, 0.84, 0.32, 0.95) if syn == "signature" \
+			else Color(0.55, 0.85, 1.0, 0.75)
+		draw_style_box(_sb(Color(0, 0, 0, 0), syn_col, 12.0,
+			3 if syn == "signature" else 2), r.grow(3.0))
+
 	# 矮卡（大商店 6 张）砍掉描述、缩小图标，否则文字会糊成一团
 	var compact := Ctl.is_compact(r.size.y)
 	var ib := Ctl.icon_box(r.size.y)

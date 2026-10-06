@@ -65,6 +65,8 @@ func _ready() -> void:
 	# 负责冷却推进与施放，不碰 EnemySystem（它已到 300 行红线）。
 	skill_sys = SkillSystem.new()
 	skill_sys.setup(Data.skills_cfg(), world)
+	# 伤害型技能（震地/穿透/尖刺…）必须走 EnemySystem 的漏斗，否则击杀不计、不掉钱
+	skill_sys.damage_fn = enemy_system.damage_enemy
 	Events.weapon_fired.connect(_on_weapon_fired)
 	Events.melee_swung.connect(_on_melee_swung)
 	Events.player_died.connect(_on_player_died)
@@ -280,6 +282,10 @@ func _on_wok_toss_requested() -> void:
 # ---- 主动技能（冰镇/毒雾…）：右手按钮按下 → 这里真正施放 ----
 func _on_skill_requested(id: String) -> void:
 	if skill_sys != null:
+		# 施放前按【当前角色 + 武器 + 属性道具】重算技能：买了把枪、堆够 4 件本命，
+		# 下一次按键的伤害/半径/时长立刻跟着变 —— 四元素联动就落在这一行上。
+		skill_sys.refresh(Data.character(GameState.character), GameState.weapons,
+			Data.weapons, GameState.stat_value)
 		skill_sys.cast(id)
 
 # 颠勺冲击波环已并入 FxBlast（ui/Fx/FxBlast.gd）：整发爆炸统一画在玩家当前位置，

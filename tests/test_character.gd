@@ -81,16 +81,16 @@ func run(data = null) -> Dictionary:
 	chk(Character.stats_of(archer).get("max_hp", 0.0) < 0.0, "神射萝卜生命为负（脆皮的代价）")
 	chk(Character.stats_of(bruiser).get("melee_pct", 0.0) > 0.0, "铁壁萝卜近战伤害为正（近战专精）")
 	chk(Character.stats_of(bruiser).get("speed_pct", 0.0) < 0.0, "铁壁萝卜移速为负（坦克的代价）")
-	chk(Character.stats_of(mage).get("elem_pct", 0.0) > 0.0, "灵能萝卜元素伤害为正（法师专精）")
-	chk(Character.stats_of(mage).get("dmg_pct", 0.0) < 0.0, "灵能萝卜基础伤害为负（法师的代价）")
+	chk(Character.stats_of(mage).get("elem_pct", 0.0) > 0.0, "文火萝卜元素伤害为正（法师专精）")
+	chk(Character.stats_of(mage).get("dmg_pct", 0.0) < 0.0, "文火萝卜基础伤害为负（法师的代价）")
 	# 扩充后的三类身份萝卜：暴击 / 连击 / 反刺
 	var commando: Dictionary = table.get("commando", {}) as Dictionary
 	var martial: Dictionary = table.get("martial", {}) as Dictionary
 	var hedgehog: Dictionary = table.get("hedgehog", {}) as Dictionary
-	chk(Character.stats_of(commando).get("crit_chance", 0.0) > 0.0, "特种兵萝卜暴击为正（暴击专精）")
-	chk(Character.stats_of(commando).get("max_hp", 0.0) < 0.0, "特种兵萝卜生命为负")
-	chk(Character.stats_of(martial).get("rate_pct", 0.0) > 0.0, "武术家萝卜攻速为正（连击专精）")
-	chk(Character.stats_of(martial).get("armor", 0.0) < 0.0, "武术家萝卜护甲为负（连击的代价）")
+	chk(Character.stats_of(commando).get("crit_chance", 0.0) > 0.0, "老手萝卜暴击为正（暴击专精）")
+	chk(Character.stats_of(commando).get("max_hp", 0.0) < 0.0, "老手萝卜生命为负")
+	chk(Character.stats_of(martial).get("rate_pct", 0.0) > 0.0, "刀工萝卜攻速为正（连击专精）")
+	chk(Character.stats_of(martial).get("armor", 0.0) < 0.0, "刀工萝卜护甲为负（连击的代价）")
 	chk(Character.stats_of(hedgehog).get("armor", 0.0) > 0.0, "刺猬萝卜护甲为正（反刺专精）")
 	chk(Character.stats_of(hedgehog).get("speed_pct", 0.0) < 0.0, "刺猬萝卜移速为负")
 	# 扩充规模守卫：主角已从 6 扩到 10 个（未来目标 60）

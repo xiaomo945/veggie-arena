@@ -1,23 +1,153 @@
 {
+  "_doc": "主动技能库。每个角色有自己的专属技能（characters.json 的 skill 字段指向这里的 id）。四元素联动的第三环：角色决定【放什么技能】，武器决定【这个技能变多强】（variants），道具决定【再往上叠多少】（skill_power / 属性缩放）。skill 表只描述技能本身，不认识角色；角色只写自己用哪个 id，不认识技能参数 —— 改一边不会改崩另一边。",
   "primary": "frost",
   "skills": [
     {
       "id": "frost",
+      "zh": "冰镇",
+      "en": "Chill",
+      "tip": "范围减速 + 短暂冻结，救命用",
+      "tip_en": "Slow and briefly freeze everything around you",
       "effect": "slow",
       "cooldown": 6.0,
       "radius": 235.0,
       "slow_v": 0.5,
       "slow_dur": 3.5,
-      "freeze_dur": 0.6
+      "freeze_dur": 0.6,
+      "variants": [
+        {"char": "mage", "tag": "elemental", "need": 4, "mul": {"radius": 1.25, "freeze_dur": 2.0}}
+      ]
     },
     {
-      "id": "poison",
-      "effect": "poison",
+      "id": "pierce_shot",
+      "zh": "穿透射击",
+      "en": "Piercing Shot",
+      "tip": "一箭串一排，越远的怪越疼",
+      "tip_en": "One shot through the whole line",
+      "effect": "damage",
+      "cooldown": 7.0,
+      "radius": 210.0,
+      "dmg": 46.0,
+      "variants": [
+        {"char": "archer", "tag": "gun", "need": 4, "mul": {"dmg": 1.6, "cooldown": 0.8}}
+      ]
+    },
+    {
+      "id": "quake",
+      "zh": "震地",
+      "en": "Quake",
+      "tip": "一脚跺地，范围内受伤并减速",
+      "tip_en": "Slam the ground: damage and slow",
+      "effect": "damage",
+      "cooldown": 8.0,
+      "radius": 260.0,
+      "dmg": 62.0,
+      "slow_v": 0.4,
+      "slow_dur": 2.0,
+      "variants": [
+        {"char": "bruiser", "tag": "heavy", "need": 4, "mul": {"dmg": 1.8, "radius": 1.25}}
+      ]
+    },
+    {
+      "id": "frost_nova",
+      "zh": "冰霜新星",
+      "en": "Frost Nova",
+      "tip": "大范围冻结，法师的保命本钱",
+      "tip_en": "Wide freeze — the mage's lifeline",
+      "effect": "slow",
       "cooldown": 9.0,
-      "radius": 185.0,
-      "poison_dps_pct": 0.06,
-      "burn_dps": 14.0,
-      "dur": 4.0
+      "radius": 300.0,
+      "slow_v": 0.6,
+      "slow_dur": 4.0,
+      "freeze_dur": 1.2,
+      "variants": [
+        {"char": "mage", "tag": "elemental", "need": 6, "mul": {"radius": 1.2, "freeze_dur": 1.6}}
+      ]
+    },
+    {
+      "id": "gust",
+      "zh": "疾风",
+      "en": "Gust",
+      "tip": "短时大幅提速，拉扯距离的命脉",
+      "tip_en": "Brief burst of speed to reset the spacing",
+      "effect": "frenzy",
+      "cooldown": 7.0,
+      "dur": 3.0,
+      "variants": [
+        {"char": "skirmisher", "tag": "blade", "need": 4, "mul": {"dur": 1.6, "cooldown": 0.75}}
+      ]
+    },
+    {
+      "id": "coin_rain",
+      "zh": "金币雨",
+      "en": "Coin Rain",
+      "tip": "砸钱伤人，边打边捡",
+      "tip_en": "Rains coins that hurt — and pay",
+      "effect": "damage",
+      "cooldown": 10.0,
+      "radius": 240.0,
+      "dmg": 36.0,
+      "gold": 14,
+      "variants": [
+        {"char": "hoarder", "tag": "kitchen", "need": 4, "mul": {"gold": 2.0, "dmg": 1.4}}
+      ]
+    },
+    {
+      "id": "spike_burst",
+      "zh": "尖刺爆发",
+      "en": "Spike Burst",
+      "tip": "被围住时的回答：一圈尖刺",
+      "tip_en": "The answer to being surrounded: spikes",
+      "effect": "damage",
+      "cooldown": 6.5,
+      "radius": 220.0,
+      "dmg": 58.0,
+      "variants": [
+        {"char": "hedgehog", "tag": "heavy", "need": 4, "mul": {"dmg": 1.9, "radius": 1.15}}
+      ]
+    },
+    {
+      "id": "mark",
+      "zh": "标记射击",
+      "en": "Marked Shot",
+      "tip": "点名一个目标，伤害拔高",
+      "tip_en": "Call out a target, then hit it hard",
+      "effect": "damage",
+      "cooldown": 5.5,
+      "radius": 180.0,
+      "dmg": 74.0,
+      "variants": [
+        {"char": "commando", "tag": "gun", "need": 4, "mul": {"dmg": 1.7, "cooldown": 0.8}}
+      ]
+    },
+    {
+      "id": "combo",
+      "zh": "连击狂潮",
+      "en": "Combo Frenzy",
+      "tip": "攻速暴涨一小段，拳拳到肉",
+      "tip_en": "A short window of blistering attack speed",
+      "effect": "frenzy",
+      "cooldown": 9.0,
+      "dur": 4.5,
+      "variants": [
+        {"char": "martial", "tag": "blade", "need": 4, "mul": {"dur": 1.5, "cooldown": 0.8}}
+      ]
+    },
+    {
+      "id": "magnet_pull",
+      "zh": "磁吸",
+      "en": "Magnet Pull",
+      "tip": "把怪拽到一堆再泼弹幕",
+      "tip_en": "Drag them together, then spray",
+      "effect": "damage",
+      "cooldown": 8.0,
+      "radius": 280.0,
+      "dmg": 32.0,
+      "slow_v": 0.45,
+      "slow_dur": 2.2,
+      "variants": [
+        {"char": "magnet", "tag": "gun", "need": 4, "mul": {"radius": 1.3, "dmg": 1.5}}
+      ]
     }
   ]
 }

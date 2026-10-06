@@ -151,6 +151,12 @@ const UI := {
   "stat_ricochet": {"en": "Ricochet", "zh": "弹墙"},
   "stat_shop_discount": {"en": "Haggler", "zh": "砍价"},
   "stat_hit_boost": {"en": "Adrenaline", "zh": "受击爆发"},
+  "stat_skill_power": {"en": "Skill Power", "zh": "技能强度"},
+  "stat_skill_cd": {"en": "Skill Cooldown", "zh": "技能冷却"},
+  "syn_signature": {"en": "SIGNATURE", "zh": "本命"},
+  "syn_bond": {"en": "BOND", "zh": "羁绊"},
+  "syn_next": {"en": "%d more", "zh": "还差 %d 件"},
+  "syn_max": {"en": "MAX", "zh": "已满"},
 
   # ---- 标题 ----
   "title_sub": {"en": "", "zh": "萝 卜 突 围"},

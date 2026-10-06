@@ -14,9 +14,12 @@ extends RefCounted
 #    world.player / world.enemies。不碰任何 _ 私有字段（架构守卫 R3）。
 
 const Shake := preload("res://entities/effects/Shake.gd")
+const SkillDef := preload("res://core/SkillDef.gd")
 
 var world = null                       # BattleWorld（注入）
-var _skills: Dictionary = {}           # id -> 配置字典
+var damage_fn: Callable = Callable()   # 伤害漏斗（EnemySystem.damage_enemy），Game 注入
+var _bases: Array = []                 # 技能库原文（data/skills.json）
+var _skills: Dictionary = {}           # id -> 当前生效配置（经 SkillDef 解析后）
 var _cd: Dictionary = {}               # id -> 剩余冷却（秒）
 
 # 由 Game 在 _ready 里调用：注入世界 + 读技能表
@@ -24,12 +27,28 @@ func setup(arr: Array, wld) -> void:
 	world = wld
 	_skills.clear()
 	_cd.clear()
+	_bases = arr
 	for s in arr:
 		var d: Dictionary = s
 		var id: String = str(d.get("id", ""))
 		if id == "":
 			continue
 		_skills[id] = d
+		_cd[id] = 0.0
+
+# 按【当前角色 + 当前武器 + 当前属性】重算技能参数。
+# 施放前调一次即可，参数永远是最新的：卖了把武器、买了件道具、换了角色，
+# 下一次按键立刻反映出来（技能强度随构筑变化，这正是四元素联动的手感来源）。
+func refresh(char_entry: Dictionary, weapons: Array, defs: Dictionary,
+		stat_of: Callable) -> void:
+	var act := SkillDef.active_skill(char_entry, _bases, weapons, defs, stat_of)
+	if act.is_empty():
+		return
+	var id := str(act.get("id", ""))
+	if id == "":
+		return
+	_skills[id] = act
+	if not _cd.has(id):
 		_cd[id] = 0.0
 
 # 开新一局时清冷却（Game.start_run 调用），避免上一局残留的 CD 带到开局
@@ -51,6 +70,10 @@ func cast(id: String) -> bool:
 		_apply_slow(cfg, pp)
 	elif kind == "poison":
 		_apply_poison(cfg, pp)
+	elif kind == "damage":
+		_apply_damage(cfg, pp)
+	elif kind == "frenzy":
+		_apply_frenzy(cfg)
 	_cd[id] = float(cfg.get("cooldown", 6.0))
 	Shake.kick(5.0, 0.18)
 	Events.skill_cast.emit(id, pp, float(cfg.get("radius", 150.0)))
@@ -85,6 +108,38 @@ func _apply_slow(cfg: Dictionary, pp: Vector2) -> void:
 			e.apply_fx("slow", sv, sd)
 			if fd > 0.0:
 				e.apply_fx("freeze", 1.0, fd)
+
+# ---- 效果：爆发伤害（震地 / 穿透射击 / 尖刺 / 金币雨 / 磁吸 …）----
+# 伤害必须走 EnemySystem.damage_enemy 漏斗（damage_fn），否则击杀不计、不掉钱、
+# 不涨锅气 —— 技能打死的怪变成"白死"，玩家会觉得技能很废。
+func _apply_damage(cfg: Dictionary, pp: Vector2) -> void:
+	if not damage_fn.is_valid():
+		return
+	var r: float = float(cfg.get("radius", 150.0))
+	var dmg: float = float(cfg.get("dmg", 0.0))
+	var gold: int = int(cfg.get("gold", 0))
+	var sv: float = float(cfg.get("slow_v", 0.0))
+	var sd: float = float(cfg.get("slow_dur", 0.0))
+	var hit := 0
+	for e in world.enemies:
+		if not e.alive:
+			continue
+		if e.global_position.distance_to(pp) > r + e.radius:
+			continue
+		damage_fn.call(e, dmg)
+		hit += 1
+		if sv > 0.0 and sd > 0.0:
+			e.apply_fx("slow", sv, sd)
+	if gold > 0 and hit > 0:
+		GameState.add_gold(gold)
+
+# ---- 效果：狂暴（疾风 / 连击狂潮）----
+# 复用颠勺的狂暴状态（攻速 + 移速），不新造一套：换角色放的是不同的技能，
+# 但底下共用同一条已经调好的手感，避免出现"这个角色的加速怪怪的"。
+func _apply_frenzy(cfg: Dictionary) -> void:
+	var dur: float = float(cfg.get("dur", 3.0))
+	if dur > 0.0:
+		GameState.start_frenzy(dur)
 
 # ---- 效果：毒雾 = 范围内中毒（按最大生命%结算）+ 灼烧（固定 DPS）----
 func _apply_poison(cfg: Dictionary, pp: Vector2) -> void:

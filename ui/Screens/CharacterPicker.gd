@@ -165,6 +165,23 @@ func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 	draw_string(fs, Vector2(c.x - aw * 0.5, r.position.y + _ch * 0.54), aff,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, afs, acol)
 
+	# 本命武器：选角第一眼就知道"这把萝卜该拿什么"。
+	# 这行是整个配装研究的入口 —— 玩家看到"本命·手枪"才会去琢磨堆 6 把手枪的打法。
+	var sig := entry.get("signature", {}) as Dictionary
+	var sig_key := str(sig.get("key", ""))
+	if sig_key != "":
+		var sigtxt := I18n.t("syn_signature") + "·" + I18n.pick(Data.weapon(sig_key))
+		var sfs := int(maxf(8.0, 10.0 * _k))
+		var sw := fs.get_string_size(sigtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x
+		while sw > _cw - 6.0 and sfs > 8:
+			sfs -= 1
+			sw = fs.get_string_size(sigtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x
+		while sw > _cw - 6.0 and sigtxt.length() > 2:
+			sigtxt = sigtxt.substr(0, sigtxt.length() - 1)
+			sw = fs.get_string_size(sigtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x
+		draw_string(fs, Vector2(c.x - sw * 0.5, r.position.y + _ch * 0.74), sigtxt,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, sfs, Color(1.0, 0.84, 0.32, 0.95))
+
 	# 属性摘要：有加成才显示，纯基准角色显示 "BASE"
 	# 卡片不宽：超宽先缩字号（最小 8），仍超宽再截断，避免糊到邻卡
 	var desc := Character.describe(entry)

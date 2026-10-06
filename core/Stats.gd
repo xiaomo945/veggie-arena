@@ -63,6 +63,10 @@ static func catalog() -> Array:
 		{"key": "wave_heal",         "cat": "core", "name": "stat_wave_heal",   "fmt": "flat"},
 		{"key": "ricochet",          "cat": "core", "name": "stat_ricochet",    "fmt": "flat"},
 		{"key": "hit_boost",         "cat": "core", "name": "stat_hit_boost",   "fmt": "pct"},
+		# 四元素联动的第四环：道具直接给技能加强度（伤害/时长/减速时长/掉金一起放大），
+		# 于是"买哪个道具能让我的技能更狠"成为真的取舍，技能不再是固定数值。
+		{"key": "skill_power",       "cat": "core", "name": "stat_skill_power", "fmt": "pct"},
+		{"key": "skill_cd_pct",      "cat": "core", "name": "stat_skill_cd",    "fmt": "pct"},
 
 		# ---- 经济 / 拾取 ----
 		{"key": "gold_pct",          "cat": "econ", "name": "stat_goldgain",   "fmt": "pct"},

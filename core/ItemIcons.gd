@@ -31,6 +31,9 @@ const POOLS := {
 	"pierce": ["pierce_add", "ricochet", "homing_pct"],
 	"burst": ["aoe_add", "pellets_add"],
 	"range": ["range_pct", "bullet_speed_pct"],
+	# 技能强度/冷却：四元素联动的第四环（道具→技能），单独成一张图，
+	# 玩家在货架上一眼能认出"这是给我的专属技能加料的那张卡"。
+	"skill": ["skill_power", "skill_cd_pct"],
 }
 
 # 一条升级定义 → Art.icon() 的键。没有 stat 字段的多属性道具（如 melee_focus）

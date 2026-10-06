@@ -13,6 +13,8 @@ const ShopTiers := preload("res://core/ShopTiers.gd")
 const ShopPlan := preload("res://core/ShopPlan.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
 const Weapon := preload("res://core/Weapon.gd")
+const ShopCardSyn := preload("res://ui/Shop/ShopCardSyn.gd")
+const ShopSetProgress := preload("res://ui/Shop/ShopSetProgress.gd")
 const Stats := preload("res://core/Stats.gd")
 const ItemIcons := preload("res://core/ItemIcons.gd")
 
@@ -107,17 +109,9 @@ func _refresh() -> void:
 	else:
 		_panel.hint_lbl.text = ""
 	_panel.inv.refresh(GameState.weapons, _max_lv, _max_slot)
-	_panel.sets_bar.refresh(_set_progress())
+	_panel.sets_bar.refresh(ShopSetProgress.rows(GameState.weapons, Data.weapons, Data.weapon_sets))
 
-# 套装条数据：件数 + 下一档 + 颜色 + 已翻译好的名字（SetBar 自己不碰 I18n）
-func _set_progress() -> Array:
-	var out: Array = []
-	for p in WeaponSets.progress(GameState.weapons, Data.weapons, Data.weapon_sets):
-		var it := p as Dictionary
-		out.append({"label": I18n.t("set_" + str(it.get("tag", ""))),
-			"count": int(it.get("count", 0)), "need": int(it.get("need_next", 0)),
-			"tier": int(it.get("tier", 0)), "color": str(it.get("color", "#8a7a5a"))})
-	return out
+# 套装条数据见 ui/Shop/ShopSetProgress.gd（件数 / 还差几件 / 档位 / 颜色 / 名字）
 
 func _refresh_stats() -> void:
 	if _panel == null or _panel.stats_lbl == null: return
@@ -149,6 +143,8 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 		var set_name := I18n.t("set_" + str(tags[0])) if tags.size() > 0 else ""
 		var state := I18n.t("shop_merge") if _owned_lv(key) > 0 else I18n.t("shop_new")
 		d["tag"] = (set_name + "·" if set_name != "" else "") + state
+		# 羁绊标记（本命描金边 / 羁绊类描蓝边），见 ui/Shop/ShopCardSyn.gd
+		ShopCardSyn.decorate(d, Data.character(GameState.character), key, Data.weapons, GameState.weapons)
 		# 左侧套装色竖条：整套已激活就亮起来（与 HUD 武器槽同一套视觉语言）
 		if tags.size() > 0:
 			var sd := Data.weapon_set(str(tags[0]))

@@ -38,6 +38,7 @@ const Inventory := preload("res://core/Inventory.gd")
 const Pickup := preload("res://core/Pickup.gd")
 const Level := preload("res://core/Level.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
+const StatBonus := preload("res://core/StatBonus.gd")
 var wok: Dictionary = {}
 var wok_heat: float = 0.0
 var _wok_tier: int = 0
@@ -213,9 +214,8 @@ func stat_value(stat: String) -> float:
 		for en in Inventory.stat_entries(Data.upgrade(k)):
 			if str(en.get("stat", "")) == stat:
 				total += float(en.get("value", 0)) * n
-	# 武器套装：凑够件数触发的加成等价"白送一件道具"，必须并进属性里，
-	# 否则套装只是 UI 上一行字（HUD 显示 +30% 而实际伤害不变）。
-	total += float(WeaponSets.bonuses(weapons, Data.weapons, Data.weapon_sets).get(stat, 0.0))
+	# 套装 + 角色×武器羁绊：不并进来就只是 UI 上一行字（详见 core/StatBonus.gd）
+	total += StatBonus.extra(weapons, Data.character(character), Data.weapons, Data.weapon_sets, stat)
 	return total
 
 # ---- 颠勺附带的护盾 / 狂暴 ----
