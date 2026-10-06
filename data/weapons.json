@@ -675,5 +675,182 @@
     "tags": [
       "heavy"
     ]
+  },
+  "santoku": {
+    "zh": "三德刀",
+    "en": "Santoku",
+    "type": "melee",
+    "arc": 60,
+    "dmg": 9,
+    "cd": 0.26,
+    "range": 135,
+    "bullet_speed": 0,
+    "pellets": 1,
+    "spread": 0,
+    "pierce": 0,
+    "aoe": 0,
+    "knockback": 18,
+    "cost": 20,
+    "color": "#e8e3da",
+    "tip": "窄弧快斩：张角只有 60°，要贴得更准，但出手是菜刀的两倍快",
+    "tip_en": "A narrow 60° swing — aim tighter, swings twice as fast as the cleaver.",
+    "tags": [
+      "blade"
+    ]
+  },
+  "ice_bucket": {
+    "zh": "冰桶",
+    "en": "Ice Bucket",
+    "behavior": "pulse",
+    "dmg": 8,
+    "cd": 0.6,
+    "range": 165,
+    "bullet_speed": 0,
+    "pellets": 1,
+    "spread": 0,
+    "pierce": 0,
+    "aoe": 0,
+    "cost": 24,
+    "color": "#9fd8f0",
+    "tip": "整圈泼冰水：360° 全覆盖，伤害不高，但怪从哪个方向来都得挨浇",
+    "tip_en": "Splashes ice water in a full circle. Low damage, covers every direction.",
+    "scl": {
+      "elem": 1.0
+    },
+    "tags": [
+      "elemental"
+    ]
+  },
+  "steamer": {
+    "zh": "蒸笼",
+    "en": "Steamer",
+    "behavior": "chain",
+    "chain": 3,
+    "dmg": 9,
+    "cd": 0.5,
+    "range": 300,
+    "bullet_speed": 760,
+    "pellets": 1,
+    "spread": 0,
+    "pierce": 0,
+    "aoe": 0,
+    "cost": 28,
+    "color": "#d8cfc0",
+    "tip": "蒸汽链：命中后跳向下一只怪，一锅蒸三层，怪挤在一起最划算",
+    "tip_en": "Steam arcs to the next foe — one pot steams three layers.",
+    "scl": {
+      "elem": 1.0
+    },
+    "tags": [
+      "elemental"
+    ]
+  },
+  "blowtorch": {
+    "zh": "喷火枪",
+    "en": "Blowtorch",
+    "behavior": "beam",
+    "dmg": 10,
+    "cd": 0.36,
+    "range": 290,
+    "bullet_speed": 0,
+    "pellets": 1,
+    "spread": 0,
+    "pierce": 0,
+    "aoe": 0,
+    "cost": 26,
+    "color": "#f2a24b",
+    "tip": "一条细火线穿到底：射程比微波炉短，但烤得更勤",
+    "tip_en": "A thin line of fire through everything. Shorter range than the microwave, burns more often.",
+    "scl": {
+      "elem": 1.0
+    },
+    "tags": [
+      "elemental"
+    ]
+  },
+  "meat_tenderizer": {
+    "zh": "松肉锤",
+    "en": "Meat Tenderizer",
+    "type": "melee",
+    "arc": 90,
+    "dmg": 34,
+    "cd": 0.95,
+    "range": 145,
+    "bullet_speed": 0,
+    "pellets": 1,
+    "spread": 0,
+    "pierce": 0,
+    "aoe": 0,
+    "knockback": 90,
+    "cost": 28,
+    "color": "#b98d5e",
+    "tip": "一下把怪砸飞：单发 34 伤 + 超大击退，就是抡得慢",
+    "tip_en": "One swing sends foes flying: 34 damage and a huge knockback. Slow, though.",
+    "tags": [
+      "heavy"
+    ]
+  },
+  "pressure_cooker": {
+    "zh": "高压锅",
+    "en": "Pressure Cooker",
+    "behavior": "homing",
+    "homing": 3.0,
+    "dmg": 30,
+    "cd": 1.3,
+    "range": 340,
+    "bullet_speed": 520,
+    "pellets": 1,
+    "spread": 0,
+    "pierce": 0,
+    "aoe": 12,
+    "cost": 30,
+    "color": "#a8b4c2",
+    "tip": "掀盖追踪：锅盖飞出去自己咬人，落地还溅一圈蒸汽",
+    "tip_en": "The lid flies off and chases foes down, splashing steam on landing.",
+    "tags": [
+      "heavy"
+    ]
+  },
+  "vinegar_sprayer": {
+    "zh": "醋瓶",
+    "en": "Vinegar Sprayer",
+    "behavior": "chain",
+    "chain": 2,
+    "dmg": 10,
+    "cd": 0.4,
+    "range": 280,
+    "bullet_speed": 780,
+    "pellets": 1,
+    "spread": 0,
+    "pierce": 0,
+    "aoe": 0,
+    "cost": 22,
+    "color": "#c8d8a0",
+    "tip": "酸液传导：命中后弹向旁边一只怪，两队怪贴一起就吃两份",
+    "tip_en": "Acid arcs to a neighboring foe. Grouped waves take it twice.",
+    "tags": [
+      "gun"
+    ]
+  },
+  "lemon_squeezer": {
+    "zh": "榨汁器",
+    "en": "Lemon Squeezer",
+    "behavior": "boomerang",
+    "dmg": 8,
+    "cd": 0.4,
+    "range": 215,
+    "bullet_speed": 700,
+    "pellets": 1,
+    "spread": 0,
+    "pierce": 0,
+    "aoe": 0,
+    "cost": 21,
+    "color": "#f4e04d",
+    "tip": "柠檬飞出去再飞回来，去回各能咬中一次",
+    "tip_en": "A lemon that flies out and back, biting on both passes.",
+    "tags": [
+      "gun",
+      "kitchen"
+    ]
   }
 }

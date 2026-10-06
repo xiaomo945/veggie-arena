@@ -3,7 +3,7 @@ extends RefCounted
 # 武器套装（Q1）+ 属性缩放（Q2）：core/WeaponSets.gd，纯函数 + 真实数据表。
 #
 # 要保的事：
-#   1) 32 把武器【每把】都有 tag —— 漏一把，那把就永远吃不到套装，等于少一件装备。
+#   1) 武器表【每把】都要有 tag —— 漏一把，那把就永远吃不到套装，等于少一件装备。
 #   2) 凑 2/4/6 件给的加成是该档位的【总值】而不是累加（6 件只能拿 6 件那一档）。
 #   3) 加成必须落进玩家能感知的属性（会不会生效由 GameState.stat_value 接线保证，
 #      这里至少保证 bonuses 的键是真实存在的属性 key）。
@@ -40,7 +40,7 @@ func run(data) -> Dictionary:
 		var d := defs[k] as Dictionary
 		if (d.get("tags", []) as Array).is_empty():
 			no_tag.append(k)
-	chk(no_tag.is_empty(), "32 把武器都有套装 tag（漏：%s）" % str(no_tag))
+	chk(no_tag.is_empty(), "武器表 %d 把全都有套装 tag（漏：%s）" % [defs.size(), str(no_tag)])
 	var known: Array = []
 	for t in sets:
 		if str(t) != "_doc":

@@ -35,7 +35,8 @@ func _check_weapons() -> void:
 		var p := "res://art/icon_weapon_%s.png" % Art.normalize(str(k))
 		if not ResourceLoader.exists(p):
 			miss.append(str(k))
-	chk(miss.is_empty(), "32 把武器全部有图标（缺：%s）" % (", ".join(miss) if miss.size() > 0 else "无"))
+	chk(miss.is_empty(), "武器表 %d 把全部有图标（缺：%s）"
+		% [_weapon_keys.size(), ", ".join(miss) if miss.size() > 0 else "无"])
 
 # 图标是 256×256 的：画进 60px 底座才有足够采样，太大会拖慢加载。
 # ⚠️ 走 ResourceLoader 而不是 Image.load —— 后者在导出包里读不了 png，
@@ -53,7 +54,8 @@ func _check_sizes() -> void:
 		checked += 1
 		if int(s.x) < 128 or int(s.y) < 128:
 			bad.append("%s(%dx%d)" % [k, int(s.x), int(s.y)])
-	chk(checked >= 32, "武器图标全部能被 Godot 加载（实测 %d 张）" % checked)
+	chk(checked >= 32, "武器图标全部能被 Godot 加载（实测 %d 张，武器表 %d 把）"
+		% [checked, _weapon_keys.size()])
 	chk(bad.is_empty(), "所有武器图标 ≥128px（异常：%s）" % (", ".join(bad) if bad.size() > 0 else "无"))
 
 # 道具侧：upgrades.json 每条都必须能映射到一张存在的图标。

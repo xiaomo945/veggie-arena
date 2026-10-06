@@ -4,6 +4,16 @@ extends RefCounted
 
 const Weapon := preload("res://core/Weapon.gd")
 const Combat := preload("res://core/Combat.gd")
+const SP := preload("res://tests/SrcParse.gd")
+
+# 链式每跳的衰减系数【现解析】BulletSystem 里的实装常数 —— 抄一份到测试里就会漂
+# （SrcParse 的注释里记过这个坑：test_hud_layout 抄坐标抄出过假通过）。
+# 不能写成 const：GDScript 的 const 只接受常量表达式，函数调用会 Parse Error。
+var _falloff := -1.0
+func _chain_falloff() -> float:
+	if _falloff < 0.0:
+		_falloff = SP.const_val(SP.read("res://scenes/BulletSystem.gd"), "CHAIN_FALLOFF")
+	return _falloff
 
 var _p := 0
 var _f := 0
@@ -152,11 +162,32 @@ func run(data) -> Dictionary:
 		"脉冲与近战共用同一套扇形结算")
 	chk(not Weapon.is_sector(pistol), "普通弹不走扇形结算")
 
-	# 19) 打法必须铺开：32 把武器不能清一色普通弹（"换武器只换数字"的老毛病）
+	# 19) 打法必须铺开：不能清一色普通弹（"换武器只换数字"的老毛病）
+	#  C1 后 40 把里 projectile 只占 40%（16/40）——这是硬下限，谁往表里
+	#  灌一堆普通弹把占比顶回去，这里直接红。
 	var kinds := {}
+	var proj := 0
 	for k in data.weapon_keys():
-		kinds[Weapon.behavior_of(data.weapon(k))] = true
+		var b := Weapon.behavior_of(data.weapon(k))
+		kinds[b] = true
+		if b == "projectile":
+			proj += 1
 	chk(kinds.size() >= 5, "武器打法至少 5 种（实际 %d 种）" % kinds.size())
+	chk(proj * 2 < data.weapon_keys().size(),
+		"普通弹不超过一半（%d/%d），换武器必须换手感" % [proj, data.weapon_keys().size()])
+
+	# 19b) C1 验收：每个武器类 ≥8 把 —— 任一角色凑羁绊 6 件都得有得挑
+	var tag_n := {}
+	for k in data.weapon_keys():
+		for t in (data.weapon(k) as Dictionary).get("tags", []):
+			tag_n[str(t)] = int(tag_n.get(str(t), 0)) + 1
+	chk(tag_n.size() >= 5, "武器类 ≥5 类（实际 %d 类）" % tag_n.size())
+	var thin: Array = []
+	for t in tag_n:
+		if int(tag_n[t]) < 8:
+			thin.append("%s=%d" % [t, tag_n[t]])
+	chk(thin.is_empty(), "每类武器 ≥8 把（太薄的：%s）"
+		% (", ".join(thin) if thin.size() > 0 else "无"))
 
 	# 20) behavior 拼错会静默退化成普通弹 —— 必须有测试兜住
 	var known := {"projectile": true, "melee": true, "beam": true, "pulse": true,
@@ -168,12 +199,40 @@ func run(data) -> Dictionary:
 			bad += "%s=%s " % [str(k), b]
 	chk(bad == "", ("没有拼错的 behavior" if bad == "" else "拼错：%s" % bad))
 
+	# 19c) 守卫自己的尺子不能歪：CHAIN_FALLOFF 必须真的从 BulletSystem 读出来
+	#  （读不到会静默退化成 0，连锁武器被当成单体算，整排配平断言全失真）
+	chk(_chain_falloff() > 0.0 and _chain_falloff() < 1.0,
+		"链式衰减系数是从源码现读的（%.2f，不是写死的猜测值）" % _chain_falloff())
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
 
-# 每金币能买到多少输出：带 aoe / 脉冲 / 光束的武器按同时命中 N 个折算
-func _value_per_gold(w: Dictionary, targets: int) -> float:
-	var dps := Combat.weapon_dps(w)
+# 每金币能买到多少输出。
+# ⚠️ 这里【必须】按每种打法的真实命中数折算，否则就是在奖励数值堆叠：
+#   旧模型只给 aoe / pulse / beam 乘 3，链式/回旋一律按单体算 —— 结果一把
+#   能串 3 只怪的连锁武器，为了过这道坎只能把单体伤害堆到离谱，
+#   而真正意义上的"废物卡"（单体 dps 低、又打不到第二只）反而看不出来。
+# 倍率全部对齐 scenes/BulletSystem.gd 的实装常数，不是拍脑袋：
+#   chain     = 1 + Σ CHAIN_FALLOFF^i（BulletSystem 每跳 ×0.72）
+#   boomerang = 1.6（去程+回程各能命中一次，但回程常常打空）
+#   homing    = 1.15（只追一个目标，贵在不空枪，不算群体）
+func _multiplier(w: Dictionary, targets: int) -> float:
 	var beh := Weapon.behavior_of(w)
 	if float(w.get("aoe", 0)) > 0.0 or beh == "pulse" or beh == "beam":
-		dps *= float(targets)
-	return dps / maxf(1.0, float(w.get("cost", 1)))
+		return float(targets)
+	if beh == "chain":
+		var n := int(w.get("chain", 0))
+		var m := 1.0
+		var hop := 1.0
+		for _i in range(n):
+			hop *= _chain_falloff()
+			m += hop
+		return m
+	if beh == "boomerang":
+		return 1.6
+	if beh == "homing":
+		return 1.15
+	return 1.0
+
+func _value_per_gold(w: Dictionary, targets: int) -> float:
+	var dps := Combat.weapon_dps(w)
+	return dps * _multiplier(w, targets) / maxf(1.0, float(w.get("cost", 1)))
