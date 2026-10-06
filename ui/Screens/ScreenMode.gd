@@ -12,7 +12,8 @@ const LANDSCAPE_SIZE := Vector2i(960, 540)
 # 限位是纯计算，独立成文件（不依赖 autoload），探针与单测才能直接验证它
 const CamLimits := preload("res://core/CamLimits.gd")
 # 相机跟随平滑速度（等效原 Camera2D.position_smoothing_speed）
-const CAM_FOLLOW_SPEED := 9.0
+# 9.0 → 18.0：时间常数从 ~111ms 降到 ~56ms，镜头紧跟角色，消除"移动像有延迟"的拖影观感。
+const CAM_FOLLOW_SPEED := 18.0
 # 镜头允许越过场地边界的宽度：把钢边围栏（画在场地外 BAND≈18px）完整露出来。
 # 露的是深色灶台地面而非黑框，玩家能看清"这里是战场边界"，又不会像之前那样
 # 露出半屏黑区。改这个值只需动这里，CamLimits 已经把它做成参数。

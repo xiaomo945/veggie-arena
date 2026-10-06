@@ -13,7 +13,8 @@
   },
   "player": {
     "max_hp": 100,
-    "speed": 300,
+    "speed": 250,
+    "speed_cap": 480,
     "radius": 22,
     "ifr_seconds": 0.38,
     "touch_cooldown": 0.7

@@ -121,7 +121,7 @@ func _set_progress() -> Array:
 
 func _refresh_stats() -> void:
 	if _panel == null or _panel.stats_lbl == null: return
-	var spd := int(round(float(Data.player_cfg().get("speed", 180)) * (1.0 + GameState.stat_value("speed_pct"))))
+	var spd := int(round(minf(float(Data.player_cfg().get("speed", 180)) * (1.0 + GameState.stat_value("speed_pct")), float(Data.player_cfg().get("speed_cap", 600.0)))))
 	# 攻击力是派生实数（全武器齐射一轮的伤害），不是道具加成 —— 走 Stats 聚合口径，
 	# 与 entities 层开火时的乘法完全一致，属性页/商店的数字才不会和手感对不上。
 	var atk := Stats.attack_power(GameState.weapons, GameState.stat_value, Data.weapon, Data.combat_cfg())

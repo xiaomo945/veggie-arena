@@ -10,8 +10,8 @@ extends RefCounted
 
 const DEFAULT_RADIUS := 52.0
 const DEFAULT_DEADZONE := 3.0
-const DEFAULT_K_FWD := 90.0
-const DEFAULT_K_REV := 110.0
+const DEFAULT_K_FWD := 180.0
+const DEFAULT_K_REV := 220.0
 
 # 把 balance.json 的 feel 段读成统一结构，缺键用默认值兜底。
 static func feel(cfg: Dictionary) -> Dictionary:

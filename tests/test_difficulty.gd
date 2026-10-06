@@ -97,24 +97,31 @@ func run(data) -> Dictionary:
 	var w10 := Spawner.wave_total_hp(10, sp, enemies, 60.0)
 	chk(w10 > w1 * 3.0, "第 10 波整波总血量 ≥第 1 波的 3 倍（%.0f vs %.0f）" % [w10, w1])
 
-	# ---- 诉求：移动速度太快了 ----
-	var fast: Dictionary = enemies.get("fast", {}) as Dictionary
-	var spd20 := float(fast.get("speed_base", 0.0)) + 20.0 * float(fast.get("speed_per_wave", 0.0))
-	chk(spd20 < player_spd * 0.85,
-		"快兵第 20 波移速 <玩家 85%%（%.0f vs 玩家 %.0f，留走位空间）" % [spd20, player_spd])
-	var over_fast := []
+	# ---- 诉求：第一关怪稍快，但移动速度有硬上限（不能快到不跟手）----
+	# 新设计（用户最新反馈）：开局玩家比怪略慢一点（制造张力、逼走位），
+	# 后期靠 speed_pct 道具反超，但玩家有 speed_cap 硬封顶（balance.json 的 speed_cap），
+	# 避免 speed_pct 道具无限堆导致"移速过高、操作不跟手"。
+	var spd_cap := float(data.player_cfg().get("speed_cap", 999.0))
+	# 1) 第 1 波小兵应比玩家基础速度"稍快一点点"——这就是游戏开局张力的来源
+	var grunt1 := float(gr.get("speed_base", 0.0)) + 1.0 * float(gr.get("speed_per_wave", 0.0))
+	chk(grunt1 >= player_spd * 0.9 and grunt1 <= player_spd * 1.25,
+		"第1波小兵 %.0f ∈ 玩家[%.0f,%.0f] 的 [0.9,1.25] 倍（开局怪稍快一点点，靠走位/道具反超）"
+		% [grunt1, player_spd * 0.9, player_spd * 1.25])
+	# 2) 任何怪第 20 波都不能超过玩家"硬上限"——否则满级玩家也甩不掉它（黏死）
+	var over_cap := []
 	var too_fast := []
 	for k in enemies:
 		if k == "_doc":
 			continue
 		var e2: Dictionary = enemies[k] as Dictionary
 		var s20 := float(e2.get("speed_base", 0.0)) + 20.0 * float(e2.get("speed_per_wave", 0.0))
-		if s20 >= player_spd:
-			over_fast.append("%s(%.0f)" % [str(k), s20])
+		if s20 > spd_cap:
+			over_cap.append("%s(%.0f)" % [str(k), s20])
 		if float(e2.get("speed_per_wave", 0.0)) > 3.0:
 			too_fast.append("%s(%.1f)" % [str(k), float(e2.get("speed_per_wave", 0.0))])
-	chk(over_fast.is_empty(),
-		"没有任何怪在第 20 波跑得比玩家快" + ("" if over_fast.is_empty() else " 超速: " + str(over_fast)))
+	chk(over_cap.is_empty(),
+		"没有任何怪在第 20 波超过玩家硬上限 %.0f" % spd_cap
+		+ ("" if over_cap.is_empty() else " 超速: " + str(over_cap)))
 	chk(too_fast.is_empty(),
 		"所有怪 speed_per_wave ≤3.0（移速增长已放缓）" + ("" if too_fast.is_empty() else " 过快: " + str(too_fast)))
 

@@ -25,6 +25,10 @@ var _phase := 0.0
 var _kb := Vector2.ZERO          # 受击击退脉冲（由 EnemySystem 施加/衰减）
 # 状态效果统一表：{效果名: {"v": 强度, "t": 剩余秒}}。slow 减速 / freeze 冻结 / poison 中毒(按最大生命%结算) / burn 灼烧 / shred 破甲，加新效果只多一个名字。
 var _fx: Dictionary = {}
+# 持续伤害（毒/灼烧）节流累加器：见 tick_fx。一片怪同时中毒时，若每帧都走 damage_enemy
+# （发飘字+挤压+结算），会瞬间上千次调用卡死手机——这里把 dot 累加，每 0.5s 才结算一次。
+# 抽成独立 DotTicker（core/，纯逻辑不依赖 autoload）以便单元测试直接验证节流。
+var _ticker := DotTicker.new()
 # Boss 多阶段 / 冲锋技能（仅 etype=="boss" 生效）
 var _phase_steps: Array = []        # 阶段血量阈值（来自配置；空数组=不分阶段）
 var _boss_phase := 1
@@ -42,6 +46,7 @@ var _dirty := false                 # 屏幕外时攒下的重绘请求（进屏
 const Shake := preload("res://entities/effects/Shake.gd")
 const Cull := preload("res://entities/Enemy/EnemyCull.gd")
 const EnemyShape := preload("res://entities/Enemy/EnemyShape.gd")
+const DotTicker := preload("res://core/DotTicker.gd")
 
 const RISE_T := 0.85      # Boss "从地里升起来"的时长
 
@@ -76,6 +81,7 @@ func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	_rise = -1.0
 	_dirty = false           # 屏幕外时攒着没画的重绘请求（进屏幕再补）
 	_fx.clear()      # 对象池复用：上一只怪身上的毒/冰不能带到下一只身上
+	_ticker.reset()  # 上一任残留的 dot 累加也清掉，否则会误结算到新怪身上
 	visible = true
 	_redraw()
 
@@ -83,6 +89,7 @@ func recycle() -> void:
 	alive = false
 	visible = false
 	_fx.clear()
+	_ticker.reset()
 
 func hurt(amount: float) -> bool:
 	hp -= amount
@@ -154,20 +161,11 @@ func fx(name: String) -> float:
 
 # 推进所有效果的计时，返回本帧应结算的持续伤害（毒/灼烧）。
 # 伤害由 EnemySystem 走 damage_enemy 统一结算 —— 只有那边才知道击杀/掉金/锅气。
+# ⚠️ 节流：委托 DotTicker 每 DOT_TICK 秒才返回一次累积 dot，而非每帧结算。
+# 总伤害完全不变（线性累加），但"一片怪同时中毒"时从每帧上千次伤害结算+飘字
+# 节点暴增，降到 2 次/秒/怪 —— 这是毒雾/颠勺毒之前卡死手机的真正根因。
 func tick_fx(delta: float) -> float:
-	if _fx.is_empty():
-		return 0.0
-	var dot := 0.0
-	for k in _fx.keys():
-		var d: Dictionary = _fx[k]
-		var t := float(d.get("t", 0.0)) - delta
-		if t <= 0.0:
-			_fx.erase(k)
-			continue
-		d["t"] = t
-		if k == "poison" or k == "burn":
-			dot += float(d.get("v", 0.0)) * delta
-	return dot
+	return _ticker.accumulate(_fx, delta)
 
 # 本帧实际移动速度：升起演出期间站桩；冻结优先（完全定住），其次是减速
 func move_speed() -> float:

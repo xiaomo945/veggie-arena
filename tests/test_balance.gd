@@ -132,17 +132,13 @@ func run(data) -> Dictionary:
 
 	# 11) 玩家初始移速不能慢于任何基础敌人（用户核心诉求：应≥或等于怪物速度，才能风筝走位）
 	var pspeed := float(pc.get("speed", 0))
-	var slowest_ok := true
-	var fastest_enemy := ""
-	var fastest_speed := 0.0
-	for k in data.enemies.keys():
-		var es := float(data.enemy(k).get("speed_base", 0))
-		if es > fastest_speed:
-			fastest_speed = es
-			fastest_enemy = k
-		if pspeed < es:
-			slowest_ok = false
-	chk(slowest_ok, "玩家移速 %.0f ≥ 所有基础敌人（最快 %s=%.0f）" % [pspeed, fastest_enemy, fastest_speed])
+	var cap := float(pc.get("speed_cap", 600.0))
+	# 用户新诉求：第1关怪物比玩家稍快（制造前期压力），不再要求玩家 ≥ 所有基础敌人。
+	# 这里只守住：玩家移速合理 + 硬上限存在且 > 基础且 ≤ 600（防堆叠到不跟手）。
+	chk(pspeed >= 180 and pspeed <= cap * 0.75,
+		"玩家移速 %.0f 在合理区间（≥180 且 ≤ 上限×.75=%.0f）" % [pspeed, cap * 0.75])
+	chk(cap > pspeed, "移速硬上限 %.0f > 基础 %.0f（道具可堆、但封顶）" % [cap, pspeed])
+	chk(cap <= 600.0, "移速上限 %.0f ≤ 600（防止堆叠到不跟手）" % cap)
 
 	# 12) 敌人必须"追得上人"，否则永远打不到玩家（曾经踩过：怪太慢，
 	# 还没走到跟前就被秒，玩家整局 0 次挨打 —— 难度曲线直接塌掉）
@@ -152,16 +148,14 @@ func run(data) -> Dictionary:
 	var ps20 := float(g20.get("speed", 0))
 	var ps1 := float(g1.get("speed", 0))
 	var fs10 := float(f10.get("speed", 0))
-	chk(ps1 <= pspeed * 0.45,
-		"第1波小兵 %.0f ≤ 玩家 %.0f 的 45%%（开局能轻松拉开）" % [ps1, pspeed])
-	# 下限从 55% 调到 45%：用户诉求"移动速度太快了"，speed_per_wave 已整体 ×0.45。
-	# 这里的下限只是"后期还得有点威胁、不能靠绕圈无脑躲"的保底，不是难度诉求本身。
+	# 用户诉求：第1关怪物比玩家"稍微快一点点"——主力小兵第1波速度落在玩家的 [0.9, 1.25] 倍，
+	# 制造前期压迫但不追死；下限 0.9 保证怪真能构成威胁（不会慢到绕着走就赢）。
+	chk(ps1 >= pspeed * 0.9 and ps1 <= pspeed * 1.25,
+		"第1波小兵 %.0f ∈ 玩家 %.0f 的 [0.9, 1.25]（前期稍快、可走位）" % [ps1, pspeed])
 	chk(ps20 >= pspeed * 0.45,
-		"第20波小兵 %.0f ≥ 玩家 %.0f 的 45%%（后期仍构成威胁，但不再是 55%% 的压迫感）"
-		% [ps20, pspeed])
+		"第20波小兵 %.0f ≥ 玩家 %.0f 的 45%%（后期仍构成威胁）" % [ps20, pspeed])
 	chk(fs10 >= pspeed * 0.45,
-		"第10波冲刺兵 %.0f ≥ 玩家 %.0f 的 45%%（快兵要靠冲刺/预判，但不该快到追死）"
-		% [fs10, pspeed])
+		"第10波冲刺兵 %.0f ≥ 玩家 %.0f 的 45%%（快兵有威胁但可应对）" % [fs10, pspeed])
 
 	# 12b) ⚠️ 这条是踩过坑才补的：上面只保证"敌人追得上玩家"，却没保证
 	# "玩家跑得掉"。旧数值下第20波冲刺兵 300 > 玩家 240 —— 后期玩家比怪还慢，
@@ -176,8 +170,8 @@ func run(data) -> Dictionary:
 		if sp > fastest_late:
 			fastest_late = sp
 			fastest_name = k
-	chk(fastest_late <= pspeed * 0.90,
-		"第20波最快敌人 %s=%.0f ≤ 玩家 %.0f 的 90%%（后期还能拉开，不是被黏死）"
+	chk(fastest_late <= pspeed * 1.15,
+		"第20波最快敌人 %s=%.0f ≤ 玩家 %.0f 的 1.15 倍（后期仍略快，但道具可大幅反超）"
 		% [fastest_name, fastest_late, pspeed])
 
 	# 13) 敌人要活得够久，能走到玩家跟前（出生点在边缘，离中心 250px 以上）

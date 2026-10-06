@@ -245,9 +245,12 @@ func _refresh_speed() -> void:
 	# 刚挨过打：短暂加速，好让玩家有机会拉开距离而不是被黏着磨死
 	if _boost_left > 0.0:
 		mult *= 1.0 + GameState.stat_value("hit_boost")
-	_speed = float(Data.player_cfg().get("speed", 180)) \
+	# ⚠️ 硬上限：speed_pct 道具可一直堆、frenzy/hit_boost 还会乘，不封顶就会"飘到不跟手"。
+	#   cap 来自 balance.json 的 player.speed_cap（含所有倍率后的最终像素/秒上限）。
+	var cap := float(Data.player_cfg().get("speed_cap", 600.0))
+	_speed = minf(float(Data.player_cfg().get("speed", 180)) \
 		* (1.0 + GameState.stat_value("speed_pct")) \
-		* (float(Settings.move_scale) / 100.0) * mult
+		* (float(Settings.move_scale) / 100.0) * mult, cap)
 
 # ---- 给外观层（PlayerVisual）的只读接口 ----
 # PlayerVisual 是 Player 自己的绘制层，每帧要读这些状态。走访问器而不是让它直接

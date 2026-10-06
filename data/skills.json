@@ -14,10 +14,10 @@
       "id": "poison",
       "effect": "poison",
       "cooldown": 9.0,
-      "radius": 225.0,
+      "radius": 185.0,
       "poison_dps_pct": 0.06,
       "burn_dps": 14.0,
-      "dur": 4.5
+      "dur": 4.0
     }
   ]
 }
