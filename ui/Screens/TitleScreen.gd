@@ -5,6 +5,7 @@ extends CanvasLayer
 # 出海游戏，主文案用英文；"萝卜突围"作中文品牌副标（项目已嵌 CJK 字体，能正常显示）。
 
 const CharacterPickerScript := preload("res://ui/Screens/CharacterPicker.gd")
+const CharTiers := preload("res://ui/Screens/CharTiers.gd")
 const WeaponPickerScript := preload("res://ui/Screens/WeaponPicker.gd")
 const RunModePickerScript := preload("res://ui/Screens/RunModePicker.gd")
 const Save := preload("res://core/Save.gd")
@@ -154,15 +155,18 @@ func _build() -> void:
 	# 用 content_size（网格真实高度），不能用 picker.size —— fit_overlay 已把它撑成整屏。
 	var p_bottom: float = 530.0 + (picker.get("content_size") as Vector2).y
 
+	# 这一行是"这条 build 长什么样"：本命/羁绊每一档给多少，开局前就摊开给玩家看。
+	# 原来是"选一个萝卜"的提示 —— 卡片网格本身已经够直白，而阶梯才是玩家真正要读的信息。
 	var pick_hint := Label.new()
-	pick_hint.text = I18n.t("title_pick")
-	pick_hint.add_theme_font_size_override("font_size", 13)
+	pick_hint.text = CharTiers.line(Data.character(GameState.character))
+	pick_hint.add_theme_font_size_override("font_size", 11)
 	pick_hint.add_theme_color_override("font_color", Color(0.60, 0.64, 0.72))
 	pick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pick_hint.set_position(Vector2(0, 508))
 	pick_hint.set_size(Vector2(540, 20))
 	_pick_lbl = pick_hint
 	_root.add_child(pick_hint)
+	Events.character_changed.connect(_on_character_changed)
 
 	# 开始按钮
 	var btn := Button.new()
@@ -197,6 +201,11 @@ func _build() -> void:
 	_picker.set_back(_on_picker_back)
 	get_parent().add_child(_picker_layer)
 	_picker_layer.visible = false
+
+# 换角色 = 换一整套阶梯，这行字必须跟着换（不换就会显示上一个角色的 build）
+func _on_character_changed(_key: String = "") -> void:
+	if _pick_lbl != null:
+		_pick_lbl.text = CharTiers.line(Data.character(GameState.character))
 
 func _on_start() -> void:
 	# START 是整局的第一次点击：在这里出第一声，保证 Web/iOS 的 AudioContext

@@ -71,4 +71,11 @@ func run(_data) -> Dictionary:
 	chk("Synergy.progress(" in syn_src,
 		"羁绊条的数据来自 Synergy.progress（与战斗结算同一套规则，不会两处不一致）")
 
+	# ---- B3：选角页必须把整条阶梯摊开（开局前就能研究 build）----
+	var ts_src := SP.read("res://ui/Screens/TitleScreen.gd")
+	chk("CharTiers.line(" in ts_src,
+		"选角页画出了本命/羁绊的完整阶梯（CharTiers.line）")
+	chk("character_changed" in ts_src and "_pick_lbl.text" in ts_src,
+		"换角色时阶梯文本跟着换（不换就会一直显示上一个角色的 build）")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
