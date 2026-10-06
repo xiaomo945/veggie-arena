@@ -8,6 +8,7 @@ const GameScene := preload("res://scenes/Game.tscn")
 const TitleScene := preload("res://ui/Screens/TitleScreen.gd")
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
+const SkillDef := preload("res://core/SkillDef.gd")
 
 var player: Node2D
 var game: Node
@@ -210,15 +211,13 @@ func _run_simulation(seconds: float) -> void:
 		if use_dash and (i % 90 == 0 or _threat_close(150.0)):
 			_threats += 1
 			Events.dash_requested.emit()
-		# 模拟 AI 也会用主动技能（冰镇减速 + 毒雾持续伤害）：既验证技能运行期路径，
-		# 也贴近"会玩的玩家会放技能"的真实情况——纯走位 AI 在更密的怪海里会被磨死，
-		# 而真玩家会靠技能控场。这样网关才代表真实可玩性，而不是逼着把怪量调到"无聊"。
+		# 模拟 AI 也要放技能（贴近真玩家的控场）；id 必须按【当前角色】取 —— 技能表已
+		# 角色化，写死 "frost"/"poison" 在别的角色身上就是空招。
 		if _threat_close(170.0) and i % 60 == 0:
 			Events.wok_toss_requested.emit()   # 被围时放颠勺清场（有充能才生效）
 		if _threat_close(150.0) and i % 30 == 0:
-			Events.skill_requested.emit("frost")
-		if i % 180 == 0:
-			Events.skill_requested.emit("poison")
+			Events.skill_requested.emit(
+				SkillDef.skill_id_of(Data.character(GameState.character)))
 		player.step(1.0 / 60.0)
 		game.step(1.0 / 60.0)
 		# 波次结束：自动逛补给站（买得起的全买，验证购买运行期路径不崩），再开下一波

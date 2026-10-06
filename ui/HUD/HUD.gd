@@ -14,6 +14,7 @@ extends CanvasLayer
 const HudTopScript := preload("res://ui/HUD/HudTop.gd")
 const HudBannersScript := preload("res://ui/HUD/HudBanners.gd")
 const HudButtonsScript := preload("res://ui/HUD/HudButtons.gd")
+const HudSynergyScript := preload("res://ui/HUD/HudSynergy.gd")
 const WaveSkipScript := preload("res://ui/HUD/WaveSkip.gd")
 const FpsMeterScript := preload("res://ui/HUD/FpsMeter.gd")
 const DebugMode := preload("res://core/DebugMode.gd")
@@ -31,6 +32,7 @@ const COMBO_MIN := 2        # 连击 >=2 才显示
 
 var _top
 var _banners
+var _syn              # 羁绊进度条（自己拉数据、自己画，跨档时给本文件发 tier_up）
 var _buttons
 var _wok_last_tier := 0
 var _wok_charges_n := 0     # 当前已存颠勺充能数（按钮常驻显示用）
@@ -46,6 +48,12 @@ func _ready() -> void:
 	# 顺序即绘制顺序，也决定触摸优先级：按钮最后加 → 永远压在最上面。
 	_top = HudTopScript.new()
 	add_child(_top)
+
+	# 羁绊进度条：战斗中常驻显示"本命 3/6 还差几件"。它自己每 0.25s 拉一次数据，
+	# 本文件只需要把它的跨档通知转给横幅（规则全在 HudSynergy 里）。
+	_syn = HudSynergyScript.new()
+	add_child(_syn)
+	_syn.tier_up.connect(_on_syn_tier_up)
 
 	_banners = HudBannersScript.new()
 	add_child(_banners)
@@ -174,6 +182,11 @@ func _check_set_tier_up() -> void:
 			int(d.get("count", 0))] + _set_gain(sd, tier),
 			Color(str(sd.get("color", "#ffd08a"))))
 	_set_tiers = tiers
+
+# 羁绊跨档（本命/武器类多凑够一件）：与套装跨档走同一条横幅通道。
+# 不弹的话，"我又凑齐一档"只表现为面板里的一行数字，玩家根本注意不到。
+func _on_syn_tier_up(text: String, color: Color) -> void:
+	_banners.pop_set(text, color)
 
 # 这一档给了什么（取第一条加成写进横幅，全写会太长）
 func _set_gain(sd: Dictionary, tier: int) -> String:

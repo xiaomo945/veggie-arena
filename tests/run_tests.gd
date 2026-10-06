@@ -35,6 +35,7 @@ const TShopFeedback := preload("res://tests/test_shop_feedback.gd")
 const TArtIcons := preload("res://tests/test_art_icons.gd")
 const TSynergy := preload("res://tests/test_synergy.gd")
 const TDotThrottle := preload("res://tests/test_dot_throttle.gd")
+const TSynergyBar := preload("res://tests/test_synergy_bar.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -73,6 +74,7 @@ func _initialize() -> void:
 	_run("Stats(属性目录)", TStats, data)
 	_run("Orientation(横屏竞技场)", TOrientation, data)
 	_run("HudLayout(顶部 HUD 不重叠)", THudLayout, data)
+	_run("SynergyBar(羁绊条不压玩家/已接线)", TSynergyBar, data)
 	_run("CamLimits(相机跟随/防黑边)", TCamLimits, data)
 	_run("ShopPlan(商店节奏/单卡可控)", TShopPlan, data)
 	_run("PerfGuard(帧率自适应降级)", TPerfGuard, data)

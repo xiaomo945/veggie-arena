@@ -14,6 +14,7 @@ extends RefCounted
 const Synergy := preload("res://core/Synergy.gd")
 const SkillDef := preload("res://core/SkillDef.gd")
 const Stats := preload("res://core/Stats.gd")
+const SP := preload("res://tests/SrcParse.gd")
 
 var _p := 0
 var _f := 0
@@ -151,5 +152,39 @@ func run(data) -> Dictionary:
 		"不同角色拿到不同专属技能（含 mark/quake/combo）")
 	chk(SkillDef.active_skill(cmd, skills, [], defs, no_stat).get("id", "") == "mark",
 		"老手的生效技能是 mark（角色专属）")
+
+	# ---- 10) 技能 UI 完整性（真踩过的漂移：改了技能表忘了改按钮）----
+	# 技能表角色化之后，HUD 扇面还写死 id="poison"、I18n 只有 frost/poison 两个名字，
+	# 于是按钮点了没反应、名字显示成 "skill_mark" 这种 key。肉眼看不出来，钉死在源码上。
+	var i18n_src := SP.read("res://autoload/I18n.gd")
+	var btn_src := SP.read("res://ui/HUD/SkillButton.gd")
+	var layout_src := SP.read("res://ui/HUD/HudLayout.gd")
+	chk(i18n_src.length() > 0 and btn_src.length() > 0 and layout_src.length() > 0,
+		"能读到 I18n / SkillButton / HudLayout 源码（路径写错会导致假通过）")
+	var skill_ids: Array = []
+	for s in skills:
+		skill_ids.append(str((s as Dictionary).get("id", "")))
+	var no_name: Array = []
+	var no_color: Array = []
+	for sid in skill_ids:
+		if str(sid).is_empty():
+			continue
+		if not ('"skill_%s"' % sid) in i18n_src:
+			no_name.append(sid)
+		if not ('"%s": Color' % sid) in btn_src:
+			no_color.append(sid)
+	chk(no_name.is_empty(), "每个技能都有按钮短名翻译 skill_<id>（缺：%s）" % str(no_name))
+	chk(no_color.is_empty(), "每个技能在按钮配色表里都有颜色（缺：%s）" % str(no_color))
+	# 反向：I18n 里不能留着指向"已经不存在的技能"的僵尸词条
+	var re := RegEx.new()
+	re.compile("\"skill_([a-z_]+)\"")
+	var orphan: Array = []
+	for m in re.search_all(i18n_src):
+		if not skill_ids.has(m.get_string(1)):
+			orphan.append(m.get_string(1))
+	chk(orphan.is_empty(), "I18n 里没有指向不存在技能的残留词条（残留：%s）" % str(orphan))
+	var fan_body := SP.func_body(layout_src, "func buttons_fan()")
+	chk(fan_body.length() > 0 and not fan_body.contains("\"id\""),
+		"HUD 扇面按钮不写死技能 id（按当前角色取，避免放出技能表里没有的招）")
 
 	return {"pass": _p, "fail": _f, "failures": _failures}

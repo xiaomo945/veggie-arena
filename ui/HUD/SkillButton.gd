@@ -235,8 +235,15 @@ func _draw_skill(c: Vector2) -> void:
 	if fs == null:
 		return
 	var txt := I18n.t("skill_" + skill_id)
-	draw_string(fs, c + Vector2(-22.0, 7.0), txt,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 1.0, 1.0, 0.96))
+	# 按钮只有 76px 宽：技能名先按 18 号画，超宽就一路缩到 12 号，绝不溢出按钮外。
+	# （技能名已角色化，长度不一 —— 写死 18 号 + 左对齐会让长名字顶出按钮）
+	var tfs := 18
+	var tw := fs.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs).x
+	while tw > size.x - 12.0 and tfs > 12:
+		tfs -= 1
+		tw = fs.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs).x
+	draw_string(fs, Vector2(c.x - tw * 0.5, c.y + 7.0), txt,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, Color(1.0, 1.0, 1.0, 0.96))
 
 # ---- 手动攻击键：右下角最大最显眼，释放"最常用的技能"（primary）----
 # 复用 _skill_ready/_skill_ratio（_ready 里已把 skill_id 绑到 primary，冷却自动同步）
@@ -263,10 +270,22 @@ func _draw_attack(c: Vector2) -> void:
 	draw_string(fs, c + Vector2(-16.0, radius * 0.80), I18n.t("hud_attack"),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 1.0, 1.0, 0.92))
 
-# 技能按钮主色：按 id 区分（与 FxSkill 的特效色一致）
+# 技能按钮主色：按 id 区分（与 FxSkill 的特效色一致）。
+# 十个角色十个专属技能，各给一色 —— 玩家一眼能认出"这一局的招是什么"，
+# 换角色时按钮颜色跟着变，也是"换个角色像换个游戏"的一环。
+const SKILL_COLORS := {
+	"frost": Color(0.50, 0.85, 1.00),         # 冰镇 —— 冰蓝
+	"frost_nova": Color(0.62, 0.72, 1.00),    # 冰霜新星 —— 淡紫蓝
+	"pierce_shot": Color(0.55, 0.92, 0.78),   # 穿透射击 —— 青
+	"quake": Color(0.88, 0.66, 0.34),         # 震地 —— 土黄
+	"gust": Color(0.60, 0.95, 0.62),          # 疾风 —— 浅绿
+	"coin_rain": Color(1.00, 0.82, 0.30),     # 金币雨 —— 金
+	"spike_burst": Color(0.82, 0.74, 0.52),   # 尖刺爆发 —— 灰褐
+	"mark": Color(0.96, 0.45, 0.38),          # 标记射击 —— 红
+	"combo": Color(1.00, 0.55, 0.28),         # 连击狂潮 —— 橙红
+	"magnet_pull": Color(0.45, 0.72, 0.95),   # 磁吸 —— 蓝
+}
+const SKILL_COLOR_FALLBACK := Color(0.90, 0.70, 0.40)
+
 func _skill_color() -> Color:
-	if skill_id == "frost":
-		return Color(0.5, 0.85, 1.0)
-	if skill_id == "poison":
-		return Color(0.55, 0.85, 0.4)
-	return Color(0.9, 0.7, 0.4)
+	return SKILL_COLORS.get(skill_id, SKILL_COLOR_FALLBACK) as Color

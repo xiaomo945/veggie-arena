@@ -71,8 +71,18 @@ const UI := {
   "hud_xp": {"en": "XP %d/%d", "zh": "经验 %d/%d"},
   "level_up": {"en": "LEVEL UP!  LV %d", "zh": "升级！Lv %d"},
   "level_up_multi": {"en": "LEVEL UP!  +%d  →  LV %d", "zh": "连升 %d 级！Lv %d"},
+  # 主动技能名：十个角色各有专属技能（data/skills.json 的 id → 这里）。
+  # 按钮只有 76px 宽，所以这里存的是【短名】（冰镇/穿透/标记…），不是技能全名。
   "skill_frost": {"en": "FROST", "zh": "冰镇"},
-  "skill_poison": {"en": "TOXIC", "zh": "毒雾"},
+  "skill_pierce_shot": {"en": "PIERCE", "zh": "穿透"},
+  "skill_quake": {"en": "QUAKE", "zh": "震地"},
+  "skill_frost_nova": {"en": "NOVA", "zh": "冰爆"},
+  "skill_gust": {"en": "GUST", "zh": "疾风"},
+  "skill_coin_rain": {"en": "COINS", "zh": "金币雨"},
+  "skill_spike_burst": {"en": "SPIKES", "zh": "尖刺"},
+  "skill_mark": {"en": "MARK", "zh": "标记"},
+  "skill_combo": {"en": "COMBO", "zh": "连击"},
+  "skill_magnet_pull": {"en": "MAGNET", "zh": "磁吸"},
   "hud_attack": {"en": "ATK", "zh": "攻击"},
 
   # ---- 商店 ----

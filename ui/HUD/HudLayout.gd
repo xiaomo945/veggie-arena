@@ -20,8 +20,10 @@ func design_size() -> Vector2:
 func safe_top() -> float: return 10.0 if Data.is_landscape() else 34.0
 
 # ---- 顶部 HUD 的局部高度（不含 safe_top）----
-# 最后一个控件的底边 = 文字第二行底 77，取 78 留 1px。改任何 Y 都要回来核这个数。
-const TOP_CONTENT_H := 78.0
+# 最后一个控件的底边 = 羁绊条底（局部 y 80 + 高 16 = 96）。
+# ⚠️ 羁绊条（HudSynergy）是这一带最新的控件，改它的 Y 必须回来核这个数，
+#    否则相机按旧高度让位，玩家贴场地最上沿时会被羁绊条压住（同类 bug 真踩过）。
+const TOP_CONTENT_H := 96.0
 # HUD 底边之下再多留一点，让角色贴着 HUD 站时看着不拥挤。
 const TOP_BLOCK_PAD := 6.0
 # 顶部 HUD 在屏幕上占的总高 —— 相机上边距就按这个让位。
@@ -34,13 +36,21 @@ func top_pause_pos() -> Vector2:
 	return Vector2(908.0, 2.0) if Data.is_landscape() else Vector2(492.0, 2.0)
 func top_pause_size() -> float: return 40.0
 
+# ---- HudSynergy：羁绊进度条（顶部 HUD 之下那条）----
+# 屏幕绝对坐标（与 FpsMeter 同款：直接挂 HUD CanvasLayer，不经 HudTop 的平移）。
+# 局部 y=80：上面三条进度条 + 武器槽 + 文字行占到 76，再往下 4px 就是它的地盘。
+func synergy_pos() -> Vector2:
+	return Vector2(8.0, safe_top() + 80.0)
+func synergy_h() -> float: return 16.0
+func synergy_w() -> float: return 480.0 if Data.is_landscape() else 400.0
+
 # ---- FPS 计数器（默认隐藏）----
 # ⚠️ 屏幕绝对坐标：FpsMeter 直接挂在 HUD CanvasLayer 下，不经 HudTop 的 safe_top 偏移
 #    （第一版写 (8,80) 时正好压进 "WAVE 1/12" 那行文字 —— 截图目检抓出来的）。
-#    竖屏顶部块 = 34 + 78 = 112，放 118；横屏 = 10 + 78 = 88，放 96。
+#    现在羁绊条又占了一条：竖屏顶部块 = 34 + 96 = 130，放 134；横屏 = 10 + 96 = 106，放 112。
 #    都贴着相机让位线下沿，不压任何 HUD 控件，只占玩家不会久留的屏幕边缘。
 func fps_pos() -> Vector2:
-	return Vector2(8.0, 96.0) if Data.is_landscape() else Vector2(8.0, 118.0)
+	return Vector2(8.0, 112.0) if Data.is_landscape() else Vector2(8.0, 134.0)
 
 # ---- HudBars：顶部三条进度条 ----
 # 右端停在 476（竖屏）/ 892（横屏），正好给暂停按钮左边缘留 16px 空当。
@@ -82,17 +92,22 @@ func buttons_pivot() -> Vector2:
 func buttons_arc_r() -> float: return 130.0 if Data.is_landscape() else 152.0
 func buttons_dash_center() -> Vector2:
 	return Vector2(690.0, 470.0) if Data.is_landscape() else Vector2(455.0, 500.0)
+# ⚠️ skill 槽【不写 id】：技能表已角色化（十个角色十个专属技能），写死 id
+#    就会放出一个技能表里已经没有的招（真踩过：这里写 poison，而 poison 已被
+#    角色专属技能取代 → 按钮点了没反应）。留空 = SkillButton 自己按当前角色取。
 func buttons_fan() -> Array:
+	# 横屏：dash 就在扇面下沿（(690,470) 离圆心只有 136 ≈ arc_r），150° 会整块压在
+	# 冲刺键上，所以快进挪到 285°（右上方），wok 240° 与它 x 方向让开 84px 以上。
 	if Data.is_landscape():
 		return [
 			{"type": "wok",   "deg": 240.0},
-			{"type": "skill", "id": "frost",  "deg": 195.0},
-			{"type": "skill", "id": "poison", "deg": 150.0},
+			{"type": "skill", "deg": 195.0},
+			{"type": "ff",    "deg": 285.0},
 		]
 	return [
 		{"type": "wok",   "deg": 240.0},
-		{"type": "skill", "id": "frost",  "deg": 195.0},
-		{"type": "skill", "id": "poison", "deg": 150.0},
+		{"type": "skill", "deg": 195.0},
+		{"type": "ff",    "deg": 150.0},
 	]
 
 # ---- Joystick：左下移动区 + 固定底盘 ----
