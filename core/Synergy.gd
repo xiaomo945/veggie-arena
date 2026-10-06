@@ -127,6 +127,37 @@ static func progress(weapons: Array, char_entry: Dictionary, defs: Dictionary) -
 		}
 	return out
 
+# 再买一件（本命 or 羁绊类）会带来什么变化 —— 商店卡片上那个"买了给多少"的数字。
+#   {"cross": bool, "need": int, "stat": String, "delta": float}
+#   cross=true  → 买下就跨档，delta 是立刻拿到的属性增量（stat 是属性 key）
+#   cross=false → 买了也不跨档，need 是"买完之后还差几件"（0 = 已经满档）
+# 放在 core 而不是 UI：这一段是纯规则，必须能单测（UI 层用 autoload，单测拉不起来）。
+static func next_gain(weapons: Array, char_entry: Dictionary, defs: Dictionary,
+		branch: String) -> Dictionary:
+	var br := char_entry.get(branch, {}) as Dictionary
+	var tiers = br.get("tiers", [])
+	var n := 0
+	if branch == "signature":
+		n = signature_count(weapons, str(br.get("key", "")))
+	else:
+		n = bond_count(weapons, str(br.get("tag", "")), defs)
+	var t_now := tier_of(n, tiers)
+	var t_after := tier_of(n + 1, tiers)
+	if t_after <= t_now:
+		var need := next_need(n + 1, tiers)
+		return {"cross": false, "need": maxi(0, need - (n + 1)), "stat": "", "delta": 0.0}
+	# 跨档：取增量最大的那条属性（卡片只有一行，全写会太长）
+	var a := tier_stats(tiers, t_now)
+	var b := tier_stats(tiers, t_after)
+	var best_k := ""
+	var best_d := 0.0
+	for k in b:
+		var dv := float(b[k]) - float(a.get(k, 0.0))
+		if dv > best_d:
+			best_d = dv
+			best_k = str(k)
+	return {"cross": true, "need": 0, "stat": best_k, "delta": best_d}
+
 # 某把武器对当前角色是"本命"吗（商店卡片高亮用）
 static func is_signature(char_entry: Dictionary, weapon_key: String) -> bool:
 	var sig: Dictionary = char_entry.get("signature", {}) as Dictionary

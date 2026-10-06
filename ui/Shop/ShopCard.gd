@@ -160,7 +160,19 @@ func _draw() -> void:
 	if not compact:
 		var tag := str(_d.get("tag", ""))
 		var tag_c := accent if not dim else Color(0.55,0.58,0.62,0.8)
-		_center(tag, tx + 8.0, 47, 12, tag_c, r.size.x - tx - 92.0)
+		var tag_w := _font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		# 从左往右画（原来是居中）：右边要让给羁绊收益那一小截金字，两者不能抢位
+		_center(tag, tx + 8.0 + tag_w * 0.5, 47, 12, tag_c, r.size.x - tx - 92.0)
+		# 羁绊收益："买了这张立刻给多少"（跨档）或"还差几件"（没跨档）。
+		# 只描金边蓝边，玩家只知道"这张对我有用"；写上数字才知道"现在买值不值"。
+		var gain := str(_d.get("syn_gain", ""))
+		if gain != "" and not sold:
+			var gfs := 11
+			var gw := _font.get_string_size(gain, HORIZONTAL_ALIGNMENT_LEFT, -1, gfs).x
+			var gx := r.size.x - 92.0 - gw
+			if gx > tx + tag_w + 10.0:      # 放不下就不画，绝不叠到标签上
+				draw_string(_font, Vector2(gx, 47.0), gain, HORIZONTAL_ALIGNMENT_LEFT,
+					-1, gfs, Color(1.0, 0.84, 0.32, 0.95))
 
 	# 描述（按字符换行；卡矮就只画 1 行并上移，底部整条留给价格药丸，避免重叠）
 	# 验算：100 高卡 desc y=60（1 行，字底 ~72），药丸 y=72 起 → 分毫不压；

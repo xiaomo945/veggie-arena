@@ -12,6 +12,7 @@ extends RefCounted
 # 拆出来后改标记样式不会碰到任何交易逻辑。
 
 const Synergy := preload("res://core/Synergy.gd")
+const Stats := preload("res://core/Stats.gd")
 
 # 给卡片数据打上羁绊标记（原地改 d）。weapons 是玩家当前已持有的武器。
 static func decorate(d: Dictionary, char_entry: Dictionary, weapon_key: String,
@@ -34,3 +35,25 @@ static func decorate(d: Dictionary, char_entry: Dictionary, weapon_key: String,
 		d["syn_count"] = int(sg.get("count", 0))
 	d["tag"] = I18n.t("syn_signature" if syn == "signature" else "syn_bond") \
 		+ "·" + str(d.get("tag", ""))
+	# B2：把"买了这张到底给多少"直接写在卡片上。只有金边蓝边还不够 —— 玩家要能
+	# 算出"这一把值不值得现在买"，才谈得上"攒钱等它刷出来"。
+	d["syn_gain"] = gain_text(weapons, char_entry, defs, syn)
+
+# 买了这张之后本命/羁绊会给多少（增量）。
+#   跨档 → "暴击 +12%"（立刻拿到的收益，这是"现在就买"的理由）
+#   没跨档 → "还差 2 件"（攒的方向，这是"再忍一波"的理由）
+static func gain_text(weapons: Array, char_entry: Dictionary, defs: Dictionary,
+		syn: String) -> String:
+	# 规则在 core/Synergy.next_gain（纯函数、有单测），这里只负责翻译成人话
+	var g := Synergy.next_gain(weapons, char_entry, defs,
+		"signature" if syn == "signature" else "bond")
+	if not bool(g.get("cross", false)):
+		var need := int(g.get("need", 0))
+		return I18n.t("syn_max") if need <= 0 else I18n.t("syn_next") % need
+	var k := str(g.get("stat", ""))
+	if k.is_empty():
+		return I18n.t("syn_max")
+	# fmt_value 自带正负号（"+12%" / "×2"），这里不要再加一个 "+"
+	var e := Stats.entry(k)
+	return I18n.t(str(e.get("name", ""))) + " " + Stats.fmt_value(
+		str(e.get("fmt", "")), float(g.get("delta", 0.0)))

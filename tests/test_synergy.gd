@@ -187,4 +187,32 @@ func run(data) -> Dictionary:
 	chk(fan_body.length() > 0 and not fan_body.contains("\"id\""),
 		"HUD 扇面按钮不写死技能 id（按当前角色取，避免放出技能表里没有的招）")
 
+
+	# ---- 11) "再买一件给多少"（B2：商店卡片上的那个数字）----
+	# 只描金边蓝边，玩家只知道"这张对我有用"；写上数字才知道"现在买值不值"。
+	# 规则必须边际递增：第 2 把给的要比第 1 把多，否则"再买一把"没有理由。
+	var cmde := chars["commando"] as Dictionary
+	var g0 := Synergy.next_gain([], cmde, defs, "signature")
+	chk(bool(g0.get("cross", false)) and absf(float(g0.get("delta", 0.0)) - 0.04) < 0.001,
+		"老手买第 1 把手枪就跨档（暴击 +4%，实测 %.2f）" % float(g0.get("delta", 0.0)))
+	var g1 := Synergy.next_gain([{"key": "pistol", "lv": 1}], cmde, defs, "signature")
+	chk(bool(g1.get("cross", false)) and float(g1.get("delta", 0.0)) > float(g0.get("delta", 0.0)),
+		"再买一把的收益更大（%.2f → %.2f，卡片上写得出边际递增）"
+		% [float(g0.get("delta", 0.0)), float(g1.get("delta", 0.0))])
+	var g6 := Synergy.next_gain(six, cmde, defs, "signature")
+	chk(not bool(g6.get("cross", false)) and int(g6.get("need", -1)) == 0,
+		"满档后再买一件不跨档且 need=0（卡片显示已满）")
+	var gb := Synergy.next_gain([], cmde, defs, "bond")
+	chk(not bool(gb.get("cross", false)) and int(gb.get("need", -1)) == 1,
+		"枪械羁绊一件都没有时，买 1 件还差 1 件到档1（need=%d，文案是买完之后的状态）"
+		% int(gb.get("need", -1)))
+	var gb2 := Synergy.next_gain(gun4, cmde, defs, "bond")
+	chk(not bool(gb2.get("cross", false)) and int(gb2.get("need", -1)) == 1,
+		"已凑 4 件枪械时买 1 件变 5 件，仍差 1 件才跨档3（need=%d）" % int(gb2.get("need", -1)))
+	var gun5: Array = []
+	for _i in 5:
+		gun5.append({"key": "smg", "lv": 1})
+	var gb3 := Synergy.next_gain(gun5, cmde, defs, "bond")
+	chk(bool(gb3.get("cross", false)) and float(gb3.get("delta", 0.0)) > 0.0,
+		"已凑 5 件时再买 1 件就跨到档3（%.2f）" % float(gb3.get("delta", 0.0)))
 	return {"pass": _p, "fail": _f, "failures": _failures}
