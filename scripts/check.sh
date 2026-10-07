@@ -159,6 +159,21 @@ else
 fi
 
 echo ""
+echo "=== 2.8 帧率回归闸门（D2：CPU 每帧热点，确定性，可进 CI）==="
+# 真机 GPU 帧率沙箱量不出（llvmpipe 软渲染无代表性，perf_probe.gd 仅作手动诊断），
+# 但"怪一多就卡"的 CPU 侧每帧热点（分离 O(n²)/自动瞄准/敌人数组收集）可隔离、
+# 可复现、可断言。这些函数退化成更糟复杂度时这里立刻红 —— 不依赖软渲染机时。
+# GPU draw call 一侧由 tests/test_perf_guard.gd（max_alive 档位 38/32/26/20）守。
+if [ -f scripts/perf_regression.py ]; then
+  PY6=$(command -v python3.11 || command -v python3)
+  if ! "$PY6" scripts/perf_regression.py; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/perf_regression.py，跳过"
+fi
+
+echo ""
 echo "=== 3. 说明 ==="
 echo "  单文件 >300 行的检查已并入 1.7 架构守卫（硬失败，不再是只告警不拦人）"
 
