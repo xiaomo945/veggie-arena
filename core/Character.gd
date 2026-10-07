@@ -16,6 +16,31 @@ const VALID_STATS := [
 # 职业亲和（决定"这把萝卜适合哪种武器"）：mixed=均衡，其余对应武器分域
 const AFFINITY := ["mixed", "ranged", "melee", "elem"]
 
+# 角色自带"命中附加持续伤害"（data/characters.json 的 on_hit_dot 段）。
+#
+# 为什么必须存在（踩过的坑）：
+#   焦辣萝卜 scorch 的人设是"毒 + 灼烧双 DoT"，但改造前 DoT 只挂在【技能】上，
+#   于是玩家选了它、开枪打了 3 秒，屏幕上一点火都没有 —— 只看到自己普攻数值
+#   比别人低一截。人设写在 tip 里、机制藏在技能冷却里，"上手门槛"直接劝退。
+#   这一层把角色的身份钉在【第一次命中】上：选它，打中，火就烧起来，
+#   不需要读任何说明。文案只能解释机制，不能替代机制。
+#
+#   数值刻意做小：apply_fx 取 max 不叠层，所以一只怪最多同时吃一份 burn，
+#   它是"你碰过的怪都在慢慢掉血"，不是"每一发都追加伤害"。
+static func on_hit_dot(entry: Dictionary) -> Dictionary:
+	var d := entry.get("on_hit_dot", {}) as Dictionary
+	if d.is_empty():
+		return {}
+	return {
+		"burn": float(d.get("burn", 0.0)),           # 灼烧每秒伤害（绝对值）
+		"poison_pct": float(d.get("poison_pct", 0.0)),  # 中毒每秒伤害（敌人最大血量占比）
+		"dur": float(d.get("dur", 2.0)),             # 持续时间（秒）
+	}
+
+# 开局白送几个颠勺充能（爆炒萝卜 sizzle：进局就能按，按一下就懂）
+static func start_wok_charges(entry: Dictionary) -> int:
+	return maxi(0, int(entry.get("start_wok_charges", 0)))
+
 # 这些是绝对值（不是百分比），描述时不能用 % 显示
 const ABSOLUTE_STATS := ["max_hp", "armor", "lifesteal"]
 

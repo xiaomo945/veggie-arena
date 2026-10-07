@@ -8,10 +8,22 @@ extends RefCounted
 
 const Stats := preload("res://core/Stats.gd")
 
-# 一支的名字：本命写武器名，羁绊写武器类名（选角页阶梯与结算页复盘共用）
+# 一支的配色：本命金 / 杂食绿 / 羁绊蓝。
+# 卡片描边和 HUD 进度条必须同一个色 —— 两处各写一份必然漂移，玩家会对不上号
+# （"卡片上这把是金边的、进度条上那条是金色的，是一回事吗？"），所以这里是唯一一份。
+static func color_of(branch: String) -> Color:
+	if branch == "signature":
+		return Color(1.0, 0.84, 0.32)
+	if branch == "variety":
+		return Color(0.48, 0.82, 0.42)
+	return Color(0.45, 0.75, 1.0)
+
+# 一支的名字：本命写武器名，羁绊写武器类名，杂食只写"杂食"（它不指向某一类）
 static func head_of(branch: String, br: Dictionary) -> String:
 	if branch == "signature":
 		return I18n.t("syn_signature") + "·" + I18n.pick(Data.weapon(str(br.get("key", ""))))
+	if branch == "variety":
+		return I18n.t("syn_variety")
 	return I18n.t("syn_bond") + "·" + I18n.t("set_" + str(br.get("tag", "")))
 
 # 属性名（取第一条；一档可能给好几条属性，一行字只放得下一条）

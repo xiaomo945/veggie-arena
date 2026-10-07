@@ -19,7 +19,7 @@ static func text() -> String:
 	var ce := Data.character(GameState.character)
 	var pr := Synergy.progress(GameState.weapons, ce, Data.weapons)
 	var out := ""
-	for branch in ["signature", "bond"]:
+	for branch in ["signature", "variety", "bond"]:
 		if not pr.has(branch):
 			continue
 		var d := pr[branch] as Dictionary

@@ -1,1157 +1,1199 @@
 {
-  "turnip": {
-    "zh": "田园萝卜",
-    "en": "Homegrown",
-    "color": "#f4f1e8",
-    "affinity": "mixed",
-    "trait": "均衡万金油",
-    "trait_en": "Jack of all trades",
-    "best": "任意武器",
-    "best_en": "Any weapon",
-    "tip": "均衡新手：没有加成也没有代价，样样都行。",
-    "tip_en": "Balanced starter: no bonus, no penalty.",
-    "stats": {},
-    "bond": {
-      "tag": "kitchen",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "pickup_pct": 0.08
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "pickup_pct": 0.18,
-            "rate_pct": 0.08
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "pickup_pct": 0.3,
-            "rate_pct": 0.15
-          }
-        }
-      ]
+ "turnip": {
+  "zh": "杂食萝卜",
+  "en": "Omnivore",
+  "color": "#f4f1e8",
+  "affinity": "mixed",
+  "trait": "杂食：五类通吃",
+  "trait_en": "Omnivore: one of each",
+  "best": "五类武器各来一把（同类重复最亏）",
+  "best_en": "One of each class — duplicates are wasted",
+  "tip": "杂食：武器栏里每多【一种】武器类就更强，五类凑齐满档。堆同一把在它手里最亏。",
+  "tip_en": "Omnivore: every DIFFERENT weapon class you hold makes you stronger, maxed at five. Stacking dupes is the worst thing you can do here.",
+  "stats": {},
+  "bond": {
+   "tag": "kitchen",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "pickup_pct": 0.08
+     }
     },
-    "signature": {
-      "key": "fork",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "rate_pct": 0.06
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "rate_pct": 0.14
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "rate_pct": 0.24
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "rate_pct": 0.36
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "rate_pct": 0.5
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "rate_pct": 0.66
-          }
-        }
-      ]
+    {
+     "need": 4,
+     "stats": {
+      "pickup_pct": 0.18,
+      "rate_pct": 0.08
+     }
     },
-    "skill": "frost"
+    {
+     "need": 6,
+     "stats": {
+      "pickup_pct": 0.3,
+      "rate_pct": 0.15
+     }
+    }
+   ]
   },
-  "archer": {
-    "zh": "神射萝卜",
-    "en": "Bullseye",
-    "color": "#5fb0e0",
-    "affinity": "ranged",
-    "trait": "脆皮输出",
-    "trait_en": "Glass cannon",
-    "best": "枪械 / 弓",
-    "best_en": "Guns / Bows",
-    "tip": "远程专精：远程伤害 +25%、攻速 +10%，生命 -20。吃枪械/弓，脆皮但输出爆炸。",
-    "tip_en": "Ranged expert: +25% ranged dmg, +10% rate, -20 HP. Best with guns/bows.",
-    "stats": {
-      "ranged_pct": 0.25,
-      "rate_pct": 0.1,
-      "max_hp": -20
+  "signature": {
+   "key": "fork",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "rate_pct": 0.06
+     }
     },
-    "bond": {
-      "tag": "gun",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "ranged_pct": 0.1
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "ranged_pct": 0.22,
-            "bullet_speed_pct": 0.1
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "ranged_pct": 0.38,
-            "bullet_speed_pct": 0.2
-          }
-        }
-      ]
+    {
+     "need": 2,
+     "stats": {
+      "rate_pct": 0.14
+     }
     },
-    "signature": {
-      "key": "bow",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "crit_chance": 0.03
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "crit_chance": 0.07
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "crit_chance": 0.12,
-            "crit_mult": 0.1
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "crit_chance": 0.18,
-            "crit_mult": 0.25
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "crit_chance": 0.25,
-            "crit_mult": 0.45
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "crit_chance": 0.33,
-            "crit_mult": 0.7
-          }
-        }
-      ]
+    {
+     "need": 3,
+     "stats": {
+      "rate_pct": 0.24
+     }
     },
-    "skill": "pierce_shot"
+    {
+     "need": 4,
+     "stats": {
+      "rate_pct": 0.36
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "rate_pct": 0.5
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "rate_pct": 0.66
+     }
+    }
+   ]
   },
-  "bruiser": {
-    "zh": "铁壁萝卜",
-    "en": "Ironclad",
-    "color": "#d98a5a",
-    "affinity": "melee",
-    "trait": "坦克前排",
-    "trait_en": "Frontline tank",
-    "best": "重械 / 菜刀",
-    "best_en": "Heavies / Cleavers",
-    "tip": "近战专精：近战伤害 +25%、生命 +50、护甲 +2，移速 -12%。扛刀冲锋。",
-    "tip_en": "Melee tank: +25% melee dmg, +50 HP, +2 armor, -12% speed.",
-    "stats": {
-      "melee_pct": 0.25,
-      "max_hp": 50,
-      "armor": 2,
-      "speed_pct": -0.12
+  "skill": "frost",
+  "variety": {
+   "_doc": "与 bond 相反的第三条线：按【身上有几种武器类】分档（最多 5 类）。全游戏只有田园萝卜有这一条 —— 它是唯一不鼓励堆同一把的角色。",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "dmg_pct": 0.1
+     }
     },
-    "bond": {
-      "tag": "heavy",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "armor": 1
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "armor": 2,
-            "knock_pct": 0.15
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "armor": 4,
-            "knock_pct": 0.3
-          }
-        }
-      ]
+    {
+     "need": 3,
+     "stats": {
+      "dmg_pct": 0.22,
+      "rate_pct": 0.08
+     }
     },
-    "signature": {
-      "key": "rolling_pin",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "melee_pct": 0.07
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "melee_pct": 0.16,
-            "knock_pct": 0.08
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "melee_pct": 0.27,
-            "knock_pct": 0.16
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "melee_pct": 0.4,
-            "knock_pct": 0.26
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "melee_pct": 0.55,
-            "knock_pct": 0.38
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "melee_pct": 0.72,
-            "knock_pct": 0.52
-          }
-        }
-      ]
+    {
+     "need": 4,
+     "stats": {
+      "dmg_pct": 0.36,
+      "rate_pct": 0.16,
+      "crit_chance": 0.05
+     }
     },
-    "skill": "quake"
-  },
-  "mage": {
-    "zh": "文火萝卜",
-    "en": "Simmer",
-    "color": "#b06bff",
-    "affinity": "elem",
-    "trait": "元素法师",
-    "trait_en": "Elemental mage",
-    "best": "元素 / 法杖",
-    "best_en": "Elemental / Staves",
-    "tip": "法师专精：元素伤害 +35%，基础伤害 -12%。火电蒸汽越堆越强。",
-    "tip_en": "Elemental caster: +35% elemental dmg, -12% base dmg.",
-    "stats": {
-      "elem_pct": 0.35,
-      "dmg_pct": -0.12
-    },
-    "bond": {
-      "tag": "elemental",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "elem_pct": 0.1
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "elem_pct": 0.22,
-            "wok_pct": 0.12
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "elem_pct": 0.38,
-            "wok_pct": 0.25
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "staff",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "elem_pct": 0.08
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "elem_pct": 0.18
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "elem_pct": 0.3,
-            "wok_pct": 0.1
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "elem_pct": 0.44,
-            "wok_pct": 0.2
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "elem_pct": 0.6,
-            "wok_pct": 0.32
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "elem_pct": 0.78,
-            "wok_pct": 0.46
-          }
-        }
-      ]
-    },
-    "skill": "frost_nova"
-  },
-  "skirmisher": {
-    "zh": "疾风萝卜",
-    "en": "Dash",
-    "color": "#7ad06b",
-    "affinity": "mixed",
-    "trait": "走位风筝",
-    "trait_en": "Kiter",
-    "best": "轻装 / 移速",
-    "best_en": "Light / Mobility",
-    "tip": "机动专精：移速 +18%、拾取 +40%，生命 -15。边跑边打、边跑边捡。",
-    "tip_en": "Skirmisher: +18% speed, +40% pickup, -15 HP.",
-    "stats": {
-      "speed_pct": 0.18,
-      "pickup_pct": 0.4,
-      "max_hp": -15
-    },
-    "bond": {
-      "tag": "blade",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "speed_pct": 0.06
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "speed_pct": 0.13,
-            "rate_pct": 0.08
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "speed_pct": 0.22,
-            "rate_pct": 0.16
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "peeler",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "speed_pct": 0.04
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "speed_pct": 0.09,
-            "rate_pct": 0.06
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "speed_pct": 0.15,
-            "rate_pct": 0.13
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "speed_pct": 0.22,
-            "rate_pct": 0.21
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "speed_pct": 0.3,
-            "rate_pct": 0.3
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "speed_pct": 0.4,
-            "rate_pct": 0.4
-          }
-        }
-      ]
-    },
-    "skill": "gust"
-  },
-  "hoarder": {
-    "zh": "招财萝卜",
-    "en": "Piggy",
-    "color": "#e0c24a",
-    "affinity": "mixed",
-    "trait": "滚雪球",
-    "trait_en": "Snowballer",
-    "best": "吸金 / 吸血",
-    "best_en": "Gold / Lifesteal",
-    "tip": "金币专精：金币 +40%、吸血 +2，基础伤害 -8%。越打越富、越富越强。",
-    "tip_en": "Gold hoarder: +40% gold, +2 lifesteal, -8% base dmg.",
-    "stats": {
-      "gold_pct": 0.4,
-      "lifesteal": 2,
-      "dmg_pct": -0.08
-    },
-    "bond": {
-      "tag": "kitchen",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "gold_pct": 0.12
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "gold_pct": 0.26,
-            "pickup_pct": 0.12
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "gold_pct": 0.45,
-            "pickup_pct": 0.25
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "ladle",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "gold_pct": 0.08
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "gold_pct": 0.18,
-            "lifesteal": 1
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "gold_pct": 0.3,
-            "lifesteal": 2
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "gold_pct": 0.44,
-            "lifesteal": 3
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "gold_pct": 0.6,
-            "lifesteal": 4
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "gold_pct": 0.78,
-            "lifesteal": 6
-          }
-        }
-      ]
-    },
-    "skill": "coin_rain"
-  },
-  "hedgehog": {
-    "zh": "刺猬萝卜",
-    "en": "Prickly",
-    "color": "#8a7a5a",
-    "affinity": "melee",
-    "trait": "被围反刺",
-    "trait_en": "Thorny",
-    "best": "近战 / 反伤",
-    "best_en": "Melee / Thorns",
-    "tip": "铁刺专精：护甲 +3、近战 +15%，移速 -10%。被围住反而扎手。",
-    "tip_en": "Thorny tank: +3 armor, +15% melee dmg, -10% speed.",
-    "stats": {
-      "armor": 3,
-      "melee_pct": 0.15,
-      "speed_pct": -0.1
-    },
-    "bond": {
-      "tag": "heavy",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "armor": 1
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "armor": 3,
-            "melee_pct": 0.1
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "armor": 5,
-            "melee_pct": 0.2
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "mortar",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "armor": 1
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "armor": 2,
-            "knock_pct": 0.1
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "armor": 3,
-            "knock_pct": 0.18
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "armor": 5,
-            "knock_pct": 0.28
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "armor": 7,
-            "knock_pct": 0.4
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "armor": 9,
-            "knock_pct": 0.55
-          }
-        }
-      ]
-    },
-    "skill": "spike_burst"
-  },
-  "commando": {
-    "zh": "老手萝卜",
-    "en": "Veteran",
-    "color": "#4a6a8a",
-    "affinity": "ranged",
-    "trait": "暴击突击",
-    "trait_en": "Crit striker",
-    "best": "狙击 / 暴击",
-    "best_en": "Sniper / Crit",
-    "tip": "暴击专精：暴击 +8%、伤害 +20%，生命 -25。老手只买手枪——每多一把，暴击再涨一档。",
-    "tip_en": "Crit specialist: +8% crit, +20% dmg, -25 HP. A veteran buys nothing but pistols — every extra one is another crit tier.",
-    "stats": {
-      "crit_chance": 0.08,
-      "dmg_pct": 0.2,
-      "max_hp": -25
-    },
-    "bond": {
-      "tag": "gun",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "crit_chance": 0.04
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "crit_chance": 0.09,
-            "dmg_pct": 0.08
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "crit_chance": 0.15,
-            "dmg_pct": 0.18
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "pistol",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "crit_chance": 0.04
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "crit_chance": 0.09
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "crit_chance": 0.15,
-            "crit_mult": 0.12
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "crit_chance": 0.22,
-            "crit_mult": 0.28
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "crit_chance": 0.3,
-            "crit_mult": 0.48
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "crit_chance": 0.4,
-            "crit_mult": 0.75
-          }
-        }
-      ]
-    },
-    "skill": "mark"
-  },
-  "martial": {
-    "zh": "刀工萝卜",
-    "en": "Chop",
-    "color": "#c0392b",
-    "affinity": "melee",
-    "trait": "连击Combo",
-    "trait_en": "Combo fighter",
-    "best": "拳套 / 快刀",
-    "best_en": "Fists / Fast blades",
-    "tip": "连击专精：攻速 +20%、近战 +15%，护甲 -1。拳拳到肉、越打越快。",
-    "tip_en": "Combo fighter: +20% rate, +15% melee dmg, -1 armor.",
-    "stats": {
-      "rate_pct": 0.2,
-      "melee_pct": 0.15,
-      "armor": -1
-    },
-    "bond": {
-      "tag": "blade",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "rate_pct": 0.08
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "rate_pct": 0.18,
-            "melee_pct": 0.1
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "rate_pct": 0.3,
-            "melee_pct": 0.2
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "chopsticks",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "rate_pct": 0.07
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "rate_pct": 0.16,
-            "melee_pct": 0.06
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "rate_pct": 0.27,
-            "melee_pct": 0.14
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "rate_pct": 0.4,
-            "melee_pct": 0.24
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "rate_pct": 0.55,
-            "melee_pct": 0.36
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "rate_pct": 0.72,
-            "melee_pct": 0.5
-          }
-        }
-      ]
-    },
-    "skill": "combo"
-  },
-  "magnet": {
-    "zh": "磁铁萝卜",
-    "en": "Magnet",
-    "color": "#2e86ab",
-    "affinity": "mixed",
-    "trait": "弹幕收集",
-    "trait_en": "Bullet collector",
-    "best": "冲锋枪 / 弹幕",
-    "best_en": "SMG / Bullet spray",
-    "tip": "弹幕专精：攻速 +15%、拾取 +50%，伤害 -10%。泼水式火力+满地捡钱。",
-    "tip_en": "Bullet spray: +15% rate, +50% pickup, -10% dmg.",
-    "stats": {
-      "rate_pct": 0.15,
-      "pickup_pct": 0.5,
-      "dmg_pct": -0.1
-    },
-    "bond": {
-      "tag": "gun",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "rate_pct": 0.08
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "rate_pct": 0.18,
-            "pellets_add": 1
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "rate_pct": 0.3,
-            "pellets_add": 1
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "smg",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "rate_pct": 0.06
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "rate_pct": 0.14,
-            "pickup_pct": 0.08
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "rate_pct": 0.24,
-            "pickup_pct": 0.18
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "rate_pct": 0.36,
-            "pickup_pct": 0.3
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "rate_pct": 0.5,
-            "pickup_pct": 0.45
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "rate_pct": 0.66,
-            "pickup_pct": 0.62
-          }
-        }
-      ]
-    },
-    "skill": "magnet_pull"
-  },
-  "scorch": {
-  "zh": "焦辣萝卜",
-    "en": "Scorch",
-    "color": "#e0563a",
-    "affinity": "elem",
-    "trait": "毒灼双DoT",
-    "trait_en": "Poison & burn",
-    "best": "喷火枪 / 元素武器",
-    "best_en": "Blowtorch / elemental",
-    "tip": "又辣又毒：普攻偏低，但毒和灼烧按敌人最大血量结算，血越厚的怪越吃亏",
-    "tip_en": "Weak hits, nasty aftertaste: both DoTs burn a share of max HP — the tankier the foe, the worse it gets.",
-    "stats": {
-      "elem_pct": 0.3,
-      "max_hp": 30,
-      "dmg_pct": -0.18,
-      "rate_pct": -0.08
-    },
-    "bond": {
-      "tag": "elemental",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "elem_pct": 0.08
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "elem_pct": 0.16,
-            "armor": 1
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "elem_pct": 0.26,
-            "armor": 2,
-            "lifesteal": 2
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "blowtorch",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "elem_pct": 0.06
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "elem_pct": 0.13
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "elem_pct": 0.21,
-            "dmg_pct": 0.05
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "elem_pct": 0.3,
-            "dmg_pct": 0.12
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "elem_pct": 0.4,
-            "dmg_pct": 0.2,
-            "armor": 1
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "elem_pct": 0.52,
-            "dmg_pct": 0.3,
-            "armor": 2
-          }
-        }
-      ]
-    },
-    "skill": "sear"
-  },
-  "mash": {
-  "zh": "薯泥萝卜",
-    "en": "Mash",
-    "color": "#c9a06a",
-    "affinity": "melee",
-    "trait": "厚皮续航",
-    "trait_en": "Thick-skinned sustain",
-    "best": "搅拌机 / 厨具，站着挨打也能回血",
-    "best_en": "Blender / kitchen — outlast what you can't out-damage",
-    "tip": "打不死就磨：护甲高、吸血厚，但走得慢、出手也慢，跑图全靠提前占位置",
-    "tip_en": "Won't out-damage you, will outlast you. Tons of armor and lifesteal, but slow feet and slower hands — take your ground early.",
-    "stats": {
-      "armor": 3,
-      "max_hp": 45,
-      "lifesteal": 2,
-      "speed_pct": -0.12,
-      "dmg_pct": -0.1
-    },
-    "bond": {
-      "tag": "kitchen",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "armor": 1
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "armor": 2,
-            "lifesteal": 1
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "armor": 4,
-            "lifesteal": 3,
-            "pickup_pct": 0.2
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "blender",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "lifesteal": 1
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "lifesteal": 2
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "lifesteal": 3,
-            "pickup_pct": 0.1
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "lifesteal": 4,
-            "pickup_pct": 0.22
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "lifesteal": 6,
-            "pickup_pct": 0.36,
-            "max_hp": 20
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "lifesteal": 8,
-            "pickup_pct": 0.52,
-            "max_hp": 45
-          }
-        }
-      ]
-    },
-    "skill": "grind"
-  },
-  "sizzle": {
-  "zh": "爆炒萝卜",
-    "en": "Sizzle",
-    "color": "#f2603c",
-    "affinity": "mixed",
-    "trait": "锅气发动机",
-    "trait_en": "Wok engine",
-    "best": "炒勺 / 重武器，靠不停颠勺打输出",
-    "best_en": "Wok Scoop / heavy — the wok is the damage",
-    "tip": "不吃伤害只吃火候：锅气涨得飞快，但自己打得很轻 —— 输出全在颠勺那一下",
-    "tip_en": "Not about damage, about heat: the wok gauge fills fast while your own hits stay weak — all your damage lands in the toss.",
-    "stats": {
-      "wok_pct": 0.55,
-      "rate_pct": 0.08,
-      "max_hp": -20,
-      "dmg_pct": -0.12
-    },
-    "bond": {
-      "tag": "heavy",
-      "tiers": [
-        {
-          "need": 2,
-          "stats": {
-            "wok_pct": 0.15
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "wok_pct": 0.32,
-            "rate_pct": 0.08
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "wok_pct": 0.55,
-            "rate_pct": 0.18,
-            "armor": 1
-          }
-        }
-      ]
-    },
-    "signature": {
-      "key": "wok_scoop",
-      "tiers": [
-        {
-          "need": 1,
-          "stats": {
-            "wok_pct": 0.1
-          }
-        },
-        {
-          "need": 2,
-          "stats": {
-            "wok_pct": 0.22
-          }
-        },
-        {
-          "need": 3,
-          "stats": {
-            "wok_pct": 0.36,
-            "rate_pct": 0.06
-          }
-        },
-        {
-          "need": 4,
-          "stats": {
-            "wok_pct": 0.52,
-            "rate_pct": 0.14
-          }
-        },
-        {
-          "need": 5,
-          "stats": {
-            "wok_pct": 0.72,
-            "rate_pct": 0.24,
-            "dmg_pct": 0.08
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "wok_pct": 0.95,
-            "rate_pct": 0.36,
-            "dmg_pct": 0.18
-          }
-        }
-      ]
-    },
-    "skill": "flashfire"
+    {
+     "need": 5,
+     "stats": {
+      "dmg_pct": 0.52,
+      "rate_pct": 0.26,
+      "crit_chance": 0.1,
+      "armor": 1
+     }
+    }
+   ]
   }
+ },
+ "archer": {
+  "zh": "神射萝卜",
+  "en": "Bullseye",
+  "color": "#5fb0e0",
+  "affinity": "ranged",
+  "trait": "脆皮输出",
+  "trait_en": "Glass cannon",
+  "best": "枪械 / 弓",
+  "best_en": "Guns / Bows",
+  "tip": "远程专精：远程伤害 +25%、攻速 +10%，生命 -20。吃枪械/弓，脆皮但输出爆炸。",
+  "tip_en": "Ranged expert: +25% ranged dmg, +10% rate, -20 HP. Best with guns/bows.",
+  "stats": {
+   "ranged_pct": 0.25,
+   "rate_pct": 0.1,
+   "max_hp": -20
+  },
+  "bond": {
+   "tag": "gun",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "ranged_pct": 0.1
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "ranged_pct": 0.22,
+      "bullet_speed_pct": 0.1
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "ranged_pct": 0.38,
+      "bullet_speed_pct": 0.2
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "bow",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "crit_chance": 0.03
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "crit_chance": 0.07
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "crit_chance": 0.12,
+      "crit_mult": 0.1
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "crit_chance": 0.18,
+      "crit_mult": 0.25
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "crit_chance": 0.25,
+      "crit_mult": 0.45
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "crit_chance": 0.33,
+      "crit_mult": 0.7
+     }
+    }
+   ]
+  },
+  "skill": "pierce_shot"
+ },
+ "bruiser": {
+  "zh": "铁壁萝卜",
+  "en": "Ironclad",
+  "color": "#d98a5a",
+  "affinity": "melee",
+  "trait": "坦克前排",
+  "trait_en": "Frontline tank",
+  "best": "重械 / 菜刀",
+  "best_en": "Heavies / Cleavers",
+  "tip": "近战专精：近战伤害 +25%、生命 +50、护甲 +2，移速 -12%。扛刀冲锋。",
+  "tip_en": "Melee tank: +25% melee dmg, +50 HP, +2 armor, -12% speed.",
+  "stats": {
+   "melee_pct": 0.25,
+   "max_hp": 50,
+   "armor": 2,
+   "speed_pct": -0.12
+  },
+  "bond": {
+   "tag": "heavy",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "armor": 1
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "armor": 2,
+      "knock_pct": 0.15
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "armor": 4,
+      "knock_pct": 0.3
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "rolling_pin",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "melee_pct": 0.07
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "melee_pct": 0.16,
+      "knock_pct": 0.08
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "melee_pct": 0.27,
+      "knock_pct": 0.16
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "melee_pct": 0.4,
+      "knock_pct": 0.26
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "melee_pct": 0.55,
+      "knock_pct": 0.38
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "melee_pct": 0.72,
+      "knock_pct": 0.52
+     }
+    }
+   ]
+  },
+  "skill": "quake"
+ },
+ "mage": {
+  "zh": "文火萝卜",
+  "en": "Simmer",
+  "color": "#b06bff",
+  "affinity": "elem",
+  "trait": "元素法师",
+  "trait_en": "Elemental mage",
+  "best": "元素 / 法杖",
+  "best_en": "Elemental / Staves",
+  "tip": "法师专精：元素伤害 +35%，基础伤害 -12%。火电蒸汽越堆越强。",
+  "tip_en": "Elemental caster: +35% elemental dmg, -12% base dmg.",
+  "stats": {
+   "elem_pct": 0.35,
+   "dmg_pct": -0.12
+  },
+  "bond": {
+   "tag": "elemental",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "elem_pct": 0.1
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "elem_pct": 0.22,
+      "wok_pct": 0.12
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "elem_pct": 0.38,
+      "wok_pct": 0.25
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "staff",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "elem_pct": 0.08
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "elem_pct": 0.18
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "elem_pct": 0.3,
+      "wok_pct": 0.1
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "elem_pct": 0.44,
+      "wok_pct": 0.2
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "elem_pct": 0.6,
+      "wok_pct": 0.32
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "elem_pct": 0.78,
+      "wok_pct": 0.46
+     }
+    }
+   ]
+  },
+  "skill": "frost_nova"
+ },
+ "skirmisher": {
+  "zh": "疾风萝卜",
+  "en": "Dash",
+  "color": "#7ad06b",
+  "affinity": "mixed",
+  "trait": "走位风筝",
+  "trait_en": "Kiter",
+  "best": "轻装 / 移速",
+  "best_en": "Light / Mobility",
+  "tip": "机动专精：移速 +18%、拾取 +40%，生命 -15。边跑边打、边跑边捡。",
+  "tip_en": "Skirmisher: +18% speed, +40% pickup, -15 HP.",
+  "stats": {
+   "speed_pct": 0.18,
+   "pickup_pct": 0.4,
+   "max_hp": -15
+  },
+  "bond": {
+   "tag": "blade",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "speed_pct": 0.06
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "speed_pct": 0.13,
+      "rate_pct": 0.08
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "speed_pct": 0.22,
+      "rate_pct": 0.16
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "peeler",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "speed_pct": 0.04
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "speed_pct": 0.09,
+      "rate_pct": 0.06
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "speed_pct": 0.15,
+      "rate_pct": 0.13
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "speed_pct": 0.22,
+      "rate_pct": 0.21
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "speed_pct": 0.3,
+      "rate_pct": 0.3
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "speed_pct": 0.4,
+      "rate_pct": 0.4
+     }
+    }
+   ]
+  },
+  "skill": "gust"
+ },
+ "hoarder": {
+  "zh": "招财萝卜",
+  "en": "Piggy",
+  "color": "#e0c24a",
+  "affinity": "mixed",
+  "trait": "滚雪球",
+  "trait_en": "Snowballer",
+  "best": "吸金 / 吸血",
+  "best_en": "Gold / Lifesteal",
+  "tip": "金币专精：金币 +40%、吸血 +2，基础伤害 -8%。越打越富、越富越强。",
+  "tip_en": "Gold hoarder: +40% gold, +2 lifesteal, -8% base dmg.",
+  "stats": {
+   "gold_pct": 0.4,
+   "lifesteal": 2,
+   "dmg_pct": -0.08
+  },
+  "bond": {
+   "tag": "kitchen",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "gold_pct": 0.12
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "gold_pct": 0.26,
+      "pickup_pct": 0.12
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "gold_pct": 0.45,
+      "pickup_pct": 0.25
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "ladle",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "gold_pct": 0.08
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "gold_pct": 0.18,
+      "lifesteal": 1
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "gold_pct": 0.3,
+      "lifesteal": 2
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "gold_pct": 0.44,
+      "lifesteal": 3
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "gold_pct": 0.6,
+      "lifesteal": 4
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "gold_pct": 0.78,
+      "lifesteal": 6
+     }
+    }
+   ]
+  },
+  "skill": "coin_rain"
+ },
+ "hedgehog": {
+  "zh": "刺猬萝卜",
+  "en": "Prickly",
+  "color": "#8a7a5a",
+  "affinity": "melee",
+  "trait": "被围反刺",
+  "trait_en": "Thorny",
+  "best": "近战 / 反伤",
+  "best_en": "Melee / Thorns",
+  "tip": "铁刺专精：护甲 +3、近战 +15%，移速 -10%。被围住反而扎手。",
+  "tip_en": "Thorny tank: +3 armor, +15% melee dmg, -10% speed.",
+  "stats": {
+   "armor": 3,
+   "melee_pct": 0.15,
+   "speed_pct": -0.1
+  },
+  "bond": {
+   "tag": "heavy",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "armor": 1
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "armor": 3,
+      "melee_pct": 0.1
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "armor": 5,
+      "melee_pct": 0.2
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "mortar",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "armor": 1
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "armor": 2,
+      "knock_pct": 0.1
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "armor": 3,
+      "knock_pct": 0.18
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "armor": 5,
+      "knock_pct": 0.28
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "armor": 7,
+      "knock_pct": 0.4
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "armor": 9,
+      "knock_pct": 0.55
+     }
+    }
+   ]
+  },
+  "skill": "spike_burst"
+ },
+ "commando": {
+  "zh": "老手萝卜",
+  "en": "Veteran",
+  "color": "#4a6a8a",
+  "affinity": "ranged",
+  "trait": "暴击突击",
+  "trait_en": "Crit striker",
+  "best": "狙击 / 暴击",
+  "best_en": "Sniper / Crit",
+  "tip": "暴击专精：暴击 +8%、伤害 +20%，生命 -25。老手只买手枪——每多一把，暴击再涨一档。",
+  "tip_en": "Crit specialist: +8% crit, +20% dmg, -25 HP. A veteran buys nothing but pistols — every extra one is another crit tier.",
+  "stats": {
+   "crit_chance": 0.08,
+   "dmg_pct": 0.2,
+   "max_hp": -25
+  },
+  "bond": {
+   "tag": "gun",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "crit_chance": 0.04
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "crit_chance": 0.09,
+      "dmg_pct": 0.08
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "crit_chance": 0.15,
+      "dmg_pct": 0.18
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "pistol",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "crit_chance": 0.04
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "crit_chance": 0.09
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "crit_chance": 0.15,
+      "crit_mult": 0.12
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "crit_chance": 0.22,
+      "crit_mult": 0.28
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "crit_chance": 0.3,
+      "crit_mult": 0.48
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "crit_chance": 0.4,
+      "crit_mult": 0.75
+     }
+    }
+   ]
+  },
+  "skill": "mark"
+ },
+ "martial": {
+  "zh": "刀工萝卜",
+  "en": "Chop",
+  "color": "#c0392b",
+  "affinity": "melee",
+  "trait": "连击Combo",
+  "trait_en": "Combo fighter",
+  "best": "拳套 / 快刀",
+  "best_en": "Fists / Fast blades",
+  "tip": "连击专精：攻速 +20%、近战 +15%，护甲 -1。拳拳到肉、越打越快。",
+  "tip_en": "Combo fighter: +20% rate, +15% melee dmg, -1 armor.",
+  "stats": {
+   "rate_pct": 0.2,
+   "melee_pct": 0.15,
+   "armor": -1
+  },
+  "bond": {
+   "tag": "blade",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "rate_pct": 0.08
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "rate_pct": 0.18,
+      "melee_pct": 0.1
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "rate_pct": 0.3,
+      "melee_pct": 0.2
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "chopsticks",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "rate_pct": 0.07
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "rate_pct": 0.16,
+      "melee_pct": 0.06
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "rate_pct": 0.27,
+      "melee_pct": 0.14
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "rate_pct": 0.4,
+      "melee_pct": 0.24
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "rate_pct": 0.55,
+      "melee_pct": 0.36
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "rate_pct": 0.72,
+      "melee_pct": 0.5
+     }
+    }
+   ]
+  },
+  "skill": "combo"
+ },
+ "magnet": {
+  "zh": "磁铁萝卜",
+  "en": "Magnet",
+  "color": "#2e86ab",
+  "affinity": "mixed",
+  "trait": "弹幕收集",
+  "trait_en": "Bullet collector",
+  "best": "冲锋枪 / 弹幕",
+  "best_en": "SMG / Bullet spray",
+  "tip": "弹幕专精：攻速 +15%、拾取 +50%，伤害 -10%。泼水式火力+满地捡钱。",
+  "tip_en": "Bullet spray: +15% rate, +50% pickup, -10% dmg.",
+  "stats": {
+   "rate_pct": 0.15,
+   "pickup_pct": 0.5,
+   "dmg_pct": -0.1
+  },
+  "bond": {
+   "tag": "gun",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "rate_pct": 0.08
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "rate_pct": 0.18,
+      "pellets_add": 1
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "rate_pct": 0.3,
+      "pellets_add": 1
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "smg",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "rate_pct": 0.06
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "rate_pct": 0.14,
+      "pickup_pct": 0.08
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "rate_pct": 0.24,
+      "pickup_pct": 0.18
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "rate_pct": 0.36,
+      "pickup_pct": 0.3
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "rate_pct": 0.5,
+      "pickup_pct": 0.45
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "rate_pct": 0.66,
+      "pickup_pct": 0.62
+     }
+    }
+   ]
+  },
+  "skill": "magnet_pull"
+ },
+ "scorch": {
+  "zh": "焦辣萝卜",
+  "en": "Scorch",
+  "color": "#e0563a",
+  "affinity": "elem",
+  "trait": "毒灼双DoT",
+  "trait_en": "Poison & burn",
+  "best": "喷火枪 / 元素武器",
+  "best_en": "Blowtorch / elemental",
+  "tip": "打中就着火：每一下命中都点燃灼烧并按敌人最大血量上毒 —— 别看面板伤害低，看敌人头顶跳的数字。",
+  "tip_en": "Every hit lights a fire: each strike applies burn and a max-HP poison. Ignore your small hit numbers — watch the ticks.",
+  "stats": {
+   "elem_pct": 0.3,
+   "max_hp": 30,
+   "dmg_pct": -0.18,
+   "rate_pct": -0.08
+  },
+  "bond": {
+   "tag": "elemental",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "elem_pct": 0.08
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "elem_pct": 0.16,
+      "armor": 1
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "elem_pct": 0.26,
+      "armor": 2,
+      "lifesteal": 2
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "blowtorch",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "elem_pct": 0.06
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "elem_pct": 0.13
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "elem_pct": 0.21,
+      "dmg_pct": 0.05
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "elem_pct": 0.3,
+      "dmg_pct": 0.12
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "elem_pct": 0.4,
+      "dmg_pct": 0.2,
+      "armor": 1
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "elem_pct": 0.52,
+      "dmg_pct": 0.3,
+      "armor": 2
+     }
+    }
+   ]
+  },
+  "skill": "sear",
+  "on_hit_dot": {
+   "_doc": "人设落地：每一发命中都直接点火 + 上毒，不用等技能。Enemy.apply_fx 取 max 不叠层，所以是「你碰过的怪都在掉血」，不是「每发追加伤害」。数值会被 elem_pct 放大（元素流一起联动）。",
+   "burn": 3.0,
+   "poison_pct": 0.02,
+   "dur": 2.5
+  }
+ },
+ "mash": {
+  "zh": "薯泥萝卜",
+  "en": "Mash",
+  "color": "#c9a06a",
+  "affinity": "melee",
+  "trait": "厚皮续航",
+  "trait_en": "Thick-skinned sustain",
+  "best": "搅拌机 / 厨具，站着挨打也能回血",
+  "best_en": "Blender / kitchen — outlast what you can't out-damage",
+  "tip": "打不死就磨：护甲高、吸血厚，但走得慢、出手也慢，跑图全靠提前占位置",
+  "tip_en": "Won't out-damage you, will outlast you. Tons of armor and lifesteal, but slow feet and slower hands — take your ground early.",
+  "stats": {
+   "armor": 3,
+   "max_hp": 45,
+   "lifesteal": 2,
+   "speed_pct": -0.12,
+   "dmg_pct": -0.1
+  },
+  "bond": {
+   "tag": "kitchen",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "armor": 1
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "armor": 2,
+      "lifesteal": 1
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "armor": 4,
+      "lifesteal": 3,
+      "pickup_pct": 0.2
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "blender",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "lifesteal": 1
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "lifesteal": 2
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "lifesteal": 3,
+      "pickup_pct": 0.1
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "lifesteal": 4,
+      "pickup_pct": 0.22
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "lifesteal": 6,
+      "pickup_pct": 0.36,
+      "max_hp": 20
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "lifesteal": 8,
+      "pickup_pct": 0.52,
+      "max_hp": 45
+     }
+    }
+   ]
+  },
+  "skill": "grind"
+ },
+ "sizzle": {
+  "zh": "爆炒萝卜",
+  "en": "Sizzle",
+  "color": "#f2603c",
+  "affinity": "mixed",
+  "trait": "锅气发动机",
+  "trait_en": "Wok engine",
+  "best": "炒勺 / 重武器，靠不停颠勺打输出",
+  "best_en": "Wok Scoop / heavy — the wok is the damage",
+  "tip": "开局白送一次颠勺，先按一下看看它有多疼：你自己的普攻很轻，真正的输出是这一勺。",
+  "tip_en": "You start with one toss ready — press it first and see. Your own hits are weak; the wok is the damage.",
+  "stats": {
+   "wok_pct": 0.55,
+   "rate_pct": 0.08,
+   "max_hp": -20,
+   "dmg_pct": -0.12
+  },
+  "bond": {
+   "tag": "heavy",
+   "tiers": [
+    {
+     "need": 2,
+     "stats": {
+      "wok_pct": 0.15
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "wok_pct": 0.32,
+      "rate_pct": 0.08
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "wok_pct": 0.55,
+      "rate_pct": 0.18,
+      "armor": 1
+     }
+    }
+   ]
+  },
+  "signature": {
+   "key": "wok_scoop",
+   "tiers": [
+    {
+     "need": 1,
+     "stats": {
+      "wok_pct": 0.1
+     }
+    },
+    {
+     "need": 2,
+     "stats": {
+      "wok_pct": 0.22
+     }
+    },
+    {
+     "need": 3,
+     "stats": {
+      "wok_pct": 0.36,
+      "rate_pct": 0.06
+     }
+    },
+    {
+     "need": 4,
+     "stats": {
+      "wok_pct": 0.52,
+      "rate_pct": 0.14
+     }
+    },
+    {
+     "need": 5,
+     "stats": {
+      "wok_pct": 0.72,
+      "rate_pct": 0.24,
+      "dmg_pct": 0.08
+     }
+    },
+    {
+     "need": 6,
+     "stats": {
+      "wok_pct": 0.95,
+      "rate_pct": 0.36,
+      "dmg_pct": 0.18
+     }
+    }
+   ]
+  },
+  "skill": "flashfire",
+  "start_wok_charges": 1
+ }
 }

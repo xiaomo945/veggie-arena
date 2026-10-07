@@ -22,6 +22,7 @@ const RED := Color(0.95, 0.42, 0.40)
 const INFL := Color(1.0, 0.55, 0.25)   # 涨价角标：暖橙（卡通统一调）
 const ICON_BOX := 60.0
 const Ctl := preload("res://ui/Shop/ShopCardCtl.gd")
+const SynText := preload("res://ui/Screens/SynText.gd")
 
 var _d: Dictionary = {}
 var _hover := false
@@ -126,10 +127,9 @@ func _draw() -> void:
 	# 这是"攒钱等它刷出来"的视觉钩子 —— 扫一眼货架就知道哪几张是给我的。
 	var syn := str(_d.get("syn", ""))
 	if syn != "" and not disabled:
-		var syn_col := Color(1.0, 0.84, 0.32, 0.95) if syn == "signature" \
-			else Color(0.55, 0.85, 1.0, 0.75)
+		var syn_col := SynText.color_of(syn)   # 本命金 / 杂食绿（开出新的一类）/ 羁绊蓝
 		draw_style_box(_sb(Color(0, 0, 0, 0), syn_col, 12.0,
-			3 if syn == "signature" else 2), r.grow(3.0))
+			3 if syn != "bond" else 2), r.grow(3.0))
 
 	# 矮卡（大商店 6 张）砍掉描述、缩小图标，否则文字会糊成一团
 	var compact := Ctl.is_compact(r.size.y)

@@ -1,0 +1,226 @@
+{
+ "_doc": "角色评审：多用户画像打分（轻度/中度/重度 × 女/男，共 6 个画像）。\n用户原话：「用户画像就是轻度用户、中度用户、重度用户啊，还有啊，男生女生的喜好\n这样来评分儿…他使用的武器，他的名字，他的玩法，爽感，它的特效美术，每一个环节\n都要模仿用户画像给这个角色打分儿…都满意了，或者是打到过一个比较高的分儿，\n这个角色才能做。」\n\nscores 里每个维度 1~5 分，打分时必须真的扮演那个人，不能打平均分。\n过线规则（scripts/char_review.py 判定）：\n  ① 六个画像的加权分都要 ≥ pass（加权分满分 5.0）\n  ② 任何一项原始分 ≤ hard_floor 都算硬伤，直接不过 —— 防止总分够但某一项\n     是灾难的角色蒙混过关（比如数值很强但名字念不出来的角色）。\n\n改分要写理由：每次改完把原因追加到 _history 数组。",
+ "_history": [
+  "2026-10 首次建表：13 个角色（10 老 + C2 新增 scorch/mash/sizzle）逐项打分，\n     用同一张表回评，不过线的打回重做。",
+  "2026-10 第一次评审回评：13 个角色里 3 个不过线（turnip 的 play/depth 硬伤、\n     scorch 与 sizzle 的 onboard 硬伤）。逐个做真机制改造后重评：\n       · turnip：新增第三条羁绊线 variety（按武器类种数分档，与 bond 相反）\n         + 改名「杂食萝卜 / Omnivore」→ play/depth 2→4\n       · scorch：新增角色自带命中 DoT（on_hit_dot），第一次命中就着火 → onboard 2→4\n       · sizzle：开局白送 1 次颠勺充能 → onboard 2→3\n     改分不是抬分：每一条都对应一次真实的代码/数值改动，理由写在 notes 里。"
+ ],
+ "dims": {
+  "name": "名字：海外语感、记忆度、中英是否对仗（用户点名）",
+  "weapon": "本命武器：拿在手上有没有辨识度、想不想为它去凑（用户点名）",
+  "play": "玩法：机制差异是否真实存在、值不值得为它单独开一局（用户点名）",
+  "juice": "爽感：打击反馈、成长爆点、有没有我起来了的高光时刻（用户点名）",
+  "art": "特效美术：配色、图标、技能特效的辨识度（用户点名）",
+  "depth": "构筑深度：有没有一条值得研究的专属配装路线（重度用户最在意）",
+  "onboard": "上手门槛：3 秒能不能看懂这角色怎么玩（轻度用户最在意）"
+ },
+ "personas": {
+  "_doc": "三档投入度 × 两性偏好 = 6 个画像。权重之和为 1。\n投入度差异：轻度要立刻懂、立刻爽、容错高；中度愿意学一个机制，\n但要有清晰反馈；重度要深度和上限，最怕换皮。\n性别偏好差异（写具体，不贴标签，只描述可观察的取向）：\n  女：更容易被视觉统一 + 有性格 + 有梗吸引，对丑但强容忍度低；\n      在意角色有没有故事感、收集感；对复杂数值的耐心较低。\n  男：更容易被酷、强力、效率吸引，能容忍丑但强；\n      对可爱、主题统一不敏感，但对上限够不够高很敏感。",
+  "casual_f": {
+   "zh": "轻度·女",
+   "desc": "通勤路上开一局，不看攻略，选角页扫一眼就决定",
+   "weight": {
+    "name": 0.16,
+    "weapon": 0.1,
+    "play": 0.12,
+    "juice": 0.18,
+    "art": 0.22,
+    "depth": 0.04,
+    "onboard": 0.18
+   }
+  },
+  "casual_m": {
+   "zh": "轻度·男",
+   "desc": "睡前开两局，看一眼 tip 就上手，打不过就换角色",
+   "weight": {
+    "name": 0.14,
+    "weapon": 0.16,
+    "play": 0.14,
+    "juice": 0.22,
+    "art": 0.12,
+    "depth": 0.06,
+    "onboard": 0.16
+   }
+  },
+  "mid_f": {
+   "zh": "中度·女",
+   "desc": "周末会玩几小时，愿意看一次推荐配装，讲究玩得顺不顺",
+   "weight": {
+    "name": 0.15,
+    "weapon": 0.15,
+    "play": 0.18,
+    "juice": 0.18,
+    "art": 0.18,
+    "depth": 0.06,
+    "onboard": 0.1
+   }
+  },
+  "mid_m": {
+   "zh": "中度·男",
+   "desc": "会刷几局同一角色，研究这套能不能再强一点",
+   "weight": {
+    "name": 0.12,
+    "weapon": 0.18,
+    "play": 0.18,
+    "juice": 0.16,
+    "art": 0.1,
+    "depth": 0.16,
+    "onboard": 0.1
+   }
+  },
+  "hard_f": {
+   "zh": "重度·女",
+   "desc": "每个角色都要通一遍关，讲究这角色有没有完整的表达",
+   "weight": {
+    "name": 0.14,
+    "weapon": 0.16,
+    "play": 0.22,
+    "juice": 0.12,
+    "art": 0.16,
+    "depth": 0.14,
+    "onboard": 0.06
+   }
+  },
+  "hard_m": {
+   "zh": "重度·男",
+   "desc": "查 wiki 算最优解，反复开同一角色冲上限",
+   "weight": {
+    "name": 0.1,
+    "weapon": 0.18,
+    "play": 0.2,
+    "juice": 0.1,
+    "art": 0.06,
+    "depth": 0.3,
+    "onboard": 0.06
+   }
+  }
+ },
+ "pass": 3.4,
+ "hard_floor": 2,
+ "scores": {
+  "_doc": "每个角色 7 维 × 1~5 分。",
+  "turnip": {
+   "name": 4,
+   "weapon": 4,
+   "play": 4,
+   "juice": 4,
+   "art": 3,
+   "depth": 4,
+   "onboard": 5
+  },
+  "archer": {
+   "name": 4,
+   "weapon": 4,
+   "play": 4,
+   "juice": 4,
+   "art": 4,
+   "depth": 4,
+   "onboard": 4
+  },
+  "bruiser": {
+   "name": 4,
+   "weapon": 4,
+   "play": 4,
+   "juice": 4,
+   "art": 4,
+   "depth": 4,
+   "onboard": 4
+  },
+  "mage": {
+   "name": 5,
+   "weapon": 4,
+   "play": 4,
+   "juice": 4,
+   "art": 5,
+   "depth": 4,
+   "onboard": 3
+  },
+  "skirmisher": {
+   "name": 4,
+   "weapon": 3,
+   "play": 4,
+   "juice": 4,
+   "art": 4,
+   "depth": 3,
+   "onboard": 4
+  },
+  "hoarder": {
+   "name": 5,
+   "weapon": 4,
+   "play": 4,
+   "juice": 3,
+   "art": 4,
+   "depth": 4,
+   "onboard": 4
+  },
+  "hedgehog": {
+   "name": 4,
+   "weapon": 4,
+   "play": 5,
+   "juice": 4,
+   "art": 4,
+   "depth": 4,
+   "onboard": 3
+  },
+  "commando": {
+   "name": 5,
+   "weapon": 5,
+   "play": 5,
+   "juice": 5,
+   "art": 3,
+   "depth": 5,
+   "onboard": 3
+  },
+  "martial": {
+   "name": 5,
+   "weapon": 4,
+   "play": 5,
+   "juice": 5,
+   "art": 4,
+   "depth": 4,
+   "onboard": 3
+  },
+  "magnet": {
+   "name": 4,
+   "weapon": 4,
+   "play": 4,
+   "juice": 5,
+   "art": 4,
+   "depth": 3,
+   "onboard": 4
+  },
+  "scorch": {
+   "name": 5,
+   "weapon": 5,
+   "play": 5,
+   "juice": 4,
+   "art": 5,
+   "depth": 5,
+   "onboard": 4
+  },
+  "mash": {
+   "name": 4,
+   "weapon": 4,
+   "play": 4,
+   "juice": 3,
+   "art": 3,
+   "depth": 4,
+   "onboard": 4
+  },
+  "sizzle": {
+   "name": 5,
+   "weapon": 5,
+   "play": 5,
+   "juice": 5,
+   "art": 4,
+   "depth": 5,
+   "onboard": 3
+  }
+ },
+ "notes": {
+  "turnip": "改版：从「什么都不会的兜底角」改成全游戏唯一的杂食线（variety 按武器【类种数】分档，与 bond 的「堆同一类」方向相反），并改名「杂食萝卜 Omnivore」—— 读一遍名字就知道该怎么买。六个画像里 art 仍是唯一短板（它是白萝卜，配色最素），但不再有硬伤。",
+  "scorch": "修掉 onboard 硬伤：原来 DoT 只挂在技能上，玩家选它开枪三秒看不到一点火，只看到普攻比别人低。现在每一发命中都直接点燃灼烧 + 上毒（apply_fx 取 max 不叠层），第一次命中就看得见 —— 人设从 tip 文案落到了机制上。",
+  "sizzle": "修掉 onboard 硬伤：开局白送 1 次颠勺充能，进局按一下就知道输出在哪，不用先读懂火候条。仍是全场玩法最极端的角色，所以 onboard 只给到 3 —— 这是诚实的分。",
+  "commando": "老手只买手枪，把 Brotato 的经典玩法搬过来了，武器和角色绑定得最死的一个。",
+  "hoarder": "金币流的爽点在滚雪球，但前 5 波还没滚起来的时候体感偏闷。"
+ }
+}

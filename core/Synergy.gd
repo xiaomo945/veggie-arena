@@ -14,6 +14,17 @@ extends RefCounted
 #      这就是 Brotato 里老手只买树枝的由来，也是"换武器成本巨大"的来源。
 #   2) 武器类羁绊 bond —— 角色对某一类武器（gun/blade/heavy/elemental/kitchen）
 #      有专属加成，按该类件数 2/4/6 分档。它决定角色"大体走哪一路"。
+#   3) 杂食 variety —— 按【身上有几种武器类】分档，与 bond 正好相反：
+#      bond 奖励"同一类堆到底"，variety 奖励"每样来一件"。
+#
+#      为什么要有这条反向的线（用户点名的"每个角色都要有独特玩法"）：
+#        12 个角色都在鼓励【堆同一把 / 堆同一类】，于是所有局的最优解形状一样 ——
+#        "刷出什么买什么"和"照着一条路攒"之间其实没有区别，玩家感受不到角色差异。
+#        田园萝卜 turnip 是全游戏唯一【没有专精】的角色：它的本命不是某一把武器，
+#        而是"齐全"。拿 6 把一模一样的枪在它手里反而是最差解 —— 这一条把
+#        "为了一个角色去重新学怎么买东西"变成真实存在的体验。
+#      对轻度玩家它也是最友好的一条：不需要认识任何武器名字，只要记得
+#        "武器栏里颜色越杂越强"，看一眼就懂。
 #
 #   同一把武器可以是多个角色的本命（合理：pistol 对 commando 是暴击流，
 #   对别人可能只是普通枪）—— 因为加成写在【角色】这一侧，不在武器上，
@@ -26,6 +37,11 @@ extends RefCounted
 #   - 本文件是纯函数，不碰 autoload（架构守卫 R2），可直接在 --script 下单测。
 
 const WeaponSets := preload("res://core/WeaponSets.gd")
+
+# 武器"类"清单：与 data/weapon_sets.json 的类 key 一一对应。
+# ⚠️ 这里写死了一份，靠 tests/test_synergy.gd 断言它和 weapon_sets.json 完全同步 ——
+#    以后加第六类武器时，测试会直接失败提醒你来改，不会静默少算一类。
+const CLASSES := ["blade", "heavy", "gun", "elemental", "kitchen"]
 
 # ---- 计数 ----
 
@@ -46,6 +62,16 @@ static func bond_count(weapons: Array, tag: String, defs: Dictionary) -> int:
 	if tag.is_empty():
 		return 0
 	return int(WeaponSets.tag_counts(weapons, defs).get(tag, 0))
+
+# 杂食：身上出现了【几种】武器类（0~5）。同一类拿几把都只算 1 种 ——
+# 这正是它和 bond 相反的地方：堆同一类在这里一分钱不值。
+static func variety_count(weapons: Array, defs: Dictionary) -> int:
+	var counts := WeaponSets.tag_counts(weapons, defs)
+	var n := 0
+	for c in CLASSES:
+		if int(counts.get(c, 0)) > 0:
+			n += 1
+	return n
 
 # ---- 档位 ----
 
@@ -93,10 +119,11 @@ static func bonuses(weapons: Array, char_entry: Dictionary, defs: Dictionary) ->
 	var out: Dictionary = {}
 	_merge(out, _branch_stats(weapons, char_entry, defs, "signature"))
 	_merge(out, _branch_stats(weapons, char_entry, defs, "bond"))
+	_merge(out, _branch_stats(weapons, char_entry, defs, "variety"))
 	return out
 
 # ---- UI 进度 ----
-# 返回 {"signature": {...}, "bond": {...}}，每项：
+# 返回 {"signature": {...}, "bond": {...}, "variety": {...}}，每项：
 #   {"key"/"tag", "count", "tier", "need_next", "max_need", "stats_now"}
 # 商店/选角页拿它画"3/6 还差 3 件"和"本命 +24%"。
 static func progress(weapons: Array, char_entry: Dictionary, defs: Dictionary) -> Dictionary:
@@ -125,6 +152,17 @@ static func progress(weapons: Array, char_entry: Dictionary, defs: Dictionary) -
 			"max_need": _max_need(tiers2),
 			"stats_now": tier_stats(tiers2, tier2),
 		}
+	var vr: Dictionary = char_entry.get("variety", {}) as Dictionary
+	if not vr.is_empty():
+		var tiers3 = vr.get("tiers", [])
+		var n3 := variety_count(weapons, defs)
+		var tier3 := tier_of(n3, tiers3)
+		out["variety"] = {
+			"tag": "variety", "count": n3, "tier": tier3,
+			"need_next": next_need(n3, tiers3),
+			"max_need": _max_need(tiers3),
+			"stats_now": tier_stats(tiers3, tier3),
+		}
 	return out
 
 # 再买一件（本命 or 羁绊类）会带来什么变化 —— 商店卡片上那个"买了给多少"的数字。
@@ -136,11 +174,7 @@ static func next_gain(weapons: Array, char_entry: Dictionary, defs: Dictionary,
 		branch: String) -> Dictionary:
 	var br := char_entry.get(branch, {}) as Dictionary
 	var tiers = br.get("tiers", [])
-	var n := 0
-	if branch == "signature":
-		n = signature_count(weapons, str(br.get("key", "")))
-	else:
-		n = bond_count(weapons, str(br.get("tag", "")), defs)
+	var n := _count_of(weapons, char_entry, defs, branch)
 	var t_now := tier_of(n, tiers)
 	var t_after := tier_of(n + 1, tiers)
 	if t_after <= t_now:
@@ -163,6 +197,22 @@ static func is_signature(char_entry: Dictionary, weapon_key: String) -> bool:
 	var sig: Dictionary = char_entry.get("signature", {}) as Dictionary
 	return not weapon_key.is_empty() and str(sig.get("key", "")) == weapon_key
 
+# 这张卡能带来一个【新的】武器类吗（杂食角色的"该不该买"判据）。
+# 与 bond 相反：bond 问"它是不是我要堆的那一类"，这里问"我身上还没有这一类吗"。
+# 只有能开出新类的卡才值得杂食角色优先拿 —— 同一类的第 N 把对它一文不值。
+static func is_variety_gain(char_entry: Dictionary, weapon_key: String, defs: Dictionary,
+		weapons: Array) -> bool:
+	if (char_entry.get("variety", {}) as Dictionary).is_empty():
+		return false
+	var def = defs.get(weapon_key, null)
+	if not (def is Dictionary):
+		return false
+	var held := WeaponSets.tag_counts(weapons, defs)
+	for t in (def as Dictionary).get("tags", []):
+		if CLASSES.has(str(t)) and int(held.get(str(t), 0)) <= 0:
+			return true
+	return false
+
 # 某把武器属于当前角色的羁绊类吗（商店卡片次一级高亮用）
 static func in_bond(char_entry: Dictionary, weapon_key: String, defs: Dictionary) -> bool:
 	var bd: Dictionary = char_entry.get("bond", {}) as Dictionary
@@ -183,12 +233,21 @@ static func _branch_stats(weapons: Array, char_entry: Dictionary, defs: Dictiona
 	if br.is_empty():
 		return {}
 	var tiers = br.get("tiers", [])
-	var n := 0
-	if branch == "signature":
-		n = signature_count(weapons, str(br.get("key", "")))
-	else:
-		n = bond_count(weapons, str(br.get("tag", "")), defs)
+	var n := _count_of(weapons, char_entry, defs, branch)
 	return tier_stats(tiers, tier_of(n, tiers))
+
+# 一条分支当前"攒到几件了"：signature 按同 key 把数、bond 按 tag 件数、variety 按类种数。
+# 三种数法完全不同，但后面取档位/算增量的逻辑完全一样，所以只在这里分叉一次。
+static func _count_of(weapons: Array, char_entry: Dictionary, defs: Dictionary,
+		branch: String) -> int:
+	var br: Dictionary = char_entry.get(branch, {}) as Dictionary
+	match branch:
+		"signature":
+			return signature_count(weapons, str(br.get("key", "")))
+		"variety":
+			return variety_count(weapons, defs)
+		_:
+			return bond_count(weapons, str(br.get("tag", "")), defs)
 
 static func _merge(dst: Dictionary, src: Dictionary) -> void:
 	for k in src:

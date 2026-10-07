@@ -17,7 +17,7 @@ const SynText := preload("res://ui/Screens/SynText.gd")
 
 static func line(char_entry: Dictionary) -> String:
 	var out := ""
-	for branch in ["signature", "bond"]:
+	for branch in ["signature", "variety", "bond"]:
 		var br := char_entry.get(branch, {}) as Dictionary
 		if br.is_empty():
 			continue

@@ -143,6 +143,22 @@ else
 fi
 
 echo ""
+echo "=== 2.7 多用户画像角色评审（硬失败：6 个画像都要满意）==="
+# 用户诉求："用户画像就是轻度、中度、重度用户，还有男生女生的喜好这样来评分儿…
+#   他的名字、武器、玩法、爽感、特效美术，每一个环节都要模仿用户画像打分儿…
+#   都满意了，或者打到一个比较高的分儿，这个角色才能做。"
+# 两个闸门：① 每个画像的加权分 ≥ pass；② 任何一项 ≤ hard_floor 就是硬伤。
+# 缺分（新角色忘了打分）同样算失败 —— 不允许悄悄跳过。
+if [ -f scripts/char_review.py ]; then
+  PY5=$(command -v python3.11 || command -v python3)
+  if ! "$PY5" scripts/char_review.py; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/char_review.py，跳过"
+fi
+
+echo ""
 echo "=== 3. 说明 ==="
 echo "  单文件 >300 行的检查已并入 1.7 架构守卫（硬失败，不再是只告警不拦人）"
 

@@ -22,19 +22,21 @@ static func decorate(d: Dictionary, char_entry: Dictionary, weapon_key: String,
 	var syn := ""
 	if Synergy.is_signature(char_entry, weapon_key):
 		syn = "signature"
+	elif Synergy.is_variety_gain(char_entry, weapon_key, defs, weapons):
+		# 杂食：这张能开出我还没有的一类 → 对田园萝卜来说这就是"最该拿的那张"
+		syn = "variety"
 	elif Synergy.in_bond(char_entry, weapon_key, defs):
 		syn = "bond"
 	if syn.is_empty():
 		return
 	d["syn"] = syn
-	if syn == "signature":
-		# 顺带把"还差几件到下一档"带给卡片，玩家知道自己攒到哪了
-		var pr := Synergy.progress(weapons, char_entry, defs)
-		var sg := pr.get("signature", {}) as Dictionary
-		d["syn_need"] = int(sg.get("need_next", 0))
-		d["syn_count"] = int(sg.get("count", 0))
-	d["tag"] = I18n.t("syn_signature" if syn == "signature" else "syn_bond") \
-		+ "·" + str(d.get("tag", ""))
+	# 顺带把"还差几件到下一档"带给卡片，玩家知道自己攒到哪了
+	var pr := Synergy.progress(weapons, char_entry, defs)
+	var branch := "signature" if syn == "signature" else ("variety" if syn == "variety" else "bond")
+	var sg := pr.get(branch, {}) as Dictionary
+	d["syn_need"] = int(sg.get("need_next", 0))
+	d["syn_count"] = int(sg.get("count", 0))
+	d["tag"] = I18n.t("syn_" + branch) + "·" + str(d.get("tag", ""))
 	# B2：把"买了这张到底给多少"直接写在卡片上。只有金边蓝边还不够 —— 玩家要能
 	# 算出"这一把值不值得现在买"，才谈得上"攒钱等它刷出来"。
 	d["syn_gain"] = gain_text(weapons, char_entry, defs, syn)
@@ -45,8 +47,7 @@ static func decorate(d: Dictionary, char_entry: Dictionary, weapon_key: String,
 static func gain_text(weapons: Array, char_entry: Dictionary, defs: Dictionary,
 		syn: String) -> String:
 	# 规则在 core/Synergy.next_gain（纯函数、有单测），这里只负责翻译成人话
-	var g := Synergy.next_gain(weapons, char_entry, defs,
-		"signature" if syn == "signature" else "bond")
+	var g := Synergy.next_gain(weapons, char_entry, defs, syn)
 	if not bool(g.get("cross", false)):
 		var need := int(g.get("need", 0))
 		return I18n.t("syn_max") if need <= 0 else I18n.t("syn_next") % need

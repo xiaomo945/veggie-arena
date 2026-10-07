@@ -4,8 +4,8 @@ extends Node
 # 由 Game 持有（game 子节点），战斗状态通过 scenes/BattleWorld.gd 共享。
 #
 # 【依赖边界】world —— 全部战斗状态（池 / rng / 竞技场 / 暂存数组 / 计数器），公开契约。
-#   game —— 只用来挂特效节点（add_child）和注册震屏，**不读它的任何状态字段**
-#   （以前 game._xxx 读写 64 处是全项目头号耦合源，现已全部搬进 BattleWorld）。
+#   game —— 只用来挂特效节点和注册震屏，**不读它的任何状态字段**（以前 game._xxx
+#   读写 64 处是全项目头号耦合源，现已全部搬进 BattleWorld）。
 
 const Spawner := preload("res://core/Spawner.gd")
 const Level := preload("res://core/Level.gd")
@@ -17,11 +17,11 @@ const Shake := preload("res://entities/effects/Shake.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
 const WokToss := preload("res://scenes/WokToss.gd")
 const BulletSystem := preload("res://scenes/BulletSystem.gd")
+const InnateDot := preload("res://scenes/InnateDot.gd")
 const EnemyMind := preload("res://scenes/EnemyMind.gd")
 
 # 命中飘字走 FxLayer 的池化飘字（Events.damage_dealt），不再每命中 new 一个
 # Node2D+Tween 再 queue_free —— 高频开火时那才是"打怪卡"的真正元凶（节点抖动 + GC）。
-
 # 同屏击杀特效并发上限：走画质档位，掉帧时自动收紧（见 core/PerfGuard.gd）
 func _death_fx_cap() -> int:
 	return Perf.int_cap("death_fx", 6)
@@ -123,15 +123,15 @@ func spawn_child(pos: Vector2, type: String) -> void:
 	if _mind != null:
 		_mind.register(e, stats)
 
-# 敌人移动/分离/接触结算（含炮手远程、猛冲兵相位猛冲、自爆、分裂等行为）
-# 全交给 EnemyMind —— 这样不断加新行为也不会把本文件顶过 300 行红线。
-# EnemyMind 懒构造：world 由 Game 在 _ready 之后才注入，这里不能在 _ready 里 new。
+# 敌人移动/分离/接触结算（炮手远程、猛冲兵、自爆、分裂等）全交给 EnemyMind ——
+# 不断加新行为也不会把本文件顶过 300 行红线。它懒构造：world 由 Game 在 _ready
+# 之后才注入，不能在 _ready 里 new。
 func update_enemies(delta: float) -> void:
 	_ensure_mind()
 	_mind.update(delta)
 
-# 懒构造 EnemyMind（world 注入后才可用）；顺手把子弹部件也准备好，炮手要借它开火。
-# spawn_child 作为回调传进去，分裂怪死亡时由 EnemyMind 回调本系统生成子代。
+# 懒构造 EnemyMind（world 注入后才可用），顺手备好子弹部件（炮手要借它开火）；
+# spawn_child 作回调：分裂怪死亡时由 EnemyMind 回调本系统生成子代。
 func _ensure_mind() -> void:
 	if _mind != null:
 		return
@@ -142,7 +142,7 @@ func _ensure_mind() -> void:
 	_mind = EnemyMind.new()
 	_mind.setup(world, damage_enemy, _bullets, spawn_child)
 
-# 收集敌人数组（含位置/速度）供开火与子弹追踪共用。⚠️ 复用字典池 + resize 截断，稳态零分配。
+# 收集敌人数组（含位置/速度）供开火与子弹追踪共用。⚠️ 复用字典池 + resize，稳态零分配。
 func collect_enemy_data() -> void:
 	var arr := world.edata
 	var n := 0
@@ -169,8 +169,8 @@ func collect_enemy_data() -> void:
 	arr.resize(n)      # 截掉上一帧多出来的旧条目（旧 dict 原地复用，不新建）
 
 # ---- 子弹：追踪 / 弹墙 / 命中结算全在 scenes/BulletSystem.gd ----
-# 这里只做转发，并把伤害结算（damage_enemy）注入进去 —— 子弹自己不知道
-# 什么叫"击杀"，只有 EnemySystem 知道（击杀计数 / 掉金币 / 涨锅气都在那）。
+# 这里只做转发，并把 damage_enemy 注入进去 —— 子弹自己不知道什么叫"击杀"，
+# 只有 EnemySystem 知道（击杀计数 / 掉金币 / 涨锅气都在那）。
 func home_bullets(delta: float) -> void:
 	_bind_bullets()
 	_bullets.home(delta)
@@ -195,8 +195,7 @@ func damage_enemy(e, amount: float) -> bool:
 	e.squash(epos - world.player.global_position)
 	if amount >= 35.0:   # 单次大伤害轻微震屏
 		Shake.kick(4.0, 0.16)
-	# 飘伤害数字（特效层订阅，纯表现）
-	Events.damage_dealt.emit(int(amount), epos, false)
+	Events.damage_dealt.emit(int(amount), epos, false)   # 飘伤害数字（特效层订阅）
 	if e.hurt(amount):
 		GameState.add_kill()
 		# 经验：按敌人类型给不同权重（精英/Boss 给得多，"优先打精英"才有动机）
@@ -251,6 +250,7 @@ func on_melee_swung(origin: Vector2, dir_in: Vector2, reach: float, half_arc: fl
 		dmg: float, crit: bool, knockback: float, c: Color, key: String, level: int) -> void:
 	world.shots_fired += 1
 	var base := dir_in.normalized()
+	var dot := InnateDot.of(GameState.character)   # 角色自带命中效果（scorch 砍中就着火）
 	for e in world.edata:
 		if not bool(e.get("alive", false)):
 			continue
@@ -269,6 +269,7 @@ func on_melee_swung(origin: Vector2, dir_in: Vector2, reach: float, half_arc: fl
 			continue
 		# 命中走漏斗：击杀计数 / 掉金币 / 涨锅气 / 破甲全在 damage_enemy 里
 		damage_enemy(en, dmg)
+		InnateDot.apply(en, dot)
 		world.hits_landed += 1
 		# 命中微量攒锅气（与子弹一致：主要靠击杀，命中只维持火候）
 		GameState.add_wok(float(Data.wok_cfg().get("hit_heat", 0.5)))

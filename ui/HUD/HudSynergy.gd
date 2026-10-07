@@ -18,6 +18,7 @@ extends Control
 
 const Synergy := preload("res://core/Synergy.gd")
 const Stats := preload("res://core/Stats.gd")
+const SynText := preload("res://ui/Screens/SynText.gd")
 
 # 跨档通知：HUD.gd 收到后弹横幅（和套装跨档同一条反馈通道）
 signal tier_up(text: String, color: Color)
@@ -26,7 +27,9 @@ const REFRESH := 0.25          # 拉数据的间隔（秒）：够快，又不�
 const FONT_SIZE := 11
 const CHIP_H := 14.0
 const CHIP_GAP := 12.0
-const KINDS := ["signature", "bond"]
+const BAR_W := 26.0     # 每条线前面的小进度条宽度
+# 三条线：本命（堆同一把）/ 羁绊（堆同一类）/ 杂食（每样来一件，只有田园萝卜有）
+const KINDS := ["signature", "variety", "bond"]
 
 var _t := 0.0
 var _prog: Dictionary = {}
@@ -75,6 +78,9 @@ func _pop_tier_up(kind: String, d: Dictionary) -> void:
 func _title(kind: String, d: Dictionary) -> String:
 	if kind == "signature":
 		return I18n.t("syn_signature") + "·" + I18n.pick(Data.weapon(str(d.get("key", ""))))
+	if kind == "variety":
+		# 杂食不指向某一把/某一类武器，标题就写"杂食"，进度是"类数/5"
+		return I18n.t("syn_variety")
 	return I18n.t("syn_bond") + "·" + I18n.t("set_" + str(d.get("tag", "")))
 
 # 这一档给了什么（取第一条加成写进横幅，全写会太长）
@@ -87,8 +93,8 @@ func _gain(d: Dictionary) -> String:
 	return ""
 
 func _color(kind: String) -> Color:
-	# 本命金、羁绊蓝 —— 与商店卡片的描边同色，玩家好把两处对上号
-	return Color(1.0, 0.84, 0.32) if kind == "signature" else Color(0.45, 0.75, 1.0)
+	# 与商店卡片描边同色（唯一一份在 SynText.color_of），玩家好把两处对上号
+	return SynText.color_of(kind)
 
 # ---- 绘制 ----
 
@@ -96,32 +102,58 @@ func _draw() -> void:
 	var fs := ThemeDB.fallback_font
 	if fs == null:
 		return
+	# ⚠️ 三条线（本命 / 杂食 / 羁绊）在 540 宽竖屏上放不下完整版：
+	#    先量一遍，超宽就自动切"精简模式"（不画"还差 N 件"，只留"进度条 + 3/5"）。
+	#    砍副标题而不是砍整条 —— 少一条线玩家就以为自己没有那条成长线。
+	var with_sub := _total_w(fs, true) <= size.x
 	var x := 0.0
 	for kind in KINDS:
 		if not _prog.has(kind):
 			continue
-		x = _chip(fs, x, kind, _prog[kind] as Dictionary)
+		x = _chip(fs, x, kind, _prog[kind] as Dictionary, with_sub)
 		if x >= size.x:
 			return     # 后面画不下了就停手，绝不糊到别的控件上
 
-func _chip(fs: Font, x: float, kind: String, d: Dictionary) -> float:
+func _total_w(fs: Font, with_sub: bool) -> float:
+	var x := 0.0
+	for kind in KINDS:
+		if not _prog.has(kind):
+			continue
+		x += _w_of(fs, _prog[kind] as Dictionary, kind, with_sub) + CHIP_GAP
+	return x
+
+func _w_of(fs: Font, d: Dictionary, kind: String, with_sub: bool) -> float:
+	var w := fs.get_string_size(_main_of(kind, d), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
+	if with_sub:
+		w += 6.0 + fs.get_string_size(_sub_of(d), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
+	return BAR_W + 5.0 + w
+
+func _main_of(kind: String, d: Dictionary) -> String:
+	return "%s %d/%d" % [_title(kind, d), int(d.get("count", 0)), int(d.get("max_need", 0))]
+
+func _sub_of(d: Dictionary) -> String:
+	var nextn := int(d.get("need_next", 0))
+	return I18n.t("syn_max") if nextn <= 0 else I18n.t("syn_next") % nextn
+
+func _chip(fs: Font, x: float, kind: String, d: Dictionary, with_sub: bool) -> float:
 	var col := _color(kind)
 	var cnt := int(d.get("count", 0))
 	var mx := int(d.get("max_need", 0))
-	var main := "%s %d/%d" % [_title(kind, d), cnt, mx]
-	var nextn := int(d.get("need_next", 0))
-	var sub := I18n.t("syn_max") if nextn <= 0 else I18n.t("syn_next") % nextn
+	var main := _main_of(kind, d)
 	var w := fs.get_string_size(main, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
-	var w2 := fs.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 	# 进度条：满档整条实心，未达成按 count/max 填（一眼看出"还差多少"）
-	var bar_w := 26.0
 	var frac := 0.0 if mx <= 0 else clampf(float(cnt) / float(mx), 0.0, 1.0)
-	draw_rect(Rect2(x, 4.0, bar_w, CHIP_H - 8.0), Color(1, 1, 1, 0.16))
-	draw_rect(Rect2(x, 4.0, bar_w * frac, CHIP_H - 8.0), col)
-	var tx := x + bar_w + 5.0
+	draw_rect(Rect2(x, 4.0, BAR_W, CHIP_H - 8.0), Color(1, 1, 1, 0.16))
+	draw_rect(Rect2(x, 4.0, BAR_W * frac, CHIP_H - 8.0), col)
+	var tx := x + BAR_W + 5.0
 	draw_string(fs, Vector2(tx, CHIP_H - 3.0), main,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color(1, 1, 1, 0.92))
+	if not with_sub:
+		return tx + w + CHIP_GAP
+	var sub := _sub_of(d)
+	var w2 := fs.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 	var sx := tx + w + 6.0
 	draw_string(fs, Vector2(sx, CHIP_H - 3.0), sub,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, col)
+	return sx + w2 + CHIP_GAP
 	return sx + w2 + CHIP_GAP

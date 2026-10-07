@@ -12,6 +12,7 @@ extends RefCounted
 const Hit := preload("res://core/Hit.gd")
 const Movement := preload("res://core/Movement.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
+const InnateDot := preload("res://scenes/InnateDot.gd")
 
 var world = null                     # BattleWorld
 var damage_fn: Callable = Callable() # (enemy, amount) -> bool 是否被这一击打死
@@ -151,6 +152,9 @@ func resolve() -> void:
 		return
 	# 击退强度：子弹类道具 knock_pct 让"打断敌人贴脸"成为一种构筑方向
 	var kb := KB_IMPULSE * (1.0 + GameState.stat_value("knock_pct"))
+	# 角色自带的命中效果（scorch 的"打中就着火"），每帧取一次，命中循环里复用
+	var dot := InnateDot.of(GameState.character)
+	var dot_on := not dot.is_empty()
 	for h: Dictionary in Hit.find_hits(world.bdata, world.edata, _hit_out):
 		var b = world.bdata[int(h["bullet"])]["ref"]
 		var e = world.edata[int(h["enemy"])]["ref"]
@@ -163,6 +167,8 @@ func resolve() -> void:
 		# 命中微量攒锅气（主要靠击杀，命中只是让"没空档"也能维持火候）
 		GameState.add_wok(float(Data.wok_cfg().get("hit_heat", 0.5)))
 		damage_fn.call(e, b.dmg)
+		if dot_on:
+			InnateDot.apply(e, dot)
 		# 命中小幅击退：沿子弹方向把敌人推开一瞬
 		if e.alive:
 			e.apply_knockback(b.dir.normalized(), kb)

@@ -13,6 +13,7 @@ extends RefCounted
 
 const Synergy := preload("res://core/Synergy.gd")
 const SkillDef := preload("res://core/SkillDef.gd")
+const Character := preload("res://core/Character.gd")
 const Stats := preload("res://core/Stats.gd")
 const SP := preload("res://tests/SrcParse.gd")
 

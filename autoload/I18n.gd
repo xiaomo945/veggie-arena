@@ -168,6 +168,7 @@ const UI := {
   "stat_skill_cd": {"en": "Skill Cooldown", "zh": "技能冷却"},
   "syn_signature": {"en": "SIGNATURE", "zh": "本命"},
   "syn_bond": {"en": "BOND", "zh": "羁绊"},
+  "syn_variety": {"en": "OMNIVORE", "zh": "杂食"},
   "syn_next": {"en": "%d more", "zh": "还差 %d 件"},
   "syn_max": {"en": "MAX", "zh": "已满"},
 

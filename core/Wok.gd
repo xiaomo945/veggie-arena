@@ -60,6 +60,15 @@ static func add(s: Dictionary, cfg: Dictionary, amount: float) -> void:
 			v = cap
 	_apply(s, cfg, v)
 
+# 白送充能（开局教学用）：爆炒萝卜一进局就有一个颠勺能按 —— 按一下就看见
+# "输出全在颠勺"这件事，比任何 tip 文案都快。上限仍由 max_charges 卡住。
+static func grant(s: Dictionary, n: int) -> void:
+	if n <= 0:
+		return
+	var maxc := int(s.get("max_charges", 3))
+	s["charges"] = mini(maxc, int(s.get("charges", 0)) + n)
+	s["ready"] = charges_of(s) > 0
+
 # 每帧自然衰减：停手不刷怪就凉下来，逼你保持进攻节奏
 static func decay(s: Dictionary, cfg: Dictionary, delta: float) -> void:
 	_apply(s, cfg, heat_of(s) - float(cfg.get("decay_per_sec", 7)) * delta)

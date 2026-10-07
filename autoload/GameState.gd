@@ -1,7 +1,6 @@
 extends Node
 
-# 当前这一局的状态。重开时调 reset()，不新建节点。
-# 依赖 Data，但不依赖任何渲染节点 —— 便于 headless 测试。
+# 当前这一局的状态：重开时调 reset()，不新建节点；只依赖 Data，不依赖渲染节点（便于 headless 测试）。
 
 var wave: int = 1
 var gold: int = 0
@@ -18,7 +17,7 @@ var endless: bool = false    # 是否已进入无尽段（通关后选了"继续
 # 当前选择的角色（data/characters.json 的键）。角色自带属性加成，与强化叠加。
 var character: String = "turnip"
 
-# 开局自选的初始武器（data/weapons.json 的键）。在标题页"选武器页"落地。
+# 开局自选的初始武器（data/weapons.json 的键），在标题页"选武器页"落地。
 # 空串 = 未选，reset() 退回 pistol+smg 双武器起步；选了则"所选 1 把 + 手枪保底"，
 # 手枪永远在，避免新手只拿一把近战被围死。
 var start_weapon: String = ""
@@ -33,6 +32,7 @@ var upgrades: Dictionary = {}
 # 0..max 的"火候"值：击杀/命中攒、停手衰减、挨打掉，档位 0 微温/1 翻炒/2 爆炒。
 # 满锅气可"颠勺"：全屏击退+重伤，然后火候回落。纯逻辑在 core/Wok.gd。
 const Wok := preload("res://core/Wok.gd")
+const Character := preload("res://core/Character.gd")
 const Run := preload("res://core/Run.gd")
 const Inventory := preload("res://core/Inventory.gd")
 const Pickup := preload("res://core/Pickup.gd")
@@ -43,11 +43,9 @@ var wok: Dictionary = {}
 var wok_heat: float = 0.0
 var _wok_tier: int = 0
 var _wok_ready_emitted := false
-# 颠勺按钮在屏幕上的可点区域（HUD 写入，Joystick 读取以避让移动）
+# 以下三块屏幕矩形由 HUD 写入、Joystick 读取后避让：戳这块只做对应操作，不走位
 var wok_toss_rect := Rect2(0, 0, 0, 0)
-# 冲刺按钮占的屏幕区域（HUD 写入，Joystick 读取后避让：戳这块只冲刺、不走位）
 var dash_rect := Rect2(0, 0, 0, 0)
-# 暂停按钮占的屏幕区域（HUD 写入，Joystick 读取后避让：戳这块只暂停、不走位）
 var pause_rect := Rect2(0, 0, 0, 0)
 
 func _ready() -> void:
@@ -72,6 +70,8 @@ func reset() -> void:
 	weapons = []
 	upgrades = {}
 	wok = Wok.make(Data.wok_cfg())
+	# 角色自带开局充能：爆炒萝卜一进局就能颠一勺，不用先读懂火候条
+	Wok.grant(wok, Character.start_wok_charges(Data.character(character)))
 	wok_heat = 0.0
 	_wok_tier = 0
 	_wok_ready_emitted = false
@@ -100,8 +100,7 @@ func set_character(key: String) -> void:
 
 # 角色自带的某条属性加成（读 characters.json，缺角色返回 0）
 func _char_stat(stat: String) -> float:
-	var c := Data.character(character)
-	var st: Dictionary = c.get("stats", {}) as Dictionary
+	var st := (Data.character(character).get("stats", {})) as Dictionary
 	return float(st.get(stat, 0.0))
 
 # ---- 血量 ----
