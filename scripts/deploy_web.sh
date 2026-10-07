@@ -69,22 +69,46 @@ fi
 echo
 echo "=== 3. 重启预览服务器 ==="
 pkill -f "serve_web.py" 2>/dev/null
-sleep 1
+# ⚠️ 必须等端口真的空出来。踩过：pkill 之后立刻 nohup 起新进程会撞上
+#    TIME_WAIT / 旧进程还没死透，报 "Address already in use" 然后退出；
+#    而旧服务器还在服务同一目录，第 3 步的 curl 照样返回 200 ——
+#    于是脚本报了 "✅ 已在 3000 端口服务"，实际跑的却是上一版进程，
+#    刚刚辛苦生成的 .gz 副本一个也没用上（裸传 34MB）。
+for i in $(seq 1 30); do
+  ss -ltn 2>/dev/null | grep -q ":$PORT " || break
+  sleep 0.5
+done
 cd "$PROJ"
 nohup python3 scripts/serve_web.py "$PORT" >/tmp/serve.log 2>&1 &
-sleep 3
+SRV_PID=$!
+sleep 4
+if ! kill -0 "$SRV_PID" 2>/dev/null; then
+  echo "❌ 服务器进程没能起来（端口被占？），日志："
+  cat /tmp/serve.log
+  exit 1
+fi
 if ! curl -s -o /dev/null --max-time 5 "http://127.0.0.1:$PORT/index.html"; then
   echo "❌ 服务器没起来，日志："
   cat /tmp/serve.log
   exit 1
 fi
-echo "  ✅ 已在 $PORT 端口服务"
+echo "  ✅ 已在 $PORT 端口服务（PID $SRV_PID）"
 
 echo
-echo "=== 4. 确认压缩生效 ==="
-curl -s -o /dev/null -D - --max-time 30 -H "Accept-Encoding: br" \
-  "http://127.0.0.1:$PORT/index.wasm" \
-  | grep -i "content-encoding\|content-length" | sed 's/^/  /'
+echo "=== 4. 确认压缩生效（34MB 裸传 vs 8MB 压缩，手机上差三倍加载时间）==="
+# 硬校验而不是打印。以前这里只是 curl 一把看看，压没压上都过 ——
+# 而"有没有压缩"恰恰是手机上一个回合首先要抦的事，不能只给人眼看。
+HDR=$(curl -s -o /dev/null -D - --max-time 30 -H "Accept-Encoding: br, gzip" \
+  "http://127.0.0.1:$PORT/index.wasm")
+ENC=$(printf '%s' "$HDR" | grep -i "^content-encoding:" | head -1 | tr -d '\r' | awk '{print $2}')
+SIZE=$(printf '%s' "$HDR" | grep -i "^content-length:" | tr -dc '0-9')
+RAW=$(stat -c %s "$BUILD/index.wasm")
+if [ -z "$ENC" ]; then
+  echo "  ❌ 没压缩：还是裸传 $RAW 字节（应该 <10MB）"
+  echo "     检查 /tmp/serve.log 里预压有没有报错"
+  exit 1
+fi
+echo "  ✅ $ENC: $(( SIZE / 1048576 )) MB / 原始 $(( RAW / 1048576 )) MB"
 
 echo
 echo "=== ✅ 可以试玩了 ==="
