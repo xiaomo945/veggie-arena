@@ -2,7 +2,7 @@
   "grunt": {
     "zh": "小兵",
     "hp_base": 14.2,
-    "hp_per_wave": 15.66,
+    "hp_per_wave": 15.32,
     "speed_base": 275,
     "speed_per_wave": 0.5,
     "dmg_base": 4,
@@ -12,12 +12,14 @@
     "color": "#e0605f",
     "en": "Grunt",
     "tip": "基础蔬菜僵尸",
-    "tip_en": "Basic veggie zombie."
+    "tip_en": "Basic veggie zombie.",
+    "gold_per_wave": 1.6,
+    "hp_accel": 0.345
   },
   "fast": {
     "zh": "冲刺兵",
     "hp_base": 9.5,
-    "hp_per_wave": 10.08,
+    "hp_per_wave": 9.86,
     "speed_base": 140,
     "speed_per_wave": 2.7,
     "dmg_base": 3,
@@ -27,12 +29,14 @@
     "color": "#ef9a4a",
     "en": "Rusher",
     "tip": "直冲过来的快兵",
-    "tip_en": "Rushes you down."
+    "tip_en": "Rushes you down.",
+    "gold_per_wave": 1.6,
+    "hp_accel": 0.222
   },
   "tank": {
     "zh": "重甲兵",
     "hp_base": 48.4,
-    "hp_per_wave": 36.54,
+    "hp_per_wave": 35.74,
     "speed_base": 55,
     "speed_per_wave": 1.12,
     "dmg_base": 9,
@@ -42,12 +46,14 @@
     "color": "#9a7ad0",
     "en": "Tank",
     "tip": "厚实耐揍的蔬菜墙",
-    "tip_en": "A tanky wall of veg."
+    "tip_en": "A tanky wall of veg.",
+    "gold_per_wave": 4.0,
+    "hp_accel": 0.804
   },
   "fly": {
     "zh": "飞虫",
     "hp_base": 7.6,
-    "hp_per_wave": 9.18,
+    "hp_per_wave": 8.98,
     "speed_base": 140,
     "speed_per_wave": 2.7,
     "dmg_base": 3,
@@ -58,12 +64,14 @@
     "en": "Flyer",
     "tip": "嗡嗡乱飞的飞虫",
     "tip_en": "Buzzes around the field.",
-    "flight": true
+    "flight": true,
+    "gold_per_wave": 2.4,
+    "hp_accel": 0.202
   },
   "boss": {
     "zh": "首领",
     "hp_base": 446.5,
-    "hp_per_wave": 162.0,
+    "hp_per_wave": 158.44,
     "speed_base": 62,
     "speed_per_wave": 0.99,
     "dmg_base": 16,
@@ -73,12 +81,14 @@
     "color": "#e0507a",
     "en": "Boss",
     "tip": "主厨首领",
-    "tip_en": "The head chef boss."
+    "tip_en": "The head chef boss.",
+    "gold_per_wave": 32.0,
+    "hp_accel": 3.564
   },
   "swarm": {
     "zh": "虫群",
     "hp_base": 4.8,
-    "hp_per_wave": 5.4,
+    "hp_per_wave": 5.28,
     "speed_base": 160,
     "speed_per_wave": 2.25,
     "dmg_base": 2,
@@ -88,12 +98,14 @@
     "color": "#c8e06a",
     "en": "Swarm",
     "tip": "成群结队涌来",
-    "tip_en": "Swarms in numbers."
+    "tip_en": "Swarms in numbers.",
+    "gold_per_wave": 0.8,
+    "hp_accel": 0.119
   },
   "brute": {
     "zh": "蛮兵",
     "hp_base": 81.7,
-    "hp_per_wave": 50.4,
+    "hp_per_wave": 49.29,
     "speed_base": 40,
     "speed_per_wave": 0.81,
     "dmg_base": 12,
@@ -103,12 +115,14 @@
     "color": "#7a5ac0",
     "en": "Brute",
     "tip": "大开大合的蛮兵",
-    "tip_en": "A heavy-hitting brute."
+    "tip_en": "A heavy-hitting brute.",
+    "gold_per_wave": 6.4,
+    "hp_accel": 1.109
   },
   "shambler": {
     "zh": "蹒跚者",
     "hp_base": 61.8,
-    "hp_per_wave": 40.5,
+    "hp_per_wave": 39.61,
     "speed_base": 34,
     "speed_per_wave": 0.68,
     "dmg_base": 8,
@@ -118,12 +132,14 @@
     "color": "#5a8a4a",
     "en": "Shambler",
     "tip": "慢吞吞却顽固",
-    "tip_en": "Slow but stubborn."
+    "tip_en": "Slow but stubborn.",
+    "gold_per_wave": 4.8,
+    "hp_accel": 0.891
   },
   "shooter": {
     "zh": "炮手",
     "hp_base": 20.9,
-    "hp_per_wave": 16.2,
+    "hp_per_wave": 15.84,
     "speed_base": 70,
     "speed_per_wave": 0.9,
     "dmg_base": 5,
@@ -134,12 +150,14 @@
     "en": "Gunner",
     "tip": "保持距离远程吐弹",
     "tip_en": "Keeps distance, fires bolts.",
-    "behavior": "shooter"
+    "behavior": "shooter",
+    "gold_per_wave": 2.4,
+    "hp_accel": 0.356
   },
   "charger": {
     "zh": "猛冲兵",
     "hp_base": 28.5,
-    "hp_per_wave": 21.6,
+    "hp_per_wave": 21.12,
     "speed_base": 85,
     "speed_per_wave": 1.35,
     "dmg_base": 6,
@@ -150,12 +168,14 @@
     "en": "Charger",
     "tip": "蓄力后猛冲撞人",
     "tip_en": "Winds up, then rushes you down.",
-    "behavior": "charger"
+    "behavior": "charger",
+    "gold_per_wave": 2.4,
+    "hp_accel": 0.475
   },
   "splitter": {
     "zh": "分裂怪",
     "hp_base": 26.6,
-    "hp_per_wave": 19.8,
+    "hp_per_wave": 19.36,
     "speed_base": 90,
     "speed_per_wave": 1.35,
     "dmg_base": 5,
@@ -166,12 +186,14 @@
     "en": "Splitter",
     "tip": "死亡时分裂成两只",
     "tip_en": "Splits into two on death.",
-    "behavior": "splitter"
+    "behavior": "splitter",
+    "gold_per_wave": 2.4,
+    "hp_accel": 0.436
   },
   "bomber": {
     "zh": "自爆菌",
     "hp_base": 13.3,
-    "hp_per_wave": 10.8,
+    "hp_per_wave": 10.56,
     "speed_base": 150,
     "speed_per_wave": 2.25,
     "dmg_base": 4,
@@ -182,12 +204,14 @@
     "en": "Bomber",
     "tip": "扑上来贴脸自爆",
     "tip_en": "Rushes in and blows up on contact.",
-    "behavior": "bomber"
+    "behavior": "bomber",
+    "gold_per_wave": 1.6,
+    "hp_accel": 0.238
   },
   "splitling": {
     "zh": "分裂芽",
     "hp_base": 5.7,
-    "hp_per_wave": 5.4,
+    "hp_per_wave": 5.28,
     "speed_base": 110,
     "speed_per_wave": 1.8,
     "dmg_base": 2,
@@ -197,6 +221,8 @@
     "color": "#d9a8ff",
     "en": "Sprout",
     "tip": "分裂出来的弱小芽",
-    "tip_en": "A weak offshoot."
+    "tip_en": "A weak offshoot.",
+    "gold_per_wave": 0.8,
+    "hp_accel": 0.119
   }
 }

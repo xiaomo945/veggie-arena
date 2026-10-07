@@ -29,7 +29,10 @@ const POOLS := {
 	"knock": ["wok_knock_pct", "knock_pct"],
 	"dash": ["dash_cd_pct", "dash_dist_pct"],
 	"pierce": ["pierce_add", "ricochet", "homing_pct"],
-	"burst": ["aoe_add", "pellets_add"],
+	# "多打几发、单发伤害打折"的散射卡（pellets / pellets2）是【双属性】道具，
+	# key_for_def 会拼成 "multi:dmg_pct/pellets_add"，必须在这里显式登记，
+	# 否则 tests/test_art_icons.gd 会报"未映射" —— 商店里就会掉回宝石兜底画法。
+	"burst": ["aoe_add", "pellets_add", "multi:dmg_pct/pellets_add"],
 	"range": ["range_pct", "bullet_speed_pct"],
 	# 技能强度/冷却：四元素联动的第四环（道具→技能），单独成一张图，
 	# 玩家在货架上一眼能认出"这是给我的专属技能加料的那张卡"。

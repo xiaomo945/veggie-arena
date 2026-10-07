@@ -42,7 +42,10 @@ func run() -> Dictionary:
 	var r1 := Spawner.spawn_rate(1, CFG)
 	var r5 := Spawner.spawn_rate(5, CFG)
 	var r30 := Spawner.spawn_rate(30, CFG)
-	chk(abs(r1 - 0.85) < 0.01, "第 1 波刷怪速率 0.85/秒（实际 %.2f）" % r1)
+	# 第 1 波 = base，不预支任何波次成长（spawn_rate 用 wave-1）。
+	# 旧断言是 base + 1*per，等于让开局那 45 秒就吃到一整档成长加成 ——
+	# 实测第 1 波清场率只有 86%，新手一上来就被淹没。这里把新行为钉死。
+	chk(abs(r1 - 0.55) < 0.01, "第 1 波刷怪速率 = base 0.55/秒，不含波次成长（实际 %.2f）" % r1)
 	chk(r5 > r1, "刷怪速率随波次递增（第5波 %.2f > 第1波 %.2f）" % [r5, r1])
 	chk(abs(r30 - 4.6) < 0.01, "高波次被 cap 限制在 4.6（实际 %.2f）" % r30)
 

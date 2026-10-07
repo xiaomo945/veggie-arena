@@ -365,13 +365,15 @@
   "pellets": {
     "zh": "多一发",
     "en": "Extra Pellet",
-    "stat": "pellets_add",
-    "value": 1,
+    "stats": {
+      "pellets_add": 1,
+      "dmg_pct": -0.25
+    },
     "cost": 30,
-    "tip": "每次开火多打一发",
-    "tip_en": "One more pellet per shot.",
+    "tip": "每次开火多打一发，但单发伤害 -25%",
+    "tip_en": "One more pellet per shot, but -25% damage per pellet.",
     "cat": "weapon",
-    "rarity": 3
+    "rarity": 2
   },
   "rangeup": {
     "zh": "射程",
@@ -638,13 +640,15 @@
     "rarity": 3
   },
   "pellets2": {
-    "zh": "多两发",
-    "en": "Extra Pellets +2",
-    "stat": "pellets_add",
-    "value": 2,
-    "cost": 34,
-    "tip": "每次开火多打两发",
-    "tip_en": "Two more pellets per shot.",
+    "zh": "散射改造",
+    "en": "Scatter Mod",
+    "stats": {
+      "pellets_add": 2,
+      "dmg_pct": -0.42
+    },
+    "cost": 46,
+    "tip": "每次开火多打两发，但单发伤害 -42%",
+    "tip_en": "Two more pellets per shot, but -42% damage per pellet.",
     "cat": "weapon",
     "rarity": 3
   },
@@ -952,14 +956,13 @@
     "rarity": 3
   },
   "pellets3": {
-    "key": "pellets3",
-    "zh": "多三发",
-    "en": "Pellets +3",
-    "stat": "pellets_add",
-    "value": 3,
-    "cost": 38,
-    "tip": "一次五发",
-    "tip_en": "+3 pellets.",
+    "zh": "重弹头",
+    "en": "Heavy Slug",
+    "stat": "dmg_pct",
+    "value": 0.22,
+    "cost": 40,
+    "tip": "全部武器伤害 +22%",
+    "tip_en": "+22% damage for all weapons.",
     "cat": "weapon",
     "rarity": 3
   },
@@ -1348,14 +1351,13 @@
     "rarity": 2
   },
   "pellets4": {
-    "key": "pellets4",
-    "zh": "多两发2",
-    "en": "Pellets +2",
-    "stat": "pellets_add",
-    "value": 2,
+    "zh": "速射机构",
+    "en": "Rapid Mechanism",
+    "stat": "rate_pct",
+    "value": 0.16,
     "cost": 30,
-    "tip": "一次四发",
-    "tip_en": "+2 pellets.",
+    "tip": "全部武器攻速 +16%",
+    "tip_en": "+16% attack speed for all weapons.",
     "cat": "weapon",
     "rarity": 2
   },

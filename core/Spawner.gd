@@ -9,7 +9,12 @@ static func spawn_rate(wave: int, cfg: Dictionary, over: int = 0, ecfg: Dictiona
 	var base := float(cfg.get("base_rate", 0.5))
 	var per := float(cfg.get("per_wave", 0.3))
 	var cap := float(cfg.get("cap", 5.0))
-	var r := minf(cap, base + float(wave) * per)
+	# ⚠️ 用 (wave - 1)：第 1 波不该已经吃到"波次成长"的加成。
+	# 旧式 base + wave*per 让开局那 45 秒就刷 155 只，而玩家手上只有 2 把 Lv1 武器
+	# （scripts/power_probe.gd 实测第 1 波清场率只有 86%）—— 新手第一波就被淹没，
+	# 既拿不到那 14% 的金币，也直接劝退。改成 (wave-1) 后第 1 波 126 只、清场率过 100%，
+	# 到第 20 波只比原来少 4%，后期强度不受影响。
+	var r := minf(cap, base + float(wave - 1) * per)
 	if over > 0:
 		var ecap := float(ecfg.get("rate_cap", cap))
 		r = minf(ecap, r + float(ecfg.get("rate_per_wave", 0.0)) * float(over))
@@ -120,11 +125,23 @@ static func stats_for(type: String, wave: int, defs: Dictionary, elite: bool = f
 		return {}
 	var s := {
 		"type": type,
-		"hp": float(d.get("hp_base", 1)) + float(wave) * float(d.get("hp_per_wave", 0)),
+		# 血量 = 基础 + 线性项 + 二次项。二次项（hp_accel）是"后期难度加速"旋钮：
+		# 只有线性项时，想让第 20 波难 3 倍就得把斜率 ×3，第 1 波会跟着变难 3 倍
+		# （开局 2 把武器直接打不动 = 劝退，实测第 1 波清场率掉到 86%）。
+		# 二次项 wave² 让第 1 波只吃到 1 份、第 20 波吃到 400 份，
+		# 于是"前几波温柔、后段陡起来"可以同时成立。默认 0 = 完全等价于旧行为。
+		"hp": float(d.get("hp_base", 1)) + float(wave) * float(d.get("hp_per_wave", 0))
+			+ float(wave) * float(wave) * float(d.get("hp_accel", 0.0)),
 		"speed": float(d.get("speed_base", 0)) + float(wave) * float(d.get("speed_per_wave", 0)),
 		"damage": float(d.get("dmg_base", 0)) + float(wave) * float(d.get("dmg_per_wave", 0)),
 		"radius": float(d.get("radius", 12)),
-		"gold": int(d.get("gold", 1)),
+		# 掉金也随波次成长（与 hp / damage 同构）。
+		# 为什么必须加：之前 gold 是恒定值，而敌人血量线性涨、武器价格指数涨，
+		# 于是后期"杀得越多越穷"，玩家成长在第 8 波前后彻底停滞 ——
+		# scripts/power_probe.gd 实测 ratio（玩家DPS÷清场DPS）从第 8 波的 1.07
+		# 一路掉到第 20 波的 0.25。不修这条，后期只能是"必然打不过"。
+		"gold": int(d.get("gold", 1)) + int(round(
+			float(wave) * float(d.get("gold_per_wave", 0)))),
 		"color": d.get("color", "#ffffff"),
 		"zh": d.get("zh", type),
 		"flight": bool(d.get("flight", false)),

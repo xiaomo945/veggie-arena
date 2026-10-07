@@ -128,6 +128,21 @@ else
 fi
 
 echo ""
+echo "=== 2.6 每波强度规划（硬失败：每一波都必须落在带内）==="
+# 用户诉求："每一波都要有一个规划，使这个角色的强度不能超标太多，也不能太弱"。
+# 判的是 scripts/power_band.py 里那五条线（ratio / 成长 / 金币 / 等级 / 清场率），
+# 数据由 scripts/power_probe.gd 直调真实 core/ 代码产出。改任何经济或血量数值
+# 都会在这里被拦住 —— 这里是"难度曲线"唯一的自动闸门。
+if [ -f scripts/power_band.py ]; then
+  PY4=$(command -v python3.11 || command -v python3)
+  if ! "$PY4" scripts/power_band.py --waves 20; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/power_band.py，跳过"
+fi
+
+echo ""
 echo "=== 3. 说明 ==="
 echo "  单文件 >300 行的检查已并入 1.7 架构守卫（硬失败，不再是只告警不拦人）"
 

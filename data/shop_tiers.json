@@ -68,5 +68,5 @@
     "9": "永恒",
     "10": "厨神"
   },
-  "_doc_slowdown": "武器变强节奏（用户诉求：'第5波我已经装备6级全满了'）。\n  两道闸门一起调，缺一不可：\n  1) weapon_tier_from_wave 整体推后 2~3 波（3档 5→7、6档 14→19）—— 硬门禁，\n     波次不够就买不到高阶，这是主闸门。\n  2) weapon_tier_weight 高阶压低（1级:6级 从 70:1 提到 180:1）—— 软门禁，\n     就算波次够了也不白送高阶。\n  推演器 scripts/balance_model.py 已镜像 ShopTiers 的门禁逻辑（max_tier_for_wave /\n  offer_tiers / price_for_tier / tier_weight），改这里能直接在表B看到死波变化。"
+  "_doc_slowdown": "武器变强节奏 —— 2026-10 用 scripts/power_probe.gd（直调真实 core/ 代码）实测复核过，\n  结论和下面这段旧注释不一样，以实测为准：\n  ⚠️ weapon_tier_from_wave 目前【不参与商店池计算】：Economy.build_pool 走的是\n     ShopTiers.offer_tiers(owned_lv)，而 offer_tiers 只看玩家【已持有的等级】\n     （未持有只刷 1 级，持有 L 级刷 [L-1, L]），完全忽略波次门禁参数。\n     也就是说改这张表不会改变玩家买得到什么 —— 曾经照着它调过一次参，\n     结果只弄坏了 13 条测试、游戏内一帧没变。真正卡住武器等级的是：\n       ① 价格 ×2 复利（tier_price_mult）+ tier_price_floor 底价；\n       ② 满槽后只能买「同 key 同等级」的搭档来升级，而搭档的价格同样复利。\n     想让高阶来得更晚/更早，改的是这两个，不是本表。\n  weapon_tier_weight 是有效的软门禁（高阶权重极低，抽到才买得到）。\n  「前几波不出高阶」这个目标其实由 offer_tiers 自然达成了：玩家手上没有高级\n  武器，商店就刷不出高级武器 —— 不需要额外的波次门禁。\n"
 }
