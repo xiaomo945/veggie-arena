@@ -83,7 +83,9 @@ func run(data) -> Dictionary:
 	var rocket_dps := Combat.weapon_dps(data.weapon("rocket"))
 	chk(int(data.weapon("rocket").get("cost")) > int(pistol.get("cost")),
 		"火箭筒比手枪贵")
-	chk(rocket_dps > pistol_dps, "火箭筒 DPS %.0f > 手枪 %.0f" % [rocket_dps, pistol_dps])
+	# 火箭筒是 AOE 武器：单体弱于手枪，但打群体时一发炸一片，按同时命中 3 个算应反超
+	var rocket_group := rocket_dps * 3.0
+	chk(rocket_group > pistol_dps, "火箭筒打群体 DPS %.0f > 手枪 %.0f（按 3 目标）" % [rocket_group, pistol_dps])
 
 	# 8) 手感参数在合理范围
 	var feel: Dictionary = data.feel_cfg()

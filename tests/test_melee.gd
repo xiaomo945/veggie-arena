@@ -57,12 +57,16 @@ func run(data) -> Dictionary:
 		# 允许 ±15% 浮动（近战无弹道/无瞄准损耗，定价略优是合理的），但不能出区间太远
 		chk(vpg >= rmin * 0.5 and vpg <= rmax * 2.0,
 			"%s 性价比 %.2f 落在远程区间附近（%.2f..%.2f）" % [k, vpg, rmin, rmax])
-	# 三把近战的"定位"要拉开：菜刀 dps 最高、锅铲 dps 最低、擀面杖居中
+	# 三把近战的 DPS 在阶段 D1 配平里被压缩到接近区间（离散度 4.9× → 约 2.2×）：
+	# 角色靠击退/手感区分，不靠数值堆叠。菜刀是纯输出位、DPS 略高；
+	# 擀面杖（大击退）与锅铲（极快）靠机制区分，DPS 落在窄带内。
 	var cleaver_dps := float(data.weapon("cleaver").get("dmg", 0)) / float(data.weapon("cleaver").get("cd", 1.0))
 	var spatula_dps := float(data.weapon("spatula").get("dmg", 0)) / float(data.weapon("spatula").get("cd", 1.0))
 	var pin_dps := float(data.weapon("rolling_pin").get("dmg", 0)) / float(data.weapon("rolling_pin").get("cd", 1.0))
-	chk(cleaver_dps > spatula_dps, "菜刀 DPS(%.1f) > 锅铲 DPS(%.1f)" % [cleaver_dps, spatula_dps])
-	chk(pin_dps > spatula_dps, "擀面杖 DPS(%.1f) > 锅铲 DPS(%.1f)" % [pin_dps, spatula_dps])
+	var melee_max := maxf(cleaver_dps, maxf(pin_dps, spatula_dps))
+	var melee_min := minf(cleaver_dps, minf(pin_dps, spatula_dps))
+	chk(cleaver_dps == melee_max, "菜刀 DPS(%.1f) 为三把近战最高" % [cleaver_dps])
+	chk(melee_max / melee_min <= 1.2, "三把近战 DPS 落在 ±20%% 窄带内（%.1f..%.1f，压缩后靠机制区分）" % [melee_min, melee_max])
 
 	# 4) 击退语义：锅铲不击退；菜刀小击退；擀面杖大击退（"大击退"的核心卖点）
 	chk(float(data.weapon("spatula").get("knockback", 0)) <= 0.0, "锅铲无击退（低伤极快）")

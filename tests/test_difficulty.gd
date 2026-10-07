@@ -75,10 +75,12 @@ func run(data) -> Dictionary:
 
 	# ---- 诉求：血量大幅增加 ----
 	# 形状是"前平后陡"：hp_base 基本持平（原 15 → 14.2），
-	# hp_per_wave 拉到 1.8 倍，靠斜率把后期堆起来。
+	# hp_per_wave 拉斜率，hp_accel 二次项负责"后期陡起来"。
+	# 直接调真实 Spawner.stats_for（含 hp_accel），让断言反映真实游戏，
+	# 而不是一套会和 core 漂离的本地简化公式。
 	var gr: Dictionary = enemies.get("grunt", {}) as Dictionary
-	var hp1 := float(gr.get("hp_base", 0.0)) + float(gr.get("hp_per_wave", 0.0))
-	var hp20 := float(gr.get("hp_base", 0.0)) + 20.0 * float(gr.get("hp_per_wave", 0.0))
+	var hp1 := float(Spawner.stats_for("grunt", 1, enemies).get("hp", 0.0))
+	var hp20 := float(Spawner.stats_for("grunt", 20, enemies).get("hp", 0.0))
 	chk(hp20 > hp1 * 6.0, "小兵第 20 波血量 ≥第 1 波的 6 倍（%.0f vs %.0f）" % [hp20, hp1])
 	# 后期强度才是"第5波满级秒怪"的解药：第 20 波小兵必须够厚
 	chk(hp20 >= 300.0,

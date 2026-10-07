@@ -16,8 +16,14 @@ const CARD_H := 118.0
 const GAP := 10.0
 # 整行最大宽度（540 设计宽 - 左右各 10px 余量）
 const ROW_MAX_W := 520.0
-# 网格：每行最多几张（10 个萝卜 → 5 列 2 行）
-const COLS := 5
+# 网格：每行最多几张。13 个萝卜 → 7 列 2 行（降为 2 行，卡片更大更好点）。
+# 列数只决定"横向封顶 ROW_MAX_W 时能排几张"，真正的高由下方 PICKER_MAX_H 收口——
+# 角色再多也整体等比缩，绝不把 START 顶出屏幕。
+const COLS := 7
+# 角色网格可用高度上限：y=530 起，给下方 START(高 78)+间距+解锁提示留足，
+# 必须 ≤ ~256，否则 START 会掉到 900 设计高以下（之前 13 角色 3 行把 START 顶到 y=912）。
+const PICKER_MAX_H := 250.0
+const PICKER_TOP := 530.0
 
 var _keys: Array = []
 var _selected := "turnip"
@@ -27,7 +33,7 @@ var _cw := CARD_W
 var _ch := CARD_H
 var _gap := GAP
 var _k := 1.0   # 缩放系数（图标/角标等内部布局同比例跟随）
-var _cols := 1  # 网格列数（10 个萝卜 = 5 列 2 行，未来扩到 60 仍用同一套）
+var _cols := 1  # 网格列数（13 个萝卜 = 7 列 2 行，未来扩到 60 仍整体等比缩）
 var _rows := 1
 # 网格内容实际尺寸。注意：ScreenMode.fit_overlay 会把本控件 size 撑成整屏 540x900
 # （卡片只画在左上角），所以对外暴露内容高度，TitleScreen 用它摆 START，别读 size。
@@ -39,7 +45,8 @@ func _ready() -> void:
 	_keys.sort()
 	_selected = GameState.character
 	# 网格布局：每行最多 COLS 张，整体宽度封顶 ROW_MAX_W。
-	# 单行塞 10 张会把每张压到 ~47px（名字/属性全糊），所以 10 个=5 列 2 行。
+	# 高度封顶 PICKER_MAX_H：角色多到网格超高时整体等比缩（卡片变矮但永远在屏内），
+	# 这样 START 按钮不会被顶出 900 设计高（之前 13 角色 3 行把 START 顶到 y=912）。
 	var n := _keys.size()
 	_cols = maxi(1, mini(n, COLS))
 	_rows = int(ceil(float(n) / float(_cols)))
@@ -47,6 +54,14 @@ func _ready() -> void:
 	_k = _cw / CARD_W
 	_ch = CARD_H * _k
 	_gap = GAP * _k
+	# 高度超限 → 整体等比缩小（卡宽也跟着缩，保持方形，文字截断逻辑照常工作）
+	var h := float(_rows) * _ch + float(_rows - 1) * _gap
+	if h > PICKER_MAX_H:
+		var s := PICKER_MAX_H / h
+		_ch *= s
+		_gap *= s
+		_cw *= s
+		_k = _cw / CARD_W
 	content_size = Vector2(float(_cols) * _cw + float(_cols - 1) * _gap,
 		float(_rows) * _ch + float(_rows - 1) * _gap)
 	size = content_size
