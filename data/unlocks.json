@@ -1,19 +1,287 @@
 {
   "_comment": "武器解锁：开局只开放 6 把基础武器，其余靠累计成就解锁。目的是给玩家一个长期的'再来一局'理由，同时不让新手被 12 把武器淹没。",
-  "start_weapons": ["pistol", "smg", "shotgun", "bow", "staff", "rocket", "spatula"],
+  "start_weapons": [
+    "pistol",
+    "smg",
+    "shotgun",
+    "bow",
+    "staff",
+    "rocket",
+    "spatula"
+  ],
   "weapons": {
-    "cleaver": { "type": "total_kills", "need": 100, "en": "Reach 100 total kills" },
-    "skewer": { "type": "best_wave", "need": 5, "en": "Reach wave 5" },
-    "ladle": { "type": "total_kills", "need": 300, "en": "Reach 300 total kills" },
-    "teapot": { "type": "best_wave", "need": 10, "en": "Reach wave 10" },
-    "chili": { "type": "total_gold", "need": 2000, "en": "Collect 2000 total gold" },
-    "blender": { "type": "wins", "need": 1, "en": "Clear the game once" },
-    "pan": { "type": "total_kills", "need": 250, "en": "Reach 250 total kills" },
-    "pepper": { "type": "total_kills", "need": 150, "en": "Reach 150 total kills" },
-    "microwave": { "type": "total_kills", "need": 600, "en": "Reach 600 total kills" },
-    "fork": { "type": "best_wave", "need": 7, "en": "Reach wave 7" },
-    "whisk": { "type": "best_wave", "need": 12, "en": "Reach wave 12" },
-    "grater": { "type": "total_gold", "need": 5000, "en": "Collect 5000 total gold" },
-    "rolling_pin": { "type": "total_kills", "need": 50, "en": "Reach 50 total kills" }
+    "cleaver": {
+      "type": "total_kills",
+      "need": 100,
+      "en": "Reach 100 total kills"
+    },
+    "skewer": {
+      "type": "best_wave",
+      "need": 5,
+      "en": "Reach wave 5"
+    },
+    "ladle": {
+      "type": "total_kills",
+      "need": 300,
+      "en": "Reach 300 total kills"
+    },
+    "teapot": {
+      "type": "best_wave",
+      "need": 10,
+      "en": "Reach wave 10"
+    },
+    "chili": {
+      "type": "total_gold",
+      "need": 2000,
+      "en": "Collect 2000 total gold"
+    },
+    "blender": {
+      "type": "wins",
+      "need": 1,
+      "en": "Clear the game once"
+    },
+    "pan": {
+      "type": "total_kills",
+      "need": 250,
+      "en": "Reach 250 total kills"
+    },
+    "pepper": {
+      "type": "total_kills",
+      "need": 150,
+      "en": "Reach 150 total kills"
+    },
+    "microwave": {
+      "type": "total_kills",
+      "need": 600,
+      "en": "Reach 600 total kills"
+    },
+    "fork": {
+      "type": "best_wave",
+      "need": 7,
+      "en": "Reach wave 7"
+    },
+    "whisk": {
+      "type": "best_wave",
+      "need": 12,
+      "en": "Reach wave 12"
+    },
+    "grater": {
+      "type": "total_gold",
+      "need": 5000,
+      "en": "Collect 5000 total gold"
+    },
+    "rolling_pin": {
+      "type": "total_kills",
+      "need": 50,
+      "en": "Reach 50 total kills"
+    },
+    "chopsticks": {
+      "type": "best_wave",
+      "need": 5,
+      "en": "Reach wave 5"
+    },
+    "peeler": {
+      "type": "best_wave",
+      "need": 6,
+      "en": "Reach wave 6"
+    },
+    "santoku": {
+      "type": "total_kills",
+      "need": 350,
+      "en": "Reach 350 total kills"
+    },
+    "garlic_press": {
+      "type": "total_kills",
+      "need": 500,
+      "en": "Reach 500 total kills"
+    },
+    "tongs": {
+      "type": "best_wave",
+      "need": 11,
+      "en": "Reach wave 11"
+    },
+    "meat_tenderizer": {
+      "type": "best_wave",
+      "need": 8,
+      "en": "Reach wave 8"
+    },
+    "mortar": {
+      "type": "total_kills",
+      "need": 600,
+      "en": "Reach 600 total kills"
+    },
+    "baking_tray": {
+      "type": "total_kills",
+      "need": 1200,
+      "en": "Reach 1200 total kills"
+    },
+    "pressure_cooker": {
+      "type": "best_wave",
+      "need": 13,
+      "en": "Reach wave 13"
+    },
+    "griddle": {
+      "type": "total_kills",
+      "need": 2000,
+      "en": "Reach 2000 total kills"
+    },
+    "clay_pot": {
+      "type": "total_gold",
+      "need": 9000,
+      "en": "Collect 9000 total gold"
+    },
+    "wok_scoop": {
+      "type": "wins",
+      "need": 1,
+      "en": "Clear the game once"
+    },
+    "blowtorch": {
+      "type": "best_wave",
+      "need": 8,
+      "en": "Reach wave 8"
+    },
+    "ice_bucket": {
+      "type": "total_kills",
+      "need": 1000,
+      "en": "Reach 1000 total kills"
+    },
+    "steamer": {
+      "type": "total_kills",
+      "need": 1600,
+      "en": "Reach 1600 total kills"
+    },
+    "strainer": {
+      "type": "total_kills",
+      "need": 450,
+      "en": "Reach 450 total kills"
+    },
+    "egg_beater": {
+      "type": "total_gold",
+      "need": 4000,
+      "en": "Collect 4000 total gold"
+    },
+    "lemon_squeezer": {
+      "type": "total_gold",
+      "need": 6000,
+      "en": "Collect 6000 total gold"
+    },
+    "oil_sprayer": {
+      "type": "total_kills",
+      "need": 700,
+      "en": "Reach 700 total kills"
+    },
+    "vinegar_sprayer": {
+      "type": "total_kills",
+      "need": 900,
+      "en": "Reach 900 total kills"
+    }
+  },
+  "characters": {
+    "_comment": "角色解锁：三条职业线各给一个免费起点，后面的角色要么用前一个角色通关（主线），要么攒够累计数据（旁路）。旁路是防卡死的后路 —— 某一局怎么打都赢不了时，靠累计也能把角色拿出来。新增规则时：clear_with 的目标角色必须存在且不能成环；每个非 free 角色至少留一条不依赖通关的支路。",
+    "turnip": {
+      "type": "free"
+    },
+    "martial": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "turnip"
+        },
+        {
+          "type": "total_kills",
+          "need": 800
+        }
+      ]
+    },
+    "bruiser": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "martial"
+        },
+        {
+          "type": "best_wave",
+          "need": 8
+        }
+      ]
+    },
+    "mash": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "bruiser"
+        },
+        {
+          "type": "wins",
+          "need": 2
+        }
+      ]
+    },
+    "skirmisher": {
+      "type": "total_kills",
+      "need": 1800
+    },
+    "hedgehog": {
+      "type": "total_kills",
+      "need": 1200
+    },
+    "archer": {
+      "type": "free"
+    },
+    "commando": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "archer"
+        },
+        {
+          "type": "best_wave",
+          "need": 6
+        }
+      ]
+    },
+    "magnet": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "commando"
+        },
+        {
+          "type": "total_gold",
+          "need": 8000
+        }
+      ]
+    },
+    "mage": {
+      "type": "free"
+    },
+    "scorch": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "mage"
+        },
+        {
+          "type": "total_kills",
+          "need": 1500
+        }
+      ]
+    },
+    "hoarder": {
+      "type": "total_gold",
+      "need": 5000
+    },
+    "sizzle": {
+      "any_of": [
+        {
+          "type": "wins",
+          "need": 1
+        },
+        {
+          "type": "best_wave",
+          "need": 10
+        }
+      ]
+    }
   }
 }

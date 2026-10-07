@@ -133,3 +133,6 @@ signal quit_to_title_requested()
 # 注意：从【暂停菜单】进属性页不走这两个信号（世界已暂停），直接 show_menu(返回回调)。
 signal stats_opened()
 signal stats_closed()
+# E3：角色解锁（用前置角色通关 / 攒够累计数据）—— 与 unlocked（武器）分开，
+# 因为 UI 要显示的东西不一样：武器是"新家伙进商店"，角色是"新的玩法路线开了"
+signal character_unlocked(key: String)

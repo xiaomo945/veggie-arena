@@ -23,6 +23,8 @@ const FIELDS := {
 	"wins": 0,
 	"character": "",
 	"run_mode": "short",
+	# E3：每个角色通关过几次 —— 角色解锁阶梯的"主线条件"读它
+	"clears": {},
 }
 
 # 单局时长三档（与 balance.json 的 wave.run_modes 对齐）。
@@ -34,7 +36,21 @@ const UNLOCK_TYPES := ["total_kills", "total_gold", "best_wave", "wins"]
 static func defaults() -> Dictionary:
 	var s: Dictionary = FIELDS.duplicate()
 	s["version"] = VERSION
+	# FIELDS.duplicate() 是浅拷贝：字典字段必须重建，否则所有存档共用一个字典
+	s["clears"] = {}
 	return s
+
+# 把任意值洗成 {字符串 key: 非负整数} 的字典
+static func clean_map(raw) -> Dictionary:
+	var out: Dictionary = {}
+	if not (raw is Dictionary):
+		return out
+	for k in (raw as Dictionary):
+		var v = (raw as Dictionary)[k]
+		if v is Dictionary or v is Array:
+			continue
+		out[str(k)] = maxi(0, int(v))
+	return out
 
 # 清洗：缺字段补默认、类型不对修正、版本号不一致直接回默认（旧档不兼容就重开）
 static func sanitize(raw) -> Dictionary:
@@ -54,6 +70,10 @@ static func sanitize(raw) -> Dictionary:
 			s[k] = maxi(0, int(v))
 		elif FIELDS[k] is String:
 			s[k] = str(v)
+		elif FIELDS[k] is Dictionary:
+			# 字典字段（如 clears）逐个 key 清洗：只留字符串 key → 非负整数，
+			# 手改成字符串/负数都不会让解锁判定永远达不成或直接崩掉
+			s[k] = clean_map(v)
 	if not RUN_MODES.has(str(s.get("run_mode", "short"))):
 		s["run_mode"] = "short"
 	return s
@@ -91,6 +111,12 @@ static func record_run(save: Dictionary, result: Dictionary) -> Dictionary:
 	var c := str(result.get("character", ""))
 	if not c.is_empty():
 		save["character"] = c
+		# E3：记一次"用这个角色通关" —— 只写这一个对象，
+		# 通关/阵亡都算打完一局，但只有 won 的局才推进解锁阶梯
+		if bool(result.get("won", false)):
+			var clears: Dictionary = clean_map(save.get("clears", {}))
+			clears[c] = int(clears.get(c, 0)) + 1
+			save["clears"] = clears
 	return save
 
 # 无尽段续命（通关后继续、最终死在更高波次）：只刷新"最佳"统计 —— 波次与分数。
