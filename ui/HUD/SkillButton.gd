@@ -13,6 +13,7 @@ const TYPE_SKILL := "skill"      # 通用主动技能按钮（冰镇/毒雾…�
 const TYPE_ATTACK := "attack"    # 手动攻击键：右下角大按钮，释放"最常用的技能"（primary）
 
 const SkillDef := preload("res://core/SkillDef.gd")
+const SkillLook := preload("res://ui/SkillLook.gd")
 
 var btn_type := "dash"
 var skill_id := ""               # TYPE_SKILL 时有效：对应 data/skills.json 的 id
@@ -30,6 +31,7 @@ var _ff_on := false
 # 主动技能状态（冷却）
 var _skill_ratio := 1.0
 var _skill_ready := true
+var _skill_form := "base"    # 当前形态 key：凑够某类武器后技能"换了招"，名字和颜色都跟着变
 
 const SIZE := Vector2(88.0, 88.0)
 const WOK_SIZE := Vector2(88.0, 88.0)   # 半圆扇面上要和冰/毒拉开距离，不能太大
@@ -58,11 +60,13 @@ func _ready() -> void:
 			# 外部指定过 id 的按钮是绑死某技能的，不跟随。
 			Events.character_changed.connect(_on_char_changed)
 		Events.skill_cooldown_changed.connect(_on_skill_cd)
+		Events.skill_form_changed.connect(_on_form_changed)
 	elif btn_type == TYPE_ATTACK:
 		size = ATTACK_SIZE
 		# 攻击键释放当前角色的专属技能（换角色 = 换招，这是"换个角色像换个游戏"的一环）
 		skill_id = _char_skill_id()
 		Events.skill_cooldown_changed.connect(_on_skill_cd)
+		Events.skill_form_changed.connect(_on_form_changed)
 	queue_redraw()
 
 # 当前角色该放哪个技能：角色表里写了 skill id；没写就退回通用技，按钮绝不变哑巴
@@ -77,6 +81,14 @@ func _on_char_changed(_key: String) -> void:
 	skill_id = id
 	_skill_ratio = 1.0
 	_skill_ready = true
+	_skill_form = "base"        # 形态是"这局的武器凑出什么"，换角色必须从头算
+	queue_redraw()
+
+# 形态变了（凑够某类武器）：按钮改名 + 换配色，玩家不用读说明就知道自己换了招
+func _on_form_changed(id: String, form: String) -> void:
+	if id != skill_id or form == _skill_form:
+		return
+	_skill_form = form
 	queue_redraw()
 
 func _on_heat(value: float, _tier: int) -> void:
@@ -240,7 +252,9 @@ func _draw_skill(c: Vector2) -> void:
 	var fs := ThemeDB.fallback_font
 	if fs == null:
 		return
-	var txt := I18n.t("skill_" + skill_id)
+	# 形态名优先：凑够 3 把刀的法师，按钮上写的就是"冰锥爆裂"而不是"冰霜新星"
+	var txt := I18n.t("skill_" + _skill_form) if _skill_form != "base" \
+		else I18n.t("skill_" + skill_id)
 	# 按钮只有 76px 宽：技能名先按 18 号画，超宽一路缩到 12 号，绝不溢出按钮外
 	# （技能名已角色化、长度不一，写死 18 号会让长名字顶出按钮）
 	var tfs := 18
@@ -276,24 +290,6 @@ func _draw_attack(c: Vector2) -> void:
 	draw_string(fs, c + Vector2(-16.0, radius * 0.80), I18n.t("hud_attack"),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 1.0, 1.0, 0.92))
 
-# 技能按钮主色：按 id 区分（与 FxSkill 的特效色一致）。每个专属技能各给一色 ——
-# 一眼认出"这一局的招是什么"，换角色颜色跟着变，也是"换个角色像换个游戏"的一环。
-const SKILL_COLORS := {
-	"frost": Color(0.50, 0.85, 1.00),      # 冰镇 —— 冰蓝
-	"frost_nova": Color(0.62, 0.72, 1.00), # 冰霜新星 —— 淡紫蓝
-	"pierce_shot": Color(0.55, 0.92, 0.78),# 穿透射击 —— 青
-	"quake": Color(0.88, 0.66, 0.34),      # 震地 —— 土黄
-	"gust": Color(0.60, 0.95, 0.62),       # 疾风 —— 浅绿
-	"coin_rain": Color(1.00, 0.82, 0.30),  # 金币雨 —— 金
-	"spike_burst": Color(0.82, 0.74, 0.52),# 尖刺爆发 —— 灰褐
-	"mark": Color(0.96, 0.45, 0.38),       # 标记射击 —— 红
-	"combo": Color(1.00, 0.55, 0.28),      # 连击狂潮 —— 橙红
-	"magnet_pull": Color(0.45, 0.72, 0.95),# 磁吸 —— 蓝
-	"sear": Color(0.94, 0.36, 0.20),      # 灼烧 —— 焦红（毒+火）
-	"grind": Color(0.80, 0.66, 0.40),     # 碾压 —— 薯泥黄褐
-	"flashfire": Color(1.00, 0.68, 0.20), # 爆燃火候 —— 旺火橙（全是锅气，不伤人）
-}
-const SKILL_COLOR_FALLBACK := Color(0.90, 0.70, 0.40)
-
+# 技能按钮主色：形态自带配色优先，否则按 id（与 FxSkill 的特效色同源，见 ui/SkillLook）
 func _skill_color() -> Color:
-	return SKILL_COLORS.get(skill_id, SKILL_COLOR_FALLBACK) as Color
+	return SkillLook.color_of(skill_id, _skill_form)

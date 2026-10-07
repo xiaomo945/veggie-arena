@@ -1,33 +1,39 @@
 extends Node2D
 
 # 主动技能施放特效（纯表现）。
-# 冰镇 = 青色扩张环 + 冰晶迸裂 + 滞留霜面；毒雾 = 绿色扩张环 + 翻涌气泡毒云。
+# 一套骨架（起手亮芯 + 三层扩张环 + 滞留场），样式按【当前形态】换：
+# 冰=冰晶、毒=气泡、火/金=火星、电=电弧、风=风刃。形态变了特效跟着变 ——
+# 玩家不用读字，看一眼颜色就知道"这一招换了个打法"。
 # 只订阅 Events.skill_cast，不认识 Player/Game/Enemy，删掉也不影响玩法
 # （验收标准同 FxLayer：表现层与玩法层解耦）。
 #
 # ⚠️ 之前太淡：环只有 4px/0.9alpha、滞留云 0.18alpha，玩家"根本没看到效果"。
-#    现在改成：起手亮芯 + 三层粗环 + 明显滞留场（冰有冰晶、毒有气泡）。
+#    现在改成：起手亮芯 + 三层粗环 + 明显滞留场。
 # ⚠️ 位置一律由 index 推导，不用随机源——保持 headless 模拟可复现。
 
 const Shake := preload("res://entities/effects/Shake.gd")
+const SkillLook := preload("res://ui/SkillLook.gd")
 
-var _fx: Array = []      # [{pos,radius,t,life,cloud,frost,color}]
+# 各种滞留场的持续时间（秒）：控制类留久一点看得清，爆发类短促收尾
+const CLOUD_OF := {"shards": 1.2, "bubbles": 1.9, "sparks": 0.9, "arcs": 1.0, "blades": 0.8}
+
+var _fx: Array = []      # [{pos,radius,t,life,cloud,style,color}]
 
 func _ready() -> void:
 	Events.skill_cast.connect(_on_cast)
 
-func _on_cast(id: String, pos: Vector2, radius: float) -> void:
-	var is_frost: bool = (id == "frost")
+func _on_cast(id: String, pos: Vector2, radius: float, form: String) -> void:
+	var style := SkillLook.style_of(id, form)
 	_fx.append({
 		"pos": pos,
 		"radius": radius,
 		"t": 0.0,
-		"life": 0.75 if is_frost else 0.8,
-		"cloud": 1.2 if is_frost else 1.9,   # 滞留场时长（秒）
-		"frost": is_frost,
-		"color": Color(0.45, 0.85, 1.0) if is_frost else Color(0.45, 0.9, 0.35),
+		"life": 0.75 if style == "shards" else 0.8,
+		"cloud": float(CLOUD_OF.get(style, 1.2)),
+		"style": style,
+		"color": SkillLook.color_of(id, form),
 	})
-	if is_frost:
+	if style == "shards":
 		Shake.kick(4.0, 0.14)
 
 func _process(delta: float) -> void:
@@ -54,7 +60,7 @@ func _draw_one(d: Dictionary) -> void:
 	var life: float = float(d.get("life", 0.75))
 	var radius: float = float(d.get("radius", 150.0))
 	var col: Color = d.get("color", Color(0.6, 0.85, 0.5))
-	var frost: bool = bool(d.get("frost", false))
+	var style: String = str(d.get("style", "sparks"))
 	var p: Vector2 = d.get("pos", Vector2.ZERO)
 
 	# 1) 起手亮芯：让"放出去了"这一下有实感
@@ -72,25 +78,26 @@ func _draw_one(d: Dictionary) -> void:
 		draw_arc(p, rad * 0.82, 0.0, TAU, 40, Color(col.r, col.g, col.b, a * 0.6), 5.0, true)
 		draw_arc(p, rad * 0.6, 0.0, TAU, 32, Color(1.0, 1.0, 1.0, a * 0.45), 3.0, true)
 
-	# 3) 滞留场：冰=霜面+冰晶；毒=翻涌气泡云
+	# 3) 滞留场：按形态换装饰。画成"甜甜圈"而不是整块实心圆 —— 技能是在脚下放的，
+	#    实心圆会把主角整只糊住（Fx 层在 CanvasLayer，必然盖住主角）。
 	var ct: float = t - life
-	if ct >= 0.0:
-		var ca: float = clampf(1.0 - ct / maxf(0.001, float(d.get("cloud", 1.2))), 0.0, 1.0)
-		# 滞留场画成"甜甜圈"而不是整块实心圆：技能是在脚下放的，实心圆会把主角
-		# 整只糊住（Fx 层在 CanvasLayer，必然盖住主角）。外圈厚、内圈留空，
-		# 效果更明显的同时主角始终看得见。
-		if frost:
-			draw_arc(p, radius * 0.70, 0.0, TAU, 52,
-				Color(col.r, col.g, col.b, ca * 0.34), radius * 0.58, true)
-			draw_arc(p, radius * 0.95, 0.0, TAU, 44,
-				Color(0.85, 0.97, 1.0, ca * 0.6), 3.0, true)
+	if ct < 0.0:
+		return
+	var ca: float = clampf(1.0 - ct / maxf(0.001, float(d.get("cloud", 1.2))), 0.0, 1.0)
+	draw_arc(p, radius * 0.70, 0.0, TAU, 52,
+		Color(col.r, col.g, col.b, ca * 0.36), radius * 0.58, true)
+	draw_arc(p, radius * 0.95, 0.0, TAU, 44, Color(col.r, col.g, col.b, ca * 0.55), 3.0, true)
+	match style:
+		"shards":
 			_draw_shards(p, radius, ca)
-		else:
-			draw_arc(p, radius * 0.70, 0.0, TAU, 52,
-				Color(col.r, col.g, col.b, ca * 0.38), radius * 0.58, true)
-			draw_arc(p, radius * 0.95, 0.0, TAU, 44,
-				Color(0.80, 1.0, 0.72, ca * 0.5), 3.0, true)
+		"bubbles":
 			_draw_bubbles(p, radius, ca, t, col)
+		"arcs":
+			_draw_arcs(p, radius, ca, t)
+		"blades":
+			_draw_blades(p, radius, ca, t)
+		_:
+			_draw_sparks(p, radius, ca, t, col)
 
 # 冰晶：沿边缘迸出的小尖刺（位置由 index 推导，不用随机）
 func _draw_shards(p: Vector2, radius: float, a: float) -> void:
@@ -115,3 +122,40 @@ func _draw_bubbles(p: Vector2, radius: float, a: float, t: float, col: Color) ->
 		var br: float = radius * (0.10 + 0.05 * float(i % 2))
 		draw_circle(bp, br, Color(col.r * 1.1, col.g * 1.1, col.b * 0.9, a * 0.5))
 		draw_arc(bp, br, 0.0, TAU, 14, Color(0.9, 1.0, 0.85, a * 0.55), 2.0, true)
+
+# 火星（火/金/炭形态）：向外飘的小亮点，越远越淡
+func _draw_sparks(p: Vector2, radius: float, a: float, t: float, col: Color) -> void:
+	var n := 12
+	for i in n:
+		var ang: float = TAU * float(i) / float(n) + 0.15
+		var k: float = float(i % 4) / 4.0
+		var rr: float = radius * (0.35 + 0.55 * k) + sin(t * 3.0 + float(i)) * radius * 0.05
+		var sp: Vector2 = p + Vector2(cos(ang), sin(ang)) * rr
+		var sr: float = radius * (0.07 - 0.03 * k)
+		draw_circle(sp, sr, Color(1.0, 0.92, 0.62, a * (0.85 - 0.4 * k)))
+		draw_circle(sp, sr * 0.5, Color(col.r, col.g, col.b, a * 0.9))
+
+# 电弧（电场形态）：从中心甩出去的锯齿线，每条折 4 段
+func _draw_arcs(p: Vector2, radius: float, a: float, t: float) -> void:
+	var n := 6
+	for i in n:
+		var ang: float = TAU * float(i) / float(n) + t * 1.6
+		var u := Vector2(cos(ang), sin(ang))
+		var side := u.rotated(PI * 0.5)
+		var pts := PackedVector2Array([p + u * radius * 0.34])
+		for s in 4:
+			var rr: float = radius * (0.34 + 0.17 * float(s + 1))
+			var off: float = radius * 0.09 * (1.0 if s % 2 == 0 else -1.0)
+			pts.append(p + u * rr + side * off)
+		draw_polyline(pts, Color(0.86, 0.94, 1.0, a * 0.85), 3.0, true)
+
+# 风刃（风刃形态）：沿边缘切出去的弧线，一圈都在转
+func _draw_blades(p: Vector2, radius: float, a: float, t: float) -> void:
+	var n := 8
+	for i in n:
+		var ang: float = TAU * float(i) / float(n) + t * 2.4
+		var a0: float = ang
+		var a1: float = ang + 0.55
+		draw_arc(p, radius * 0.62, a0, a1, 12, Color(0.92, 1.0, 0.96, a * 0.8), 6.0, true)
+		draw_arc(p, radius * 0.90, a0 + 0.2, a1 + 0.2, 10,
+			Color(0.72, 0.95, 0.86, a * 0.5), 4.0, true)

@@ -161,11 +161,22 @@ func run(data) -> Dictionary:
 	var i18n_src := SP.read("res://autoload/I18n.gd")
 	var btn_src := SP.read("res://ui/HUD/SkillButton.gd")
 	var layout_src := SP.read("res://ui/HUD/HudLayout.gd")
-	chk(i18n_src.length() > 0 and btn_src.length() > 0 and layout_src.length() > 0,
-		"能读到 I18n / SkillButton / HudLayout 源码（路径写错会导致假通过）")
+	# 配色表已从 SkillButton 抽到 ui/SkillLook.gd（按钮与特效共用一份，避免"按钮变红、
+	# 特效还是蓝"），没有它按钮和施放特效会各画各的颜色。
+	var look_src := SP.read("res://ui/SkillLook.gd")
+	chk(i18n_src.length() > 0 and btn_src.length() > 0 and layout_src.length() > 0
+			and look_src.length() > 0,
+		"能读到 I18n / SkillButton / HudLayout / SkillLook 源码（路径写错会导致假通过）")
 	var skill_ids: Array = []
+	# 形态 key 也算合法的 skill_* 词条（按钮换形态时显示的就是它）
+	var form_keys: Array = []
 	for s in skills:
 		skill_ids.append(str((s as Dictionary).get("id", "")))
+		for v in ((s as Dictionary).get("variants", [])) as Array:
+			var fd := (v as Dictionary).get("form", {}) as Dictionary
+			var fk := str(fd.get("key", ""))
+			if fk != "":
+				form_keys.append(fk)
 	var no_name: Array = []
 	var no_color: Array = []
 	for sid in skill_ids:
@@ -173,18 +184,19 @@ func run(data) -> Dictionary:
 			continue
 		if not ('"skill_%s"' % sid) in i18n_src:
 			no_name.append(sid)
-		if not ('"%s": Color' % sid) in btn_src:
+		if not ('"%s": Color' % sid) in look_src:
 			no_color.append(sid)
 	chk(no_name.is_empty(), "每个技能都有按钮短名翻译 skill_<id>（缺：%s）" % str(no_name))
-	chk(no_color.is_empty(), "每个技能在按钮配色表里都有颜色（缺：%s）" % str(no_color))
+	chk(no_color.is_empty(), "每个技能在配色表（ui/SkillLook）里都有颜色（缺：%s）" % str(no_color))
 	# 反向：I18n 里不能留着指向"已经不存在的技能"的僵尸词条
 	var re := RegEx.new()
 	re.compile("\"skill_([a-z_]+)\"")
 	var orphan: Array = []
 	for m in re.search_all(i18n_src):
-		if not skill_ids.has(m.get_string(1)):
-			orphan.append(m.get_string(1))
-	chk(orphan.is_empty(), "I18n 里没有指向不存在技能的残留词条（残留：%s）" % str(orphan))
+		var k := m.get_string(1)
+		if not skill_ids.has(k) and not form_keys.has(k):
+			orphan.append(k)
+	chk(orphan.is_empty(), "I18n 里没有指向不存在技能/形态的残留词条（残留：%s）" % str(orphan))
 	var fan_body := SP.func_body(layout_src, "func buttons_fan()")
 	chk(fan_body.length() > 0 and not fan_body.contains("\"id\""),
 		"HUD 扇面按钮不写死技能 id（按当前角色取，避免放出技能表里没有的招）")
@@ -215,7 +227,7 @@ func run(data) -> Dictionary:
 	var cmde := chars["commando"] as Dictionary
 	var g0 := Synergy.next_gain([], cmde, defs, "signature")
 	chk(bool(g0.get("cross", false)) and absf(float(g0.get("delta", 0.0)) - 0.04) < 0.001,
-		"老手买第 1 把手枪就跨档（暴击 +4%，实测 %.2f）" % float(g0.get("delta", 0.0)))
+		"老手买第 1 把手枪就跨档（暴击 +4%%，实测 %.2f）" % float(g0.get("delta", 0.0)))
 	var g1 := Synergy.next_gain([{"key": "pistol", "lv": 1}], cmde, defs, "signature")
 	chk(bool(g1.get("cross", false)) and float(g1.get("delta", 0.0)) > float(g0.get("delta", 0.0)),
 		"再买一把的收益更大（%.2f → %.2f，卡片上写得出边际递增）"

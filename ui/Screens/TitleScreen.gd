@@ -132,8 +132,9 @@ func _build() -> void:
 	how.add_theme_font_size_override("font_size", 17)
 	how.add_theme_color_override("font_color", Color(0.82, 0.85, 0.90))
 	how.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	how.set_position(Vector2(0, 420))
-	how.set_size(Vector2(540, 84))
+	# 上移到 408（单局时长三选一底 ≈ 392）：给下方的"阶梯 + 形态"两行字让出完整空间
+	how.set_position(Vector2(0, 408))
+	how.set_size(Vector2(540, 72))
 	_how_lbl = how
 	_root.add_child(how)
 
@@ -158,12 +159,15 @@ func _build() -> void:
 	# 这一行是"这条 build 长什么样"：本命/羁绊每一档给多少，开局前就摊开给玩家看。
 	# 原来是"选一个萝卜"的提示 —— 卡片网格本身已经够直白，而阶梯才是玩家真正要读的信息。
 	var pick_hint := Label.new()
-	pick_hint.text = CharTiers.line(Data.character(GameState.character))
-	pick_hint.add_theme_font_size_override("font_size", 11)
+	pick_hint.text = CharTiers.full(Data.character(GameState.character))
+	pick_hint.add_theme_font_size_override("font_size", 10)
 	pick_hint.add_theme_color_override("font_color", Color(0.60, 0.64, 0.72))
 	pick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pick_hint.set_position(Vector2(0, 508))
-	pick_hint.set_size(Vector2(540, 20))
+	# 阶梯 + 形态共两行，但英文下阶梯本身就能超一屏宽 —— 必须 autowrap 自由折行，
+	# 并留够 3 行的高度（英文最长时阶梯占 2 行 + 形态 1 行，正好填满不溢出）
+	pick_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pick_hint.set_position(Vector2(0, 482))
+	pick_hint.set_size(Vector2(540, 48))
 	_pick_lbl = pick_hint
 	_root.add_child(pick_hint)
 	Events.character_changed.connect(_on_character_changed)
@@ -205,7 +209,7 @@ func _build() -> void:
 # 换角色 = 换一整套阶梯，这行字必须跟着换（不换就会显示上一个角色的 build）
 func _on_character_changed(_key: String = "") -> void:
 	if _pick_lbl != null:
-		_pick_lbl.text = CharTiers.line(Data.character(GameState.character))
+		_pick_lbl.text = CharTiers.full(Data.character(GameState.character))
 
 func _on_start() -> void:
 	# START 是整局的第一次点击：在这里出第一声，保证 Web/iOS 的 AudioContext

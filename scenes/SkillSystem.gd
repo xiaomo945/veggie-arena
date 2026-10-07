@@ -21,6 +21,8 @@ var damage_fn: Callable = Callable()   # 伤害漏斗（EnemySystem.damage_enemy
 var _bases: Array = []                 # 技能库原文（data/skills.json）
 var _skills: Dictionary = {}           # id -> 当前生效配置（经 SkillDef 解析后）
 var _cd: Dictionary = {}               # id -> 剩余冷却（秒）
+var _form: Dictionary = {}             # id -> 当前形态 key（变了才广播）
+var _form_t := 0.0                     # 形态复检节流（秒）
 
 # 由 Game 在 _ready 里调用：注入世界 + 读技能表
 func setup(arr: Array, wld) -> void:
@@ -50,6 +52,24 @@ func refresh(char_entry: Dictionary, weapons: Array, defs: Dictionary,
 	_skills[id] = act
 	if not _cd.has(id):
 		_cd[id] = 0.0
+	_publish_form(id, str(act.get("form", SkillDef.BASE_FORM)))
+
+# 形态变了才广播：按钮改名/换色、特效换样式，全靠这一下（别每帧刷 UI）
+func _publish_form(id: String, form: String) -> void:
+	if _form.get(id, "") == form:
+		return
+	_form[id] = form
+	Events.skill_form_changed.emit(id, form)
+
+# 武器栏变了（买/卖/合成）但还没按键时也要复检形态 —— 否则玩家凑够 3 把刀，
+# 技能按钮却还是旧名字，"我换招了"的惊喜要等到下一次按键才出现。
+func _recheck_forms() -> void:
+	var char_entry := Data.character(GameState.character) as Dictionary
+	var base := SkillDef.base_of(SkillDef.skill_id_of(char_entry), _bases)
+	if base.is_empty():
+		return
+	_publish_form(str(base.get("id", "")), SkillDef.form_key_of(base,
+		str(char_entry.get("_key", "")), GameState.weapons, Data.weapons))
 
 # 开新一局时清冷却（Game.start_run 调用），避免上一局残留的 CD 带到开局
 func reset_cooldowns() -> void:
@@ -78,12 +98,17 @@ func cast(id: String) -> bool:
 		_apply_heat(cfg)
 	_cd[id] = float(cfg.get("cooldown", 6.0))
 	Shake.kick(5.0, 0.18)
-	Events.skill_cast.emit(id, pp, float(cfg.get("radius", 150.0)))
+	Events.skill_cast.emit(id, pp, float(cfg.get("radius", 150.0)),
+		str(cfg.get("form", SkillDef.BASE_FORM)))
 	_emit(id)
 	return true
 
 # 每物理帧推进冷却，并把（ratio, ready）广播给 HUD 画冷却扇形
 func tick(delta: float) -> void:
+	_form_t -= delta
+	if _form_t <= 0.0:
+		_form_t = 0.4
+		_recheck_forms()
 	for id in _skills.keys():
 		var c: float = float(_cd.get(id, 0.0))
 		if c > 0.0:
@@ -123,6 +148,10 @@ func _apply_damage(cfg: Dictionary, pp: Vector2) -> void:
 	var sv: float = float(cfg.get("slow_v", 0.0))
 	var sd: float = float(cfg.get("slow_dur", 0.0))
 	var hit := 0
+	# 形态专属机制：burn_dps=地上留一片火（沸腾油爆/爆裂箭/炭爆），knock=整圈推开（风刃）
+	var bd: float = float(cfg.get("burn_dps", 0.0)) * (1.0 + GameState.stat_value("elem_pct"))
+	var dur: float = float(cfg.get("dur", 3.0))
+	var kb: float = float(cfg.get("knock", 0.0))
 	for e in world.enemies:
 		if not e.alive:
 			continue
@@ -132,6 +161,10 @@ func _apply_damage(cfg: Dictionary, pp: Vector2) -> void:
 		hit += 1
 		if sv > 0.0 and sd > 0.0:
 			e.apply_fx("slow", sv, sd)
+		if bd > 0.0:
+			e.apply_fx("burn", bd, dur)
+		if kb > 0.0 and e.alive:
+			e.apply_knockback((e.global_position - pp).normalized(), kb)
 	if gold > 0 and hit > 0:
 		GameState.add_gold(gold)
 

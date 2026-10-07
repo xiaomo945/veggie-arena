@@ -14,6 +14,31 @@ extends RefCounted
 #   而且这段只做"把阶梯翻译成一行字"，与卡片绘制、页面布局都没关系。
 
 const SynText := preload("res://ui/Screens/SynText.gd")
+const SkillDef := preload("res://core/SkillDef.gd")
+
+# 阶梯 + 形态两行（选角页那行字用这个：形态为空时只显示阶梯，不留空行）
+static func full(char_entry: Dictionary) -> String:
+	var s := line(char_entry)
+	var f := form_line(char_entry)
+	return s if f == "" else s + "\n" + f
+
+# 形态提示（C3）：这个技能在凑够某类武器后会【换招】。
+# 开局前就把"还能变成什么"摊开 —— 否则玩家以为这条 build 只有一条路，
+# 压根不会去试，形态变体等于白做。
+static func form_line(char_entry: Dictionary) -> String:
+	var base := SkillDef.base_of(SkillDef.skill_id_of(char_entry), Data.skills_cfg())
+	if base.is_empty():
+		return ""
+	var seg := ""
+	for f in SkillDef.forms_of(base):
+		if bool((f as Dictionary).get("is_base", false)):
+			continue
+		var fd := f as Dictionary
+		seg += "%s %d→%s  " % [I18n.t("set_" + str(fd.get("tag", ""))),
+			int(fd.get("need", 0)), I18n.t("skill_" + str(fd.get("key", "")))]
+	if seg == "":
+		return ""
+	return I18n.t("char_form") + " " + seg.strip_edges()
 
 static func line(char_entry: Dictionary) -> String:
 	var out := ""

@@ -40,7 +40,7 @@ func run(data) -> Dictionary:
 	var h1 := Spawner.wave_total_hp(1, spawn_cfg, data.enemies, length)
 	var out1 := start_dps * length
 	chk(out1 > h1 * 0.30,
-		"第1波起手配置能砍掉 ≥30% 血量：%.0f 秒输出 %.0f vs 怪物总血 %.0f" % [int(length), out1, h1])
+		"第1波起手配置能砍掉 ≥30%% 血量：%.0f 秒输出 %.0f vs 怪物总血 %.0f" % [int(length), out1, h1])
 
 	# 2) 怪物密度受 max_alive 硬封顶（场上可见数不会超过它），整波刷怪量允许合理周转
 	#    （怪会死、会补，所以整波总量可比场上峰值大几倍，只要不超过 max_alive 的若干倍即可）。

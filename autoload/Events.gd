@@ -44,8 +44,11 @@ signal wok_toss_requested()
 signal skill_requested(id: String)
 # SkillSystem → HUD：某技能冷却进度(0..1)与是否可用，画按钮冷却扇形
 signal skill_cooldown_changed(id: String, ratio: float, ready: bool)
-# 施放成功的特效信号（纯表现层 FxSkill 订阅）；pos/radius 是玩家世界坐标与影响半径
-signal skill_cast(id: String, pos: Vector2, radius: float)
+# 施放成功的特效信号（纯表现层 FxSkill 订阅）；pos/radius 是玩家世界坐标与影响半径，
+# form 是当前形态 key（"base" 或 skills.json 里 form 的 key）—— 特效按形态换色换样式
+signal skill_cast(id: String, pos: Vector2, radius: float, form: String)
+# 形态变化（买了第 3 把刀、换了角色…）：HUD 按钮跟着改名换色，玩家一眼看到"我换招了"
+signal skill_form_changed(id: String, form: String)
 
 # ---- 调试（仅调试模式，见 core/DebugMode：正式版按钮都不创建，此信号没人发）----
 # HUD 调试面板"跳到第 N 波"发出，由 WaveDirector 真正执行（清场后直接开那一波）

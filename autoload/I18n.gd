@@ -86,6 +86,13 @@ const UI := {
   "skill_sear": {"en": "SEAR", "zh": "灼烧"},
   "skill_grind": {"en": "GRIND", "zh": "碾压"},
   "skill_flashfire": {"en": "HEAT", "zh": "火候"},
+  "skill_glacial_burst": {"en": "SHARD", "zh": "冰锥"},
+  "skill_magma_fissure": {"en": "OIL", "zh": "滚油"},
+  "skill_wind_blade": {"en": "BLADE", "zh": "风刃"},
+  "skill_shock_field": {"en": "SHOCK", "zh": "电场"},
+  "skill_gold_crash": {"en": "SLAM", "zh": "金砖"},
+  "skill_burst_arrow": {"en": "BLAZE", "zh": "爆裂"},
+  "skill_char_burst": {"en": "CHAR", "zh": "炭爆"},
   "hud_attack": {"en": "ATK", "zh": "攻击"},
 
   # ---- 商店 ----
@@ -169,6 +176,7 @@ const UI := {
   "syn_signature": {"en": "SIGNATURE", "zh": "本命"},
   "syn_bond": {"en": "BOND", "zh": "羁绊"},
   "syn_variety": {"en": "OMNIVORE", "zh": "杂食"},
+  "char_form": {"en": "FORM", "zh": "形态"},
   "syn_next": {"en": "%d more", "zh": "还差 %d 件"},
   "syn_max": {"en": "MAX", "zh": "已满"},
 

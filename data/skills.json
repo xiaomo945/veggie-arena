@@ -1,5 +1,5 @@
 {
-  "_doc": "主动技能库。每个角色有自己的专属技能（characters.json 的 skill 字段指向这里的 id）。四元素联动的第三环：角色决定【放什么技能】，武器决定【这个技能变多强】（variants），道具决定【再往上叠多少】（skill_power / 属性缩放）。skill 表只描述技能本身，不认识角色；角色只写自己用哪个 id，不认识技能参数 —— 改一边不会改崩另一边。",
+  "_doc": "主动技能库。每个角色有自己的专属技能（characters.json 的 skill 字段指向这里的 id）。四元素联动的第三环：角色决定【放什么技能】，武器决定【这个技能变多强】（variants），道具决定【再往上叠多少】（skill_power / 属性缩放）。variants 有两种：mul=把已有数字乘大（还是那一招），form=换形态（可改 effect/名字/配色，还能引入 burn_dps、knock 等新机制字段）—— 同一个按键在不同 build 下变成两招，这是「研究 build」的惊喜来源。skill 表只描述技能本身，不认识角色；角色只写自己用哪个 id，不认识技能参数 —— 改一边不会改崩另一边。",
   "primary": "frost",
   "skills": [
     {
@@ -29,7 +29,8 @@
       "radius": 210.0,
       "dmg": 46.0,
       "variants": [
-        {"char": "archer", "tag": "gun", "need": 4, "mul": {"dmg": 1.6, "cooldown": 0.8}}
+        {"char": "archer", "tag": "gun", "need": 4, "mul": {"dmg": 1.6, "cooldown": 0.8}},
+        {"char": "archer", "tag": "elemental", "need": 3, "form": {"key": "burst_arrow", "zh": "爆裂箭", "en": "Burst Arrow", "tip": "凑够 3 件元素：箭头上火，穿透之后整片烧起来", "tip_en": "With 3 elemental weapons: the arrowhead catches fire — pierce once, burn the whole cluster", "color": "#ff8a3d", "dmg": 50.0, "burn_dps": 13.0, "dur": 3.5, "radius": 240.0}}
       ]
     },
     {
@@ -45,7 +46,8 @@
       "slow_v": 0.4,
       "slow_dur": 2.0,
       "variants": [
-        {"char": "bruiser", "tag": "heavy", "need": 4, "mul": {"dmg": 1.8, "radius": 1.25}}
+        {"char": "bruiser", "tag": "heavy", "need": 4, "mul": {"dmg": 1.8, "radius": 1.25}},
+        {"char": "bruiser", "tag": "kitchen", "need": 3, "form": {"key": "magma_fissure", "zh": "沸腾油爆", "en": "Boil Over", "tip": "凑够 3 件厨具：地上裂开一条滚油，一顿变成慢慢熬", "tip_en": "With 3 kitchen tools: the ground cracks with boiling oil — a slam becomes a simmer", "color": "#ff7a33", "dmg": 44.0, "burn_dps": 12.0, "dur": 4.0, "slow_v": 0.25, "slow_dur": 1.2}}
       ]
     },
     {
@@ -61,7 +63,8 @@
       "slow_dur": 4.0,
       "freeze_dur": 1.2,
       "variants": [
-        {"char": "mage", "tag": "elemental", "need": 6, "mul": {"radius": 1.2, "freeze_dur": 1.6}}
+        {"char": "mage", "tag": "elemental", "need": 6, "mul": {"radius": 1.2, "freeze_dur": 1.6}},
+        {"char": "mage", "tag": "blade", "need": 3, "form": {"key": "glacial_burst", "zh": "冰锥爆裂", "en": "Glacial Burst", "tip": "凑够 3 件刀：冻结术炸成一圈冰锥 —— 范围小了，但真疼", "tip_en": "With 3 blades: the nova shatters into ice shards — smaller, but it hurts", "color": "#8fe6ff", "effect": "damage", "radius": 230.0, "dmg": 88.0, "freeze_dur": 0.9, "slow_v": 0.3, "slow_dur": 1.5}}
       ]
     },
     {
@@ -74,7 +77,8 @@
       "cooldown": 7.0,
       "dur": 3.0,
       "variants": [
-        {"char": "skirmisher", "tag": "blade", "need": 4, "mul": {"dur": 1.6, "cooldown": 0.75}}
+        {"char": "skirmisher", "tag": "blade", "need": 4, "mul": {"dur": 1.6, "cooldown": 0.75}},
+        {"char": "skirmisher", "tag": "gun", "need": 3, "form": {"key": "wind_blade", "zh": "风刃", "en": "Wind Blade", "tip": "凑够 3 把枪：不再是跑，是一圈风刃把贴脸的全推开", "tip_en": "With 3 guns: stop running — a ring of wind blades shoves everyone off you", "color": "#9ef0c0", "effect": "damage", "radius": 250.0, "dmg": 54.0, "knock": 300.0}}
       ]
     },
     {
@@ -89,7 +93,8 @@
       "dmg": 36.0,
       "gold": 14,
       "variants": [
-        {"char": "hoarder", "tag": "kitchen", "need": 4, "mul": {"gold": 2.0, "dmg": 1.4}}
+        {"char": "hoarder", "tag": "kitchen", "need": 4, "mul": {"gold": 2.0, "dmg": 1.4}},
+        {"char": "hoarder", "tag": "heavy", "need": 3, "form": {"key": "gold_crash", "zh": "金砖砸落", "en": "Gold Crash", "tip": "凑够 3 件重武器：不撒钱了，直接抡金砖砸 —— 钱少一半，伤害翻一倍多", "tip_en": "With 3 heavy weapons: stop sprinkling coins — drop gold bars instead. Half the pay, double the pain", "color": "#ffbb33", "dmg": 92.0, "gold": 5, "knock": 220.0, "slow_v": 0.5, "slow_dur": 2.5, "radius": 220.0}}
       ]
     },
     {
@@ -146,7 +151,8 @@
       "slow_v": 0.45,
       "slow_dur": 2.2,
       "variants": [
-        {"char": "magnet", "tag": "gun", "need": 4, "mul": {"radius": 1.3, "dmg": 1.5}}
+        {"char": "magnet", "tag": "gun", "need": 4, "mul": {"radius": 1.3, "dmg": 1.5}},
+        {"char": "magnet", "tag": "elemental", "need": 3, "form": {"key": "shock_field", "zh": "电场", "en": "Shock Field", "tip": "凑够 3 件元素：磁场通电，不是拽过来是原地麻住 —— 站着泼弹幕", "tip_en": "With 3 elemental weapons: the field goes live — not dragged, but stunned where they stand", "color": "#b98cff", "dmg": 40.0, "freeze_dur": 1.2, "slow_v": 0.3, "slow_dur": 2.0, "radius": 290.0}}
       ]
     },
 {
@@ -170,6 +176,24 @@
                     "poison_dps_pct": 1.6,
                     "burn_dps": 1.5,
                     "dur": 1.3
+                }
+            },
+            {
+                "char": "scorch",
+                "tag": "heavy",
+                "need": 3,
+                "form": {
+                    "key": "char_burst",
+                    "zh": "炭爆",
+                    "en": "Char Burst",
+                    "tip": "凑够 3 件重武器：不熬了，一铲子炭火先炸开再慢慢烧",
+                    "tip_en": "With 3 heavy weapons: no more slow cooking — a scoop of coals bursts first, then burns",
+                    "color": "#ff5a2b",
+                    "effect": "damage",
+                    "radius": 230.0,
+                    "dmg": 66.0,
+                    "burn_dps": 8.0,
+                    "dur": 3.0
                 }
             }
         ]
