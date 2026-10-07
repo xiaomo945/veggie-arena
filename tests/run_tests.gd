@@ -40,6 +40,7 @@ const TDotThrottle := preload("res://tests/test_dot_throttle.gd")
 const TSynergyBar := preload("res://tests/test_synergy_bar.gd")
 const TSkillForms := preload("res://tests/test_skill_forms.gd")
 const TWaveResult := preload("res://tests/test_wave_result.gd")
+const TCharDetail := preload("res://tests/test_char_detail.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -92,6 +93,7 @@ func _initialize() -> void:
 	_run("DotThrottle(持续伤害节流)", TDotThrottle, data)
 	_run("SkillForms(技能形态变体/C3)", TSkillForms, data)
 	_run("WaveResult(每波结算统计)", TWaveResult)
+	_run("CharDetail(角色详情页内容齐全)", TCharDetail, data)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告
 	data.free()

@@ -1,14 +1,8 @@
 extends Node
 
-# 多语言单例（方案 B：自定义字典映射，与 data/*.json 的 en/zh 内联字段完全一致）。
-# 默认语言跟随系统：中文设备→中文（方便国内玩家与开发者测试），其余→英文（出海）。
-# 首次启动后由 Settings 持久化语言偏好，_settings 菜单可随时手动切换 zh/en。
-#   I18n.t(key)            -> UI 静态文案（zh/en 字典）
-#   I18n.pick(d, ...)      -> 数据条目的名称字段（武器/角色/敌人/强化：en/zh）
-#   I18n.tip(d)            -> 数据条目的描述字段（tip_en / tip）
-#   I18n.stat_label(t)     -> 解锁进度里的统计名（kills/gold/wave/wins）
-#   I18n.set_locale(code)  -> 切换语言，持久化到 Settings 并发 locale_changed
-# locale_changed 供各界面订阅，语言切换时实时刷新自身文案。
+# 多语言单例（自定义字典映射，与 data/*.json 的 en/zh 内联字段一致）。
+# 默认跟随系统语言；Settings 持久化偏好，可随时切 zh/en。
+# I18n.t(key) 静态文案 / I18n.pick(d) 条目名 / I18n.tip(d) 条目描述 / I18n.set_locale(code) 切换。
 
 signal locale_changed(locale: String)
 
@@ -202,8 +196,7 @@ const UI := {
 
   # ---- 结算 ----
   "victory_title": {"en": "VICTORY!", "zh": "通关！"},
-  "victory_stat": {"en": "Cleared Wave %d\n%d Kills  ·  %d Gold\nSCORE %d",
-                   "zh": "通关第 %d 波\n击杀 %d  ·  金币 %d\n得分 %d"},
+  "victory_stat": {"en": "Cleared Wave %d\n%d Kills  ·  %d Gold\nSCORE %d", "zh": "通关第 %d 波\n击杀 %d  ·  金币 %d\n得分 %d"},
   "victory_again": {"en": "PLAY AGAIN", "zh": "再来一局"},
   "victory_continue": {"en": "CONTINUE ENDLESS", "zh": "继续无尽"},
   # ---- 每波结算页（D3-3）----
@@ -222,11 +215,19 @@ const UI := {
 
   # ---- 角色选择 ----
   "char_base": {"en": "BASE", "zh": "基础"},
+  "char_detail_pick": {"en": "PICK", "zh": "选他"},
+  "char_detail_close": {"en": "CLOSE", "zh": "关闭"},
+  "char_detail_trait": {"en": "TRAIT", "zh": "本命特性"},
+  "char_detail_how": {"en": "HOW TO PLAY", "zh": "怎么玩"},
+  "char_detail_buy": {"en": "WHAT TO BUY", "zh": "该买什么"},
+  "char_detail_skill": {"en": "SKILL", "zh": "技能"},
+  "char_detail_stats": {"en": "BASE STATS", "zh": "自带属性"},
+  "char_detail_sig": {"en": "Signature %s — tiers at %s copies", "zh": "本命武器 %s —— %s 件起升档"},
+  "char_detail_bond": {"en": "%s bond — needs %s copies", "zh": "%s 羁绊 —— 攒到 %s 件起效"},
 
   # ---- 开局选武器 ----
   "pick_weapon_title": {"en": "CHOOSE YOUR WEAPON", "zh": "选择初始武器"},
-  "pick_weapon_hint": {"en": "Pick ONE starter. Pistol stays as your backup.",
-                       "zh": "选 1 把开局武器 · 手枪作为保底一同携带"},
+  "pick_weapon_hint": {"en": "Pick ONE starter. Pistol stays as your backup.", "zh": "选 1 把开局武器 · 手枪作为保底一同携带"},
   "pick_weapon_confirm": {"en": "GO!", "zh": "出发！"},
   "pick_weapon_back": {"en": "BACK", "zh": "返回"},
   "pick_weapon_sel": {"en": "SELECTED", "zh": "已选"},

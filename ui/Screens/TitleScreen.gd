@@ -5,6 +5,7 @@ extends CanvasLayer
 # 出海游戏，主文案用英文；"萝卜突围"作中文品牌副标（项目已嵌 CJK 字体，能正常显示）。
 
 const CharacterPickerScript := preload("res://ui/Screens/CharacterPicker.gd")
+const CharDetailScript := preload("res://ui/Screens/CharDetail.gd")
 const CharTiers := preload("res://ui/Screens/CharTiers.gd")
 const WeaponPickerScript := preload("res://ui/Screens/WeaponPicker.gd")
 const RunModePickerScript := preload("res://ui/Screens/RunModePicker.gd")
@@ -12,6 +13,7 @@ const Save := preload("res://core/Save.gd")
 
 var _root: Control
 var _picker_layer: CanvasLayer
+var _char_detail: CanvasLayer = null   # D3-4：角色详情独立页（layer 55，盖在本标题页之上）
 var _picker
 var _sub_lbl: Label
 var _tag_lbl: Label
@@ -152,6 +154,12 @@ func _build() -> void:
 	picker.set_script(CharacterPickerScript)
 	_root.add_child(picker)
 	picker.set_position(Vector2((540.0 - (picker.get("content_size") as Vector2).x) * 0.5, 530.0))
+	# D3-4：点角色卡 → 那一格的"详情独立页"（讲本命/买什么/点什么技能/怎么玩），
+	# 详情页里的「选他」才真正落定选择。详情必须盖在本标题页(layer 50)之上，否则点不到。
+	_char_detail = CharDetailScript.new()
+	get_parent().add_child(_char_detail)
+	picker.char_detail_requested.connect(_on_char_detail_requested)
+	_char_detail.picked.connect(_on_char_picked)
 	# 角色网格底部：START 与"下一把解锁"提示都按它定位（角色变多、网格变高也不会被盖）。
 	# 用 content_size（网格真实高度），不能用 picker.size —— fit_overlay 已把它撑成整屏。
 	var p_bottom: float = 530.0 + (picker.get("content_size") as Vector2).y
@@ -211,6 +219,17 @@ func _on_character_changed(_key: String = "") -> void:
 	if _pick_lbl != null:
 		_pick_lbl.text = CharTiers.full(Data.character(GameState.character))
 
+# D3-4：点角色卡 → 弹该角色的独立详情页（本命/买什么/点什么技能/怎么玩）
+func _on_char_detail_requested(key: String) -> void:
+	if _char_detail != null:
+		_char_detail.show_for(key)
+
+# 详情页「选他」→ 真正换人（才走 GameState.set_character，触发重算血量/羁绊）
+func _on_char_picked(key: String) -> void:
+	GameState.set_character(key)
+	if _pick_lbl != null:
+		_pick_lbl.text = CharTiers.full(Data.character(GameState.character))
+
 func _on_start() -> void:
 	# START 是整局的第一次点击：在这里出第一声，保证 Web/iOS 的 AudioContext
 	# 在"用户手势内"被解锁（iOS 上手势外出的第一声可能整局静音）。
@@ -254,5 +273,5 @@ func _on_locale_changed(_l: String = "") -> void:
 			var wname := I18n.pick(Data.weapon(str(nx["key"])))
 			_next_lbl.text = I18n.t("title_next") % [wname.to_upper(), int(nx["left"]), I18n.stat_label(str(nx["type"]))]
 	_how_lbl.text = I18n.t("title_how")
-	_pick_lbl.text = I18n.t("title_pick")
+	_pick_lbl.text = CharTiers.full(Data.character(GameState.character))
 	_start_btn.text = I18n.t("title_start")

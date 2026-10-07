@@ -176,6 +176,13 @@ def main():
     if m_maxh and float(m_maxh.group(1)) > 250.0:
         fails.append("R-picker CharacterPicker.PICKER_MAX_H=%s 超过 250（角色增多须整体等比缩）"
                      % m_maxh.group(1))
+    # D3-4 不变量：选角主页只留"形象 + 名字"——详细的属性/亲和/本命文字不许塞回卡片，
+    # 一律进每角色一页的 CharDetail（60 个角色也要放得下，不能靠缩小卡片塞信息）。
+    if 'Character.describe' in picker_src or 'affinity_text' in picker_src:
+        fails.append("R-picker CharacterPicker 又在卡片上画属性/亲和文字（应只留形象+名字，"
+                     "详情一律走 ui/Screens/CharDetail.gd 独立页）")
+    if not os.path.exists(os.path.join(ROOT, 'ui', 'Screens', 'CharDetail.gd')):
+        fails.append("R-picker 缺少 ui/Screens/CharDetail.gd（每个角色必须有自己的详情独立页）")
 
     if REPORT:
         print("== 当前违规（用于写基线）==")

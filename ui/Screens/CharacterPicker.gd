@@ -8,7 +8,10 @@ extends Control
 # 布局：卡片行按角色数量自动缩放（6 卡时整行等比缩小），保证在 540 设计宽度内完整可见。
 # 之前写死 4 卡宽，角色加到 5-6 个后末尾卡片被切出屏幕、没法点选。
 
-const Character := preload("res://core/Character.gd")
+# D3-4：点卡不再直接换人 —— 改为发出"我要看这个角色的详情"，由详情页的「选他」落定。
+# 主页面从此只负责"挑"（形象 + 名字）；特性/买什么/点什么技能全在各自独立页里讲，
+# 这样将来扩到 60 个角色只换详情页的文字，不用把卡片越缩越小去塞信息。
+signal char_detail_requested(key: String)
 
 # 设计基准尺寸（6 卡以内会按比例缩小）
 const CARD_W := 96.0
@@ -100,7 +103,7 @@ func _gui_input(event: InputEvent) -> void:
 		if t.pressed:
 			var k := _key_at(t.position)
 			if not k.is_empty():
-				GameState.set_character(k)
+				char_detail_requested.emit(k)
 		accept_event()
 		return
 	if event is InputEventMouseButton:
@@ -108,7 +111,7 @@ func _gui_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
 			var k := _key_at(mb.position)
 			if not k.is_empty():
-				GameState.set_character(k)
+				char_detail_requested.emit(k)
 		accept_event()
 		return
 	if event is InputEventMouseMotion:
@@ -145,7 +148,7 @@ func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 	# 立绘：优先 char_<key>；缺图退化成一个主色圆点，玩家仍能分辨
 	var tex := Art.sprite("char_" + key)
 	var icon_r := 30.0 * _k
-	var c := Vector2(r.position.x + _cw * 0.5, r.position.y + _ch * 0.32)
+	var c := Vector2(r.position.x + _cw * 0.5, r.position.y + _ch * 0.40)
 	if tex != null:
 		var s := icon_r * 2.2
 		draw_texture_rect_region(tex, Rect2(c.x - s * 0.5, c.y - s * 0.5, s, s),
@@ -161,58 +164,9 @@ func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 	var name := I18n.pick(entry)
 	var nfs := int(maxf(9.0, 15.0 * _k))
 	var nw := fs.get_string_size(name, HORIZONTAL_ALIGNMENT_CENTER, -1, nfs)
-	draw_string(fs, Vector2(c.x - nw.x * 0.5, r.position.y + _ch * 0.66), name,
+	draw_string(fs, Vector2(c.x - nw.x * 0.5, r.position.y + _ch * 0.80), name,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, nfs,
 		Color(1, 1, 1, 0.96) if selected else Color(0.78, 0.82, 0.88, 0.9))
-
-	# 职业亲和标签：明确"这把萝卜适合哪种武器"（远程/近战/法师/均衡）
-	# 同样按卡片宽度自适应字号，超宽截断，避免糊到邻卡
-	var aff := Character.affinity_text(str(entry.get("affinity", "mixed")), I18n.locale)
-	var acol := Character.affinity_color(str(entry.get("affinity", "mixed")))
-	var afs := int(maxf(8.0, 10.0 * _k))
-	var aw := fs.get_string_size(aff, HORIZONTAL_ALIGNMENT_LEFT, -1, afs).x
-	while aw > _cw - 6.0 and afs > 8:
-		afs -= 1
-		aw = fs.get_string_size(aff, HORIZONTAL_ALIGNMENT_LEFT, -1, afs).x
-	while aw > _cw - 6.0 and aff.length() > 1:
-		aff = aff.substr(0, aff.length() - 1)
-		aw = fs.get_string_size(aff, HORIZONTAL_ALIGNMENT_LEFT, -1, afs).x
-	draw_string(fs, Vector2(c.x - aw * 0.5, r.position.y + _ch * 0.54), aff,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, afs, acol)
-
-	# 本命武器：选角第一眼就知道"这把萝卜该拿什么"。
-	# 这行是整个配装研究的入口 —— 玩家看到"本命·手枪"才会去琢磨堆 6 把手枪的打法。
-	var sig := entry.get("signature", {}) as Dictionary
-	var sig_key := str(sig.get("key", ""))
-	if sig_key != "":
-		var sigtxt := I18n.t("syn_signature") + "·" + I18n.pick(Data.weapon(sig_key))
-		var sfs := int(maxf(8.0, 10.0 * _k))
-		var sw := fs.get_string_size(sigtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x
-		while sw > _cw - 6.0 and sfs > 8:
-			sfs -= 1
-			sw = fs.get_string_size(sigtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x
-		while sw > _cw - 6.0 and sigtxt.length() > 2:
-			sigtxt = sigtxt.substr(0, sigtxt.length() - 1)
-			sw = fs.get_string_size(sigtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x
-		draw_string(fs, Vector2(c.x - sw * 0.5, r.position.y + _ch * 0.74), sigtxt,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, sfs, Color(1.0, 0.84, 0.32, 0.95))
-
-	# 属性摘要：有加成才显示，纯基准角色显示 "BASE"
-	# 卡片不宽：超宽先缩字号（最小 8），仍超宽再截断，避免糊到邻卡
-	var desc := Character.describe(entry)
-	if desc.is_empty() or entry.get("stats", {}).is_empty():
-		desc = I18n.t("char_base")
-	var dfs := int(maxf(8.0, 11.0 * _k))
-	var dw := fs.get_string_size(desc, HORIZONTAL_ALIGNMENT_LEFT, -1, dfs).x
-	while dw > _cw - 10.0 and dfs > 8:
-		dfs -= 1
-		dw = fs.get_string_size(desc, HORIZONTAL_ALIGNMENT_LEFT, -1, dfs).x
-	while dw > _cw - 10.0 and desc.length() > 2:
-		desc = desc.substr(0, desc.length() - 1)
-		dw = fs.get_string_size(desc, HORIZONTAL_ALIGNMENT_LEFT, -1, dfs).x
-	draw_string(fs, Vector2(c.x - dw * 0.5, r.position.y + _ch * 0.83), desc,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, dfs,
-		Color(0.95, 0.80, 0.40, 0.95) if selected else Color(0.62, 0.66, 0.72, 0.85))
 
 	# 选中标记：右上角一个小三角
 	if selected:
