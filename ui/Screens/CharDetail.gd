@@ -9,6 +9,7 @@ extends CanvasLayer
 
 const Character := preload("res://core/Character.gd")
 const SkillDef := preload("res://core/SkillDef.gd")
+const UnlockText := preload("res://ui/UnlockText.gd")
 
 signal picked(key: String)
 
@@ -149,6 +150,8 @@ func _refresh() -> void:
 	for c in _body.get_children():
 		c.queue_free()
 
+	_lock_state()
+
 	# 1) 本命特性（一句话说清这角色的核心机制）
 	_section(I18n.t("char_detail_trait"), _loc(entry, "trait"))
 	# 2) 怎么玩（长文本，这一页的价值所在）
@@ -163,6 +166,20 @@ func _refresh() -> void:
 		desc = I18n.t("char_base")
 	_section(I18n.t("char_detail_stats"), desc)
 	_name_lbl.add_theme_color_override("font_color", accent)
+
+# 锁没锁：[选他] 按钮的状态 + 锁住时在最前面挂一段"怎么解锁"。
+# 摆在第一节的理由：玩家点进来第一眼就该知道"我差什么"，而不是先读完一页才被告知拿不到。
+# Soulstone 的教训：把规则藏起来，玩家只会觉得这游戏莫名其妙。
+func _lock_state() -> void:
+	var open := SaveMgr.is_character_unlocked(_key)
+	if not open:
+		var info := SaveMgr.character_remaining(_key)
+		var dep := str(info.get("char", ""))
+		var who := I18n.pick(Data.character(dep)) if Data.characters.has(dep) else ""
+		_section(UnlockText.title_locked(I18n.locale),
+			UnlockText.sentence(info, who, I18n.locale))
+	_pick_btn.text = I18n.t("char_detail_pick") if open else UnlockText.btn_locked(I18n.locale)
+	_pick_btn.disabled = not open
 
 # 「该买什么」：本命武器 + 羁绊（几件起效）+ 明确的配装建议
 func _buy_text(entry: Dictionary) -> String:
@@ -201,7 +218,7 @@ func _skill_text(entry: Dictionary) -> String:
 	return I18n.t("skill_" + sid)
 
 func _on_pick() -> void:
-	if _key.is_empty():
+	if _key.is_empty() or _pick_btn.disabled:
 		return
 	Sfx.ui_click()
 	picked.emit(_key)

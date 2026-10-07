@@ -13,6 +13,10 @@ extends Control
 # 这样将来扩到 60 个角色只换详情页的文字，不用把卡片越缩越小去塞信息。
 signal char_detail_requested(key: String)
 
+# 角色还没解锁时卡面怎么画：**压暗 + 一把锁**，具体差什么不在这儿写 ——
+# 卡面只有"形象 + 名字"是 D3-4 的硬不变量（PICKER_MAX_H ≤ 250，塞不下第三行字），
+# 解锁条件放在详情页的第一节，玩家点开一眼就看到。
+
 # 设计基准尺寸（6 卡以内会按比例缩小）
 const CARD_W := 96.0
 const CARD_H := 118.0
@@ -31,6 +35,7 @@ const PICKER_TOP := 530.0
 var _keys: Array = []
 var _selected := "turnip"
 var _hover := -1
+var _locked: Dictionary = {}   # 未解锁角色 → 解锁进度（{type,need,have,left,char}）
 # 实际使用的卡片尺寸（_ready 里按网格与卡数缩放）
 var _cw := CARD_W
 var _ch := CARD_H
@@ -68,10 +73,25 @@ func _ready() -> void:
 	content_size = Vector2(float(_cols) * _cw + float(_cols - 1) * _gap,
 		float(_rows) * _ch + float(_rows - 1) * _gap)
 	size = content_size
+	_refresh_lock()
 	Events.character_changed.connect(_on_changed)
+	Events.character_unlocked.connect(_on_char_unlocked)
 	I18n.locale_changed.connect(_on_locale_changed)
 	queue_redraw()
 	ScreenMode.fit_overlay(self)   # 横屏下把竖屏选角色页缩放到 960x540 视口内、居中
+
+# 哪些角色锁着、各自差多少：这里只读 SaveMgr 的判定结果，规则判定在 core/Unlocks.gd
+func _refresh_lock() -> void:
+	var open := SaveMgr.unlocked_characters()
+	_locked = {}
+	for k in _keys:
+		if not open.has(str(k)):
+			_locked[str(k)] = SaveMgr.character_remaining(str(k))
+
+# 一局结束解开了新角色 → 立刻解除卡面的锁（玩家不用重进游戏才看到）
+func _on_char_unlocked(_key: String) -> void:
+	_refresh_lock()
+	queue_redraw()
 
 func _on_changed(key: String) -> void:
 	_selected = key
@@ -79,6 +99,16 @@ func _on_changed(key: String) -> void:
 
 func _on_locale_changed(_l: String = "") -> void:
 	queue_redraw()
+
+# 一把小挂锁：方身体 + 半圆梁。纯几何绘制，不依赖任何美术素材（美术最后弄也能先跑）
+func _draw_lock(c: Vector2) -> void:
+	var w := 15.0 * _k
+	var h := 12.0 * _k
+	var body := Rect2(c.x - w * 0.5, c.y - h * 0.15, w, h)
+	draw_rect(body, Color(0.92, 0.76, 0.30), true)
+	draw_rect(body, Color(0.32, 0.24, 0.08), false, 1.2 * _k)
+	draw_arc(Vector2(c.x, c.y - h * 0.15), w * 0.38, PI, TAU, 14,
+		Color(0.95, 0.82, 0.38), 2.0 * _k, true)
 
 func _key_at(p: Vector2) -> String:
 	var pitch_x := _cw + _gap
@@ -167,6 +197,12 @@ func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
 	draw_string(fs, Vector2(c.x - nw.x * 0.5, r.position.y + _ch * 0.80), name,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, nfs,
 		Color(1, 1, 1, 0.96) if selected else Color(0.78, 0.82, 0.88, 0.9))
+
+	# 锁住的角色：整体压暗 + 中间一把锁 —— "这是个目标，不是 bug"。
+	# 差什么（还差几杀 / 用谁通关）写进详情页，卡面本身留白，守住 D3-4 的不变量。
+	if _locked.has(key):
+		draw_rect(r, Color(0.02, 0.02, 0.04, 0.60), true)
+		_draw_lock(c)
 
 	# 选中标记：右上角一个小三角
 	if selected:
