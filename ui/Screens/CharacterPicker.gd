@@ -49,8 +49,10 @@ var content_size := Vector2.ZERO
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
-	_keys = Data.characters.keys()
-	_keys.sort()
+	# 顺序：**能玩的一律在前**（免费最靠前），锁着的往后排。
+	# 之前是纯字母序 —— 新玩家第一眼看到的是"一串锁着的角色"，而这一步唯一要回答
+	# 的问题是"我现在能玩谁"。排序本身也在 core/Unlocks.order（纯函数，配了单测）。
+	_keys = SaveMgr.character_order()
 	_selected = GameState.character
 	# 网格布局：每行最多 COLS 张，整体宽度封顶 ROW_MAX_W。
 	# 高度封顶 PICKER_MAX_H：角色多到网格超高时整体等比缩（卡片变矮但永远在屏内），
@@ -88,10 +90,19 @@ func _refresh_lock() -> void:
 		if not open.has(str(k)):
 			_locked[str(k)] = SaveMgr.character_remaining(str(k))
 
-# 一局结束解开了新角色 → 立刻解除卡面的锁（玩家不用重进游戏才看到）
+# 一局结束解开了新角色 → 立刻解除卡面的锁（玩家不用重进游戏才看到）。
+# 顺带重排序：刚解开的那位要从"后面锁着的一堆"挪到"能玩的那一堆"里，
+# 否则玩家解锁了却还得在一排灰卡里找他 —— 解锁的正反馈当场就没了。
 func _on_char_unlocked(_key: String) -> void:
+	_refresh_order()
 	_refresh_lock()
 	queue_redraw()
+
+# 重排只需要动 _keys 本身：列数/行数只取决于角色总数，不会变。
+func _refresh_order() -> void:
+	var fresh := SaveMgr.character_order()
+	if fresh.size() == _keys.size():
+		_keys = fresh
 
 func _on_changed(key: String) -> void:
 	_selected = key

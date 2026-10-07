@@ -184,6 +184,19 @@ def main():
     if not os.path.exists(os.path.join(ROOT, 'ui', 'Screens', 'CharDetail.gd')):
         fails.append("R-picker 缺少 ui/Screens/CharDetail.gd（每个角色必须有自己的详情独立页）")
 
+    # ---- 选武器页不变量：候选池必须是"所有已解锁武器" ----
+    # 回归背景：曾经是 list.slice(0, 6)，于是把 40 把武器全解锁了，开局也只能挑那 6 把，
+    # 解锁系统一半的意义被这一行吃掉。因此这里既禁硬截断，也要求每把武器有独立详情页。
+    wp_src = open(os.path.join(ROOT, 'ui', 'Screens', 'WeaponPicker.gd'),
+                  encoding='utf-8', errors='ignore').read()
+    if 'unlocked_weapons()' not in wp_src:
+        fails.append("R-weaponpool WeaponPicker 候选池没走 SaveMgr.unlocked_weapons()"
+                     "（必须 = 所有已解锁武器，不许写死列表）")
+    if re.search(r'slice\(\s*0\s*,', wp_src):
+        fails.append("R-weaponpool WeaponPicker 又对候选池硬截断（写死前 N 把 = 解锁白做）")
+    if not os.path.exists(os.path.join(ROOT, 'ui', 'Screens', 'WeaponDetail.gd')):
+        fails.append("R-weaponpool 缺少 ui/Screens/WeaponDetail.gd（每把武器必须有自己的详情独立页）")
+
     if REPORT:
         print("== 当前违规（用于写基线）==")
         print("R1 超 %d 行: %s" % (MAX_LINES, lines_bad or "无"))

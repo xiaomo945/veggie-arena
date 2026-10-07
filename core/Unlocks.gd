@@ -120,3 +120,137 @@ static func next_character(save: Dictionary, unlocks: Dictionary, all_keys: Arra
 			best = rem.duplicate()
 			best["key"] = key
 	return best
+
+# ---- 关系树 / 排序：把规则表翻成"谁解开谁"的形状 ----
+# 用途有两个：选角页排序（免费在前、锁着的在后），以及关系树那张图。
+# 全是纯函数，规则一变图自动跟着变，不需要任何地方维护"路线表"。
+
+# 阶梯深度：free=0；靠别人通关解锁 = 前置角色的深度 +1（取最深的那条）
+static func depth_of(unlocks: Dictionary, key: String) -> int:
+	return _depth(unlocks, key, [])
+
+# 主线边：parent → [children]，意思是"用 parent 通关过就能玩 child"
+static func edges(unlocks: Dictionary, all_keys: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for k in all_keys:
+		var key := str(k)
+		for dep in clear_deps(rule_of(unlocks, key)):
+			var p := str(dep)
+			if not out.has(p):
+				out[p] = []
+			var arr: Array = out[p]
+			if not arr.has(key):
+				arr.append(key)
+	return out
+
+# 一条条主线（每条都是一个数组，从深度 0 的根拉到最深的后代）。
+# DFS 拉直：一个父角色开出多个分支时，分支角色排在父角色后面依次展开。
+static func lanes(unlocks: Dictionary, all_keys: Array) -> Array:
+	var eg := edges(unlocks, all_keys)
+	var roots: Array = []
+	for k in all_keys:
+		var key := str(k)
+		if depth_of(unlocks, key) == 0 and not (eg.get(key, []) as Array).is_empty():
+			roots.append(key)
+	roots.sort()
+	var out: Array = []
+	var used: Array = []
+	for root in roots:
+		var lane: Array = []
+		_collect(eg, str(root), lane, used)
+		out.append(lane)
+	return out
+
+# 不挂在任何主线上的角色：只能靠累计数据解锁（没有 clear_with）
+static func standalone(unlocks: Dictionary, all_keys: Array) -> Array:
+	var eg := edges(unlocks, all_keys)
+	var out: Array = []
+	for k in all_keys:
+		var key := str(k)
+		var has_parent := false
+		for p in eg:
+			if (eg[p] as Array).has(key):
+				has_parent = true
+				break
+		if not has_parent and (eg.get(key, []) as Array).is_empty():
+			out.append(key)
+	out.sort()
+	return out
+
+# 规则里的主线条件本体（轻视累计支路）：关系树上要画的就是"通关前置"这一条
+static func first_clear_with(rule: Dictionary) -> Dictionary:
+	if rule.has("any_of"):
+		for sub in (rule.get("any_of", []) as Array):
+			var hit := first_clear_with(sub as Dictionary)
+			if not hit.is_empty():
+				return hit
+		return {}
+	return rule.duplicate(true) if str(rule.get("type", "")) == "clear_with" else {}
+
+# 选角页顺序：**能玩的一律在前**（免费最靠前，其次按阶梯深浅），锁着的一律在后。
+# 玩家诉求的原话是"免费角色要放在最前面，需要解锁的放在后面"。
+# 组内再按"所属职业线 → 阶梯深浅"聚拢，于是选角页的排布和关系树的排布是同一套顺序：
+# 玩家在树上看到的那一列，回头在卡片网格里还能认出来。
+static func order(save: Dictionary, unlocks: Dictionary, all_keys: Array) -> Array:
+	var lane_of: Dictionary = {}
+	var li := 0
+	for lane in lanes(unlocks, all_keys):
+		for k in lane:
+			lane_of[str(k)] = li
+		li += 1
+	var packed: Array = []
+	for k in all_keys:
+		var key := str(k)
+		packed.append({
+			"k": key,
+			"d": depth_of(unlocks, key),
+			"l": int(lane_of.get(key, li)),
+			"open": is_unlocked(save, unlocks, key),
+		})
+	packed.sort_custom(_cmp_order)
+	var out: Array = []
+	for e in packed:
+		out.append(str((e as Dictionary).get("k", "")))
+	return out
+
+static func _cmp_order(a, b) -> bool:
+	var A := a as Dictionary
+	var B := b as Dictionary
+	var ao := bool(A.get("open", false))
+	var bo := bool(B.get("open", false))
+	if ao != bo:
+		return ao
+	var al := int(A.get("l", 0))
+	var bl := int(B.get("l", 0))
+	if al != bl:
+		return al < bl
+	var ad := int(A.get("d", 0))
+	var bd := int(B.get("d", 0))
+	if ad != bd:
+		return ad < bd
+	return str(A.get("k", "")) < str(B.get("k", ""))
+
+static func _depth(unlocks: Dictionary, key: String, seen: Array) -> int:
+	if seen.has(key):
+		return 0          # 成环时断链（真正的不成环由单测把关，这里只求不崩）
+	var deps := clear_deps(rule_of(unlocks, key))
+	if deps.is_empty():
+		return 0
+	var deepest := 0
+	var next_seen: Array = seen.duplicate()
+	next_seen.append(key)
+	for d in deps:
+		var dd := _depth(unlocks, str(d), next_seen) + 1
+		if dd > deepest:
+			deepest = dd
+	return deepest
+
+static func _collect(eg: Dictionary, key: String, lane: Array, used: Array) -> void:
+	if lane.has(key) or used.has(key):
+		return
+	lane.append(key)
+	used.append(key)
+	var kids: Array = (eg.get(key, []) as Array).duplicate()
+	kids.sort()
+	for c in kids:
+		_collect(eg, str(c), lane, used)

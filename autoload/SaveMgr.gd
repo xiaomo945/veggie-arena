@@ -88,6 +88,11 @@ func character_remaining(key: String) -> Dictionary:
 func next_character_unlock() -> Dictionary:
 	return Unlocks.next_character(data, Data.unlocks_cfg(), Data.characters.keys())
 
+# 选角页的角色顺序：**能玩的一律在前**（免费最靠前），锁着的一律在后。
+# 玩家诉求：免费角色放最前面、需要解锁的放后面。
+func character_order() -> Array:
+	return Unlocks.order(data, Data.unlocks_cfg(), Data.characters.keys())
+
 func is_weapon_unlocked(key: String) -> bool:
 	return unlocked_weapons().has(key)
 

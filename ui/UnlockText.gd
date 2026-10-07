@@ -66,5 +66,51 @@ static func next_hint(info: Dictionary, who: String = "", locale: String = "zh")
 		return "NEXT CHARACTER: %s — %s" % [name, tail]
 	return "下一个角色：%s — %s" % [name, tail]
 
+# 关系树节点里的极短条件：一个方块只有 ~118px 宽，长句塞不下
+static func short(info: Dictionary, locale: String = "zh") -> String:
+	if info.is_empty():
+		return ""
+	var en := _en(locale)
+	var t := str(info.get("type", ""))
+	var need := int(info.get("need", 0))
+	match t:
+		"free":
+			return "FREE" if en else "免费"
+		"total_kills":
+			return ("%d KILLS" % need) if en else ("%d 击杀" % need)
+		"total_gold":
+			return ("%d GOLD" % need) if en else ("%d 金币" % need)
+		"best_wave":
+			return ("WAVE %d" % need) if en else ("第 %d 波" % need)
+		"wins":
+			return ("CLEAR x%d" % need) if en else ("通关 %d 次" % need)
+	return ""
+
+# ---- 关系树那张图自己的文案 ----
+static func route_title(locale: String) -> String:
+	return "UNLOCK ROUTE" if _en(locale) else "解锁路线"
+
+static func route_hint(locale: String) -> String:
+	return ("Clear the one above to unlock the one below."
+		if _en(locale) else "通关上面的角色，就能玩下面那个")
+
+static func route_lane_main(locale: String) -> String:
+	return "MAIN LINE" if _en(locale) else "主线 · 通关解锁"
+
+static func route_lane_side(locale: String) -> String:
+	return "ANY TIME" if _en(locale) else "旁路 · 攒够就开"
+
+static func route_owned(locale: String) -> String:
+	return "OWNED" if _en(locale) else "已拥有"
+
+static func route_close(locale: String) -> String:
+	return "CLOSE" if _en(locale) else "关闭"
+
+static func btn_route(locale: String) -> String:
+	return "UNLOCK MAP" if _en(locale) else "解锁路线"
+
+static func route_progress(owned: int, total: int, locale: String) -> String:
+	return ("%d / %d OWNED" % [owned, total]) if _en(locale) else ("已拥有 %d / %d" % [owned, total])
+
 static func _en(locale: String) -> bool:
 	return locale != "zh"

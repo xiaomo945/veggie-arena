@@ -42,6 +42,8 @@ const TSkillForms := preload("res://tests/test_skill_forms.gd")
 const TWaveResult := preload("res://tests/test_wave_result.gd")
 const TCharDetail := preload("res://tests/test_char_detail.gd")
 const TCharUnlock := preload("res://tests/test_char_unlock.gd")
+const TWeaponInfo := preload("res://tests/test_weapon_info.gd")
+const TUnlockTree := preload("res://tests/test_unlock_tree.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -96,6 +98,8 @@ func _initialize() -> void:
 	_run("WaveResult(每波结算统计)", TWaveResult)
 	_run("CharDetail(角色详情页内容齐全)", TCharDetail, data)
 	_run("CharUnlock(角色解锁阶梯)", TCharUnlock, data)
+	_run("WeaponInfo(武器详情页/候选池)", TWeaponInfo, data)
+	_run("UnlockTree(选角排序/关系树)", TUnlockTree, data)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告
 	data.free()
