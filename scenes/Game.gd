@@ -79,6 +79,7 @@ func _ready() -> void:
 	add_child(ShopScene.instantiate())
 	add_child(DeathScene.instantiate())
 	add_child(VictoryScene.instantiate())
+	add_child(preload("res://ui/Screens/WaveResultScreen.gd").new())
 	var pause := PauseScene.instantiate()
 	add_child(pause)
 	# D3-2：属性页单例（layer=36）由 StatsFlow 持有，HUD 与主界面「属性」键、暂停菜单共用

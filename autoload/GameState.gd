@@ -28,9 +28,7 @@ var weapons: Array = []
 # 强化：{"key": 数量}
 var upgrades: Dictionary = {}
 
-# ---- 锅气 Wok Heat（招牌机制）----
-# 0..max 的"火候"值：击杀/命中攒、停手衰减、挨打掉，档位 0 微温/1 翻炒/2 爆炒。
-# 满锅气可"颠勺"：全屏击退+重伤，然后火候回落。纯逻辑在 core/Wok.gd。
+# ---- 锅气 Wok Heat（招牌机制）---- 0 微温/1 翻炒/2 爆炒，满锅气可颠勺（全屏击退+重伤）
 const Wok := preload("res://core/Wok.gd")
 const Character := preload("res://core/Character.gd")
 const Run := preload("res://core/Run.gd")
@@ -39,6 +37,8 @@ const Pickup := preload("res://core/Pickup.gd")
 const Level := preload("res://core/Level.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
 const StatBonus := preload("res://core/StatBonus.gd")
+const WaveStats := preload("res://core/WaveStats.gd")
+var wave_stats := WaveStats.new()   # 每波统计（D3-3 结算页用），纯逻辑见 core/WaveStats.gd
 var wok: Dictionary = {}
 var wok_heat: float = 0.0
 var _wok_tier: int = 0
@@ -50,8 +50,7 @@ var pause_rect := Rect2(0, 0, 0, 0)
 
 func _ready() -> void:
 	reset()
-	# reset() 把 running 置 true（"正式开跑"用）；启动时必须停下，
-	# 否则标题页还没点，背后就已经在刷怪开打了。
+	# reset() 把 running 置 true；启动时必须停下，否则标题页没点背后就开打了
 	running = false
 
 func reset() -> void:
@@ -62,6 +61,7 @@ func reset() -> void:
 	wave = 1
 	gold = 0
 	kills = 0
+	wave_stats.snapshot(0, 0)
 	xp = 0
 	elapsed_in_wave = 0.0
 	running = true
@@ -138,10 +138,13 @@ func spend_gold(amount: int) -> bool:
 func next_wave() -> void:
 	wave += 1
 	elapsed_in_wave = 0.0
+	# 结算页用的"本波"计数在每波开局快照一次（shop 内的购买/花费不影响本波金币统计）
+	wave_stats.snapshot(gold, kills)
 	Events.wave_started.emit(wave)
 
 func tick_wave(delta: float) -> void:
 	elapsed_in_wave += delta
+	wave_stats.tick(delta)
 	Events.wave_progress.emit(elapsed_in_wave, float(Data.wave_cfg().get("length", 20)))
 
 func wave_finished() -> bool:
@@ -155,6 +158,7 @@ func is_last_wave() -> bool:
 # ---- 击杀 ----
 func add_kill() -> void:
 	kills += 1
+	wave_stats.add_kill()
 
 # ---- 经验 / 等级（击杀掉经验；升级奖励也在这里结算，爽点集中一处）----
 func add_xp(amount: int) -> void:
@@ -205,7 +209,6 @@ func buy_upgrade(key: String) -> void:
 			pass
 	Events.weapons_changed.emit(weapons)   # 伤害/攻速等加成靠武器重建生效
 
-# 某个属性的总加成值。单属性道具（stat/value）与多属性道具（stats 字典）都支持。
 func stat_value(stat: String) -> float:
 	var total := _char_stat(stat)
 	for k in upgrades:
@@ -217,9 +220,7 @@ func stat_value(stat: String) -> float:
 	total += StatBonus.extra(weapons, Data.character(character), Data.weapons, Data.weapon_sets, stat)
 	return total
 
-# ---- 颠勺附带的护盾 / 狂暴 ----
-# 不是"属性"而是有时限的战斗状态，只能挂在 GameState 上：Player（挨打扣血）
-# 和 PlayerWeapons（开火频率）都要读同一个倒计时，各自推进会对不上。
+# ---- 颠勺附带的护盾 / 狂暴 ---- 限时状态而非属性，挂 GameState 供 Player/PlayerWeapons 共读
 var shield: int = 0              # 护盾：挨打先扣它，扣完才掉血
 var frenzy_left: float = 0.0     # 狂暴剩余秒数（攻速 + 移速）
 

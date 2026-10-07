@@ -206,6 +206,13 @@ const UI := {
                    "zh": "通关第 %d 波\n击杀 %d  ·  金币 %d\n得分 %d"},
   "victory_again": {"en": "PLAY AGAIN", "zh": "再来一局"},
   "victory_continue": {"en": "CONTINUE ENDLESS", "zh": "继续无尽"},
+  # ---- 每波结算页（D3-3）----
+  "wave_result_title": {"en": "WAVE %d CLEAR", "zh": "第 %d 波 完成"},
+  "wave_result_gold": {"en": "Gold this wave: +%d", "zh": "本波金币：+%d"},
+  "wave_result_kills": {"en": "Kills this wave: %d", "zh": "本波击杀：%d"},
+  "wave_result_combo": {"en": "Best combo: %dx", "zh": "最高连击：%d 连"},
+  "wave_result_hp": {"en": "HP: %d / %d", "zh": "当前生命：%d / %d"},
+  "wave_result_continue": {"en": "CONTINUE", "zh": "继续"},
   "hud_endless": {"en": "ENDLESS WAVE %d", "zh": "无尽波次 %d"},
   "hud_final_boss": {"en": "FINAL BOSS!", "zh": "终局首领！"},
   "death_title": {"en": "GAME OVER", "zh": "游戏结束"},

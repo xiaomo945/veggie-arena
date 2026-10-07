@@ -118,6 +118,8 @@ signal run_ended(wave: int, kills: int)
 signal run_won()
 signal shop_opened()
 signal shop_closed()
+signal wave_result_ready(wave: int)   # 每波结束 → 结算页（金币/击杀/连击）
+signal wave_result_closed()           # 结算页"继续" → 开补给站
 # 标题页"开始"/死亡页"再来一局"都发这个，由 Main 统一接管开跑/重开
 signal run_requested()
 # 暂停：HUD 暂停键发出 → Game 真正暂停；PauseScreen 监听 run_paused 显隐自己

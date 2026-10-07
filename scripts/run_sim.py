@@ -55,6 +55,7 @@ def main():
     m = re.search(r"开火/命中\s*:\s*(\d+)\s*/\s*(\d+)", out)
     shots, hits = (int(m.group(1)), int(m.group(2))) if m else (None, None)
     wave = grab(r"波次\s*:\s*(\d+)", out)
+    wave_result = grab(r"波次结算:\s*第 (\d+) 波", out)
     m2 = re.search(r"金币\s*:\s*持有\s*(\d+)\s*/\s*累计捡到\s*(\d+)\s*/\s*地上待检\s*(\d+)",
                    out) or re.search(
         r"金币\s*:\s*持有\s*(\d+)\s*/\s*累计捡到\s*(\d+)\s*/\s*地上待捡\s*(\d+)", out)
@@ -69,6 +70,8 @@ def main():
          (gold_picked or 0) + (ground or 0) > 0, (gold_picked, ground)),
         ("波次链路：至少推进到第 2 波（含商店与波末结算）",
          wave is not None and wave >= 2, wave),
+        ("每波结算页：显示过波次结算（金币/击杀/连击）",
+         wave_result is not None, wave_result),
     ]
     for name, ok, val in checks:
         if not ok:

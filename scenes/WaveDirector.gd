@@ -17,6 +17,8 @@ func setup(g: Node, w, es) -> void:
 	enemy_system = es
 	# 调试面板"跳到第 N 波"（core/DebugMode 决定按钮存不存在，正式版没人发这个信号）
 	Events.debug_jump_wave.connect(jump_to_wave)
+	# 结算页"继续" → 开补给站（D3-3：波末先弹结算页，再进商店）
+	Events.wave_result_closed.connect(_on_result_closed)
 
 # 每波开局先撒一批怪（数量 = spawn_burst + 波号，不超 max_alive）
 func spawn_wave_burst() -> void:
@@ -63,7 +65,12 @@ func end_wave() -> void:
 		GameState.running = false
 		Events.run_won.emit()
 		return
+	# 波末先弹"结算页"（世界暂停，给玩家缓冲），点"继续"再开补给站
 	game.set_paused(true)
+	Events.wave_result_ready.emit(GameState.wave)
+
+# 结算页"继续" → 开补给站（波末已暂停世界，保持暂停直到商店关）
+func _on_result_closed() -> void:
 	Events.shop_opened.emit()
 
 # 商店关闭：恢复战斗并推进到下一波（复用开波流程）

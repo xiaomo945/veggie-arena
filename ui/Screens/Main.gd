@@ -68,8 +68,7 @@ func _ready() -> void:
 
 	queue_redraw()
 
-	# headless 自测：godot --headless -- --sim=30 跑 30 秒战斗并打印数字（怪/击杀/掉血）
-	# --char=potato 单独扫一遍（不能塞进 _sim_arg：那里遇 --sim= 就 return，会漏掉 --char）
+	# headless 自测：--sim=30 跑 30 秒战斗并打印数字；--char=potato 单独扫一遍
 	for ua in OS.get_cmdline_user_args():
 		if ua.begins_with("--char="):
 			GameState.set_character(ua.substr(7))
@@ -117,8 +116,7 @@ func _sim_arg() -> float:
 			return float(a.substr(6))
 	return 0.0
 
-# 模拟 AI：逃离"附近所有怪的质心"（按距离反比加权）+ 往场地中心靠。
-# 只躲最近一只会一头扎进怪群，这版更像真玩家的走位，也能在更密的怪海里活下来。
+# 模拟 AI：逃离"附近所有怪质心"（1/d 加权）+ 往场地中心靠，比只躲最近一只更像真玩家
 func _dodge_dir(sense: float = 220.0, jitter: float = 0.22) -> Vector2:
 	var a := Data.arena()
 	var center := Vector2(float(a.get("x", 0)) + float(a.get("w", 540)) * 0.5,
@@ -188,9 +186,7 @@ func _run_simulation(seconds: float) -> void:
 	var dodge := Vector2.ZERO
 	var dodge_age := 0
 	_threats = 0
-	# ⚠️ 模拟只让手动 step 推世界：start_run() 会打开引擎的 _physics_process，
-	#    它按真实时间再推一遍，推几帧取决于机器快慢 —— 同一个种子能跑出不同结局
-	#    （门禁"一会儿第 2 波、一会儿第 1 波阵亡"就是这么来的）。模拟期间关掉它。
+	# ⚠️ 模拟只让手动 step 推世界：关掉引擎 _physics_process，避免同一种子跑出不同结局
 	player.set_physics_process(false)
 	game.set_physics_process(false)
 	for i in steps:
@@ -220,10 +216,15 @@ func _run_simulation(seconds: float) -> void:
 				SkillDef.skill_id_of(Data.character(GameState.character)))
 		player.step(1.0 / 60.0)
 		game.step(1.0 / 60.0)
-		# 波次结束：自动逛补给站（买得起的全买，验证购买运行期路径不崩），再开下一波
+		# 波次结束：世界已暂停。若是结算页开着 → 先关结算页（开补给站）；
+		# 否则（补给站开着）→ 自动逛补给站（买得起的全买），再开下一波
 		if game.is_paused():
-			_auto_shop()
-			Events.shop_closed.emit()
+			var wr := get_tree().get_first_node_in_group("wave_result")
+			if wr != null and wr.is_open():
+				Events.wave_result_closed.emit()
+			else:
+				_auto_shop()
+				Events.shop_closed.emit()
 		var n := int(game.alive_enemy_count())
 		if n > peak_alive:
 			peak_alive = n
