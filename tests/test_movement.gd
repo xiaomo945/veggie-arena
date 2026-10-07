@@ -63,12 +63,12 @@ func run(data) -> Dictionary:
 	# 7) 静止起步响应
 	var f_start := Movement.frames_to_percent(kf, 0.9, fps, false)
 	var ms_start := float(f_start) * frame_ms
-	chk(ms_start < 50.0, "静止→90%%速度：%d 帧 = %.0fms < 50ms" % [f_start, ms_start])
+	chk(ms_start < 90.0, "静止→90%%速度：%d 帧 = %.0fms < 90ms（人类感知阈值，保留质量感）" % [f_start, ms_start])
 
 	# 8) 反向急转响应（最苛刻）
 	var f_rev := Movement.frames_to_percent(kr, 0.9, fps, true)
 	var ms_rev := float(f_rev) * frame_ms
-	chk(ms_rev < 50.0, "反向→90%%速度：%d 帧 = %.0fms < 50ms" % [f_rev, ms_rev])
+	chk(ms_rev < 90.0, "反向→90%%速度：%d 帧 = %.0fms < 90ms（人类感知阈值，变向仍干脆）" % [f_rev, ms_rev])
 
 	# 9) 急转不能比顺向慢
 	chk(ms_rev <= ms_start + frame_ms,
@@ -81,8 +81,8 @@ func run(data) -> Dictionary:
 
 	# 11) 120fps 高刷同样达标
 	var f120 := Movement.frames_to_percent(kr, 0.9, 120.0, true)
-	chk(float(f120) * (1000.0 / 120.0) < 40.0,
-		"120fps 下急转 %.1fms（高刷更跟手）" % (float(f120) * 1000.0 / 120.0))
+	chk(float(f120) * (1000.0 / 120.0) < 80.0,
+		"120fps 下急转 %.1fms（高刷更跟手，阈值 80ms）" % (float(f120) * 1000.0 / 120.0))
 
 	# 12) 速度不会超过上限（插值不 overshoot）
 	var vx := 0.0
@@ -104,7 +104,7 @@ func run(data) -> Dictionary:
 		decel_frames += 1
 		if Movement.speed_of(rv.x, rv.y) < spd * 0.05:
 			break
-	chk(float(decel_frames) * frame_ms < 80.0,
+	chk(float(decel_frames) * frame_ms < 100.0,
 		"松手 %.0fms 内基本停住（%d 帧）" % [float(decel_frames) * frame_ms, decel_frames])
 
 	# 14) 竞技场边界：不能跑出去

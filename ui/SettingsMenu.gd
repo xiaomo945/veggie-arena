@@ -27,6 +27,7 @@ var _quality_btns: Array = []      # [{btn, val}]
 var _perf_lbl: Label
 var _shake_btn: Button
 var _particle_btn: Button
+var _mute_btn: Button
 var _fps_option: OptionButton
 var _show_fps_btn: Button
 var _lang_btns: Array = []          # [{btn, val}] 0=中文 1=English
@@ -75,12 +76,17 @@ func _build() -> void:
 	_sfx_slider.value = float(Settings.sfx_volume)
 	_sfx_slider.value_changed.connect(_on_sfx_vol)
 
-	# 移动速度手感（70%~180%）：手感是主观的，与其反复改数值重新出包，
-	# 不如让玩家自己拧到舒服为止 —— 范围上限 180% 足够"飞起来"试手感
+	# 一键静音（音乐+音效一起静）：连 Settings.toggle_muted（已修复切换当帧生效）
+	_labels["mute"] = Widgets.label(_root, _advance(40.0), 16, Color(0.85, 0.88, 0.92))
+	_mute_btn = Widgets.toggle(_root, _advance(30.0))
+	_mute_btn.pressed.connect(_on_mute)
+
+	# 移动速度手感（70%~150%）：手感是主观的，与其反复改数值重新出包，
+	# 不如让玩家自己拧到舒服为止 —— 上限收到 150%，配合 player.speed_cap 防"跑太快拖影"
 	_labels["move"] = Widgets.label(_root, _advance(40.0), 16, Color(0.85, 0.88, 0.92))
 	_move_slider = Widgets.slider(_root, _advance(28.0))
 	_move_slider.min_value = 70.0
-	_move_slider.max_value = 180.0
+	_move_slider.max_value = 150.0
 	_move_slider.step = 5.0
 	_move_slider.value = float(Settings.move_scale)
 	_move_slider.value_changed.connect(_on_move_scale)
@@ -143,6 +149,7 @@ func _refresh_texts() -> void:
 	_title_lbl.text = I18n.t("settings_title")
 	_labels["music"].text = I18n.t("settings_music")
 	_labels["sfx"].text = I18n.t("settings_sfx")
+	_labels["mute"].text = I18n.t("mute")
 	_labels["quality"].text = I18n.t("settings_quality")
 	_labels["shake"].text = I18n.t("settings_shake")
 	_labels["particles"].text = I18n.t("settings_particles")
@@ -195,6 +202,8 @@ func _refresh_from_settings() -> void:
 	_particle_btn.text = I18n.t("settings_particles") + "   " + (I18n.t("on") if Settings.particles_enabled else I18n.t("off"))
 	_shake_btn.disabled = (Settings.quality == 0)
 	_particle_btn.disabled = (Settings.quality == 0)
+	_mute_btn.text = I18n.t("mute") + "   " + (I18n.t("on") if Settings.muted else I18n.t("off"))
+	Widgets.set_active(_mute_btn, Settings.muted)
 	_forced_low = (Settings.quality == 0)
 	for e in _lang_btns:
 		var d := e as Dictionary
@@ -226,6 +235,10 @@ func _on_music_vol(v: float) -> void:
 
 func _on_sfx_vol(v: float) -> void:
 	Settings.set_sfx_volume(int(v))
+
+func _on_mute() -> void:
+	Settings.toggle_muted()
+	_refresh_from_settings()
 
 # 移动速度手感：写设置 + 立刻刷新百分比。实际速度由 Player 每帧读 Settings 重算，
 # 所以不用重建角色 —— 拧一下滑块马上就能感觉到。

@@ -20,6 +20,7 @@ const UI := {
   "settings_title": {"en": "Settings", "zh": "设置"},
   "settings_music": {"en": "Music Volume", "zh": "音乐音量"},
   "settings_sfx": {"en": "SFX Volume", "zh": "音效音量"},
+  "mute": {"en": "Mute", "zh": "静音"},
   "settings_move": {"en": "Move Speed", "zh": "移动速度"},
   "settings_quality": {"en": "Quality", "zh": "画质"},
   "quality_low": {"en": "Low", "zh": "低"},

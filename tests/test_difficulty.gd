@@ -99,16 +99,17 @@ func run(data) -> Dictionary:
 	var w10 := Spawner.wave_total_hp(10, sp, enemies, 60.0)
 	chk(w10 > w1 * 3.0, "第 10 波整波总血量 ≥第 1 波的 3 倍（%.0f vs %.0f）" % [w10, w1])
 
-	# ---- 诉求：第一关怪稍快，但移动速度有硬上限（不能快到不跟手）----
-	# 新设计（用户最新反馈）：开局玩家比怪略慢一点（制造张力、逼走位），
-	# 后期靠 speed_pct 道具反超，但玩家有 speed_cap 硬封顶（balance.json 的 speed_cap），
-	# 避免 speed_pct 道具无限堆导致"移速过高、操作不跟手"。
+	# ---- 诉求：开局怪可被放风筝，但移动速度有硬上限（不能快到不跟手）----
+	# D3 新设计（用户最新反馈"参考丝滑竞技手游、别跑太快、怪不能幻灯片"）：
+	# 基础小兵明显慢于玩家（约 68%，可风筝），最快常规兵(fast≈93%)仍构成威胁但可被甩；
+	# 玩家有 speed_cap 硬封顶（balance.json 的 speed_cap），避免 speed_pct 道具无限堆
+	# 导致"移速过高、操作不跟手、拖影卡顿"。
 	var spd_cap := float(data.player_cfg().get("speed_cap", 999.0))
-	# 1) 第 1 波小兵应比玩家基础速度"稍快一点点"——这就是游戏开局张力的来源
+	# 1) 第 1 波小兵应明显慢于玩家基础速度——可被放风筝，但又不至于"幻灯片"般毫无威胁
 	var grunt1 := float(gr.get("speed_base", 0.0)) + 1.0 * float(gr.get("speed_per_wave", 0.0))
-	chk(grunt1 >= player_spd * 0.9 and grunt1 <= player_spd * 1.25,
-		"第1波小兵 %.0f ∈ 玩家[%.0f,%.0f] 的 [0.9,1.25] 倍（开局怪稍快一点点，靠走位/道具反超）"
-		% [grunt1, player_spd * 0.9, player_spd * 1.25])
+	chk(grunt1 >= player_spd * 0.65 and grunt1 <= player_spd * 0.95,
+		"第1波小兵 %.0f ∈ 玩家[%.0f,%.0f] 的 [0.65,0.95] 倍（可风筝、非幻灯片）"
+		% [grunt1, player_spd * 0.65, player_spd * 0.95])
 	# 2) 任何怪第 20 波都不能超过玩家"硬上限"——否则满级玩家也甩不掉它（黏死）
 	var over_cap := []
 	var too_fast := []

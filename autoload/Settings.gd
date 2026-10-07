@@ -85,7 +85,7 @@ func _load() -> void:
 		show_fps = bool(d.get("show_fps", false))
 		music_volume = int(d.get("music_volume", 100))
 		sfx_volume = int(d.get("sfx_volume", 100))
-		move_scale = clampi(int(d.get("move_scale", 100)), 70, 180)
+		move_scale = clampi(int(d.get("move_scale", 100)), 70, 150)
 		language = str(d.get("language", "en"))
 		if language != "en" and language != "zh":
 			language = "en"
@@ -132,6 +132,7 @@ func toggle_music() -> bool:
 func toggle_muted() -> bool:
 	muted = !muted
 	_save()
+	apply_audio()          # 修复：切换当帧立即静音/取消静音（原只 _save() 不生效，要等下次播放才变）
 	return muted
 
 # ---- 画质 / 性能 ----
@@ -180,9 +181,9 @@ func set_sfx_volume(v: int) -> void:
 	apply_audio()
 	_save()
 
-# 移动速度手感：70%~180%。只存值，实际速度由 Player 每次重建时读取。
+# 移动速度手感：70%~150%（上限从 180 收到 150，配合 player.speed_cap 让"跑太快拖影"不再发生）。只存值，实际速度由 Player 每次重建时读取。
 func set_move_scale(v: int) -> void:
-	move_scale = clampi(v, 70, 180)
+	move_scale = clampi(v, 70, 150)
 	_save()
 
 # ---- 语言偏好 ----

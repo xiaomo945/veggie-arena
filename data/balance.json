@@ -13,8 +13,8 @@
   },
   "player": {
     "max_hp": 100,
-    "speed": 250,
-    "speed_cap": 480,
+    "speed": 220,
+    "speed_cap": 410,
     "radius": 22,
     "ifr_seconds": 0.38,
     "touch_cooldown": 0.7
@@ -301,10 +301,11 @@
   "feel": {
     "joystick_radius": 52,
     "joystick_deadzone": 3,
-    "accel_forward": 130,
-    "accel_reverse": 160,
+    "accel_forward": 40,
+    "accel_reverse": 52,
     "joystick_visible": false
   },
+  "sep_neighbor_cap": 12,
   "wok": {
     "max": 100,
     "max_charges": 3,

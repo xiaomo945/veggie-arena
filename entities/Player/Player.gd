@@ -251,6 +251,7 @@ func _refresh_speed() -> void:
 	_speed = minf(float(Data.player_cfg().get("speed", 180)) \
 		* (1.0 + GameState.stat_value("speed_pct")) \
 		* (float(Settings.move_scale) / 100.0) * mult, cap)
+	assert(_speed <= cap + 0.001, "玩家速度 %.1f 超过上限 %.1f（speed_pct/frenzy/hit_boost 失控）" % [_speed, cap])
 
 # ---- 给外观层（PlayerVisual）的只读接口 ----
 # PlayerVisual 是 Player 自己的绘制层，每帧要读这些状态。走访问器而不是让它直接

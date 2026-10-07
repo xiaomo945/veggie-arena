@@ -166,6 +166,25 @@ func _collect_neighbors(pos: Vector2, self_e) -> void:
 			d["pos"] = o.global_position
 			d["radius"] = o.radius
 		_nn += 1
+	# 护栏：同屏怪极多时，分离只需"附近几个"就够软，不必全表排序。
+	# 阈值以下 100% 走原逻辑（无行为变化）；超过才采样最近 K 个，防 O(n²) 最坏情形。
+	var cap := int(Data.balance.get("sep_neighbor_cap", 12))
+	if _nn > cap:
+		_keep_nearest(pos, cap)
+
+# 对 world.neighbors[0.._nn) 按到 pos 距离选最近的 cap 个，原地前移（无每帧分配）
+func _keep_nearest(pos: Vector2, cap: int) -> void:
+	for k in cap:
+		var best := k
+		for j in range(k + 1, _nn):
+			if world.neighbors[j]["pos"].distance_squared_to(pos) \
+				< world.neighbors[best]["pos"].distance_squared_to(pos):
+				best = j
+		if best != k:
+			var t: Dictionary = world.neighbors[k]
+			world.neighbors[k] = world.neighbors[best]
+			world.neighbors[best] = t
+	_nn = cap
 
 # 自爆：对玩家造成一次范围感的大伤（无敌帧已防连击），视觉环 + 震屏，然后消失
 func _explode(e, pos: Vector2) -> void:
