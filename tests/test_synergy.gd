@@ -153,6 +153,7 @@ func run(data) -> Dictionary:
 	chk(SkillDef.active_skill(cmd, skills, [], defs, no_stat).get("id", "") == "mark",
 		"老手的生效技能是 mark（角色专属）")
 
+
 	# ---- 10) 技能 UI 完整性（真踩过的漂移：改了技能表忘了改按钮）----
 	# 技能表角色化之后，HUD 扇面还写死 id="poison"、I18n 只有 frost/poison 两个名字，
 	# 于是按钮点了没反应、名字显示成 "skill_mark" 这种 key。肉眼看不出来，钉死在源码上。
@@ -186,6 +187,25 @@ func run(data) -> Dictionary:
 	var fan_body := SP.func_body(layout_src, "func buttons_fan()")
 	chk(fan_body.length() > 0 and not fan_body.contains("\"id\""),
 		"HUD 扇面按钮不写死技能 id（按当前角色取，避免放出技能表里没有的招）")
+
+	# ---- 10b) 数据表里的 effect 必须在 SkillSystem 里有分支 ----
+	# 反过来的老坑：SkillSystem 曾经实现了 poison 却没有任何技能用它（点了没反应的死技能）。
+	# 现在反过来也危险 —— data/skills.json 里写一个 cast() 不认识的 effect，
+	# 按钮转圈、音效照放，但敌人一滴血不掉，测试也会全绿。
+	var sys_src := SP.read("res://scenes/SkillSystem.gd")
+	chk(sys_src.length() > 0, "能读到 SkillSystem 源码（路径写错会导致下面的断言假通过）")
+	var no_branch: Array = []
+	for s in skills:
+		var eff := str((s as Dictionary).get("effect", ""))
+		if eff.is_empty() or not ('"%s"' % eff) in sys_src:
+			no_branch.append("%s=%s" % [str((s as Dictionary).get("id", "?")), eff])
+	chk(no_branch.is_empty(), "每个技能的 effect 都在 SkillSystem 里有分支（没有的：%s）"
+		% (", ".join(no_branch) if no_branch.size() > 0 else "无"))
+	# 分支存在不等于真的干活：爆燃火候这种"不伤人只涨火"的技能，
+	# 万一 _apply_heat 被人改成空函数，按钮照样转圈，玩家只会觉得这角色很废。
+	var heat_body := SP.func_body(sys_src, "func _apply_heat(cfg: Dictionary)")
+	chk(heat_body.contains("GameState.add_wok"),
+		"火候技能真的会往锅里加火（否则爆炒萝卜就是个废角色）")
 
 
 	# ---- 11) "再买一件给多少"（B2：商店卡片上的那个数字）----

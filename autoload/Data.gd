@@ -26,9 +26,22 @@ func load_all() -> void:
 	enemies = _read("res://data/enemies.json")
 	upgrades = _read("res://data/upgrades.json")
 	characters = _read("res://data/characters.json")
+	_tag_characters()
 	unlocks = _read("res://data/unlocks.json")
 	skills = _read("res://data/skills.json")
 	weapon_sets = _read("res://data/weapon_sets.json")
+
+# 给每个角色条目写回它自己的 key（_key）。
+# ⚠️ 真踩过的坑：SkillDef.active_skill 靠 char_entry._key 判断"这是哪个角色"，
+#    而 characters.json 的 key 是字典的【键】、不在条目内部 —— 于是 _key 永远是空串，
+#    技能变体（角色 + 凑够武器件数 → 技能变强）在实战里一次都没触发过。
+#    单元测试绕过这条路径（直接调 resolve 传字符串 key），所以全绿也没人发现。
+#    在这里一次性写回，调用方不用每个都记着传 key。
+func _tag_characters() -> void:
+	for k in characters:
+		var e = characters[k]
+		if e is Dictionary:
+			(e as Dictionary)["_key"] = str(k)
 
 func _read(path: String) -> Dictionary:
 	var f := FileAccess.open(path, FileAccess.READ)

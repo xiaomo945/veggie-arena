@@ -83,6 +83,9 @@ const UI := {
   "skill_mark": {"en": "MARK", "zh": "标记"},
   "skill_combo": {"en": "COMBO", "zh": "连击"},
   "skill_magnet_pull": {"en": "MAGNET", "zh": "磁吸"},
+  "skill_sear": {"en": "SEAR", "zh": "灼烧"},
+  "skill_grind": {"en": "GRIND", "zh": "碾压"},
+  "skill_flashfire": {"en": "HEAT", "zh": "火候"},
   "hud_attack": {"en": "ATK", "zh": "攻击"},
 
   # ---- 商店 ----

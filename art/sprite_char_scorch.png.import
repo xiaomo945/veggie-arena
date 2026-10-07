@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bjw3tyj580t77"
-path="res://.godot/imported/sprite_char_potato.png-3a6c215e9bc5fb5a983d32afe78c7f7d.ctex"
+uid="uid://c6csqeevavda8"
+path="res://.godot/imported/sprite_char_scorch.png-ab9884c1fda7ca577c94a62b6c82cd4c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/sprite_char_potato.png"
-dest_files=["res://.godot/imported/sprite_char_potato.png-3a6c215e9bc5fb5a983d32afe78c7f7d.ctex"]
+source_file="res://art/sprite_char_scorch.png"
+dest_files=["res://.godot/imported/sprite_char_scorch.png-ab9884c1fda7ca577c94a62b6c82cd4c.ctex"]
 
 [params]
 

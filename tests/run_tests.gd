@@ -34,6 +34,7 @@ const TWeaponSets := preload("res://tests/test_weapon_sets.gd")
 const TShopFeedback := preload("res://tests/test_shop_feedback.gd")
 const TArtIcons := preload("res://tests/test_art_icons.gd")
 const TSynergy := preload("res://tests/test_synergy.gd")
+const TCharBuild := preload("res://tests/test_char_build.gd")
 const TDotThrottle := preload("res://tests/test_dot_throttle.gd")
 const TSynergyBar := preload("res://tests/test_synergy_bar.gd")
 const DataScript := preload("res://autoload/Data.gd")
@@ -83,6 +84,7 @@ func _initialize() -> void:
 	_run("ShopFeedback(商店三项修复)", TShopFeedback)
 	_run("ArtIcons(武器图标齐全性)", TArtIcons, data.weapons)
 	_run("Synergy(角色×武器×技能羁绊)", TSynergy, data)
+	_run("CharBuild(每角色独占一条build)", TCharBuild, data)
 	_run("DotThrottle(持续伤害节流)", TDotThrottle, data)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告

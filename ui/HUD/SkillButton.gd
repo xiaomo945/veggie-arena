@@ -284,6 +284,9 @@ const SKILL_COLORS := {
 	"mark": Color(0.96, 0.45, 0.38),          # 标记射击 —— 红
 	"combo": Color(1.00, 0.55, 0.28),         # 连击狂潮 —— 橙红
 	"magnet_pull": Color(0.45, 0.72, 0.95),   # 磁吸 —— 蓝
+	"sear": Color(0.94, 0.36, 0.20),         # 灼烧 —— 焦红（毒+火）
+	"grind": Color(0.80, 0.66, 0.40),        # 碾压 —— 薯泥黄褐
+	"flashfire": Color(1.00, 0.68, 0.20),    # 爆燃火候 —— 旺火橙（全是锅气，不伤人）
 }
 const SKILL_COLOR_FALLBACK := Color(0.90, 0.70, 0.40)
 

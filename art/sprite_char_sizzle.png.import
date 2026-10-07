@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dslke3bqtwv8j"
-path="res://.godot/imported/sprite_char_tomato.png-06c449d33c92df2bb3238f53784df294.ctex"
+uid="uid://d3tnotvxcamnc"
+path="res://.godot/imported/sprite_char_sizzle.png-77a7694dfb0a7d761c9e3260f51dbf00.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/sprite_char_tomato.png"
-dest_files=["res://.godot/imported/sprite_char_tomato.png-06c449d33c92df2bb3238f53784df294.ctex"]
+source_file="res://art/sprite_char_sizzle.png"
+dest_files=["res://.godot/imported/sprite_char_sizzle.png-77a7694dfb0a7d761c9e3260f51dbf00.ctex"]
 
 [params]
 

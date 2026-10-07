@@ -74,6 +74,8 @@ func cast(id: String) -> bool:
 		_apply_damage(cfg, pp)
 	elif kind == "frenzy":
 		_apply_frenzy(cfg)
+	elif kind == "heat":
+		_apply_heat(cfg)
 	_cd[id] = float(cfg.get("cooldown", 6.0))
 	Shake.kick(5.0, 0.18)
 	Events.skill_cast.emit(id, pp, float(cfg.get("radius", 150.0)))
@@ -154,3 +156,13 @@ func _apply_poison(cfg: Dictionary, pp: Vector2) -> void:
 			e.apply_fx("poison", e.max_hp * pct, dur)
 			if bd > 0.0:
 				e.apply_fx("burn", bd, dur)
+
+# ---- 效果：火候（爆炒萝卜专属：唯一一个"给自己涨资源"而不是打敌人的技能）----
+# 别的技能是把伤害打出去，这个是往自己锅里灌柴 —— 锅气到 28 解锁小火颠勺、
+# 58 解锁大火爆炒（balance.wok），爆发全在颠勺那一勺。
+# ⚠️ 故意不吃 wok_pct：角色本身的 wok_pct 已经在放大被动涨火（命中/击杀），
+#    这里再乘一次就是双重叠加，爆炒萝卜会直接起飞。
+func _apply_heat(cfg: Dictionary) -> void:
+	var amount: float = float(cfg.get("amount", 0.0))
+	if amount > 0.0:
+		GameState.add_wok(amount)

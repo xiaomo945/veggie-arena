@@ -876,5 +876,282 @@
       ]
     },
     "skill": "magnet_pull"
+  },
+  "scorch": {
+  "zh": "焦辣萝卜",
+    "en": "Scorch",
+    "color": "#e0563a",
+    "affinity": "elem",
+    "trait": "毒灼双DoT",
+    "trait_en": "Poison & burn",
+    "best": "喷火枪 / 元素武器",
+    "best_en": "Blowtorch / elemental",
+    "tip": "又辣又毒：普攻偏低，但毒和灼烧按敌人最大血量结算，血越厚的怪越吃亏",
+    "tip_en": "Weak hits, nasty aftertaste: both DoTs burn a share of max HP — the tankier the foe, the worse it gets.",
+    "stats": {
+      "elem_pct": 0.3,
+      "max_hp": 30,
+      "dmg_pct": -0.18,
+      "rate_pct": -0.08
+    },
+    "bond": {
+      "tag": "elemental",
+      "tiers": [
+        {
+          "need": 2,
+          "stats": {
+            "elem_pct": 0.08
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "elem_pct": 0.16,
+            "armor": 1
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "elem_pct": 0.26,
+            "armor": 2,
+            "lifesteal": 2
+          }
+        }
+      ]
+    },
+    "signature": {
+      "key": "blowtorch",
+      "tiers": [
+        {
+          "need": 1,
+          "stats": {
+            "elem_pct": 0.06
+          }
+        },
+        {
+          "need": 2,
+          "stats": {
+            "elem_pct": 0.13
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "elem_pct": 0.21,
+            "dmg_pct": 0.05
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "elem_pct": 0.3,
+            "dmg_pct": 0.12
+          }
+        },
+        {
+          "need": 5,
+          "stats": {
+            "elem_pct": 0.4,
+            "dmg_pct": 0.2,
+            "armor": 1
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "elem_pct": 0.52,
+            "dmg_pct": 0.3,
+            "armor": 2
+          }
+        }
+      ]
+    },
+    "skill": "sear"
+  },
+  "mash": {
+  "zh": "薯泥萝卜",
+    "en": "Mash",
+    "color": "#c9a06a",
+    "affinity": "melee",
+    "trait": "厚皮续航",
+    "trait_en": "Thick-skinned sustain",
+    "best": "搅拌机 / 厨具，站着挨打也能回血",
+    "best_en": "Blender / kitchen — outlast what you can't out-damage",
+    "tip": "打不死就磨：护甲高、吸血厚，但走得慢、出手也慢，跑图全靠提前占位置",
+    "tip_en": "Won't out-damage you, will outlast you. Tons of armor and lifesteal, but slow feet and slower hands — take your ground early.",
+    "stats": {
+      "armor": 3,
+      "max_hp": 45,
+      "lifesteal": 2,
+      "speed_pct": -0.12,
+      "dmg_pct": -0.1
+    },
+    "bond": {
+      "tag": "kitchen",
+      "tiers": [
+        {
+          "need": 2,
+          "stats": {
+            "armor": 1
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "armor": 2,
+            "lifesteal": 1
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "armor": 4,
+            "lifesteal": 3,
+            "pickup_pct": 0.2
+          }
+        }
+      ]
+    },
+    "signature": {
+      "key": "blender",
+      "tiers": [
+        {
+          "need": 1,
+          "stats": {
+            "lifesteal": 1
+          }
+        },
+        {
+          "need": 2,
+          "stats": {
+            "lifesteal": 2
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "lifesteal": 3,
+            "pickup_pct": 0.1
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "lifesteal": 4,
+            "pickup_pct": 0.22
+          }
+        },
+        {
+          "need": 5,
+          "stats": {
+            "lifesteal": 6,
+            "pickup_pct": 0.36,
+            "max_hp": 20
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "lifesteal": 8,
+            "pickup_pct": 0.52,
+            "max_hp": 45
+          }
+        }
+      ]
+    },
+    "skill": "grind"
+  },
+  "sizzle": {
+  "zh": "爆炒萝卜",
+    "en": "Sizzle",
+    "color": "#f2603c",
+    "affinity": "mixed",
+    "trait": "锅气发动机",
+    "trait_en": "Wok engine",
+    "best": "炒勺 / 重武器，靠不停颠勺打输出",
+    "best_en": "Wok Scoop / heavy — the wok is the damage",
+    "tip": "不吃伤害只吃火候：锅气涨得飞快，但自己打得很轻 —— 输出全在颠勺那一下",
+    "tip_en": "Not about damage, about heat: the wok gauge fills fast while your own hits stay weak — all your damage lands in the toss.",
+    "stats": {
+      "wok_pct": 0.55,
+      "rate_pct": 0.08,
+      "max_hp": -20,
+      "dmg_pct": -0.12
+    },
+    "bond": {
+      "tag": "heavy",
+      "tiers": [
+        {
+          "need": 2,
+          "stats": {
+            "wok_pct": 0.15
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "wok_pct": 0.32,
+            "rate_pct": 0.08
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "wok_pct": 0.55,
+            "rate_pct": 0.18,
+            "armor": 1
+          }
+        }
+      ]
+    },
+    "signature": {
+      "key": "wok_scoop",
+      "tiers": [
+        {
+          "need": 1,
+          "stats": {
+            "wok_pct": 0.1
+          }
+        },
+        {
+          "need": 2,
+          "stats": {
+            "wok_pct": 0.22
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "wok_pct": 0.36,
+            "rate_pct": 0.06
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "wok_pct": 0.52,
+            "rate_pct": 0.14
+          }
+        },
+        {
+          "need": 5,
+          "stats": {
+            "wok_pct": 0.72,
+            "rate_pct": 0.24,
+            "dmg_pct": 0.08
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "wok_pct": 0.95,
+            "rate_pct": 0.36,
+            "dmg_pct": 0.18
+          }
+        }
+      ]
+    },
+    "skill": "flashfire"
   }
 }

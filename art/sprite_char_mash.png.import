@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bhmc85gmlpwls"
-path="res://.godot/imported/sprite_char_chili.png-65f89650df0c4a6e9535d01c46f6646d.ctex"
+uid="uid://dogu13yqt3ibn"
+path="res://.godot/imported/sprite_char_mash.png-dc9639456de9e9e6fa6d76f440a65422.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/sprite_char_chili.png"
-dest_files=["res://.godot/imported/sprite_char_chili.png-65f89650df0c4a6e9535d01c46f6646d.ctex"]
+source_file="res://art/sprite_char_mash.png"
+dest_files=["res://.godot/imported/sprite_char_mash.png-dc9639456de9e9e6fa6d76f440a65422.ctex"]
 
 [params]
 
