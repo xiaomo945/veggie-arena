@@ -21,6 +21,8 @@ var _kill: Label
 var _combo_label: Label
 var _pause_btn: Button
 var _fs_btn: Button
+var _stats_btn: Button               # D3-2：主界面「属性」键（暂停键左侧）
+var _stats_screen: CanvasLayer = null   # Game 单例注入的属性页实例
 
 func _ready() -> void:
 	# 容器本身不吃触摸：让事件穿透到按钮 / Joystick（否则整块会挡住摇杆）
@@ -66,6 +68,22 @@ func _ready() -> void:
 	_pause_btn.pressed.connect(_on_pause_pressed)
 	_pause_btn.visible = false
 	add_child(_pause_btn)
+
+	# 「属性」按钮（D3-2）：放在暂停键左侧，主界面直接打开属性页（不进暂停菜单）。
+	# 可见性跟暂停键一致（set_pause_visible 控制）：只在世界运行中显示。
+	_stats_btn = Button.new()
+	_stats_btn.custom_minimum_size = Vector2(40, 40)
+	_stats_btn.size = Vector2(40, 40)
+	_stats_btn.position = HudLayout.top_stats_pos()
+	var si := Art.ui_icon("star")
+	if si != null:
+		_stats_btn.icon = si
+	else:
+		_stats_btn.text = I18n.t("hud_stats")
+	_stats_btn.add_theme_font_size_override("font_size", 16)
+	_stats_btn.pressed.connect(_on_stats_pressed)
+	_stats_btn.visible = false
+	add_child(_stats_btn)
 
 	# 全屏切换按钮：仅横屏显示（桌面 / 平板方便切全屏；手机本就全屏，平时隐藏）
 	if Data.is_landscape():
@@ -130,6 +148,9 @@ func set_combo_text(t: String) -> void:
 
 func set_pause_visible(v: bool) -> void:
 	_pause_btn.visible = v
+	# D3-2：「属性」键与暂停键同条件：只在世界运行中可见（暂停/属性页打开时都隐藏）
+	if _stats_btn != null:
+		_stats_btn.visible = v
 
 # 暂停按钮的屏幕矩形（共享给 Joystick 做避让）。容器自身会被安全区平移，
 # 所以这里必须加上容器的 position，不能用按钮的局部坐标。
@@ -142,6 +163,22 @@ func apply_safe_area(top: float) -> void:
 
 func _on_pause_pressed() -> void:
 	Events.pause_requested.emit()
+
+# ---- D3-2：属性页入口（主界面直接开，不弹暂停菜单）----
+func set_stats_screen(s: CanvasLayer) -> void:
+	_stats_screen = s
+
+func _on_stats_pressed() -> void:
+	# 发信号给 Game：仅暂停世界，属性页叠最上层
+	Events.stats_opened.emit()
+	if _stats_screen != null:
+		_stats_screen.show_menu(_on_stats_closed)
+
+# 属性页「返回」：收起属性页 + 发信号让 Game 恢复世界
+func _on_stats_closed() -> void:
+	if _stats_screen != null:
+		_stats_screen.hide_menu()
+	Events.stats_closed.emit()
 
 func _on_fs_pressed() -> void:
 	var w := get_window()

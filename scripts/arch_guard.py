@@ -156,6 +156,27 @@ def main():
                              % (rel, len(hits), base))
             priv_bad[rel] = len(hits)
 
+    # ---- D3-2 单例守卫：StatsScreen 全仓恰好 new 一次 ----
+    # HUD「属性」键与暂停菜单共用 Game 持有的同一份实例，new 第二次就是回归。
+    stats_new = 0
+    for rel in gd_files():
+        if rel == 'scripts/arch_guard.py':
+            continue
+        raw = open(os.path.join(ROOT, rel), encoding='utf-8', errors='ignore').read()
+        stats_new += raw.count('StatsScreenScript.new()')
+    if stats_new != 1:
+        fails.append("R-singleton StatsScreenScript.new() 出现 %d 次（必须恰好 1 次，单例化）"
+                     % stats_new)
+
+    # ---- D3-4 不变量：CharacterPicker.PICKER_MAX_H 不得改大 ----
+    # 角色再多也必须整体等比缩，绝不能把 START 顶出 900 设计高（当前封顶 250）。
+    picker_src = open(os.path.join(ROOT, 'ui/Screens/CharacterPicker.gd'),
+                     encoding='utf-8', errors='ignore').read()
+    m_maxh = re.search(r'PICKER_MAX_H\s*:?=\s*([0-9.]+)', picker_src)
+    if m_maxh and float(m_maxh.group(1)) > 250.0:
+        fails.append("R-picker CharacterPicker.PICKER_MAX_H=%s 超过 250（角色增多须整体等比缩）"
+                     % m_maxh.group(1))
+
     if REPORT:
         print("== 当前违规（用于写基线）==")
         print("R1 超 %d 行: %s" % (MAX_LINES, lines_bad or "无"))

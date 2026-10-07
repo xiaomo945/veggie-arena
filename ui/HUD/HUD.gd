@@ -211,6 +211,10 @@ func _refresh() -> void:
 func banners() -> Node:
 	return _banners
 
+func set_stats_screen(s: CanvasLayer) -> void:
+	if _top != null:
+		_top.set_stats_screen(s)
+
 func _wave_text() -> String:
 	if GameState.endless:
 		return I18n.t("hud_endless") % GameState.wave

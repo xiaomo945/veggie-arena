@@ -124,7 +124,8 @@ func _value(entry: Dictionary) -> float:
 			Data.weapon, Data.combat_cfg())
 	return GameState.stat_value(entry["key"])
 
-func show_menu() -> void:
+func show_menu(on_back: Callable = Callable()) -> void:
+	_back = on_back
 	_refresh_texts()
 	for r in _rows:
 		var entry: Dictionary = r["entry"]
@@ -161,7 +162,8 @@ func _on_locale_changed(_locale: String = "") -> void:
 func _on_back() -> void:
 	Sfx.ui_click()
 	hide_menu()
-	if back_pressed.is_valid():
-		back_pressed.call()
+	if _back.is_valid():
+		_back.call()
 
-var back_pressed: Callable = Callable()
+# 打开时由调用方传入的返回回调（HUD 属性键→恢复世界；暂停菜单→重新显示暂停菜单）
+var _back: Callable = Callable()

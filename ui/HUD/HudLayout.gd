@@ -36,6 +36,12 @@ func top_pause_pos() -> Vector2:
 	return Vector2(908.0, 2.0) if Data.is_landscape() else Vector2(492.0, 2.0)
 func top_pause_size() -> float: return 40.0
 
+# ---- HudTop：「属性」按钮（D3-2，暂停键左侧）----
+# 竖屏 (449,2)：暂停键在 (492,2)，进度条右端已缩到 440 给这里腾位，
+# 按钮 40px 占 x449~489，与暂停键间隔 3px、不压进度条/武器槽。横屏同构左移。
+func top_stats_pos() -> Vector2:
+	return Vector2(864.0, 2.0) if Data.is_landscape() else Vector2(449.0, 2.0)
+
 # ---- HudSynergy：羁绊进度条（顶部 HUD 之下那条）----
 # 屏幕绝对坐标（与 FpsMeter 同款：直接挂 HUD CanvasLayer，不经 HudTop 的平移）。
 # 局部 y=80：上面三条进度条 + 武器槽 + 文字行占到 76，再往下 4px 就是它的地盘。
@@ -53,15 +59,16 @@ func fps_pos() -> Vector2:
 	return Vector2(8.0, 112.0) if Data.is_landscape() else Vector2(8.0, 134.0)
 
 # ---- HudBars：顶部三条进度条 ----
-# 右端停在 476（竖屏）/ 892（横屏），正好给暂停按钮左边缘留 16px 空当。
-# ⚠️ 别把条拉满宽：拉满就会从暂停按钮底下穿过去，看着像按钮压在条上（真踩过）。
+# 右端停在 440（竖屏）/ 852（横屏）：给右上角「暂停 + 属性」两个 40px 按钮留位，
+# 不压进度条（原 476/892 会顶到属性按钮）。⚠️ 别拉满宽。
 func bar_x() -> float: return 36.0
-func bar_right() -> float: return 892.0 if Data.is_landscape() else 476.0
+func bar_right() -> float: return 852.0 if Data.is_landscape() else 440.0
 func bar_w() -> float: return bar_right() - bar_x()
 func wok_x() -> float: return 36.0
 func wok_w() -> float: return bar_w()
 func run_x() -> float: return 8.0
-func run_w() -> float: return 880.0 if Data.is_landscape() else 480.0
+# 总波次条右端对齐 bar_right（440/852），避免伸到右上角「属性」按钮底下
+func run_w() -> float: return 852.0 if Data.is_landscape() else 440.0
 # 经验条只画到 230，右边留给"LV n + 经验数字"，再往右是武器槽（竖屏最左 347）。
 # ⚠️ 别把这条拉宽：数字是紧跟在条右端画的（见 HudBars._draw），一旦条超过 ~230，
 #    数字就推进武器槽行里被图标压住（真踩过：xp_w 竖屏写成 300 时 LV 数字被第 1 格武器吃掉）。

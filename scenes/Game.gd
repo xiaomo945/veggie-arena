@@ -19,6 +19,7 @@ const EnemySystem := preload("res://scenes/EnemySystem.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
 const WaveDirector := preload("res://scenes/WaveDirector.gd")
 const SkillSystem := preload("res://scenes/SkillSystem.gd")
+const StatsFlowScript := preload("res://scenes/StatsFlow.gd")
 
 # 共享战斗状态（池 / rng / 竞技场 / 诊断计数），EnemySystem 拿的是同一个对象
 var world := BattleWorld.new()
@@ -26,6 +27,7 @@ var player: Node2D = null
 var enemy_system: Node = null          # 战斗子系统（刷怪/敌人/子弹/颠勺），_ready 里注入
 var wave_dir: Node = null              # 波次流程子协调器（见 scenes/WaveDirector.gd）
 var skill_sys = null                    # 主动技能系统（冰镇/毒雾…，见 scenes/SkillSystem.gd）
+var _stats_flow: Node = null             # 属性页流程协调器（D3-2，见 scenes/StatsFlow.gd）
 var _paused := false
 var _spawn_acc := 0.0
 # 战斗倍率（快进）：每物理帧多跑一次世界步进，而不是改 time_scale
@@ -57,12 +59,11 @@ func _ready() -> void:
 	enemy_system = EnemySystem.new()
 	enemy_system.world = world
 	add_child(enemy_system)
-	# 波次流程子协调器：撒怪/开波/结算/下一波，拆出来避免 Game 超 300 行红线
+	# 波次流程子协调器（撒怪/开波/结算/下一波），拆出避免 Game 超 300 行红线
 	wave_dir = WaveDirector.new()
 	wave_dir.setup(self, world, enemy_system)
 	add_child(wave_dir)
-	# 主动技能系统（冰镇/毒雾…）：挂在 Game 下，与 WaveDirector 同级；
-	# 负责冷却推进与施放，不碰 EnemySystem（它已到 300 行红线）。
+	# 主动技能系统（冰镇/毒雾…）：挂在 Game 下，与 WaveDirector 同级
 	skill_sys = SkillSystem.new()
 	skill_sys.setup(Data.skills_cfg(), world)
 	# 伤害型技能（震地/穿透/尖刺…）必须走 EnemySystem 的漏斗，否则击杀不计、不掉钱
@@ -71,14 +72,21 @@ func _ready() -> void:
 	Events.melee_swung.connect(_on_melee_swung)
 	Events.player_died.connect(_on_player_died)
 	Events.run_won.connect(_on_run_won)
-	# ⚠️ 不再这里 reset —— 一局由标题页"开始"或死亡页"再来一局"触发 start_run()
-	# （reset 会把 running 置 true，若提前调了，标题页还没点就开始刷怪了）
-	add_child(HUDScene.instantiate())
+	# ⚠️ 不在这里 reset：一局由标题页"开始"/死亡页"再来一局"触发 start_run()
+	var hud := HUDScene.instantiate()
+	add_child(hud)
 	add_child(FxScene.instantiate())
 	add_child(ShopScene.instantiate())
 	add_child(DeathScene.instantiate())
 	add_child(VictoryScene.instantiate())
-	add_child(PauseScene.instantiate())
+	var pause := PauseScene.instantiate()
+	add_child(pause)
+	# D3-2：属性页单例（layer=36）由 StatsFlow 持有，HUD 与主界面「属性」键、暂停菜单共用
+	_stats_flow = StatsFlowScript.new()
+	_stats_flow.setup(self)
+	add_child(_stats_flow)
+	hud.set_stats_screen(_stats_flow.screen())
+	pause.set_stats_screen(_stats_flow.screen())
 	Events.shop_closed.connect(wave_dir.on_shop_closed)
 	Events.pause_requested.connect(_on_pause_requested)
 	Events.resume_requested.connect(_on_resume_requested)
@@ -288,5 +296,4 @@ func _on_skill_requested(id: String) -> void:
 			Data.weapons, GameState.stat_value)
 		skill_sys.cast(id)
 
-# 颠勺冲击波环已并入 FxBlast（ui/Fx/FxBlast.gd）：整发爆炸统一画在玩家当前位置，
-# 不再单独在 Game 里画一圈——否则场中央/左上角会出现两个对不上的爆炸范围。
+# 颠勺冲击波环已并入 FxBlast：整发爆炸统一画在玩家当前位置，不在 Game 里另画一圈。

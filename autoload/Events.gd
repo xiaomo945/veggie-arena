@@ -126,3 +126,8 @@ signal resume_requested()
 signal run_paused(paused: bool)
 # 暂停菜单"退出到标题" → Game 复位本局 + TitleScreen 重新显示
 signal quit_to_title_requested()
+# 属性页（D3-2）：HUD 右上「属性」键按下 → Game 仅暂停世界（不弹暂停菜单）；
+# 属性页自己叠在最上层。属性页「返回」→ stats_closed → Game 恢复世界。
+# 注意：从【暂停菜单】进属性页不走这两个信号（世界已暂停），直接 show_menu(返回回调)。
+signal stats_opened()
+signal stats_closed()

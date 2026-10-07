@@ -121,6 +121,7 @@ const UI := {
   # ---- 独立属性页 ----
   "stats_title": {"en": "STATS", "zh": "属性"},
   "stats_back": {"en": "BACK", "zh": "返回"},
+  "hud_stats": {"en": "STATS", "zh": "属性"},
   "stats_cat_core": {"en": "Combat", "zh": "核心战斗"},
   "stats_cat_econ": {"en": "Economy", "zh": "经济拾取"},
   "stats_cat_wok": {"en": "Wok Toss", "zh": "锅气颠勺"},

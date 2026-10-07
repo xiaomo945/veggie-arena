@@ -6,7 +6,6 @@ extends CanvasLayer
 # 设置入口：从本菜单进入 SettingsMenu（独立 CanvasLayer，layer 更高）。
 
 const SettingsMenuScript := preload("res://ui/SettingsMenu.gd")
-const StatsScreenScript := preload("res://ui/Screens/StatsScreen.gd")
 
 var _root: Control
 var _title_lbl: Label
@@ -34,10 +33,8 @@ func _ready() -> void:
 	p.add_child(_settings)
 	_settings.back_pressed = _on_settings_back
 	_settings.hide_menu()
-	_stats = StatsScreenScript.new()
-	p.add_child(_stats)
-	_stats.back_pressed = _on_stats_back
-	_stats.hide_menu()
+	# D3-2：_stats 改由 Game 单例持有并注入（见 Game._ready 的 set_stats_screen），
+	# 这里不再自己 new —— 保证"主界面开属性页"与"暂停里开属性页"是同一份实例。
 	I18n.locale_changed.connect(_on_locale_changed)
 
 func _build() -> void:
@@ -121,8 +118,7 @@ func _on_paused(p: bool) -> void:
 		# 取消暂停（恢复 / 重开 / 退出）时把叠在上层的设置与属性页一并收掉
 		if _settings != null:
 			_settings.hide_menu()
-		if _stats != null:
-			_stats.hide_menu()
+		_close_stats()
 
 func _on_locale_changed(_l: String = "") -> void:
 	if _title_lbl != null:
@@ -147,14 +143,14 @@ func _on_resume() -> void:
 func _on_restart() -> void:
 	Sfx.ui_click()
 	_root.visible = false
-	_stats.hide_menu()
+	_close_stats()
 	Events.run_paused.emit(false)
 	Events.run_requested.emit()
 
 func _on_quit() -> void:
 	Sfx.ui_click()
 	_root.visible = false
-	_stats.hide_menu()
+	_close_stats()
 	Events.run_paused.emit(false)
 	Events.quit_to_title_requested.emit()
 
@@ -183,9 +179,19 @@ func _on_settings_back() -> void:
 func _on_open_stats() -> void:
 	Sfx.ui_click()
 	_root.visible = false
-	_stats.show_menu()
+	if _stats != null:
+		_stats.show_menu(_on_stats_back)
 
 # 从属性页返回：重新显示本菜单
 func _on_stats_back() -> void:
 	_root.visible = true
 	_refresh_toggles()
+
+# D3-2：属性页实例由 Game 单例持有并注入（见 Game._ready），本菜单只持有引用
+func set_stats_screen(s: CanvasLayer) -> void:
+	_stats = s
+
+# 统一收属性页（带 null 守卫，注入前调用也安全）
+func _close_stats() -> void:
+	if _stats != null:
+		_stats.hide_menu()
