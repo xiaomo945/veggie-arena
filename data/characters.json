@@ -211,10 +211,11 @@
     "trait_en": "Frontline tank",
     "best": "重械 / 菜刀",
     "best_en": "Heavies / Cleavers",
-    "tip": "近战专精：近战伤害 +25%、生命 +50、护甲 +2，移速 -12%。扛刀冲锋。",
-    "tip_en": "Melee tank: +25% melee dmg, +50 HP, +2 armor, -12% speed.",
+    "tip": "近战专精：近战伤害 +32%、攻速 +12%、生命 +50、护甲 +2，移速 -12%。扛刀冲锋。",
+    "tip_en": "Melee tank: +32% melee dmg, +12% rate, +50 HP, +2 armor, -12% speed.",
     "stats": {
-      "melee_pct": 0.25,
+      "melee_pct": 0.32,
+      "rate_pct": 0.12,
       "max_hp": 50,
       "armor": 2,
       "speed_pct": -0.12
@@ -664,12 +665,12 @@
     "trait_en": "Crit striker",
     "best": "狙击 / 暴击",
     "best_en": "Sniper / Crit",
-    "tip": "暴击专精：暴击 +8%、伤害 +20%，生命 -25。老手只买手枪——每多一把，暴击再涨一档。",
-    "tip_en": "Crit specialist: +8% crit, +20% dmg, -25 HP. A veteran buys nothing but pistols — every extra one is another crit tier.",
+    "tip": "暴击专精：暴击 +20%、伤害 +28%，生命 -15。老手只买手枪——每多一把，暴击再涨一档。",
+    "tip_en": "Crit specialist: +20% crit, +28% dmg, -15 HP. A veteran buys nothing but pistols — every extra one is another crit tier.",
     "stats": {
-      "crit_chance": 0.08,
-      "dmg_pct": 0.2,
-      "max_hp": -25
+      "crit_chance": 0.2,
+      "dmg_pct": 0.28,
+      "max_hp": -15
     },
     "bond": {
       "tag": "gun",
@@ -752,11 +753,11 @@
     "trait_en": "Combo fighter",
     "best": "拳套 / 快刀",
     "best_en": "Fists / Fast blades",
-    "tip": "连击专精：攻速 +20%、近战 +15%，护甲 -1。拳拳到肉、越打越快。",
-    "tip_en": "Combo fighter: +20% rate, +15% melee dmg, -1 armor.",
+    "tip": "连击专精：攻速 +16%、近战 +12%，护甲 -1。拳拳到肉、越打越快。",
+    "tip_en": "Combo fighter: +16% rate, +12% melee dmg, -1 armor.",
     "stats": {
-      "rate_pct": 0.2,
-      "melee_pct": 0.15,
+      "rate_pct": 0.16,
+      "melee_pct": 0.12,
       "armor": -1
     },
     "bond": {
@@ -935,8 +936,8 @@
     "stats": {
       "elem_pct": 0.3,
       "max_hp": 30,
-      "dmg_pct": -0.18,
-      "rate_pct": -0.08
+      "dmg_pct": -0.1,
+      "rate_pct": -0.03
     },
     "bond": {
       "tag": "elemental",
@@ -944,20 +945,20 @@
         {
           "need": 2,
           "stats": {
-            "elem_pct": 0.08
+            "elem_pct": 0.1
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "elem_pct": 0.18,
+            "armor": 1
           }
         },
         {
           "need": 4,
           "stats": {
-            "elem_pct": 0.16,
-            "armor": 1
-          }
-        },
-        {
-          "need": 6,
-          "stats": {
-            "elem_pct": 0.26,
+            "elem_pct": 0.3,
             "armor": 2,
             "lifesteal": 2
           }
@@ -1028,14 +1029,16 @@
     "trait_en": "Thick-skinned sustain",
     "best": "搅拌机 / 厨具，站着挨打也能回血",
     "best_en": "Blender / kitchen — outlast what you can't out-damage",
-    "tip": "打不死就磨：护甲高、吸血厚，但走得慢、出手也慢，跑图全靠提前占位置",
-    "tip_en": "Won't out-damage you, will outlast you. Tons of armor and lifesteal, but slow feet and slower hands — take your ground early.",
+    "tip": "打不死就磨：护甲高、吸血厚、火力更足，但走得慢，跑图全靠提前占位置",
+    "tip_en": "Won't out-damage you, will outlast you. Tons of armor, lifesteal and solid damage output, but slow feet — take your ground early.",
     "stats": {
       "armor": 3,
       "max_hp": 45,
       "lifesteal": 2,
       "speed_pct": -0.12,
-      "dmg_pct": -0.1
+      "dmg_pct": 0.05,
+      "rate_pct": 0.2,
+      "ranged_pct": 0.1
     },
     "bond": {
       "tag": "kitchen",
