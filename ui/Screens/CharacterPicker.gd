@@ -44,7 +44,6 @@ func _ready() -> void:
 	Events.character_changed.connect(_on_changed)
 	Events.character_unlocked.connect(_on_char_unlocked)
 	I18n.locale_changed.connect(_on_locale_changed)
-	ScreenMode.fit_overlay(self)   # 横屏下把竖屏选角色页缩放到视口内、居中
 
 func _cols() -> int:
 	return maxi(1, mini(_keys.size(), COLS))

@@ -105,7 +105,6 @@ func _build() -> void:
 	var picker = Control.new()
 	picker.set_script(CharacterPickerScript)
 	_root.add_child(picker)
-	picker.set_position(Vector2((540.0 - (picker.get("content_size") as Vector2).x) * 0.5, 530.0))
 	# D3-4：点角色卡 → 详情独立页（layer 55，必须盖住本页 50，否则点不到）
 	_char_detail = CharDetailScript.new()
 	get_parent().add_child(_char_detail)
