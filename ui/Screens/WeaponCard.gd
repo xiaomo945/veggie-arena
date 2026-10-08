@@ -25,6 +25,10 @@ func setup(key: String, width: float) -> void:
 	weapon_key = key
 	flat = true
 	focus_mode = Control.FOCUS_NONE
+	# ⚠️ 关键：卡片是 Button，默认 mouse_filter=STOP 会把拖拽事件吃掉、不向上传播，
+	# 于是 ScrollContainer 收不到拖拽、整页滑不动（"往下滑也滑不了"的根因）。
+	# 改成 PASS：点按仍正常触发 pressed（弹详情），拖拽则冒泡给外层滚动容器 → 手机可滑。
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	custom_minimum_size = Vector2(width, CARD_H)
 	var def: Dictionary = Data.weapon(key)
 	var accent := Color(str(def.get("color", "#ffffff")))

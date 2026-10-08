@@ -67,6 +67,11 @@ else
 fi
 
 echo
+echo "=== 2.7 注入移动端防护（overscroll-behavior + popstate 守卫，防误触边缘返回丢页）==="
+python3 "$PROJ/scripts/patch_web_html.py" "$BUILD"
+echo "  ✅ 已注入"
+
+echo
 echo "=== 3. 重启预览服务器 ==="
 pkill -f "serve_web.py" 2>/dev/null
 # ⚠️ 必须等端口真的空出来。踩过：pkill 之后立刻 nohup 起新进程会撞上

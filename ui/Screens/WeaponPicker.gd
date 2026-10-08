@@ -59,7 +59,8 @@ func _build_layout() -> void:
 	vb.offset_left = MARGIN_X
 	vb.offset_right = -MARGIN_X
 	vb.offset_top = 24.0
-	vb.offset_bottom = -20.0
+	# 底部留更大安全边距：手机底部手势条区，确认/返回按钮不能被它盖住
+	vb.offset_bottom = -36.0
 	vb.add_theme_constant_override("separation", 8)
 	add_child(vb)
 
@@ -86,8 +87,13 @@ func _build_layout() -> void:
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# 滚动条加宽到 30px：手机上才拉得动（默认约 12px 太细，显得"不能往下滚"）
+	# 只纵向滚动：武器网格永远两列，不需要横向，横向滚动只会添乱
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# 滚动条加宽到 30px、常显、圆角美化：手机上才拉得动，不再"不能往下滚"
 	scroll.add_theme_constant_override("scrollbar_width", 30)
+	scroll.add_theme_stylebox_override("bg", _scroll_bg())
+	# 右侧留 60px 凹槽给「翻页」大按钮（见 _add_scroll_btns）：按钮在屏幕内、不贴手机边框
+	scroll.offset_right = -(MARGIN_X + 60.0)
 	vb.add_child(scroll)
 	var grid := GridContainer.new()
 	grid.columns = COLS
@@ -96,6 +102,10 @@ func _build_layout() -> void:
 	grid.add_theme_constant_override("v_separation", GAP)
 	grid.name = "Grid"
 	scroll.add_child(grid)
+
+	# 翻页大按钮（▲/▼）：手机上在卡片上拖拽未必能触发滚动，给一个【必能操作】的后备，
+	# 保证一定能翻到长弓这类排在靠后的武器。
+	_add_scroll_btns(scroll)
 
 	_loadout_lbl = Label.new()
 	_loadout_lbl.add_theme_font_size_override("font_size", 15)
@@ -208,3 +218,31 @@ func _on_back() -> void:
 
 func _on_locale_changed(_l: String = "") -> void:
 	_refresh_pool()
+
+# 右凹槽里的两个大翻页按钮：点按 page-scroll，保证手机上一定能翻到长弓这类靠后的武器。
+# 放在屏幕内（x≈452，距右边框约 32px），不贴手机边框、手指好点。
+func _add_scroll_btns(scroll: ScrollContainer) -> void:
+	var step := 172   # 一次翻约一行半（scroll_vertical 是整数像素，容器会自动夹到合法范围）
+	var up := _scroll_btn("▲")
+	up.set_position(Vector2(452.0, 300.0))
+	up.pressed.connect(func(): scroll.scroll_vertical -= step)
+	add_child(up)
+	var dn := _scroll_btn("▼")
+	dn.set_position(Vector2(452.0, 470.0))
+	dn.pressed.connect(func(): scroll.scroll_vertical += step)
+	add_child(dn)
+
+func _scroll_btn(glyph: String) -> Button:
+	var b := Button.new()
+	b.text = glyph
+	b.custom_minimum_size = Vector2(56.0, 56.0)
+	b.add_theme_font_size_override("font_size", 30)
+	Art.style_button(b, Color(0.30, 0.34, 0.22, 0.95),
+		Color(0.95, 0.96, 0.98), Color(0.55, 0.60, 0.40, 0.95))
+	return b
+
+# 滚动容器背景透明（默认深色方块会盖住卡片），只留漂亮的圆角滚动条
+func _scroll_bg() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.11, 0.16, 0.0)
+	return sb

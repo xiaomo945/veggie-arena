@@ -66,6 +66,11 @@ func _build() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.set_position(Vector2(20, 200))
 	scroll.set_size(Vector2(430, 410))
+	# 滚动条加宽到 28px、常显：手机上拉得动，与武器详情页一致
+	scroll.add_theme_constant_override("scrollbar_width", 28)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.10, 0.11, 0.16, 0.0)   # 透明底，只留漂亮滚动条
+	scroll.add_theme_stylebox_override("bg", bg)
 	panel.add_child(scroll)
 	_body = VBoxContainer.new()
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
