@@ -41,10 +41,11 @@ static func alive_cap(spawn_cap: int, level: int) -> int:
 		return spawn_cap
 	return mini(spawn_cap, tier)
 
-const DOWN_FPS := 50.0
-const UP_FPS := 58.0          # 比降档阈值高 8fps → 迟滞带，防抖档
-const HOLD_DOWN := 0.4        # 掉帧持续 0.4 秒就降（原 1.0 秒太钝：玩家已经感觉到卡，
-                              # 还要再忍 1 秒才见效；0.4 依然躲得开偶发的一两帧尖峰）
+const DOWN_FPS := 54.0        # 比原 50 更早降档：用户反馈「怪多 + 远程武器时仍有点卡顿」，
+                              # 在 fps 刚往下掉（还没到 50 的明显卡）就先开始 0.4s 倒计时砍同屏敌人数
+const UP_FPS := 58.0          # 比降档阈值高 4fps → 迟滞带，防抖档
+const HOLD_DOWN := 0.4        # 0.4 秒门槛（被 test_perf_guard 锁定：必须 > 0.3 才能"躲开偶发卡顿"，
+                              # 且 1.1s 内只连降两档；改小会同时击穿这两条断言）
 const HOLD_UP := 6.0          # 升档要稳 6 秒：刚升上去又掉下来最难受
 
 # 玩家手选画质 → 允许的最高画质（= 自动降级的地板档位）

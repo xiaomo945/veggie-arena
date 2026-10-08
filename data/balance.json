@@ -46,7 +46,7 @@
   },
   "final_boss": {
     "enabled": true,
-    "hp_mult": 3.4,
+    "hp_mult": 4.2,
     "radius_mult": 1.5,
     "dmg_mult": 1.25,
     "gold_mult": 3.5,

@@ -85,10 +85,10 @@ func spawn_boss() -> void:
 	_ensure_mind()
 	var e = world.enemies[world.enemy_cursor]
 	world.enemy_cursor = (world.enemy_cursor + 1) % BattleWorld.MAX_ENEMIES
-	# Boss 也在玩家附近出场（大地图下不再按竞技场边缘）
+	# Boss 在玩家附近、且必在镜头内升起：大地图里旧值 480 常落屏幕外，只见预警不见本体
 	var pp := world.player.global_position
-	var ang := world.rng.randf() * TAU
-	var pos := pp + Vector2(cos(ang), sin(ang)) * 480.0
+	var pos := pp + Vector2(cos(world.rng.randf() * TAU), sin(world.rng.randf() * TAU)) * 360.0
+	pos.x = clampf(pos.x, pp.x - 170.0, pp.x + 170.0); pos.y = clampf(pos.y, pp.y - 350.0, pp.y + 350.0)
 	pos = Movement.clamp_to_arena(pos, world.arena, 16.0)
 	var stats: Dictionary
 	if final_wave():

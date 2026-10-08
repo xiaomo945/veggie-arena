@@ -32,6 +32,7 @@ var _reroll_btn: Button
 var _close_btn: Button
 var _index := -1
 var _open := false
+var _rerolled_once := false   # 本页打开期间是否已刷新过一次（刷新只允许一次）
 
 func _ready() -> void:
 	layer = 55
@@ -158,6 +159,7 @@ func _section(title: String, text: String) -> void:
 
 func show_for(index: int) -> void:
 	_index = index
+	_rerolled_once = false
 	_refresh()
 	_open = true
 	_root.visible = true
@@ -218,27 +220,28 @@ func _refresh() -> void:
 	_lock_btn.text = DetailText.t("unlock", I18n.locale) if bool(d.get("locked", false)) else DetailText.t("lock", I18n.locale)
 	_lock_btn.disabled = sold
 	_reroll_btn.text = I18n.t("shop_reroll") % int(d.get("reroll_one_cost", 0))
-	_reroll_btn.disabled = sold or bool(d.get("locked", false)) or not afford
+	_reroll_btn.disabled = sold or bool(d.get("locked", false)) or not afford or _rerolled_once
 
 func _on_buy() -> void:
 	if _index < 0 or _buy_btn.disabled:
 		return
 	Sfx.ui_click()
 	buy_requested.emit(_index)
-	refresh()
+	hide_page()   # 用户选了"购买"即自动关闭，不再多一次关闭点击
 
 func _on_lock() -> void:
 	if _index < 0 or _lock_btn.disabled:
 		return
 	Sfx.ui_click()
 	lock_requested.emit(_index)
-	refresh()
+	hide_page()   # 用户选了"锁定"即自动关闭
 
 func _on_reroll() -> void:
 	if _index < 0 or _reroll_btn.disabled:
 		return
 	Sfx.ui_click()
 	reroll_one_requested.emit(_index)
+	_rerolled_once = true   # 刷新只允许一次，刷新后禁用刷新按钮
 	refresh()
 
 func _on_close() -> void:

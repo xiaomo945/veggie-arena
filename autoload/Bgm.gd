@@ -17,6 +17,10 @@ const TRACKS := {
 const VOL_DB := -10.0     # BGM 比音效低一档，不盖过开火/命中/击杀；用户嫌"催命"再压一档
 const FADE := 0.7         # 交叉淡入淡出秒数
 
+# 音乐总开关：用户仍不满意、要求先关掉，故暂置 false（静音）。
+# 「最后再做」时改回 true 即可恢复；届时若仍不满意可同步调 gen_bgm.py 的 BPM/增益。
+const ENABLED := false
+
 var _players := {}
 var _current := ""
 
@@ -46,10 +50,13 @@ func _ready() -> void:
 	Events.run_won.connect(_on_won)
 	# 标题页菜单乐：桌面端立即响；Web 端等首次手势解锁后才响（正常）
 	# call_deferred：避免 _ready 阶段 Settings 全局名尚未注册（为 Nil）
-	call_deferred("play", "menu")
+	if ENABLED:
+		call_deferred("play", "menu")
 
 # 切到指定曲；同曲已在播则忽略（不切断循环），避免重复触发时一顿一顿。
 func play(track: String) -> void:
+	if not ENABLED:
+		return
 	if not _players.has(track):
 		return
 	# 音乐关：只把该曲压静音、不实际播放（省资源）

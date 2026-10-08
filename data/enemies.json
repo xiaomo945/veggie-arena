@@ -70,8 +70,8 @@
   },
   "boss": {
     "zh": "首领",
-    "hp_base": 446.5,
-    "hp_per_wave": 158.44,
+    "hp_base": 820.0,
+    "hp_per_wave": 250.0,
     "speed_base": 62,
     "speed_per_wave": 0.99,
     "dmg_base": 16,

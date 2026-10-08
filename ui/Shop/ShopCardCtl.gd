@@ -183,7 +183,10 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 	var pill := Rect2(10.0, r.size.y - 30.0, pw, 22.0)
 	c.draw_style_box(_sb_tile(Color(0.30, 0.21, 0.06, 0.96) if ok else Color(0.28, 0.10, 0.08, 0.96),
 		Color(0.85, 0.66, 0.22) if ok else Color(0.95, 0.42, 0.40), 12.0, 2), pill)
-	var coin: Texture2D = Art.coin_icon()
+	var art = Engine.get_singleton("Art")
+	var coin: Texture2D = null
+	if art != null:
+		coin = art.coin_icon()
 	if coin != null:
 		c.draw_texture_rect_region(coin, Rect2(pill.position.x + 7.0, pill.position.y + 3.0, 16.0, 16.0),
 			Rect2(Vector2.ZERO, coin.get_size()))
