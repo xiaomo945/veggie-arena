@@ -86,6 +86,8 @@ func _build_layout() -> void:
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# 滚动条加宽到 30px：手机上才拉得动（默认约 12px 太细，显得"不能往下滚"）
+	scroll.add_theme_constant_override("scrollbar_width", 30)
 	vb.add_child(scroll)
 	var grid := GridContainer.new()
 	grid.columns = COLS

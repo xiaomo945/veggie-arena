@@ -32,6 +32,11 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	size = Vector2(540.0, 900.0)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# ⚠️ 关键修复：本页默认【自身隐藏】。之前只把内层 _root.visible=false，
+	# 但 WeaponDetail 这个 Control 节点自身默认 visible=true、铺满全屏、mouse_filter=STOP，
+	# 又作为选武器页的最后一个子节点叠在最上层 —— 没打开时也一直挡在上面，吞掉整页点击，
+	# 表现就是"选武器界面点哪儿都点不动"。详情没打开时它必须不可见、不拦截输入。
+	visible = false
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.size = Vector2(540.0, 900.0)
@@ -61,24 +66,26 @@ func _build() -> void:
 
 	_icon = TextureRect.new()
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_icon.custom_minimum_size = Vector2(88, 88)
-	_icon.set_position(Vector2(470 * 0.5 - 44, 20))
+	_icon.custom_minimum_size = Vector2(64, 64)
+	_icon.set_position(Vector2(470 * 0.5 - 32, 22))
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(_icon)
 
-	_name_lbl = _mk_label(22, Color(0.98, 0.86, 0.32), HORIZONTAL_ALIGNMENT_CENTER)
+	_name_lbl = _mk_label(24, Color(0.98, 0.86, 0.32), HORIZONTAL_ALIGNMENT_CENTER)
 	_name_lbl.set_position(Vector2(20, 118))
 	_name_lbl.set_size(Vector2(430, 30))
 	panel.add_child(_name_lbl)
 
-	_class_lbl = _mk_label(14, Color(0.62, 0.66, 0.72), HORIZONTAL_ALIGNMENT_CENTER)
+	_class_lbl = _mk_label(16, Color(0.62, 0.66, 0.72), HORIZONTAL_ALIGNMENT_CENTER)
 	_class_lbl.set_position(Vector2(20, 152))
 	_class_lbl.set_size(Vector2(430, 22))
 	panel.add_child(_class_lbl)
 
 	var scroll := ScrollContainer.new()
+	# 滚动条加宽到 30px：默认约 12px，手机上几乎拉不动、还显得"不能往下滚"
+	scroll.add_theme_constant_override("scrollbar_width", 30)
 	scroll.set_position(Vector2(20, 186))
-	scroll.set_size(Vector2(430, 414))
+	scroll.set_size(Vector2(430, 430))
 	panel.add_child(scroll)
 	_body = VBoxContainer.new()
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -115,10 +122,12 @@ func show_for(key: String) -> void:
 	_key = key
 	_refresh()
 	_open = true
+	visible = true
 	_root.visible = true
 
 func hide_page() -> void:
 	_open = false
+	visible = false
 	_root.visible = false
 
 func is_open() -> bool:
@@ -131,10 +140,10 @@ func _on_locale_changed(_l: String = "") -> void:
 func _section(title: String, text: String) -> void:
 	if text.is_empty():
 		return
-	var h := _mk_label(16, Color(1.0, 0.84, 0.42), HORIZONTAL_ALIGNMENT_LEFT)
+	var h := _mk_label(17, Color(1.0, 0.84, 0.42), HORIZONTAL_ALIGNMENT_LEFT)
 	h.text = title
 	_body.add_child(h)
-	var t := _mk_label(15, Color(0.88, 0.90, 0.94), HORIZONTAL_ALIGNMENT_LEFT)
+	var t := _mk_label(17, Color(0.88, 0.90, 0.94), HORIZONTAL_ALIGNMENT_LEFT)
 	t.text = text
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD
 	t.custom_minimum_size = Vector2(410, 0)
@@ -145,7 +154,7 @@ func _stat_section() -> void:
 	var rows := WeaponInfo.stat_rows(Data.weapon(_key), I18n.locale)
 	if rows.is_empty():
 		return
-	var h := _mk_label(16, Color(1.0, 0.84, 0.42), HORIZONTAL_ALIGNMENT_LEFT)
+	var h := _mk_label(17, Color(1.0, 0.84, 0.42), HORIZONTAL_ALIGNMENT_LEFT)
 	h.text = WeaponInfo.title_stat(I18n.locale)
 	_body.add_child(h)
 	var grid := GridContainer.new()
@@ -153,10 +162,10 @@ func _stat_section() -> void:
 	grid.add_theme_constant_override("h_separation", 18)
 	_body.add_child(grid)
 	for r in rows:
-		var kk := _mk_label(14, Color(0.66, 0.70, 0.76), HORIZONTAL_ALIGNMENT_LEFT)
+		var kk := _mk_label(15, Color(0.66, 0.70, 0.76), HORIZONTAL_ALIGNMENT_LEFT)
 		kk.text = str((r as Dictionary).get("label", ""))
 		grid.add_child(kk)
-		var vv := _mk_label(14, Color(0.95, 0.96, 0.98), HORIZONTAL_ALIGNMENT_LEFT)
+		var vv := _mk_label(15, Color(0.95, 0.96, 0.98), HORIZONTAL_ALIGNMENT_LEFT)
 		vv.text = str((r as Dictionary).get("value", ""))
 		grid.add_child(vv)
 
