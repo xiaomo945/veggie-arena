@@ -139,6 +139,81 @@ static func draw(c: Control, size: Vector2, d: Dictionary, font: Font) -> void:
 		_center(c, font, "%d" % rc, c1.x, c1.y + 11.0, 10, Color(0.72, 0.90, 1.0, 0.9))
 
 static func _center(c: Control, font: Font, text: String, cx: float, y: float,
-		fs: int, col: Color) -> void:
+		fs: int, col: Color, maxw := 9999.0) -> void:
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	c.draw_string(font, Vector2(cx - w * 0.5, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+
+# 小卡（网格 tile，宽 < 200）画法：图标居中 + 名称 + 价格 + Lv/稀有度。
+# 锁定 / 单张刷新按钮不画在这里，移到独立详情页（点小卡弹出，见 ui/Screens/WeaponDetail.gd）。
+static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
+	if font == null:
+		return
+	var sold := bool(d.get("sold", false))
+	var afford := bool(d.get("affordable", true))
+	var disabled := bool(d.get("disabled", false))
+	var dim := disabled or (not afford) or sold
+	var accent: Color = d.get("accent", Color(1.0, 0.82, 0.29))
+	var GOLD := Color(1.0, 0.82, 0.29)
+	# 左侧套装色竖条
+	if d.has("set_color"):
+		var sc: Color = d.get("set_color", GOLD)
+		var lit := bool(d.get("set_on", false))
+		c.draw_style_box(_sb_tile(sc.lightened(0.20) if lit else sc.darkened(0.35),
+			Color(0, 0, 0, 0), 3.0, 0), Rect2(3.0, 8.0, 4.0, r.size.y - 16.0))
+	# 图标：顶部居中
+	var ib := minf(54.0, r.size.y - 52.0)
+	var box := Rect2(r.size.x * 0.5 - ib * 0.5, 8.0, ib, ib)
+	c.draw_style_box(_sb_tile(accent.darkened(0.62), Color(accent, 0.85), 12.0, 2), box)
+	var tex: Texture2D = d.get("icon", null)
+	if tex != null and tex is Texture2D:
+		var s := ib - 10.0
+		c.draw_texture_rect_region(tex, Rect2(box.position.x + 5.0, box.position.y + 5.0, s, s),
+			Rect2(Vector2.ZERO, (tex as Texture2D).get_size()))
+	else:
+		draw_gem(c, box, accent)
+	# 名称：图标下方居中
+	var nm_c := Color(1.0, 1.0, 1.0, 0.97) if not dim else Color(0.6, 0.63, 0.67, 0.8)
+	_center(c, font, str(d.get("name", "")), r.size.x * 0.5, 8.0 + ib + 16.0, 14, nm_c, r.size.x - 12.0)
+	# 价格：底部药丸（买不起/槽满标红）
+	var cost := str(d.get("cost", 0))
+	var cfs := 13
+	var cw := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs).x
+	var pw := 17.0 + cw + 14.0
+	var ok := afford and not disabled
+	var pill := Rect2(10.0, r.size.y - 30.0, pw, 22.0)
+	c.draw_style_box(_sb_tile(Color(0.30, 0.21, 0.06, 0.96) if ok else Color(0.28, 0.10, 0.08, 0.96),
+		Color(0.85, 0.66, 0.22) if ok else Color(0.95, 0.42, 0.40), 12.0, 2), pill)
+	var coin: Texture2D = Art.coin_icon()
+	if coin != null:
+		c.draw_texture_rect_region(coin, Rect2(pill.position.x + 7.0, pill.position.y + 3.0, 16.0, 16.0),
+			Rect2(Vector2.ZERO, coin.get_size()))
+	_center(c, font, cost, pill.position.x + 7.0 + 16.0 + 7.0 + cw * 0.5,
+		pill.position.y + 11.0 + cfs * 0.35, cfs, GOLD if ok else Color(1.0, 0.72, 0.66))
+	# 右上角：武器 Lv 角标 / 道具稀有度 pips
+	if str(d.get("kind", "")) == "weapon":
+		var lv := int(d.get("lv", 1))
+		var txt := "Lv %d" % lv
+		var fs := 12
+		var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var rr := Rect2(r.size.x - tw - 26.0, 8.0, tw + 14.0, 19.0)
+		c.draw_style_box(_sb_tile(accent, accent.darkened(0.35), 8.0, 1), rr)
+		_center(c, font, txt, rr.position.x + rr.size.x * 0.5, rr.position.y + 19.0 * 0.5 + fs * 0.35,
+			fs, Color(0.06, 0.07, 0.09))
+	# 通胀角标：价格上方一点
+	var infl := int(d.get("infl_pct", 0))
+	if infl > 0 and not sold:
+		var it := "涨 %d%%" % infl
+		var ifs := 11
+		var iw := font.get_string_size(it, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x + 12.0
+		c.draw_style_box(_sb_tile(Color(0.16, 0.10, 0.05, 0.9), Color(1.0, 0.55, 0.25), 9.0, 2),
+			Rect2(10.0, r.size.y - 54.0, iw, 17.0))
+		_center(c, font, it, 10.0 + iw * 0.5, r.size.y - 54.0 + 8.5 + ifs * 0.32, ifs, Color(1, 1, 1, 0.96))
+
+# tile 用的圆角盒（每次重绘现 new，简单够用）
+static func _sb_tile(bg: Color, border: Color, radius: float, bw: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.set_corner_radius_all(int(radius))
+	sb.border_color = border
+	sb.set_border_width_all(bw)
+	return sb

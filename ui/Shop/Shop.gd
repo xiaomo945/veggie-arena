@@ -18,6 +18,7 @@ const ShopSetProgress := preload("res://ui/Shop/ShopSetProgress.gd")
 const Stats := preload("res://core/Stats.gd")
 const ItemIcons := preload("res://core/ItemIcons.gd")
 const SellUndo := preload("res://ui/Shop/SellUndo.gd")
+const ShopOfferDetailScript := preload("res://ui/Shop/ShopOfferDetail.gd")
 
 const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
 
@@ -32,6 +33,7 @@ var _rng := RandomNumberGenerator.new()
 var _max_slot := 6
 var _max_lv := 6
 var _undo := SellUndo.new(); var _undo_btn: Button = null   # 卖出撤销（点错了可恢复）
+var _offer_detail: ShopOfferDetailScript = null   # 武器/道具独立详情页（点小卡弹出，见 ui/Shop/ShopOfferDetail.gd）
 
 func _ready() -> void:
 	layer = 30
@@ -68,11 +70,17 @@ func _build() -> void:
 	ShopPanelScript.style_btn(_undo_btn, Color(0.30, 0.18, 0.08, 0.95), Color(0.98, 0.86, 0.50), Color(0.60, 0.44, 0.22, 0.95))
 	_undo_btn.visible = false; _root.add_child(_undo_btn)
 	_undo.wire(_undo_btn, Callable(self, "_refresh"))
+	# 独立详情页（点小卡弹出）：连信号 + 给一个拉最新报价的回调（self 内闭包，不读私有字段）
+	_offer_detail = ShopOfferDetailScript.new()
+	get_parent().add_child(_offer_detail)
+	_offer_detail.buy_requested.connect(_buy)
+	_offer_detail.lock_requested.connect(_lock_toggle)
+	_offer_detail.reroll_one_requested.connect(_reroll_one)
+	_offer_detail.data_cb = func(idx):
+		return _card_data(_offers[idx], _sold[idx], Economy.can_buy(GameState.gold, int(_offers[idx].get("cost", 0))))
 	for i in _panel.cards.size():
 		var c: ShopCardScript = _panel.cards[i]
-		c.on_click = _buy.bind(i)
-		c.on_lock = _lock_toggle.bind(i)
-		c.on_reroll_one = _reroll_one.bind(i)
+		c.on_click = _offer_detail.show_for.bind(i)
 
 func _open() -> void:
 	_reroll_times = 0; _locked = []; _undo.reset(); _roll(); _root.visible = true
@@ -101,7 +109,7 @@ func _refresh() -> void:
 		var afford := Economy.can_buy(GameState.gold, int(o.get("cost", 0)))
 		var d := _card_data(o, _sold[i], afford)
 		# 单卡可控：锁 / 单张刷新（已售出的卡不给按钮）
-		d["can_lock"] = not _sold[i]
+		d["can_lock"] = false   # 锁定/单张刷新移到了独立详情页（小卡上不画按钮）
 		d["locked"] = _locked.has(i)
 		d["reroll_one_cost"] = ShopPlan.single_reroll_cost(_reroll_times, Data.shop_cfg())
 		c.setup(d)
@@ -150,7 +158,7 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 		# 套装名前置：买之前就知道"这把属于哪一套"
 		var tags: Array = def.get("tags", [])
 		var set_name := I18n.t("set_" + str(tags[0])) if tags.size() > 0 else ""
-		var state := I18n.t("shop_merge") if _owned_lv(key) > 0 else I18n.t("shop_new")
+		var state := I18n.t("shop_merge") if Inventory.owned_max_lv(GameState.weapons, key) > 0 else I18n.t("shop_new")
 		d["tag"] = (set_name + "·" if set_name != "" else "") + state
 		# 羁绊标记（本命描金边 / 羁绊类描蓝边），见 ui/Shop/ShopCardSyn.gd
 		ShopCardSyn.decorate(d, Data.character(GameState.character), key, Data.weapons, GameState.weapons)
@@ -160,6 +168,11 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 			var cnt := int(WeaponSets.tag_counts(GameState.weapons, Data.weapons).get(str(tags[0]), 0))
 			d["set_color"] = Color(str(sd.get("color", "#8a7a5a")))
 			d["set_on"] = WeaponSets.tier_of(cnt, sd) > 0
+			# 详情页要展示套装进度：名称 / 当前件数 / 下一档门槛 / 已激活档位
+			d["set_name"] = set_name
+			d["set_count"] = cnt
+			d["set_need"] = WeaponSets.next_need(cnt, sd)
+			d["set_tier"] = WeaponSets.tier_of(cnt, sd)
 		# 行为类型：买之前就知道这把"怎么打"（追踪/弹射/连锁…）
 		d["behavior_zh"] = Weapon.behavior_zh(def)
 		d["disabled"] = not Inventory.can_accept_tier(GameState.weapons, key, lv, _max_slot, _max_lv)
@@ -170,11 +183,6 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 		var ik := str(ItemIcons.key_for_def(def))
 		if ik != "": d["icon"] = Art.icon(ik)
 	return d
-
-func _owned_lv(key: String) -> int:
-	return Inventory.owned_max_lv(GameState.weapons, key)
-
-# 购买（两态落法）：没满槽→单独占一格不自动合；满槽→同 key 同等级的那把合成升一级。买入价记进 buy_cost 供退款
 func _buy(index: int) -> void:
 	if index >= _offers.size() or _sold[index]: return
 	var o: Dictionary = _offers[index]; var cost := int(o.get("cost", 0))
@@ -193,11 +201,10 @@ func _buy(index: int) -> void:
 		var def := Data.upgrade(key)
 		if def != null:
 			_pop_effect(I18n.pick(def) + "：" + I18n.tip(def), Color(1.0, 0.82, 0.29))
-			if _is_pickup(def):
+			if Inventory.stat_entries(def).any(func(e): return str(e.get("stat", "")) in ["pickup_pct", "autopick", "fullauto"]):
 				Events.player_range_preview.emit(GameState.pickup_magnet())
 	_sold[index] = bought; _refresh(); _flash_card(index, bought); _undo.reset()
 
-# 手动合成（点格子）：点第 idx 格 → 另一把"同 key 同等级"的武器被吸进来并消失、本格升一级
 func _merge_at(index: int) -> void:
 	if index < 0 or index >= GameState.weapons.size():
 		return
@@ -212,7 +219,6 @@ func _merge_at(index: int) -> void:
 	Events.weapons_changed.emit(GameState.weapons)
 	_refresh()
 
-# 一键合成：把场上所有"同 key 同等级"的对子全部合一级（懒人快捷方式，等价于逐格点）
 func _merge() -> void:
 	var done := Inventory.merge_pairs(GameState.weapons, _max_lv, Data.combat_cfg())
 	for m in done: Events.weapon_merged.emit(m.get("key", ""), int(m.get("lv", 1)))
@@ -241,13 +247,6 @@ func _pop_effect(text: String, col: Color) -> void:
 	var b = hud.banners()
 	if b != null and b.has_method("pop_effect"):
 		b.pop_effect(text, col)
-
-# 强化是否属于"金币拾取范围"类（pickup_pct / autopick / fullauto）：买了要补画一圈范围环
-func _is_pickup(def: Dictionary) -> bool:
-	for e in Inventory.stat_entries(def):
-		var s := str(e.get("stat", ""))
-		if s == "pickup_pct" or s == "autopick" or s == "fullauto": return true
-	return false
 
 func _slots_full() -> bool:
 	var n := 0
@@ -297,4 +296,5 @@ func _reroll_bought() -> void:
 		_refresh()
 
 func _next_wave() -> void:
+	_offer_detail.hide_page()
 	_root.visible = false; Events.shop_closed.emit()

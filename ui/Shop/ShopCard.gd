@@ -39,7 +39,6 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	# 武器图标 256px / 金币 512px 都要缩到几十 px 画：线性 + mipmap，否则采样糊点
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	I18n.locale_changed.connect(_on_locale_changed)
 func setup(data: Dictionary) -> void:
 	_d = data
 	queue_redraw()
@@ -54,9 +53,6 @@ func _sb(bg: Color, border: Color, radius: float, bw: int) -> StyleBoxFlat:
 		sb.set_border_width_all(bw)
 		_sbs[k] = sb
 	return _sbs[k]
-func _on_locale_changed(_l: String = "") -> void:
-	queue_redraw()
-
 func _gui_input(event: InputEvent) -> void:
 	var touch := false
 	if event is InputEventScreenTouch:
@@ -100,7 +96,8 @@ func _hit_btn(p: Vector2) -> int:
 	return Ctl.hit(size, p)
 
 func _tap() -> void:
-	if _d.get("disabled", false) or _d.get("sold", false):
+	# 槽满（disabled）的卡也允许点开详情页看介绍；只有已售出的卡不响应
+	if _d.get("sold", false):
 		return
 	if on_click.is_valid():
 		on_click.call()
@@ -131,6 +128,8 @@ func _draw() -> void:
 		draw_style_box(_sb(Color(0, 0, 0, 0), syn_col, 12.0,
 			3 if syn != "bond" else 2), r.grow(3.0))
 
+	# 小卡（网格 tile，宽 < 200）：只画图标+名+价+Lv，点它开详情页（锁定/刷新在详情页）
+	if r.size.x < 200.0: Ctl.draw_tile(self, r, _d, _font); return
 	# 矮卡（大商店 6 张）砍掉描述、缩小图标，否则文字会糊成一团
 	var compact := Ctl.is_compact(r.size.y)
 	var ib := Ctl.icon_box(r.size.y)

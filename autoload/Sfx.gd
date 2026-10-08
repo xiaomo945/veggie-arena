@@ -100,7 +100,9 @@ func _play_pitched(key: String, gap_ms: int, pitch: float) -> void:
 		p.play()
 
 func _on_shoot(_a: Vector2, _b: Vector2, _c: Dictionary, _d: Color, _e: String) -> void:
-	_play("shoot", 55)
+	# 用户嫌开火"突突突机关枪墙、炸耳朵"：节流从 55ms 放宽到 110ms，
+	# 再叠加 sfx_shoot.ogg 低通柔化，整体更缓更柔。
+	_play("shoot", 110)
 
 func _on_hit(amount: int, _pos: Vector2, crit: bool) -> void:
 	# 伤害越大音调越低 → 重击更有"分量"；暴击提亮

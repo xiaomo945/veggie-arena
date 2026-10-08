@@ -2,8 +2,8 @@ extends Node
 
 # BGM 管理器：三段可无缝循环的背景乐，按游戏阶段切换，并做交叉淡入淡出。
 #   menu  主菜单/结算页   —— 轻松诙谐，带中式五声音阶味
-#   battle 战斗波次        —— 紧凑推进，128 BPM
-#   boss   Boss 波         —— 更紧张压迫，140 BPM
+#   battle 战斗波次        —— 舒缓中速，96 BPM
+#   boss   Boss 波         —— 稍稳明亮，104 BPM
 # 三段都是程序化合成、可商用、单声道 Ogg，详见 art/audio/。
 #
 # WebAudio 在用户手势（点 START）后才解锁，标题页若还没点过就没声，
@@ -14,7 +14,7 @@ const TRACKS := {
 	"battle": "res://art/audio/bgm_battle.ogg",
 	"boss": "res://art/audio/bgm_boss.ogg",
 }
-const VOL_DB := -7.0      # BGM 比音效低一档，不盖过开火/命中/击杀
+const VOL_DB := -10.0     # BGM 比音效低一档，不盖过开火/命中/击杀；用户嫌"催命"再压一档
 const FADE := 0.7         # 交叉淡入淡出秒数
 
 var _players := {}

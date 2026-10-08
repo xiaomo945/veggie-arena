@@ -4,7 +4,7 @@
 针对"阴森 / 像死了 / 来回转音 / 不欢快"的反馈，这版彻底换思路：
 - 绝不用颤音（vibrato）：上一版每音都带 5Hz 音高抖动，就是用户说的"来回转音"。
 - 绝不用低频长音暖垫（pad）：那是"阴森底噪"的来源，整段去掉。
-- 节奏明快：菜单 116 / 战斗 128 / Boss 122 BPM（之前 72/84/92 太慢像"死了"）。
+- 节奏舒缓：菜单 116 / 战斗 96 / Boss 104 BPM（用户反馈"太催命、赶"，整体降速放松）。
 - 旋律用 C 大调五声音阶（do-re-mi-sol-la），永远明亮、绝不出现小调色彩；
   乐句清晰、落回主音，不瞎绕。全大三和弦 I–IV–V–I 循环。
 - 音色：三角波 + 正弦主旋律（干净不刺耳），叠加"音乐盒"式短促高音做卡通闪光；
@@ -116,9 +116,9 @@ def build_track(bpm, bars, motif=MOTIF, roots=ROOTS, sparkle=True):
         root = roots[bar % len(roots)]
         for i in range(8):
             deg = motif[(bar * 8 + i) % len(motif)]
-            mel.append((deg, half, "tri", 0.20, 4.0))
+            mel.append((deg, half, "tri", 0.14, 4.0))
         # 贝斯 "蹦嚓"：第1拍根音，第3拍轻三和弦琶音（卡通律动）
-        bass.append((root, half, "tri", 0.24, 6.0))
+        bass.append((root, half, "tri", 0.16, 6.0))
         bass.append((root, half, "tri", 0.0, 6.0))      # 第2拍留白
         bass.append((root, half, "tri", 0.09, 6.0))
         bass.append((root + 4, half, "tri", 0.09, 6.0))
@@ -128,13 +128,15 @@ def build_track(bpm, bars, motif=MOTIF, roots=ROOTS, sparkle=True):
         bass.append((root, half, "tri", 0.0, 6.0))
     tracks = [render(bpm, mel), render(bpm, bass)]
     if sparkle:
-        # 高音"闪光"：每小节第1、3拍点一个高八度短音（方波极轻），像八音盒叮咚
+        # 高音"闪光"：每 2 小节只在第1拍点一个高八度短音（方波极轻），像八音盒轻叮，
+        # 大幅减频避免"叮咚"刺耳，整体更舒缓放松。
         sp = []
         for bar in range(bars):
-            for beat in (0, 2):
-                deg = motif[(bar * 8 + beat * 2) % len(motif)] + 12
-                sp.append((deg, half, "square", 0.05, 7.0))
-                sp.append((deg, half, "square", 0.0, 7.0))
+            if bar % 2 != 0:
+                continue
+            deg = motif[(bar * 8) % len(motif)] + 12
+            sp.append((deg, half, "square", 0.025, 7.0))
+            sp.append((deg, half, "square", 0.0, 7.0))
         tracks.append(render(bpm, sp))
     return mix(*tracks)
 
@@ -142,12 +144,12 @@ def menu_track():
     return build_track(116, 4)
 
 def battle_track():
-    # 战斗更带劲：同动机但更快，闪光照常
-    return build_track(128, 4)
+    # 战斗舒缓中速：同动机但放慢到 96 BPM，闪光照常（已减频），让人放松
+    return build_track(96, 4)
 
 def boss_track():
-    # Boss 稍稳但仍欢乐明亮（不恐怖）：中等速度
-    return build_track(122, 4)
+    # Boss 稍稳但仍欢乐明亮（不恐怖）：104 BPM
+    return build_track(104, 4)
 
 def main():
     out = pathlib.Path("art/audio")

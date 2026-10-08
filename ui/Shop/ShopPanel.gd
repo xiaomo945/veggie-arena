@@ -118,16 +118,27 @@ func _build_buttons() -> void:
 	style_btn(next_btn, Color(0.98, 0.80, 0.22), Color(0.24, 0.15, 0.04), Color(0.88, 0.66, 0.16))
 	add_child(next_btn)
 
-# 卡片区总高度固定（224~674），卡片多就变矮；卡少时封顶 132px 并在区内垂直居中
+# 卡片区总高度固定（224~674）；网格 3 列、行数随卡数变、区内垂直居中。
+# 大商店 12 张 = 3×4 小卡（每屏一眼看完，不用翻页）；小商店 6 张 = 3×2。
+# 小卡只留图标+名+价，点开看详情（见 ui/Screens/WeaponDetail.gd）。
 func layout_cards(n: int) -> void:
-	var g := ShopCardCtl.layout(n, CARDS_Y, CARDS_BOTTOM, CARD_GAP, CARD_MAX_H)
-	var h := float(g[0])
-	var y := float(g[1])
+	var cols := 3
+	var ax := 14.0
+	var aw := PANEL_W - 28.0
+	var ay := CARDS_Y
+	var ah := CARDS_BOTTOM - CARDS_Y
+	var gap := CARD_GAP
+	var rows := maxi(1, int(ceil(float(n) / float(cols))))
+	var tw := (aw - float(cols - 1) * gap) / float(cols)
+	var th := minf((ah - float(rows - 1) * gap) / float(rows), CARD_MAX_H)
+	var used := th * float(rows) + float(rows - 1) * gap
+	var sy := ay + maxf(0.0, (ah - used) * 0.5)
 	for i in cards.size():
 		var c: ShopCardScript = cards[i]
-		c.set_size(Vector2(PANEL_W - 28, h))
-		c.set_position(Vector2(14, y))
-		y += h + CARD_GAP
+		var col := i % cols
+		var row := i / cols
+		c.set_size(Vector2(tw, th))
+		c.set_position(Vector2(ax + float(col) * (tw + gap), sy + float(row) * (th + gap)))
 
 static func flat_box(bg: Color, border: Color, radius: float) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
