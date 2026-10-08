@@ -17,6 +17,7 @@ const ShopCardSyn := preload("res://ui/Shop/ShopCardSyn.gd")
 const ShopSetProgress := preload("res://ui/Shop/ShopSetProgress.gd")
 const Stats := preload("res://core/Stats.gd")
 const ItemIcons := preload("res://core/ItemIcons.gd")
+const SellUndo := preload("res://ui/Shop/SellUndo.gd")
 
 const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
 
@@ -30,6 +31,7 @@ var _sold := []
 var _rng := RandomNumberGenerator.new()
 var _max_slot := 6
 var _max_lv := 6
+var _undo := SellUndo.new(); var _undo_btn: Button = null   # 卖出撤销（点错了可恢复）
 
 func _ready() -> void:
 	layer = 30
@@ -59,6 +61,13 @@ func _build() -> void:
 	_panel.merge_btn.pressed.connect(_merge)
 	_panel.reroll_btn.pressed.connect(_reroll_bought)
 	_panel.next_btn.pressed.connect(_next_wave)
+	# 撤销按钮：浮在面板下方安全区，卖出后才出现（点错了能恢复最近一次卖出）
+	_undo_btn = Button.new()
+	_undo_btn.set_size(Vector2(220, 54)); _undo_btn.set_position(Vector2(160, 824))
+	_undo_btn.text = "↩ 撤销卖出"; _undo_btn.add_theme_font_size_override("font_size", 18)
+	ShopPanelScript.style_btn(_undo_btn, Color(0.30, 0.18, 0.08, 0.95), Color(0.98, 0.86, 0.50), Color(0.60, 0.44, 0.22, 0.95))
+	_undo_btn.visible = false; _root.add_child(_undo_btn)
+	_undo.wire(_undo_btn, Callable(self, "_refresh"))
 	for i in _panel.cards.size():
 		var c: ShopCardScript = _panel.cards[i]
 		c.on_click = _buy.bind(i)
@@ -66,7 +75,7 @@ func _build() -> void:
 		c.on_reroll_one = _reroll_one.bind(i)
 
 func _open() -> void:
-	_reroll_times = 0; _locked = []; _roll(); _root.visible = true
+	_reroll_times = 0; _locked = []; _undo.reset(); _roll(); _root.visible = true
 
 func _on_locale_changed(_l: String = "") -> void:
 	_refresh()
@@ -165,8 +174,7 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 func _owned_lv(key: String) -> int:
 	return Inventory.owned_max_lv(GameState.weapons, key)
 
-# 购买（两态落法）：没满槽 → 单独占一格不自动合；满槽 → 同 key 同等级的那把直接合成升一级。
-# 买入价记进 buy_cost 供售出退款；买不了（满槽且没有可合的搭档）时金币原路退回。
+# 购买（两态落法）：没满槽→单独占一格不自动合；满槽→同 key 同等级的那把合成升一级。买入价记进 buy_cost 供退款
 func _buy(index: int) -> void:
 	if index >= _offers.size() or _sold[index]: return
 	var o: Dictionary = _offers[index]; var cost := int(o.get("cost", 0))
@@ -187,7 +195,7 @@ func _buy(index: int) -> void:
 			_pop_effect(I18n.pick(def) + "：" + I18n.tip(def), Color(1.0, 0.82, 0.29))
 			if _is_pickup(def):
 				Events.player_range_preview.emit(GameState.pickup_magnet())
-	_sold[index] = bought; _refresh(); _flash_card(index, bought)
+	_sold[index] = bought; _refresh(); _flash_card(index, bought); _undo.reset()
 
 # 手动合成（点格子）：点第 idx 格 → 另一把"同 key 同等级"的武器被吸进来并消失、本格升一级
 func _merge_at(index: int) -> void:
@@ -211,14 +219,10 @@ func _merge() -> void:
 	if done.size() > 0: Events.weapons_changed.emit(GameState.weapons)
 	_refresh()
 
-# 售出：回收价 ≤ 买入价（默认 80%），钱原路退回，并腾出一个槽
+# 售出：交给 SellUndo 执行并记录快照，点错可一键撤销（见 ui/Shop/SellUndo.gd）
 func _sell(index: int) -> void:
-	var gain := Inventory.sell_weapon(GameState.weapons, index, ShopTiers.new().sell_ratio())
-	if gain > 0:
-		GameState.add_gold(gain)
-		Events.weapons_changed.emit(GameState.weapons)
-	else:
-		# 最后一把不让卖（Inventory 已保护"至少留 1 把"）：红字提示，免得以为卖不掉是 bug
+	var r := _undo.sell(GameState.weapons, index, ShopTiers.new().sell_ratio())
+	if bool(r.get("kept", false)):
 		_pop_effect(I18n.t("shop_keep_one"), Color(0.95, 0.42, 0.40))
 	_refresh()
 
@@ -283,7 +287,7 @@ func _pool_now() -> Array:
 func _reroll_bought() -> void:
 	var cfg := Data.shop_cfg(); var cost := Economy.reroll_cost(_reroll_times, cfg)
 	if not Economy.can_buy(GameState.gold, cost): return
-	GameState.spend_gold(cost); _reroll_times += 1
+	GameState.spend_gold(cost); _reroll_times += 1; _undo.reset()
 	if _locked.is_empty():
 		_roll()
 	else:

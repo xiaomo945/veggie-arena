@@ -127,16 +127,34 @@ func _draw_chip(w: Dictionary, rect: Rect2, idx: int) -> void:
 	_sell_rects.append({"rect": sb_rect, "idx": idx})
 	_slot_rects.append({"rect": rect, "idx": idx})
 
+# 同一次点按可能被重复投递（不同输入事件落到相近坐标）：短时同位置只认一次，
+# 杜绝"点一下卖出却卖了两把"。手机上触屏 + 模拟鼠标事件最容易触发这种双投。
+var _last_tap_pos := Vector2.INF
+var _last_tap_ms := -1000.0
+
 func _gui_input(event: InputEvent) -> void:
+	var pos := Vector2.ZERO
+	var press := false
 	if event is InputEventScreenTouch:
-		if (event as InputEventScreenTouch).pressed:
-			_tap((event as InputEventScreenTouch).position)
-		accept_event(); return
-	if event is InputEventMouseButton:
+		var t := event as InputEventScreenTouch
+		press = t.pressed
+		pos = t.position
+	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-			_tap(mb.position)
-		accept_event(); return
+		press = mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed
+		pos = mb.position
+	else:
+		return
+	accept_event()
+	if not press:
+		return
+	# 去重：300ms 内、坐标差 < 6px 的第二次按下，视为同一次点按的重复投递
+	var now := Time.get_ticks_msec()
+	if pos.distance_to(_last_tap_pos) < 6.0 and (now - _last_tap_ms) < 300:
+		return
+	_last_tap_pos = pos
+	_last_tap_ms = now
+	_tap(pos)
 
 # 命中优先级：先判"售"按钮（小目标优先），再判整格（合成）
 func _tap(pos: Vector2) -> void:
