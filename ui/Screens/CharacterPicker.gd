@@ -1,222 +1,129 @@
 extends Control
 
 # 角色选择卡片组：标题页里横排 N 张卡，点一下换人。
-#
-# 只做两件事：画自己（贴图 + 名字 + 属性摘要），以及把点击变成 GameState.set_character。
+# 只做两件事：画自己（图标 + 名字 + 锁），以及把点击变成 GameState.set_character。
 # 不认识 Player、不认识 Game —— 换人后由 Events.character_changed 通知它们。
 #
-# 布局：卡片行按角色数量自动缩放（6 卡时整行等比缩小），保证在 540 设计宽度内完整可见。
-# 之前写死 4 卡宽，角色加到 5-6 个后末尾卡片被切出屏幕、没法点选。
-
+# 布局：卡片行按角色数量自动缩放（7 卡时整行等比缩小），保证在 540 设计宽度内完整可见。
+# 之前写死 4 卡宽，角色加到 5-7 个后末尾卡片被切出屏幕、没法点选。
+#
 # D3-4：点卡不再直接换人 —— 改为发出"我要看这个角色的详情"，由详情页的「选他」落定。
-# 主页面从此只负责"挑"（形象 + 名字）；特性/买什么/点什么技能全在各自独立页里讲，
-# 这样将来扩到 60 个角色只换详情页的文字，不用把卡片越缩越小去塞信息。
+# 主页面从此只负责"挑"（形象 + 名字）；特性/买什么/点什么技能全在各自独立页里讲。
+#
+# ⚠️ 本版用真实 Button 卡片（抽 CharacterCard.gd）：触屏 / 鼠标都可靠触发 pressed，
+#    Godot 自动处理 fit_overlay 缩放下的命中坐标，且空白不被卡片拦截 —— 根治
+#    "手写 _gui_input 命中 + fit_overlay 缩放错位 → 点不动角色卡" 的老问题。
+
 signal char_detail_requested(key: String)
 
-# 角色还没解锁时卡面怎么画：**压暗 + 一把锁**，具体差什么不在这儿写 ——
-# 卡面只有"形象 + 名字"是 D3-4 的硬不变量（PICKER_MAX_H ≤ 250，塞不下第三行字），
-# 解锁条件放在详情页的第一节，玩家点开一眼就看到。
+const CharacterCardScript := preload("res://ui/Screens/CharacterCard.gd")
 
-# 设计基准尺寸（6 卡以内会按比例缩小）
 const CARD_W := 96.0
 const CARD_H := 118.0
 const GAP := 10.0
-# 整行最大宽度（540 设计宽 - 左右各 10px 余量）
 const ROW_MAX_W := 520.0
-# 网格：每行最多几张。13 个萝卜 → 7 列 2 行（降为 2 行，卡片更大更好点）。
-# 列数只决定"横向封顶 ROW_MAX_W 时能排几张"，真正的高由下方 PICKER_MAX_H 收口——
-# 角色再多也整体等比缩，绝不把 START 顶出屏幕。
 const COLS := 7
-# 角色网格可用高度上限：y=530 起，给下方 START(高 78)+间距+解锁提示留足，
-# 必须 ≤ ~256，否则 START 会掉到 900 设计高以下（之前 13 角色 3 行把 START 顶到 y=912）。
+# 网格可用高度上限：y=530 起，给下方 START(高 78)+间距+解锁提示留足，必须 ≤ ~256，
+# 否则 START 会掉到 900 设计高以下（之前 13 角色 3 行把 START 顶到 y=912）。
 const PICKER_MAX_H := 250.0
 const PICKER_TOP := 530.0
 
 var _keys: Array = []
-var _selected := "turnip"
-var _hover := -1
-var _locked: Dictionary = {}   # 未解锁角色 → 解锁进度（{type,need,have,left,char}）
-# 实际使用的卡片尺寸（_ready 里按网格与卡数缩放）
-var _cw := CARD_W
-var _ch := CARD_H
-var _gap := GAP
-var _k := 1.0   # 缩放系数（图标/角标等内部布局同比例跟随）
-var _cols := 1  # 网格列数（13 个萝卜 = 7 列 2 行，未来扩到 60 仍整体等比缩）
-var _rows := 1
-# 网格内容实际尺寸。注意：ScreenMode.fit_overlay 会把本控件 size 撑成整屏 540x900
-# （卡片只画在左上角），所以对外暴露内容高度，TitleScreen 用它摆 START，别读 size。
+var _grid: GridContainer
+var _cards: Dictionary = {}
+# 网格内容实际尺寸。ScreenMode.fit_overlay 会把本控件 size 撑成整屏 540x900，
+# 所以对外暴露内容高度，TitleScreen 用它摆 START，别读 size。
 var content_size := Vector2.ZERO
+var _cw := CARD_W
+var _k := 1.0
 
 func _ready() -> void:
-	mouse_filter = MOUSE_FILTER_STOP
-	# 顺序：**能玩的一律在前**（免费最靠前），锁着的往后排。
-	# 之前是纯字母序 —— 新玩家第一眼看到的是"一串锁着的角色"，而这一步唯一要回答
-	# 的问题是"我现在能玩谁"。排序本身也在 core/Unlocks.order（纯函数，配了单测）。
+	mouse_filter = Control.MOUSE_FILTER_IGNORE   # 背景不吃点击，只有卡片按钮吃
 	_keys = SaveMgr.character_order()
-	_selected = GameState.character
-	# 网格布局：每行最多 COLS 张，整体宽度封顶 ROW_MAX_W。
-	# 高度封顶 PICKER_MAX_H：角色多到网格超高时整体等比缩（卡片变矮但永远在屏内），
-	# 这样 START 按钮不会被顶出 900 设计高（之前 13 角色 3 行把 START 顶到 y=912）。
-	var n := _keys.size()
-	_cols = maxi(1, mini(n, COLS))
-	_rows = int(ceil(float(n) / float(_cols)))
-	_cw = minf(CARD_W, (ROW_MAX_W - float(_cols - 1) * GAP) / float(_cols))
-	_k = _cw / CARD_W
-	_ch = CARD_H * _k
-	_gap = GAP * _k
-	# 高度超限 → 整体等比缩小（卡宽也跟着缩，保持方形，文字截断逻辑照常工作）
-	var h := float(_rows) * _ch + float(_rows - 1) * _gap
-	if h > PICKER_MAX_H:
-		var s := PICKER_MAX_H / h
-		_ch *= s
-		_gap *= s
-		_cw *= s
-		_k = _cw / CARD_W
-	content_size = Vector2(float(_cols) * _cw + float(_cols - 1) * _gap,
-		float(_rows) * _ch + float(_rows - 1) * _gap)
-	size = content_size
-	_refresh_lock()
+	_build()
 	Events.character_changed.connect(_on_changed)
 	Events.character_unlocked.connect(_on_char_unlocked)
 	I18n.locale_changed.connect(_on_locale_changed)
-	queue_redraw()
-	ScreenMode.fit_overlay(self)   # 横屏下把竖屏选角色页缩放到 960x540 视口内、居中
+	ScreenMode.fit_overlay(self)   # 横屏下把竖屏选角色页缩放到视口内、居中
 
-# 哪些角色锁着、各自差多少：这里只读 SaveMgr 的判定结果，规则判定在 core/Unlocks.gd
-func _refresh_lock() -> void:
-	var open := SaveMgr.unlocked_characters()
-	_locked = {}
+func _cols() -> int:
+	return maxi(1, mini(_keys.size(), COLS))
+
+func _rows() -> int:
+	return int(ceil(float(_keys.size()) / float(_cols())))
+
+func _ch() -> float:
+	return CARD_H * _k
+
+# 整行宽度封顶 ROW_MAX_W；高度超限 → 整体等比缩小（卡宽也跟着缩，保持方形）。
+func _compute_scale() -> void:
+	_cw = minf(CARD_W, (ROW_MAX_W - float(_cols() - 1) * GAP) / float(_cols()))
+	_k = _cw / CARD_W
+	var h := float(_rows()) * CARD_H * _k + float(_rows() - 1) * GAP * _k
+	if h > PICKER_MAX_H:
+		var s := PICKER_MAX_H / h
+		_k *= s
+		_cw = CARD_W * _k
+
+func _build() -> void:
+	_compute_scale()
+	_grid = GridContainer.new()
+	_grid.columns = _cols()
+	_grid.add_theme_constant_override("h_separation", GAP * _k)
+	_grid.add_theme_constant_override("v_separation", GAP * _k)
+	add_child(_grid)
 	for k in _keys:
-		if not open.has(str(k)):
-			_locked[str(k)] = SaveMgr.character_remaining(str(k))
+		_add_card(str(k))
+	_relayout()
 
-# 一局结束解开了新角色 → 立刻解除卡面的锁（玩家不用重进游戏才看到）。
-# 顺带重排序：刚解开的那位要从"后面锁着的一堆"挪到"能玩的那一堆"里，
-# 否则玩家解锁了却还得在一排灰卡里找他 —— 解锁的正反馈当场就没了。
+func _add_card(key: String) -> void:
+	var card = CharacterCardScript.new()
+	card.setup(key, _cw)
+	card.pressed.connect(_on_card.bind(key))
+	_grid.add_child(card)
+	_cards[key] = card
+
+# 网格内容尺寸 + 居中摆放（横向居中、纵向落在 PICKER_TOP），供 fit_overlay 缩放
+func _relayout() -> void:
+	var gw := float(_cols()) * _cw + float(_cols() - 1) * GAP * _k
+	var gh := float(_rows()) * _ch() + float(_rows() - 1) * GAP * _k
+	content_size = Vector2(gw, gh)
+	_grid.position = Vector2((540.0 - gw) * 0.5, PICKER_TOP)
+	_refresh_selection()
+
+func _on_card(key: String) -> void:
+	char_detail_requested.emit(key)
+
+func _refresh_selection() -> void:
+	for k in _cards:
+		var card = _cards[k] as CharacterCardScript
+		if card != null:
+			card.set_selected_key(str(k) == GameState.character, _accent(str(k)))
+
+func _accent(key: String) -> Color:
+	return Color(str(Data.character(key).get("color", "#ffffff")))
+
+func _on_changed(_key: String = "") -> void:
+	_refresh_selection()
+
+# 解锁后顺序会变（锁着的挪到能玩的那堆），名字 / 图标随语言也要换 —— 重建卡片最稳。
 func _on_char_unlocked(_key: String) -> void:
-	_refresh_order()
-	_refresh_lock()
-	queue_redraw()
+	_rebuild()
 
-# 重排只需要动 _keys 本身：列数/行数只取决于角色总数，不会变。
-func _refresh_order() -> void:
+func _on_locale_changed(_l: String = "") -> void:
+	_rebuild()
+
+func _rebuild() -> void:
 	var fresh := SaveMgr.character_order()
 	if fresh.size() == _keys.size():
 		_keys = fresh
-
-func _on_changed(key: String) -> void:
-	_selected = key
-	queue_redraw()
-
-func _on_locale_changed(_l: String = "") -> void:
-	queue_redraw()
-
-# 一把小挂锁：方身体 + 半圆梁。纯几何绘制，不依赖任何美术素材（美术最后弄也能先跑）
-func _draw_lock(c: Vector2) -> void:
-	var w := 15.0 * _k
-	var h := 12.0 * _k
-	var body := Rect2(c.x - w * 0.5, c.y - h * 0.15, w, h)
-	draw_rect(body, Color(0.92, 0.76, 0.30), true)
-	draw_rect(body, Color(0.32, 0.24, 0.08), false, 1.2 * _k)
-	draw_arc(Vector2(c.x, c.y - h * 0.15), w * 0.38, PI, TAU, 14,
-		Color(0.95, 0.82, 0.38), 2.0 * _k, true)
-
-func _key_at(p: Vector2) -> String:
-	var pitch_x := _cw + _gap
-	var pitch_y := _ch + _gap
-	if pitch_x <= 0.0 or pitch_y <= 0.0:
-		return ""
-	var col := int(p.x / pitch_x)
-	var row := int(p.y / pitch_y)
-	if col < 0 or col >= _cols or row < 0 or row >= _rows:
-		return ""
-	# 落在行列间隙里不算
-	if p.x > float(col) * pitch_x + _cw or p.y > float(row) * pitch_y + _ch:
-		return ""
-	var idx := row * _cols + col
-	if idx < 0 or idx >= _keys.size():
-		return ""
-	return str(_keys[idx])
-
-func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
-		var t := event as InputEventScreenTouch
-		if t.pressed:
-			var k := _key_at(t.position)
-			if not k.is_empty():
-				char_detail_requested.emit(k)
-		accept_event()
-		return
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-			var k := _key_at(mb.position)
-			if not k.is_empty():
-				char_detail_requested.emit(k)
-		accept_event()
-		return
-	if event is InputEventMouseMotion:
-		var mm := event as InputEventMouseMotion
-		var k := _key_at(mm.position)
-		var idx := _keys.find(k) if not k.is_empty() else -1
-		if idx != _hover:
-			_hover = idx
-			queue_redraw()
-
-func _draw() -> void:
-	var pitch_x := _cw + _gap
-	var pitch_y := _ch + _gap
-	for i in _keys.size():
-		var key := str(_keys[i])
-		var col := i % _cols
-		var row := i / _cols
-		var r := Rect2(float(col) * pitch_x, float(row) * pitch_y, _cw, _ch)
-		_draw_card(r, key, i == _hover, key == _selected)
-
-func _draw_card(r: Rect2, key: String, hovered: bool, selected: bool) -> void:
-	var entry: Dictionary = Data.character(key)
-	var accent := Color(str(entry.get("color", "#ffffff")))
-	# 底板：统一到商店暖棕（深棕面板 + 金描边 + 圆角），选中/悬停更亮
-	var bg := Color(0.18, 0.12, 0.07, 0.92)
-	if selected:
-		bg = Color(0.27, 0.18, 0.09, 0.98)
-	elif hovered:
-		bg = Color(0.22, 0.15, 0.08, 0.95)
-	var border := accent if selected else Color(0.60, 0.46, 0.22, 0.85)
-	var bw := 3.0 * _k if selected else 1.5 * _k
-	Art.round_rect(self, r, bg, border, bw, 9.0 * _k)
-
-	# 立绘：优先 char_<key>；缺图退化成一个主色圆点，玩家仍能分辨
-	var tex := Art.sprite("char_" + key)
-	var icon_r := 30.0 * _k
-	var c := Vector2(r.position.x + _cw * 0.5, r.position.y + _ch * 0.40)
-	if tex != null:
-		var s := icon_r * 2.2
-		draw_texture_rect_region(tex, Rect2(c.x - s * 0.5, c.y - s * 0.5, s, s),
-			Rect2(Vector2.ZERO, tex.get_size()))
-	else:
-		draw_circle(c, icon_r * 0.8, accent)
-		draw_arc(c, icon_r * 0.8, 0.0, TAU, 24, Color(1, 1, 1, 0.35), 2.0, true)
-
-	# 名字（按当前语言切换）
-	var fs := ThemeDB.fallback_font
-	if fs == null:
-		return
-	var name := I18n.pick(entry)
-	var nfs := int(maxf(9.0, 15.0 * _k))
-	var nw := fs.get_string_size(name, HORIZONTAL_ALIGNMENT_CENTER, -1, nfs)
-	draw_string(fs, Vector2(c.x - nw.x * 0.5, r.position.y + _ch * 0.80), name,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, nfs,
-		Color(1, 1, 1, 0.96) if selected else Color(0.78, 0.82, 0.88, 0.9))
-
-	# 锁住的角色：整体压暗 + 中间一把锁 —— "这是个目标，不是 bug"。
-	# 差什么（还差几杀 / 用谁通关）写进详情页，卡面本身留白，守住 D3-4 的不变量。
-	if _locked.has(key):
-		draw_rect(r, Color(0.02, 0.02, 0.04, 0.60), true)
-		_draw_lock(c)
-
-	# 选中标记：右上角一个小三角
-	if selected:
-		var tp := Vector2(r.position.x + _cw - 14.0 * _k, r.position.y + 10.0 * _k)
-		draw_colored_polygon(PackedVector2Array([
-			tp, tp + Vector2(10.0, 0.0) * _k, tp + Vector2(5.0, 8.0) * _k]), accent)
+	for c in _grid.get_children():
+		c.queue_free()
+	_cards = {}
+	_compute_scale()
+	_grid.columns = _cols()
+	_grid.add_theme_constant_override("h_separation", GAP * _k)
+	_grid.add_theme_constant_override("v_separation", GAP * _k)
+	for k in _keys:
+		_add_card(str(k))
+	_relayout()

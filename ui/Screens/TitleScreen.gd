@@ -45,20 +45,8 @@ func _build() -> void:
 	shade.color = Color(0.05, 0.06, 0.09, 0.82)
 	_root.add_child(shade)
 
-	# 全屏"点任意处开始"热区（放在遮罩之后、按钮之前：角色卡与 START 仍能各自响应）
-	var catch := Button.new()
-	catch.set_anchors_preset(Control.PRESET_FULL_RECT)
-	catch.flat = true
-	catch.focus_mode = Control.FOCUS_NONE
-	catch.mouse_filter = Control.MOUSE_FILTER_STOP
-	var inv := StyleBoxFlat.new()
-	inv.bg_color = Color(0, 0, 0, 0)
-	catch.add_theme_stylebox_override("normal", inv)
-	catch.add_theme_stylebox_override("hover", inv)
-	catch.add_theme_stylebox_override("pressed", inv)
-	catch.add_theme_stylebox_override("focus", inv)
-	catch.pressed.connect(_on_start)
-	_root.add_child(catch)
+	# ⚠️ 不再放"点任意处开始"的全屏热区：它会把角色卡之间的空白、误触都当成"开始"，
+	#    在手机上尤其容易跳页（用户反馈"误触返回/乱跳"）。开始只走下方明确的 START 按钮。
 
 	# 游戏名（英文为主，海外玩家一眼看懂）
 	var title := _mk_label(44, Color(0.98, 0.86, 0.32), 172.0, 60.0)
