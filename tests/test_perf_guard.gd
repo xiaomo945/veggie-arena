@@ -92,4 +92,29 @@ func run(_data) -> Dictionary:
 	chk(bool(PerfGuard.caps(0).get("far_detail", false)) \
 		and not bool(PerfGuard.caps(3).get("far_detail", true)), "只有中降以上才砍远景柔影")
 
+	# --- 尖峰判据（B 类卡顿）：平均帧率看不见尖峰，必须看超预算帧占比 ---
+	# 场景：120Hz 屏，平均 80fps（EMA 判定"及格"），但每 8 帧有一帧 20ms 的尖峰
+	# （密集清场的特效/GC）。玩家每 8 帧顿一下，均值却完全正常 —— 这条就是抓它的。
+	chk(abs(PerfGuard.budget_ms(120.0) - 1000.0 / 120.0) < 0.01, "120Hz 屏帧预算 8.33ms")
+	chk(abs(PerfGuard.budget_ms(90.0) - 1000.0 / 90.0) < 0.01, "90Hz 屏帧预算 11.11ms")
+	chk(abs(PerfGuard.budget_ms(60.0) - 1000.0 / 60.0) < 0.01, "60Hz 屏帧预算 16.67ms")
+	# 高刷屏上"没掉到 54fps"远不等于流畅：预算按刷新率收紧，才有意义
+	chk(PerfGuard.budget_ms(120.0) < PerfGuard.budget_ms(60.0), "高刷屏帧预算更紧")
+
+	var smooth: Array = []
+	for i in 100: smooth.append(8.0)
+	chk(PerfGuard.over_budget_ratio(smooth, 8.33) == 0.0, "全程 8ms 的窗口没有超预算帧")
+	var spiky: Array = []
+	for i in 100: spiky.append(8.0 if (i % 8 != 0) else 20.0)
+	var r_spiky := PerfGuard.over_budget_ratio(spiky, 8.33)
+	chk(r_spiky > 0.10 and r_spiky < 0.15, "每 8 帧一尖峰 → 超预算占比约 12.5%%（实测 %.3f）" % r_spiky)
+	chk(PerfGuard.over_budget_ratio([], 8.33) == 0.0, "空窗口不误判")
+
+	var st := PerfGuard.spike_step(r_spiky, 0)
+	chk(not bool(st[0]) and int(st[1]) == 1, "第一次超：先记一次，不立刻降（防误判）")
+	st = PerfGuard.spike_step(r_spiky, int(st[1]))
+	chk(bool(st[0]), "连续两个窗口都超 → 降档")
+	st = PerfGuard.spike_step(0.0, 1)
+	chk(not bool(st[0]) and int(st[1]) == 0, "窗口恢复正常 → 连续计数清零")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}

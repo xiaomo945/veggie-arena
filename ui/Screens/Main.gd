@@ -90,8 +90,8 @@ func _on_hp_shake(hp: int, _m: int) -> void:
 		_shake = 9.0
 	_prev_hp = hp
 
-func _process(delta: float) -> void:
-	# 相机跟随玩家；玩家到场地边缘时镜头停跟，屏幕边贴住场地边（不露黑框）
+func _physics_process(delta: float) -> void:
+	# ⚠️ 必须物理步：世界都在物理步更新，相机按渲染帧跟随 = 相机平滑、世界跳（judder）
 	ScreenMode.follow_camera(_cam, player, delta)
 	# 受击震屏：衰减后作为相机 offset 叠加，不影响跟随
 	if _cam != null and is_instance_valid(_cam):

@@ -20,6 +20,11 @@ var level := 0
 var _hold := 0.0
 var _ema := 60.0
 var _warm := 0.0
+# 尖峰统计（B 类卡顿）：EMA 会把"每 10 帧卡一次"抹平，均值看着及格、玩家却在顿。
+# 这里保留最近一个窗口的帧时间，按"超预算帧占比"单独判一次降档。
+var _win: Array = []
+var _peak_fps := 0.0
+var _streak := 0
 # 性能测量用：true 时冻结档位（不自动降级）。
 # 为什么需要：scripts/perf_probe.gd 要测"未降级时的真实开销"才能定位瓶颈 ——
 # 不冻结的话测到的是"降级后"的性能，看不出到底哪一层是原凶。
@@ -32,6 +37,20 @@ func _process(delta: float) -> void:
 	if _warm < WARMUP:
 		return
 	_ema += (1.0 / delta - _ema) * SMOOTH
+	var fps := 1.0 / delta
+	if fps > _peak_fps:
+		_peak_fps = fps
+	_win.append(delta * 1000.0)
+	if _win.size() > PerfGuard.SPIKE_WIN:
+		_win.pop_front()
+	if _win.size() >= PerfGuard.SPIKE_WIN:
+		var s := PerfGuard.spike_step(
+			PerfGuard.over_budget_ratio(_win, budget_ms()), _streak)
+		_streak = int(s[1])
+		if bool(s[0]):
+			_win.clear()          # 降完重新采样，避免一个长卡顿连降到底
+			_force_down()
+
 	var lo := PerfGuard.floor_from_quality(Settings.quality)
 	var r := PerfGuard.step(level, _ema, _hold, delta, lo)
 	_hold = float(r[1])
@@ -40,6 +59,29 @@ func _process(delta: float) -> void:
 		level = lv
 		_hold = 0.0
 		level_changed.emit(level)
+
+# 尖峰降档：跳过 HOLD_DOWN 的等待（尖峰已经持续两个窗口了，等下去就是一路顿）
+func _force_down() -> void:
+	var lo := PerfGuard.floor_from_quality(Settings.quality)
+	if level >= PerfGuard.MAX_LEVEL or level < lo:
+		return
+	level += 1
+	_hold = 0.0
+	level_changed.emit(level)
+
+# 当前帧预算（ms）：120Hz 屏 8.33ms / 90Hz 11.1ms / 60Hz 16.67ms
+func budget_ms() -> float:
+	return PerfGuard.budget_ms(_peak_fps)
+
+# 最近一帧窗口里最慢的那 1%（P99）帧时间 ms —— 卡顿的真实度量。
+# 平均帧率好看没用：玩家感觉到的是最差的那批帧。给 FpsMeter / 设置页显示用。
+func p99_ms() -> float:
+	if _win.is_empty():
+		return 0.0
+	var s := _win.duplicate()
+	s.sort()
+	var i := int(float(s.size()) * 0.99)
+	return float(s[mini(i, s.size() - 1)])
 
 # 各表现层读这里：Perf.int_cap("floats", 24) / Perf.bool_cap("far_detail", true)
 func cap(key: String, fallback: Variant = 0) -> Variant:

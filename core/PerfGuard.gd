@@ -64,6 +64,46 @@ static func cap(level: int, key: String, fallback: Variant = 0) -> Variant:
 
 # 每帧一步：返回 [档位, 已持续秒数]。hold 由调用方保存并回传。
 # fps<=0（delta 异常/首帧）时不动，避免开局第 1 帧的脏数据把画面拉到最低档。
+# ---- 尖峰判据（B 类卡顿）----
+# 平均帧率【看不见尖峰】：平均 60fps、但每 10 帧卡一次（密集击杀/GC/着色器编译），
+# EMA 平滑后仍有 55fps 左右（按 DOWN_FPS 判定"及格"），玩家却每 10 帧实实在在
+# 顿一下。所以降档不能只看均值，还得看"超预算帧的比例"—— 行业里衡量卡顿用的
+# 就是 P99 / 1% low，不是平均帧率。
+#
+# 帧预算随屏幕刷新率变：120Hz 屏是 8.33ms，60Hz 是 16.67ms。高刷屏上"没掉到
+# 54fps"远不代表流畅 —— 80fps 在 120Hz 屏上就是每 3 帧丢 1 帧的 judder。
+const SPIKE_RATIO := 0.12      # 窗口内超预算帧占比超过 12% = 有卡顿
+const SPIKE_WIN := 120         # 统计窗口（帧），约 1~2 秒
+const SPIKE_HOLD := 2          # 连续这么多个窗口都超才降档，防单次误判
+
+# 帧预算（ms）：按屏幕刷新率推。高刷屏（120Hz）预算只有 8.33ms。
+# 刷新率取"观测到的峰值帧率"近似 —— 稳定状态下的最高帧率就是刷新率上限。
+static func budget_ms(peak_fps: float) -> float:
+	if peak_fps >= 100.0:
+		return 1000.0 / 120.0
+	if peak_fps >= 80.0:
+		return 1000.0 / 90.0
+	return 1000.0 / 60.0
+
+# 窗口内超预算帧的占比（纯函数）
+static func over_budget_ratio(frame_ms: Array, budget: float) -> float:
+	if frame_ms.is_empty() or budget <= 0.0:
+		return 0.0
+	var n := 0
+	for t in frame_ms:
+		if float(t) > budget:
+			n += 1
+	return float(n) / float(frame_ms.size())
+
+# 尖峰连续计数 → 是否该降一档。返回 [是否降档, 新的连续计数]
+static func spike_step(ratio: float, streak: int) -> Array:
+	if ratio > SPIKE_RATIO:
+		var s := streak + 1
+		if s >= SPIKE_HOLD:
+			return [true, 0]
+		return [false, s]
+	return [false, 0]
+
 static func step(cur: int, fps: float, hold: float, delta: float, floor_level: int = 0) -> Array:
 	var lo := clampi(floor_level, 0, MAX_LEVEL)
 	var lv := clampi(cur, lo, MAX_LEVEL)

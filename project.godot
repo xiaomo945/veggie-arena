@@ -1,5 +1,11 @@
 ; Engine configuration file.
-; veggie-arena —— 手机竖屏竞技场生存 Roguelite
+; veggie-arena - portrait phone arena survival roguelite
+; NOTE: keep every comment in this file ASCII-only. Godot's ConfigFile parser can
+; merge a non-ASCII comment into the NEXT key name (observed once: the key became
+; "<comment text>window/dpi/allow_hidpi"), which silently disabled the setting -
+; the file looked correct while the runtime happily used the engine default.
+; scripts/check.sh step 1.8 reads the critical values back, so it cannot happen
+; again unnoticed.
 config_version=5
 
 [application]
@@ -9,7 +15,8 @@ config/description="手机竖屏竞技场生存 Roguelite"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 run/main_scene="res://ui/Screens/Main.tscn"
 
-; 战场外的清屏色与灶台地板统一（深炭），避免"黑底+灰边"的割裂感
+; Clear color matches the kitchen floor (dark charcoal) so the arena never looks
+; like a black frame with grey borders around it.
 [rendering]
 
 environment/defaults/default_clear_color=Color(0.05, 0.052, 0.066, 1)
@@ -38,8 +45,10 @@ window/size/viewport_height=900
 window/handheld/orientation=1
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
-# 手机 DPR 常常是 2~3，开 HiDPI 等于每帧要画 1179x2619 个像素（填充率直接吃掉帧率）。
-# 2D 像素风/矢量风在 DPR=1 下观感差别极小，帧率收益很大 —— 怪多时从 29 帧往 60 帧靠。
+; Phone DPR is usually 2~3: with HiDPI enabled we would push 1179x2619 pixels
+; every frame and fill-rate alone eats the frame budget. At DPR=1 this 2D art
+; looks nearly identical, and it is the single biggest win when enemy count is
+; high (measured: 29fps -> ~60fps on a crowded wave).
 window/dpi/allow_hidpi=false
 
 [input_devices]
@@ -50,6 +59,15 @@ pointing/emulate_touch_from_mouse=false
 [gui]
 
 theme/custom_font="res://fonts/NotoSansSC-Subset.otf"
+
+[physics]
+
+; 60Hz fixed-step simulation + render interpolation. Without it, a 120Hz screen
+; draws the same physics step twice in a row, so everything appears to move in
+; discrete hops: average fps looks perfect, the game still feels rough (industry
+; calls this "judder"). Cost: visuals lag one physics step (<=16.7ms); hit
+; detection stays in the physics step and is unaffected.
+common/physics_interpolation=true
 
 [rendering]
 

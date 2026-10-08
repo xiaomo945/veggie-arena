@@ -91,6 +91,22 @@ else
 fi
 
 echo ""
+echo "=== 1.65 项目配置守卫（硬失败：防 project.godot 静默失效）==="
+# 两类事故都真实发生过：
+#   ① 中文注释被 Godot 的 ConfigFile 并进下一个键名 → 设置等于没写（HiDPI 那条
+#      就一直是 true，手机按 DPR 2~3 渲染，填充率爆掉，是"怪多就卡"的真凶之一）；
+#   ② 键名拼错 → 静默回落到引擎默认。
+# 两者都【不报错、不崩溃】，只在实际跑起来时表现为性能差/行为怪，极难查。
+if [ -f scripts/cfg_guard.py ]; then
+  PYCFG=$(command -v python3.11 || command -v python3)
+  if ! "$PYCFG" scripts/cfg_guard.py; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/cfg_guard.py，跳过"
+fi
+
+echo ""
 echo "=== 1.7 架构守卫（硬失败：存量只降不升，新增违规一律拦下）==="
 # 规则见 scripts/arch_guard.py：R1 单文件行数 / R2 core 层纯度 / R3 跨模块读私有字段。
 # 存量违规登记为基线（棘轮），所以今天就能硬生效，不必先重构完历史代码。
@@ -111,6 +127,28 @@ if [ -f tests/run_tests.gd ]; then
 else
   echo "  ⚠ 还没有 tests/run_tests.gd（阶段 0.8 待完成）"
   tfail=0
+fi
+
+echo ""
+echo "=== 2.4 UI / 输入层守卫（--scene 模式，autoload 真实注册）==="
+# 为什么单开一段：单元测试跑在 --script 模式，那里【不注册 autoload】，
+# UI 层根本没法实例化；而最近 8 次提交修的 bug（触屏点不动 / 卡片偏移 /
+# START 点不到 / 详情页全屏拦截 / 跳过选武器页 / 进游戏没怪）100% 出在这一层，
+# 而那一层当时【零测试】—— 所以 bug 流止不住。这一段把那一类 bug 变成机器判的断言。
+#
+# 已做变异测试（证明不是伪测试）：注入"跳过选武器页""关掉触屏模拟"
+# "武器详情页全屏拦截"三个历史 bug，三个都被抓住（退出码 1）。
+# 以后每修一个 UI/输入层 bug，都要在这里补一条断言，否则它还会回来。
+if [ -f tests/ui/UITest.tscn ]; then
+  uout=$(timeout 120 "$GODOT" --headless --path . --scene res://tests/ui/UITest.tscn 2>&1)
+  uexit=$?
+  echo "$uout" | grep -E "^  (OK|FAIL):"
+  if [ "$uexit" -ne 0 ]; then
+    echo "  ❌ UI/输入层守卫失败（见上面 FAIL 行）"
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 tests/ui/UITest.tscn，跳过"
 fi
 
 echo ""
@@ -171,6 +209,20 @@ if [ -f scripts/perf_regression.py ]; then
   fi
 else
   echo "  ⚠ 缺少 scripts/perf_regression.py，跳过"
+fi
+
+echo ""
+echo "=== 2.9 击杀特效尖峰闸门（B 类卡顿：清场那一帧的瞬时开销）==="
+# 与 2.8 互补：2.8 守【稳态】每帧热点，这里守【尖峰】。稳态均值看不见尖峰——
+# 平均 60fps、清场那一帧 30ms，均值照样漂亮，玩家却实实在在觉得卡。
+# "怪一多就卡"就是这一类：击杀特效的开销随击杀数线性增长。
+if [ -f scripts/fx_band.py ]; then
+  PY7=$(command -v python3.11 || command -v python3)
+  if ! "$PY7" scripts/fx_band.py; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/fx_band.py，跳过"
 fi
 
 echo ""

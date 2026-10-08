@@ -13,6 +13,7 @@ const Run := preload("res://core/Run.gd")
 const Hit := preload("res://core/Hit.gd")
 const Movement := preload("res://core/Movement.gd")
 const HitSpark := preload("res://entities/effects/HitSpark.gd")
+const SparkPool := preload("res://entities/effects/SparkPool.gd")
 const Shake := preload("res://entities/effects/Shake.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
 const WokToss := preload("res://scenes/WokToss.gd")
@@ -37,10 +38,15 @@ var _bullets: BulletSystem = null # 子弹（独立部件，见 scenes/BulletSys
 var _mind = null                  # 敌人 AI/移动/接触（独立部件，见 scenes/EnemyMind.gd）
 var game: Node2D = null          # 仅用于挂特效节点与注册震屏
 var _contact := 0.0              # 荆棘伤害（contact_dmg），每帧缓存一次
+var _sparks: SparkPool = null    # 击杀爆点池（预建复用，见 SparkPool.gd）
 
 func _ready() -> void:
 	game = get_parent()
 	Shake.register(game)
+	# 击杀爆点池：整局只建一次，之后每次击杀走 reset（消除密集清场的节点尖峰）
+	_sparks = SparkPool.new()
+	game.add_child(_sparks)
+	_sparks.build()
 
 # ---- 刷怪 ----
 # 终局 Boss 波（配置里的最后一波）：这一波的 boss 走 final_boss 段的强化属性
@@ -226,10 +232,8 @@ func damage_enemy(e, amount: float) -> bool:
 	# 爆环事件照发（FxLayer 自带并发上限）；只限碎屑节点，密集击杀时宁可少画几团，
 	# 也不让 Node/Tween 爆炸拖垮手机帧率
 	Events.enemy_killed.emit(str(e.etype), epos)
-	if Settings.get_setting("particles_enabled", true) and _death_fx_count() < _death_fx_cap():
-		var spark = HitSpark.new()
-		game.add_child(spark)
-		spark.init(epos, e.etype == "boss")
+	if Settings.get_setting("particles_enabled", true) and _sparks.active_count() < _death_fx_cap():
+		_sparks.pop(epos, e.etype == "boss")
 		return true
 	return false
 
@@ -290,11 +294,4 @@ func on_wok_toss() -> void:
 	_toss.damage_fn = damage_enemy
 	_toss.execute()
 
-# 统计当前还活着的击杀特效节点数（配合 MAX_DEATH_FX 限制并发）
-func _death_fx_count() -> int:
-	var n := 0
-	for c in game.get_children():
-		if c.get_script() == HitSpark:
-			n += 1
-	return n
 
