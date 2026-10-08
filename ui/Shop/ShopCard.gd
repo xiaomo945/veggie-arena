@@ -10,7 +10,6 @@ extends Control
 #
 # 卡通暖色规范：卡片圆角 14 / 小药丸圆角 8~14，描边统一 2px；
 # 价格画成"金币药丸"（币图标 + 数字），主次：名称 > 图标/价格 > 标签 > 描述。
-
 # ---- §8.4 配色（用户指定分级：白1/绿2/蓝3/紫4/红5/传说6）----
 const LV_COLORS := [Color(0.85,0.86,0.90), Color(0.25,0.77,0.32), Color(0.18,0.55,1.0),
 	Color(0.63,0.29,1.0), Color(1.0,0.30,0.24), Color(1.0,0.71,0.12)]
@@ -23,7 +22,6 @@ const INFL := Color(1.0, 0.55, 0.25)   # 涨价角标：暖橙（卡通统一调
 const ICON_BOX := 60.0
 const Ctl := preload("res://ui/Shop/ShopCardCtl.gd")
 const SynText := preload("res://ui/Screens/SynText.gd")
-
 var _d: Dictionary = {}
 var _hover := false
 var _font: Font
@@ -32,18 +30,19 @@ var on_click: Callable = Callable()
 # 单卡可控（Q6）：右上角两个小按钮 —— 锁定（整店刷新时保留）/ 单张刷新（只换这一张）
 var on_lock: Callable = Callable()
 var on_reroll_one: Callable = Callable()
-
+# 同一次点按可能被重复投递（触屏 + 模拟鼠标事件落到相近坐标）：短时同位置只认一次，
+# 杜绝"点一下购买却买下两把"。emulate_mouse_from_touch 开启时触屏会同时投递 ScreenTouch 与模拟 MouseButton。
+var _last_touch_pos := Vector2.INF
+var _last_touch_ms := -1000.0
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
 	_font = ThemeDB.fallback_font
 	# 武器图标 256px / 金币 512px 都要缩到几十 px 画：线性 + mipmap，否则采样糊点
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	I18n.locale_changed.connect(_on_locale_changed)
-
 func setup(data: Dictionary) -> void:
 	_d = data
 	queue_redraw()
-
 # 圆角盒缓存：卡片/药丸/角标共用一套圆角语言
 func _sb(bg: Color, border: Color, radius: float, bw: int) -> StyleBoxFlat:
 	var k := "%s|%s|%s|%d" % [bg, border, radius, bw]
@@ -55,7 +54,6 @@ func _sb(bg: Color, border: Color, radius: float, bw: int) -> StyleBoxFlat:
 		sb.set_border_width_all(bw)
 		_sbs[k] = sb
 	return _sbs[k]
-
 func _on_locale_changed(_l: String = "") -> void:
 	queue_redraw()
 
@@ -67,8 +65,14 @@ func _gui_input(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
 		touch = mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT
 	if touch:
-		# 小按钮优先：点在锁/刷新上就不再触发购买（避免"想锁卡结果买下了"）
+		# 去重：300ms 内、坐标差 < 6px 的第二次按下，视为同一次点按的重复投递
 		var p := _event_pos(event)
+		var now := Time.get_ticks_msec()
+		if p.distance_to(_last_touch_pos) < 6.0 and (now - _last_touch_ms) < 300:
+			accept_event(); return
+		_last_touch_pos = p
+		_last_touch_ms = now
+		# 小按钮优先：点在锁/刷新上就不再触发购买（避免"想锁卡结果买下了"）
 		var hit := _hit_btn(p)
 		if hit == 1 and on_lock.is_valid():
 			on_lock.call(); accept_event(); return
@@ -83,14 +87,12 @@ func _gui_input(event: InputEvent) -> void:
 		if h != _hover:
 			_hover = h
 			queue_redraw()
-
 func _event_pos(event: InputEvent) -> Vector2:
 	if event is InputEventScreenTouch:
 		return (event as InputEventScreenTouch).position
 	if event is InputEventMouseButton:
 		return (event as InputEventMouseButton).position
 	return Vector2.ZERO
-
 # 命中哪个小按钮：1=锁定 2=单张刷新 0=都不是（走购买）
 func _hit_btn(p: Vector2) -> int:
 	if not bool(_d.get("can_lock", false)):
@@ -102,7 +104,6 @@ func _tap() -> void:
 		return
 	if on_click.is_valid():
 		on_click.call()
-
 func get_local_rect() -> Rect2:
 	return Rect2(0, 0, size.x, size.y)
 
@@ -122,7 +123,6 @@ func _draw() -> void:
 	elif not afford:
 		border = Color(0.6, 0.5, 0.5, 0.9)
 	draw_style_box(_sb(CARD_BG if not dim else CARD_BG_DIM, border, 14.0, 4 if _hover else 2), r)
-
 	# 角色羁绊描边：本命武器整张卡描一圈金边、羁绊类描一圈淡蓝边。
 	# 这是"攒钱等它刷出来"的视觉钩子 —— 扫一眼货架就知道哪几张是给我的。
 	var syn := str(_d.get("syn", ""))
