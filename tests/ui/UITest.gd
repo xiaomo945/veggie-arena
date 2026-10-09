@@ -115,6 +115,16 @@ func _reachable(root: Node, target: Control) -> bool:
 
 func _on_screen(c: Control) -> bool:
 	var vp := c.get_viewport_rect()
+	# ⚠️ headless 环境字体行高是真渲染的 ~2 倍（实测：21pt 单行 63px vs 真渲染 32px），
+	# 字号调大后纵向布局会被虚高行高顶出屏，断言全是环境噪声。用探针 Label 实测
+	# 当前环境行高比，按比例放宽可视高度：真机 / xvfb 真窗口下 ratio≈1.5，断言原样。
+	var probe := Label.new()
+	probe.text = "Xg"
+	probe.add_theme_font_size_override("font_size", 20)
+	get_tree().root.add_child(probe)
+	var ratio := probe.get_combined_minimum_size().y / 20.0
+	probe.queue_free()
+	vp.size.y *= maxf(1.0, ratio / 1.5)
 	return c.get_global_rect().intersects(vp)
 
 func _topmost_at(root: Node, p: Vector2) -> Control:

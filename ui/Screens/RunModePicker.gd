@@ -11,9 +11,9 @@ extends Control
 # 以及存进存档 —— 战斗/HUD/通关判定那一侧一行代码都不用改。
 
 const BTN_W := 164.0
-const BTN_H := 56.0
+const BTN_H := 62.0
 const GAP := 12.0
-const LABEL_H := 22.0
+const LABEL_H := 26.0
 
 const SEL_BG := Color(0.98, 0.86, 0.32)
 const SEL_FG := Color(0.07, 0.08, 0.05)
@@ -44,7 +44,7 @@ func _ready() -> void:
 	_label.set_position(Vector2(0, 0))
 	_label.set_size(Vector2(540, LABEL_H))
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_label.add_theme_font_size_override("font_size", 13)
+	_label.add_theme_font_size_override("font_size", 17)
 	_label.add_theme_color_override("font_color", Color(0.62, 0.66, 0.74))
 	add_child(_label)
 
@@ -53,7 +53,7 @@ func _ready() -> void:
 		var b := Button.new()
 		b.set_position(Vector2(x0 + float(i) * (BTN_W + GAP), LABEL_H))
 		b.set_size(Vector2(BTN_W, BTN_H))
-		b.add_theme_font_size_override("font_size", 14)
+		b.add_theme_font_size_override("font_size", 17)
 		b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(_on_pick.bind(k))
 		_btns[k] = b

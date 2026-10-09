@@ -8,8 +8,7 @@ extends CanvasLayer
 #     管自己的控件与安全区平移，互相不认识对方。
 #   - 这样单文件不会随功能增长而失控（历史教训：曾经长到 389 行）。
 #
-# 布局约束：手机竖屏 540x900，顶部 74px 是 HUD 区（竞技场从 y=74 开始），
-# 拇指会挡住下半屏，所以所有信息都放顶部。
+# 布局约束：手机竖屏 540x900，顶部 74px 是 HUD 区（竞技场从 y=74 开始），信息全放顶部。
 
 const HudTopScript := preload("res://ui/HUD/HudTop.gd")
 const HudBannersScript := preload("res://ui/HUD/HudBanners.gd")
@@ -22,9 +21,7 @@ const Weapon := preload("res://core/Weapon.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
 const Stats := preload("res://core/Stats.gd")
 
-# 竖屏安全区：顶部内容下移避让刘海 / 状态栏，底部按钮上移避让手势条。
-# ⚠️ 顶部这个值原来写死在这里（TOP_SHIFT=34），现已搬到 HudLayout.safe_top()：
-# 相机要按"HUD 到底占多高"来让位，两处各写一份必然漂移（真踩过：角色被 HUD 盖死）。
+# 竖屏安全区：顶部下移避让刘海（HudLayout.safe_top()，相机让位也用它），底部按钮上移避手势条。
 const BOTTOM_SHIFT := 34.0
 
 const COMBO_WINDOW := 2.5   # 连击有效窗口（秒）
@@ -44,13 +41,13 @@ var _fps                   # FPS 计数器（默认隐藏）
 
 func _ready() -> void:
 	layer = 20
+	visible = false   # 标题页期间整层隐藏，run_started（_show_pause）再亮，回标题再灭
 
 	# 顺序即绘制顺序，也决定触摸优先级：按钮最后加 → 永远压在最上面。
 	_top = HudTopScript.new()
 	add_child(_top)
 
-	# 羁绊进度条：战斗中常驻显示"本命 3/6 还差几件"。它自己每 0.25s 拉一次数据，
-	# 本文件只需要把它的跨档通知转给横幅（规则全在 HudSynergy 里）。
+	# 羁绊进度条：常驻"本命 3/6 还差几件"，自己每 0.25s 拉数据；本文件只转发跨档通知
 	_syn = HudSynergyScript.new()
 	add_child(_syn)
 	_syn.tier_up.connect(_on_syn_tier_up)
@@ -89,6 +86,7 @@ func _ready() -> void:
 	Events.run_started.connect(_show_pause)
 	Events.player_died.connect(_hide_pause)
 	Events.run_won.connect(_hide_pause)
+	Events.quit_to_title_requested.connect(_hide_pause)
 	Events.run_paused.connect(_on_run_paused)
 	Events.xp_changed.connect(_on_xp)
 	Events.level_up.connect(_on_level_up)
@@ -261,9 +259,11 @@ func _on_unlocked(key: String) -> void:
 	_banners.queue_unlock(key)
 
 func _show_pause() -> void:
+	visible = true          # 开跑才亮：标题页/选武器页期间 HUD 整层隐藏（透底事故）
 	_top.set_pause_visible(true)
 
 func _hide_pause() -> void:
+	visible = false
 	_top.set_pause_visible(false)
 
 func _on_run_paused(paused: bool) -> void:

@@ -12,6 +12,12 @@
 2. 关键设置读回校验
    用 Godot 真正跑一遍把值读回来比对。只看文件不算数，必须看运行时。
 
+3. 导出预设校验（export_presets.cfg）
+   同一套静默失效风险，多一个致命点：html/canvas_resize_policy 设成 1（Project）时
+   画布 backing 恒为 540x900、而 CSS 尺寸写 540/DPR —— DPR=3 的手机上整个游戏缩成
+   180x300 的小方块（用户反馈"连屏幕都填不满 + 文字看不清"就是它）。
+   这一项不跑 Godot 也能查，所以走纯文本比对。
+
 用法：python3 scripts/cfg_guard.py
 """
 import os
@@ -35,6 +41,14 @@ EXPECT = {
     "display/window/size/viewport_height": "900",
     "input_devices/pointing/emulate_mouse_from_touch": "true",  # 手机点不动
     "rendering/renderer/rendering_method": "gl_compatibility",  # Web 兼容
+}
+
+# 导出预设里必须等于的值（Web 上线配置，错了就是真机可见事故）
+EXPORT_EXPECT = {
+    # 见文件里那段 ASCII 注释：1=Project 会让 DPR>1 的手机把画布缩成一角。
+    "html/canvas_resize_policy": "2",
+    "html/focus_canvas_on_start": "true",     # 手机上第一次点按不被吞
+    "vram_texture_compression/for_mobile": "false",  # Web 走 GL，压缩纹理没必要且更慢
 }
 
 SECTION = re.compile(r"^\[([^\]]+)\]\s*$")
@@ -68,6 +82,29 @@ def scan_comment_pollution(path):
                 risky.append((i, section, key))
             prev_cjk = False
     return bad_keys, risky
+
+
+def check_export_presets(path):
+    """export_presets.cfg：同 project.godot 一样的注释污染风险 + 关键值比对。"""
+    if not os.path.exists(path):
+        return ["缺少 export_presets.cfg"]
+    bad_keys, _risky = scan_comment_pollution(path)
+    errs = ["键名被注释污染: %s" % k[-40:] for _i, _s, k in bad_keys]
+    want = dict(EXPORT_EXPECT)
+    for line in open(path, encoding="utf-8"):
+        s = line.strip()
+        m = KV.match(s)
+        if not m:
+            continue
+        k = m.group(1)
+        if k in want:
+            v = s.split("=", 1)[1].strip().strip('"')
+            if v != want[k]:
+                errs.append("%s = %s（应为 %s）" % (k, v, want[k]))
+            del want[k]
+    for k in want:
+        errs.append("%s 缺失（应为 %s）" % (k, want[k]))
+    return errs
 
 
 def main() -> int:
@@ -105,6 +142,15 @@ def main() -> int:
         print("     文件里写了但实际没生效 —— 多半又是注释污染，或键名拼错。")
         return 1
     print("  ✅ %d 个关键设置运行时读回全部正确（无注释污染）" % len(EXPECT))
+
+    exp = os.path.join(ROOT, "export_presets.cfg")
+    errs = check_export_presets(exp)
+    if errs:
+        print("  ❌ export_presets.cfg：")
+        for e in errs:
+            print("     - " + e)
+        return 1
+    print("  ✅ %d 项导出预设正确（canvas_resize_policy=2 着重守）" % len(EXPORT_EXPECT))
     return 0
 
 

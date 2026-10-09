@@ -17,12 +17,12 @@ const _DIM := Color(0.60, 0.46, 0.22, 0.85)
 
 var char_key := ""
 
-func setup(key: String, w: float) -> void:
+func setup(key: String, w: float, h: float) -> void:
 	char_key = key
 	flat = true
 	focus_mode = Control.FOCUS_NONE
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	custom_minimum_size = Vector2(w, CARD_H)
+	custom_minimum_size = Vector2(w, h)
 	var entry: Dictionary = Data.character(key)
 	var accent := Color(str(entry.get("color", "#ffffff")))
 	# 子节点容器（图标 + 名字）：必须 IGNORE，否则吃掉点击、按钮收不到 pressed
@@ -35,14 +35,16 @@ func setup(key: String, w: float) -> void:
 	var ico := TextureRect.new()
 	ico.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	ico.custom_minimum_size = Vector2(w, 64.0)
+	ico.custom_minimum_size = Vector2(w, 64.0 * h / CARD_H)
 	ico.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if tex != null:
 		ico.texture = tex
 	vb.add_child(ico)
 	var nm := Label.new()
 	nm.text = I18n.pick(entry)
-	nm.add_theme_font_size_override("font_size", 15)
+	nm.add_theme_font_size_override("font_size", 14)
+	# 卡片随网格缩放后只有 ~66px 宽：超宽名字截断成省略号，绝不溢出压到隔壁名字上
+	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(nm)

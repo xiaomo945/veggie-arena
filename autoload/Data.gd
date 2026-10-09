@@ -80,12 +80,13 @@ func arena() -> Dictionary:
 			"w": float(l.get("w", a.get("w", 540))),
 			"h": float(l.get("h", a.get("h", 900))),
 		}
-	return {
+	var r := {
 		"x": float(a.get("x", 0)),
 		"y": float(a.get("y", 0)),
 		"w": float(a.get("w", 540)),
 		"h": float(a.get("h", 900)),
 	}
+	return r
 
 func player_cfg() -> Dictionary:
 	return balance.get("player", {})

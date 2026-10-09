@@ -84,14 +84,14 @@ func _build() -> void:
 	_sub_lbl = sub
 	_box.add_child(sub)
 
-	var tag := _mk_label(16, Color(0.70, 0.74, 0.80))
+	var tag := _mk_label(21, Color(0.70, 0.74, 0.80))
 	tag.text = I18n.t("title_tag")
 	_tag_lbl = tag
 	_box.add_child(tag)
 
 	# 历史最佳：给玩家一个"再来一局"的具体理由
 	var bs0 := SaveMgr.best_score()
-	var best := _mk_label(14, Color(0.95, 0.82, 0.38))
+	var best := _mk_label(18, Color(0.95, 0.82, 0.38))
 	best.text = (I18n.t("title_best") % [bs0, SaveMgr.best_wave()]) if bs0 > 0 else I18n.t("title_first")
 	_best_lbl = best
 	_box.add_child(best)
@@ -103,7 +103,7 @@ func _build() -> void:
 	modes.custom_minimum_size = (modes.get("content_size") as Vector2)
 	modes.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
-	var how := _mk_label(17, Color(0.82, 0.85, 0.90))
+	var how := _mk_label(22, Color(0.82, 0.85, 0.90))
 	how.text = I18n.t("title_how")
 	_how_lbl = how
 	_box.add_child(how)
@@ -122,7 +122,7 @@ func _build() -> void:
 	_char_detail.picked.connect(_on_char_picked)
 
 	# 开局前把这条 build 摊开给玩家看（卡片网格本身够直白，阶梯才是要读的信息）
-	var pick_hint := _mk_label(10, Color(0.60, 0.64, 0.72))
+	var pick_hint := _mk_label(16, Color(0.60, 0.64, 0.72))
 	pick_hint.text = CharTiers.full(Data.character(GameState.character))
 	# 英文下阶梯能超一屏宽，必须 autowrap 自由折行
 	pick_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -149,7 +149,7 @@ func _build() -> void:
 	_box.add_child(btn)
 
 	# "下一把解锁"提示：START 之下
-	var next := _mk_label(13, Color(0.66, 0.70, 0.78))
+	var next := _mk_label(17, Color(0.66, 0.70, 0.78))
 	next.text = _next_text()
 	# 没有目标就不留空行（全解锁后）
 	next.visible = not next.text.is_empty()
@@ -194,7 +194,7 @@ func _build_route() -> void:
 	btn.text = UnlockText.btn_route(I18n.locale)
 	btn.set_position(Vector2(402.0, 26.0))
 	btn.set_size(Vector2(124.0, 38.0))
-	btn.add_theme_font_size_override("font_size", 15)
+	btn.add_theme_font_size_override("font_size", 17)
 	Art.style_button(btn, Color(0.22, 0.16, 0.09, 0.92), Color(0.98, 0.86, 0.42), Color(0.62, 0.50, 0.20))
 	btn.pressed.connect(_on_route)
 	_root.add_child(btn)

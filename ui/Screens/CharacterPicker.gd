@@ -76,7 +76,7 @@ func _build() -> void:
 
 func _add_card(key: String) -> void:
 	var card = CharacterCardScript.new()
-	card.setup(key, _cw)
+	card.setup(key, _cw, CARD_H * _k)
 	card.pressed.connect(_on_card.bind(key))
 	_grid.add_child(card)
 	_cards[key] = card
