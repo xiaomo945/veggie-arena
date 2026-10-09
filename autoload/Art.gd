@@ -36,11 +36,49 @@ func sprite(name: String) -> Texture2D:
 	return _cached_load(sprite_path(name))
 
 static func icon(name: String) -> Texture2D:
-	return _cached_load(icon_path(name))
+	return _icon_tex(ICON_PREFIX + normalize(name), icon_path(name))
 
 # 只查不加载（没那张图时避免一次无用的 load）
 func has_sprite(name: String) -> bool:
 	return FileAccess.file_exists(sprite_path(name))
+
+# ---- 图集（art/atlas.png + atlas.json）：全部 UI 图标合进一张纹理 ----
+# 为什么：商店/卡片页一帧要画几十个图标，60 张零散纹理就是 60 次纹理绑定切换
+# （Web 端 draw call 的前置开销）。合并后共享一次绑定。图标源文件已删，
+# 图集是唯一来源；清单键与寻名规则一致（icon_<name> / ui/icon_<name>）。
+# 每个区域只存"裁掉透明边的内容"，margin 复原原始画布 —— 画出来与原图逐像素等价。
+static var _atlas_tex: Texture2D = null
+static var _atlas_map: Dictionary = {}
+static var _atlas_ok := false
+static var _atlas_tried := false
+
+static func _atlas_region_tex(key: String) -> Texture2D:
+	if not _atlas_tried:
+		_atlas_tried = true
+		var f := FileAccess.open("res://art/atlas.json", FileAccess.READ)
+		if f != null:
+			var j := JSON.new()
+			if j.parse(f.get_as_text()) == OK and j.data is Dictionary:
+				_atlas_map = (j.data as Dictionary).get("rects", {})
+				_atlas_tex = _cached_load("res://art/atlas.png")
+				_atlas_ok = _atlas_tex != null and not _atlas_map.is_empty()
+	if not _atlas_ok or not _atlas_map.has(key):
+		return null
+	var ck := "atlas::" + key
+	if _cache.has(ck):
+		return _cache[ck] as Texture2D
+	var v: Array = _atlas_map[key]
+	var at := AtlasTexture.new()
+	at.atlas = _atlas_tex
+	at.region = Rect2(float(v[0]), float(v[1]), float(v[2]), float(v[3]))
+	at.margin = Rect2(float(v[4]), float(v[5]), float(v[6]), float(v[7]))
+	_cache[ck] = at
+	return at
+
+# 图标统一入口：先查图集（单纹理绑定），查不到再退单文件（加新图标忘重建图集时兜底）
+static func _icon_tex(key: String, path: String) -> Texture2D:
+	var t := _atlas_region_tex(key)
+	return t if t != null else _cached_load(path)
 
 func has_icon(name: String) -> bool:
 	return FileAccess.file_exists(icon_path(name))
@@ -52,7 +90,7 @@ static func ui_icon_path(name: String) -> String:
 	return UI_DIR + ICON_PREFIX + normalize(name) + EXT
 
 func ui_icon(name: String) -> Texture2D:
-	return _cached_load(ui_icon_path(name))
+	return _icon_tex("ui/" + ICON_PREFIX + normalize(name), ui_icon_path(name))
 
 func has_ui_icon(name: String) -> bool:
 	return FileAccess.file_exists(ui_icon_path(name))
@@ -140,6 +178,10 @@ static func _append_arc(pts: PackedVector2Array, center: Vector2, rx: float, ry:
 # 换皮 / 热重载贴图时用：清掉缓存，下一次访问重新读磁盘
 func clear_cache() -> void:
 	_cache.clear()
+	_atlas_tex = null
+	_atlas_map = {}
+	_atlas_ok = false
+	_atlas_tried = false
 	_coin_tex = null
 
 func cached_count() -> int:

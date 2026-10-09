@@ -107,6 +107,19 @@ else
 fi
 
 echo ""
+echo "=== 1.68 图集一致性（图标合并进 atlas.png 后的唯一来源校验）==="
+# 散图已删，atlas.png + atlas.json 是全部 UI 图标的唯一来源：
+# 清单漏键 / 区域为空 / 新加武器没图标，这里直接红。
+if [ -f scripts/build_atlas.py ]; then
+  PYA=$(command -v python3.11 || command -v python3)
+  if ! "$PYA" scripts/build_atlas.py --verify; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/build_atlas.py，跳过"
+fi
+
+echo ""
 echo "=== 1.7 架构守卫（硬失败：存量只降不升，新增违规一律拦下）==="
 # 规则见 scripts/arch_guard.py：R1 单文件行数 / R2 core 层纯度 / R3 跨模块读私有字段。
 # 存量违规登记为基线（棘轮），所以今天就能硬生效，不必先重构完历史代码。
