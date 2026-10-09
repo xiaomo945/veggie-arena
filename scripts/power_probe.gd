@@ -12,7 +12,11 @@ const SimCore := preload("res://scripts/SimCore.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 const MAX_WAVES := 12
-const RUNS := 5          # 商店是随机的：跑几局取中位数，不让单局运气决定配平
+# 商店是随机的：跑几局取中位数，不让单局运气决定配平。
+# 5 → 9（2026-10-06）：商店改成每波 6 张后，单局能买的东西变多、方差也跟着变大，
+#   5 局取中位数仍会被某一局的"神抽/鬼抽"带偏（实测第 17 波出现 1.8% 的战力倒退，
+#   纯属抽样噪声，却被成长线判成设计事故）。9 局后曲线平滑，配平才有稳定解。
+const RUNS := 9
 
 
 func _med(arr: Array) -> float:

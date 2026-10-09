@@ -74,7 +74,7 @@ func run(arg = null) -> Dictionary:
 	#     tier_floor 漏配一档只会静默返回 0，不会报错 —— 但那意味着"高级武器可能比
 	#     低级还便宜"，是会一路糊到玩家脸上的错。这里把三张表全扫一遍。
 	var mt := st.max_tier()
-	chk(mt >= 10, "档位上限 %d（经济改造后 10 档）" % mt)
+	chk(mt >= 20, "档位上限 %d（2026-10-06 起放到 20 档，配合 shop.max_lv=20）" % mt)
 	var no_floor := []
 	for L in range(1, mt + 1):
 		if st.tier_floor(L) <= 0:

@@ -19,11 +19,16 @@ static func is_big(wave: int, cfg: Dictionary) -> bool:
 	var every := maxi(1, int(cfg.get("big_every", 3)))
 	return wave <= 1 or wave % every == 0
 
-# 本波开几张卡
-static func offer_count(wave: int, cfg: Dictionary) -> int:
-	if is_big(wave, cfg):
-		return maxi(1, int(cfg.get("big_offer_count", 6)))
-	return maxi(1, int(cfg.get("small_offer_count", 4)))
+# 本波开几张卡。
+#
+# ⚠️ 硬性产品约束（用户 2026-10-06 拍板）：【每一波都必须刷满 6 张，一个空位都不许留】。
+#   旧设计"小商店只开 4 张（快速选完回战斗）"翻车了：卡片区是 3 列网格，4 张 = 第 2 行
+#   只有 1 张卡 + 2 个空格，玩家看到的就是「商店坏了 / 道具刷不出来了」，还以为是
+#   武器等级太高把货架卡住了（其实和等级毫无关系，纯粹是卡数少）。
+#   现在大小商店一律 6 张 —— 网格永远铺满；大商店的额外好处改成【全场打折】。
+#   ⚠️ small_offer_count 已废弃（从 data/balance.json 里删掉了）：加回来也是死配置。
+static func offer_count(_wave: int, cfg: Dictionary) -> int:
+	return maxi(1, int(cfg.get("big_offer_count", 6)))
 
 # 本波的额外折扣（大商店才打折，与玩家自己的 shop_discount 叠加）
 static func discount(wave: int, cfg: Dictionary) -> float:

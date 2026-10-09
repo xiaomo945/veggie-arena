@@ -2,7 +2,7 @@
   "grunt": {
     "zh": "小兵",
     "hp_base": 14.2,
-    "hp_per_wave": 11.1800,
+    "hp_per_wave": 11.18,
     "speed_base": 150,
     "speed_per_wave": 0.5,
     "dmg_base": 4,
@@ -14,12 +14,12 @@
     "tip": "基础蔬菜僵尸",
     "tip_en": "Basic veggie zombie.",
     "gold_per_wave": 1.6,
-    "hp_accel": 0.7590
+    "hp_accel": 1.0626
   },
   "fast": {
     "zh": "冲刺兵",
     "hp_base": 9.5,
-    "hp_per_wave": 7.1960,
+    "hp_per_wave": 7.196,
     "speed_base": 200,
     "speed_per_wave": 2.4,
     "dmg_base": 3,
@@ -31,12 +31,12 @@
     "tip": "直冲过来的快兵",
     "tip_en": "Rushes you down.",
     "gold_per_wave": 1.6,
-    "hp_accel": 0.4884
+    "hp_accel": 0.6838
   },
   "tank": {
     "zh": "重甲兵",
     "hp_base": 48.4,
-    "hp_per_wave": 26.0920,
+    "hp_per_wave": 26.092,
     "speed_base": 65,
     "speed_per_wave": 1.12,
     "dmg_base": 9,
@@ -48,12 +48,12 @@
     "tip": "厚实耐揍的蔬菜墙",
     "tip_en": "A tanky wall of veg.",
     "gold_per_wave": 4.0,
-    "hp_accel": 1.7688
+    "hp_accel": 2.4763
   },
   "fly": {
     "zh": "飞虫",
     "hp_base": 7.6,
-    "hp_per_wave": 6.5560,
+    "hp_per_wave": 6.556,
     "speed_base": 190,
     "speed_per_wave": 2.7,
     "dmg_base": 3,
@@ -66,7 +66,7 @@
     "tip_en": "Buzzes around the field.",
     "flight": true,
     "gold_per_wave": 2.4,
-    "hp_accel": 0.4444
+    "hp_accel": 0.6222
   },
   "boss": {
     "zh": "首领",
@@ -83,12 +83,12 @@
     "tip": "主厨首领",
     "tip_en": "The head chef boss.",
     "gold_per_wave": 32.0,
-    "hp_accel": 3.564
+    "hp_accel": 4.9896
   },
   "swarm": {
     "zh": "虫群",
     "hp_base": 4.8,
-    "hp_per_wave": 3.8520,
+    "hp_per_wave": 3.852,
     "speed_base": 185,
     "speed_per_wave": 2.25,
     "dmg_base": 2,
@@ -100,12 +100,12 @@
     "tip": "成群结队涌来",
     "tip_en": "Swarms in numbers.",
     "gold_per_wave": 0.8,
-    "hp_accel": 0.2618
+    "hp_accel": 0.3665
   },
   "brute": {
     "zh": "蛮兵",
     "hp_base": 81.7,
-    "hp_per_wave": 35.9820,
+    "hp_per_wave": 35.982,
     "speed_base": 48,
     "speed_per_wave": 0.81,
     "dmg_base": 12,
@@ -117,12 +117,12 @@
     "tip": "大开大合的蛮兵",
     "tip_en": "A heavy-hitting brute.",
     "gold_per_wave": 6.4,
-    "hp_accel": 2.4398
+    "hp_accel": 3.4157
   },
   "shambler": {
     "zh": "蹒跚者",
     "hp_base": 61.8,
-    "hp_per_wave": 28.9180,
+    "hp_per_wave": 28.918,
     "speed_base": 40,
     "speed_per_wave": 0.68,
     "dmg_base": 8,
@@ -134,12 +134,12 @@
     "tip": "慢吞吞却顽固",
     "tip_en": "Slow but stubborn.",
     "gold_per_wave": 4.8,
-    "hp_accel": 1.9602
+    "hp_accel": 2.7443
   },
   "shooter": {
     "zh": "炮手",
     "hp_base": 20.9,
-    "hp_per_wave": 11.5680,
+    "hp_per_wave": 11.568,
     "speed_base": 105,
     "speed_per_wave": 0.9,
     "dmg_base": 5,
@@ -152,12 +152,12 @@
     "tip_en": "Keeps distance, fires bolts.",
     "behavior": "shooter",
     "gold_per_wave": 2.4,
-    "hp_accel": 0.7832
+    "hp_accel": 1.0965
   },
   "charger": {
     "zh": "猛冲兵",
     "hp_base": 28.5,
-    "hp_per_wave": 15.4200,
+    "hp_per_wave": 15.42,
     "speed_base": 120,
     "speed_per_wave": 1.35,
     "dmg_base": 6,
@@ -170,12 +170,12 @@
     "tip_en": "Winds up, then rushes you down.",
     "behavior": "charger",
     "gold_per_wave": 2.4,
-    "hp_accel": 1.0450
+    "hp_accel": 1.463
   },
   "splitter": {
     "zh": "分裂怪",
     "hp_base": 26.6,
-    "hp_per_wave": 14.1280,
+    "hp_per_wave": 14.128,
     "speed_base": 130,
     "speed_per_wave": 1.35,
     "dmg_base": 5,
@@ -188,12 +188,12 @@
     "tip_en": "Splits into two on death.",
     "behavior": "splitter",
     "gold_per_wave": 2.4,
-    "hp_accel": 0.9592
+    "hp_accel": 1.3429
   },
   "bomber": {
     "zh": "自爆菌",
     "hp_base": 13.3,
-    "hp_per_wave": 7.7040,
+    "hp_per_wave": 7.704,
     "speed_base": 175,
     "speed_per_wave": 2.25,
     "dmg_base": 4,
@@ -206,12 +206,12 @@
     "tip_en": "Rushes in and blows up on contact.",
     "behavior": "bomber",
     "gold_per_wave": 1.6,
-    "hp_accel": 0.5236
+    "hp_accel": 0.733
   },
   "splitling": {
     "zh": "分裂芽",
     "hp_base": 5.7,
-    "hp_per_wave": 3.8520,
+    "hp_per_wave": 3.852,
     "speed_base": 150,
     "speed_per_wave": 1.8,
     "dmg_base": 2,
@@ -223,6 +223,6 @@
     "tip": "分裂出来的弱小芽",
     "tip_en": "A weak offshoot.",
     "gold_per_wave": 0.8,
-    "hp_accel": 0.2618
+    "hp_accel": 0.3665
   }
 }

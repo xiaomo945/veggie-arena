@@ -4,7 +4,8 @@ extends RefCounted
 # 两者都不依赖场景树/autoload，可以直接在 --script 模式下跑。
 #
 # 要保的事：
-#   1) 大商店每 3 波一次（含第 1 波），卡更多 + 有折扣；小商店只有 2 张且无折扣。
+#   1) 大商店每 3 波一次（含第 1 波），有折扣；小商店无折扣。
+#      ⚠️ 卡数【不再】区分大小商店：每一波都固定 6 张（用户硬要求：不留空位）。
 #   2) 整店刷新保留锁定项，且不会刷出与保留项重复的卡。
 #   3) 单张刷新只换那一张，且不会与店里其它卡重复（否则同店两张一模一样很出戏）。
 #   4) 卡片右上角的"锁/单刷"按钮在【最矮的卡】（大商店 6 张，约 68px）里也不溢出、
@@ -12,6 +13,7 @@ extends RefCounted
 
 const ShopPlan := preload("res://core/ShopPlan.gd")
 const Ctl := preload("res://ui/Shop/ShopCardCtl.gd")
+const Economy := preload("res://core/Economy.gd")
 
 var _p := 0
 var _f := 0
@@ -45,12 +47,20 @@ func run(_data) -> Dictionary:
 		"第 1/3/6 波是大商店")
 	chk(not ShopPlan.is_big(2, CFG) and not ShopPlan.is_big(4, CFG) and not ShopPlan.is_big(5, CFG),
 		"第 2/4/5 波是小商店")
-	chk(ShopPlan.offer_count(1, CFG) == 6 and ShopPlan.offer_count(2, CFG) == 4,
-		"大商店 6 张 / 小商店 4 张")
+	chk(ShopPlan.offer_count(1, CFG) == 6 and ShopPlan.offer_count(2, CFG) == 6,
+		"大 / 小商店都是 6 张（每一波刷满，不许留空位）")
+	var not6 := []
+	for w in range(1, 21):
+		if ShopPlan.offer_count(w, CFG) != 6:
+			not6.append(w)
+	chk(not6.is_empty(), "第 1~20 波每一波都是 6 张（异常波次：%s）" % str(not6))
+	# 旧配置里的 small_offer_count 是已删掉的死键：留着也不能把卡数改回去
+	chk(ShopPlan.offer_count(2, {"small_offer_count": 2, "big_offer_count": 6}) == 6,
+		"废弃的 small_offer_count 不再生效")
 	chk(absf(ShopPlan.discount(3, CFG) - 0.15) < 0.0001 and ShopPlan.discount(2, CFG) == 0.0,
 		"只有大商店打折 15%")
-	chk(ShopPlan.offer_count(1, {}) == 6 and ShopPlan.offer_count(2, {}) == 4,
-		"缺配置时回落默认值（大 6 / 小 4）")
+	chk(ShopPlan.offer_count(1, {}) == 6 and ShopPlan.offer_count(2, {}) == 6,
+		"缺配置时回落默认值 6 张")
 
 	# --- Q6：单张刷新的价格约为整店刷新的一半 ---
 	chk(ShopPlan.single_reroll_cost(0, CFG) == 2, "首次单张刷新 2 金（整店 3 的一半向上取整）")
@@ -114,5 +124,40 @@ func run(_data) -> Dictionary:
 	chk((ts[0] as Rect2).position.y >= 34.0, "常规布局按钮让开 Lv 角标")
 	chk((ts[1] as Rect2).position.y + (ts[1] as Rect2).size.y <= tall.y - 2.0,
 		"常规布局按钮不溢出卡片底部")
+
+	# --- 真实数据守卫：每一波刷满 6 张、不许有空位（用户 2026-10-06 硬要求）---
+	#   场景刻意取"最难刷满"的：6 个槽全满 + 手里全是 Lv7 的高级武器 —— 这正是玩家
+	#   反馈"只刷出 4 个道具、剩下两个空白"时的局面。
+	if _data != null:
+		var cfg: Dictionary = _data.shop_cfg()
+		var bad := []
+		for w in range(1, 21):
+			if ShopPlan.offer_count(w, cfg) != 6:
+				bad.append(w)
+		chk(bad.is_empty(), "真实配置下第 1~20 波都是 6 张（异常波次：%s）" % str(bad))
+		var spares := 0
+		for k in _data.upgrade_keys():
+			if bool(_data.upgrade(k).get("spare", false)):
+				spares += 1
+		chk(spares >= 4, "备用道具至少 4 条（实测 %d 条）—— 池子抽干时靠它们补位" % spares)
+		var held: Array = []
+		for i in int(cfg.get("max_slot", 6)):
+			held.append({"key": "pistol", "lv": 7})
+		var rng2 := RandomNumberGenerator.new()
+		var short_waves := []
+		var holes := []
+		for w in range(1, 21):
+			rng2.seed = 2000 + w
+			var pool := Economy.build_pool(held, _data.weapons, _data.upgrades,
+				int(cfg.get("max_slot", 6)), int(cfg.get("max_lv", 10)), [], 0.0, w,
+				float(cfg.get("price_inflation", 0.0)))
+			var of := Economy.roll_offers(pool, ShopPlan.offer_count(w, cfg), rng2, 999999)
+			if of.size() != 6:
+				short_waves.append("第%d波%d张" % [w, of.size()])
+			for o in of:
+				if not (o is Dictionary):
+					holes.append(w)
+		chk(short_waves.is_empty(), "满槽 + 满手高级武器时每波仍刷满 6 张（异常：%s）" % str(short_waves))
+		chk(holes.is_empty(), "刷出来的每一张都是合法商品（没有空卡位）")
 
 	return {"pass": _p, "fail": _f, "failures": _failures}

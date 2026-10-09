@@ -47,9 +47,37 @@ func run() -> Dictionary:
 			dup = true
 		seen[o] = true
 	chk(not dup, "4 个商品互不重复")
-	# 池子不够时不会崩
+	# 4b) 绝不留空位（用户硬要求：每一波必须刷满 6 张，一个空格都不许有）
+	#   旧代码在池子抽干时直接 return（返回 <count 个），Shop.gd 却照着卡数铺卡片，
+	#   于是货架上出现空卡 —— 玩家反馈"只刷出 4 个道具，剩下两个是空白"。
+	#   现在由"备用道具"（spare:true，data/upgrades.json 里那几条）兜底补位。
+	var spares: Array = []
+	for i in 5:
+		spares.append({"kind": "upgrade", "key": "sp%d" % i, "weight": 0.01, "spare": true})
+	var thin: Array = [{"kind": "upgrade", "key": "only", "weight": 3.0}]
+	thin.append_array(spares)
+	var padded := Economy.roll_offers(thin, 6, rng)
+	chk(padded.size() == 6, "池子只有 1 件正常道具时仍刷满 6 张（实测 %d）" % padded.size())
+	var pad_spare := 0
+	for o in padded:
+		if o is Dictionary and bool(o.get("spare", false)):
+			pad_spare += 1
+	chk(pad_spare == 5, "缺的 5 个位子由备用道具补上（实际 %d）" % pad_spare)
+	# 池子够用时备用道具【不】上架，不能稀释正常出货
+	var rich_pool: Array = []
+	for i in 30:
+		rich_pool.append({"kind": "upgrade", "key": "u%d" % i, "weight": 3.0})
+	rich_pool.append_array(spares)
+	var no_spare := Economy.roll_offers(rich_pool, 6, rng)
+	var leaked := false
+	for o in no_spare:
+		if o is Dictionary and bool(o.get("spare", false)):
+			leaked = true
+	chk(no_spare.size() == 6 and not leaked, "池子够用时备用道具不上架（实测 %d 张 / 泄漏 %s）"
+		% [no_spare.size(), str(leaked)])
+	# 连备用道具都没有的极端情况：兜底重抽已有的卡，宁可重一张也不留空格
 	var small := Economy.roll_offers(["x"], 4, rng)
-	chk(small.size() == 1, "池子只有 1 个时只出 1 个（不崩溃）")
+	chk(small.size() == 4, "池子只有 1 个且无备用道具时也不留空位（实测 %d）" % small.size())
 
 	# 5) 商品池构造
 	var weapon_defs := {

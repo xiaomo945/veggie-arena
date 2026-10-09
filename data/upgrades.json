@@ -1585,5 +1585,53 @@
     "tip_en": "Cast your signature skill more often.",
     "cat": "skill",
     "rarity": 2
+  },
+  "spare_heal": {
+    "zh": "备用·番茄急救",
+    "en": "Spare: Tomato Aid",
+    "stat": "heal_now",
+    "value": 60,
+    "cost": 12,
+    "tip": "立刻回一口血（重复可买）",
+    "tip_en": "Instant heal (buy again anytime).",
+    "cat": "passive",
+    "rarity": 1,
+    "spare": true
+  },
+  "spare_hp": {
+    "zh": "备用·保鲜餐盒",
+    "en": "Spare: Lunch Box",
+    "stat": "max_hp",
+    "value": 12,
+    "cost": 12,
+    "tip": "血上限 +12，并立刻补满这 12 点",
+    "tip_en": "+12 max HP, refilled right away.",
+    "cat": "passive",
+    "rarity": 1,
+    "spare": true
+  },
+  "spare_arm": {
+    "zh": "备用·菜板护甲",
+    "en": "Spare: Cutting Board",
+    "stat": "armor",
+    "value": 2,
+    "cost": 14,
+    "tip": "每次被撞到的伤害 -2",
+    "tip_en": "-2 damage per hit taken.",
+    "cat": "passive",
+    "rarity": 1,
+    "spare": true
+  },
+  "spare_gold": {
+    "zh": "备用·储蓄罐",
+    "en": "Spare: Piggy Bank",
+    "stat": "gold_pct",
+    "value": 0.08,
+    "cost": 14,
+    "tip": "金币收入 +8%",
+    "tip_en": "+8% gold income.",
+    "cat": "passive",
+    "rarity": 1,
+    "spare": true
   }
 }

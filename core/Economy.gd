@@ -37,7 +37,11 @@ static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator, gol
 	var weapons := []
 	var others := []
 	var partners := []   # 合成搭档：买下去能直接跟已持有武器凑成对（同 key 同等级）
+	var spares := []     # 备用道具：主池抽干时兜底补位（见下方"绝不留空位"）
 	for it in pool:
+		if it is Dictionary and bool(it.get("spare", false)):
+			spares.append(it)
+			continue
 		if it is Dictionary and str(it.get("kind", "")) == "weapon":
 			weapons.append(it)
 			if it.get("merge_partner", false):
@@ -83,6 +87,19 @@ static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator, gol
 		var pick: Variant = _weighted_pick(rest, rng)
 		out.append(pick)
 		rest.erase(pick)
+	# 绝不留空位（用户硬要求：每一波必须刷满 6 个，一个空格都不许有）：
+	#   旧代码到这里就 return 了 —— 池子抽干时返回 count 以内的任意个数，
+	#   Shop.gd 却照着 _card_count 去铺卡片，于是货架上出现空卡片（玩家反馈
+	#   "刷出来只有 4 个道具，剩下两个是空白"，一度被误以为是武器等级太高）。
+	#   补位顺序：① 备用道具（data/upgrades.json 里 spare:true 的那几条，
+	#   刻意做得"有用但不强"，不会变成必买卡）→ ② 连备用道具都不够时重复已有的卡
+	#   （理论上到不了这一步：真实池子含 60+ 件道具，备用道具有 4 条）。
+	for sp in spares:
+		if out.size() >= count:
+			break
+		out.append(sp)
+	while out.size() < count and out.size() > 0:
+		out.append(out[rng.randi() % out.size()])
 	return out
 
 # 保底搭档的排序键：买得起的优先（其中等级越高越好）；全都买不起时给最便宜的那张。
@@ -113,6 +130,8 @@ static func _weighted_pick(items: Array, rng: RandomNumberGenerator) -> Variant:
 const RARITY_WEIGHT := {1: 6.0, 2: 3.0, 3: 1.0}
 # 武器与道具的相对权重：武器要凑满 6 个槽位，不能让 48 个道具把它淹掉
 const WEAPON_WEIGHT := 4.0
+# 备用道具（spare）的权重：只在主池抽干时兜底补位，正常抽卡几乎抽不到它
+const SPARE_WEIGHT := 0.01
 
 const ShopTiers := preload("res://core/ShopTiers.gd")
 
@@ -166,7 +185,9 @@ static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Di
 			continue
 		u["key"] = key
 		u["kind"] = "upgrade"
-		u["weight"] = RARITY_WEIGHT.get(rar, 3.0)
+		# 备用道具不参与正常抽卡（roll_offers 会单独挑出来兜底），权重压到接近 0：
+		# 万一哪天被并进主池，也不会污染正常出货率。
+		u["weight"] = SPARE_WEIGHT if bool(u.get("spare", false)) else RARITY_WEIGHT.get(rar, 3.0)
 		u["cost"] = price_of(int(u.get("cost", 0)), discount_pct, wave, inflation_pct)
 		pool.append(u)
 	return pool

@@ -2,8 +2,8 @@ extends CanvasLayer
 
 # 补给站：波次结束后弹出。手机竖屏单列：顶部金币/属性 → 我的武器(可售) → 购买卡 → 合成/刷新/下一波。
 # 骨架与样式在 ShopPanel.gd（纯 UI）；卡片画法在 ShopCard.gd（哑组件）；本文件只做业务。
-# 节奏（core/ShopPlan.gd）：每 big_every 波开一次"大商店"（卡多 + 打折），其余波次只有
-# 2 张卡快速选完；单卡可锁定（整店刷新时保留）/ 单独刷新（半价只换这一张）。
+# 节奏（core/ShopPlan.gd）：每 big_every 波开一次"大商店"（全场打折），其余波次不打折。
+# ⚠️ 卡数不随波次变：每波固定开满 6 张、货架不留空位（用户硬要求）。单卡可锁 / 可单张刷新。
 
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
@@ -27,7 +27,7 @@ var _panel: ShopPanelScript
 var _offers: Array = []
 var _reroll_times := 0
 var _locked: Array = []        # 被锁定的卡位下标（整店刷新时保留）
-var _card_count := 4          # 本场开了几张（大商店 6 / 小商店 2）
+var _card_count := 6          # 本场开了几张（每波固定 6，见 ShopPlan.offer_count）
 var _sold := []
 var _rng := RandomNumberGenerator.new()
 var _max_slot := 6
