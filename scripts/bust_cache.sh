@@ -197,6 +197,29 @@ if FAIL_MARK not in s:
     else:
         print("WARN: 未找到 displayFailureNotice，可关闭卡片注入跳过")
 
+# ---- 6) DPR cap 2: sharp text without paying flagship-DPR(3) fill rate ----
+# allow_hidpi=true makes the canvas backing store = CSS size * devicePixelRatio.
+# A DPR-3 phone would push ~3M px/frame; capping dpr at 2 (~1.3M px) keeps text
+# crisp (2x) at less than half the fill cost. Must run BEFORE the engine boots,
+# so it goes at the top of <head>. Idempotent via DPR-CAP-JS mark.
+DPR_MARK='DPR-CAP-JS'
+if DPR_MARK not in s:
+    dpr = """<script>
+/* DPR-CAP-JS cap devicePixelRatio at 2: crisp text, bounded fill-rate */
+(function () {
+\tvar real = window.devicePixelRatio || 1;
+\tvar capped = Math.min(real, 2);
+\tif (capped !== real) {
+\t\ttry {
+\t\t\tObject.defineProperty(window, 'devicePixelRatio', {
+\t\t\t\tget: function () { return capped; }, configurable: true });
+\t\t} catch (e) { window.devicePixelRatio = capped; }
+\t}
+})();
+</script>
+"""
+    s=s.replace('<head>', '<head>\n' + dpr, 1)
+
 open(p,'w',encoding='utf-8').write(s)
 print("cache-bust -> index.%s （原文件保留兜底 + 移动端手势锁 + 清理旧哈希 + 失败覆盖层可关闭）"%h)
 PY

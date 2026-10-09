@@ -10,7 +10,12 @@ extends SceneTree
 # （1179x2619 像素/帧，填充率直接吃掉帧率），是"怪一多就卡"的 A 类真凶之一。
 #
 # 这个探针只负责输出，判定在 scripts/cfg_guard.py。
+#
+# ⚠️ 键名列表【不要在这里硬编码】：scripts/cfg_guard.py 会用环境变量 CFG_KEYS
+#    传进来。两个列表各写一份必然漂移 —— 刚踩过一次（守卫加了 stretch/aspect，
+#    探针没加，于是读回恒为 MISSING、误报了一轮）。单点维护在 cfg_guard.EXPECT。
 
+# 兜底列表：CFG_KEYS 没传时才用（正常由 cfg_guard.EXPECT 提供）
 const KEYS := [
 	"physics/common/physics_interpolation",
 	"physics/common/physics_ticks_per_second",
@@ -22,6 +27,10 @@ const KEYS := [
 ]
 
 func _initialize() -> void:
-	for k in KEYS:
-		print("CFG %s=%s" % [k, str(ProjectSettings.get_setting(k, "MISSING"))])
+	var keys: Array = KEYS.duplicate()
+	var raw := OS.get_environment("CFG_KEYS")
+	if not raw.is_empty():
+		keys = raw.split(",", false)
+	for k in keys:
+		print("CFG %s=%s" % [str(k), str(ProjectSettings.get_setting(str(k), "MISSING"))])
 	quit()

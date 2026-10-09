@@ -14,6 +14,7 @@ const UnlockTreeScript := preload("res://ui/Screens/UnlockTree.gd")
 const Save := preload("res://core/Save.gd")
 
 var _root: Control
+var _box: VBoxContainer
 var _picker_layer: CanvasLayer
 var _char_detail: CanvasLayer = null   # D3-4：角色详情独立页（layer 55，盖在本标题页之上）
 var _tree: Control = null              # 解锁关系树（layer 54：盖住标题，但低于角色详情 55）
@@ -30,7 +31,10 @@ var _start_btn: Button
 func _ready() -> void:
 	layer = 50
 	_build()
-	ScreenMode.fit_overlay(_root)   # 横屏下把竖屏菜单缩放到 960x540 视口内、居中
+	# 只有横屏才把 540x900 菜单缩放居中；竖屏保持 FULL_RECT —— stretch
+	# aspect=expand 下高瘦手机可视高度 >900，流式容器需要真实可视高度
+	if ScreenMode.is_widescreen():
+		ScreenMode.fit_overlay(_root)
 	Events.run_requested.connect(_on_run_requested)
 	Events.quit_to_title_requested.connect(_on_quit_to_title)
 
@@ -48,85 +52,88 @@ func _build() -> void:
 	# ⚠️ 不再放"点任意处开始"的全屏热区：它会把角色卡之间的空白、误触都当成"开始"，
 	#    在手机上尤其容易跳页（用户反馈"误触返回/乱跳"）。开始只走下方明确的 START 按钮。
 
-	# 游戏名（英文为主，海外玩家一眼看懂）
-	var title := _mk_label(44, Color(0.98, 0.86, 0.32), 172.0, 60.0)
-	title.text = "TURNIP TROUBLE"
-	_root.add_child(title)
+	# ---- 流式纵向布局：所有元素按顺序排进 VBox，物理上不可能互相重叠 ----
+	# 旧版是硬编码 Y 坐标（172/234/308/336/408/482...），文案长度或角色卡行数一变
+	# 就互相叠字（真机截图已翻车）。高瘦手机上 aspect=expand 可视区更高，
+	# VBox 居中排布自然适应任何屏幕比例。
+	_box = VBoxContainer.new()
+	_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_box.offset_top = 72.0     # 顶部让给"解锁路线"按钮，标题从它下面开始
+	_box.offset_bottom = -8.0
+	_box.add_theme_constant_override("separation", 4)
+	_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_root.add_child(_box)
 
 	var star_ico := TextureRect.new()
 	star_ico.texture = Art.ui_icon("star")
 	star_ico.custom_minimum_size = Vector2(28, 28)
-	star_ico.set_size(Vector2(28, 28))
 	star_ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	star_ico.set_position(Vector2(256, 128))
-	_root.add_child(star_ico)
+	star_ico.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_box.add_child(star_ico)
+
+	# 游戏名（英文为主，海外玩家一眼看懂）
+	var title := _mk_label(44, Color(0.98, 0.86, 0.32))
+	title.text = "TURNIP TROUBLE"
+	_box.add_child(title)
 
 	# 中文品牌副标（仅中文环境显示，英文环境留白）
-	var sub := _mk_label(26, Color(0.92, 0.94, 0.96), 234.0, 40.0)
+	var sub := _mk_label(26, Color(0.92, 0.94, 0.96))
 	var sub_txt := I18n.t("title_sub")
 	sub.text = sub_txt
 	sub.visible = not sub_txt.is_empty()
 	_sub_lbl = sub
-	_root.add_child(sub)
+	_box.add_child(sub)
 
-	var tag := _mk_label(16, Color(0.70, 0.74, 0.80), 280.0, 28.0)
+	var tag := _mk_label(16, Color(0.70, 0.74, 0.80))
 	tag.text = I18n.t("title_tag")
 	_tag_lbl = tag
-	_root.add_child(tag)
+	_box.add_child(tag)
 
-	# 历史最佳 + 下一个解锁目标：给玩家一个"再来一局"的具体理由
+	# 历史最佳：给玩家一个"再来一局"的具体理由
 	var bs0 := SaveMgr.best_score()
-	var best := _mk_label(14, Color(0.95, 0.82, 0.38), 308.0, 22.0)
+	var best := _mk_label(14, Color(0.95, 0.82, 0.38))
 	best.text = (I18n.t("title_best") % [bs0, SaveMgr.best_wave()]) if bs0 > 0 else I18n.t("title_first")
 	_best_lbl = best
-	_root.add_child(best)
+	_box.add_child(best)
 
-	var next := _mk_label(13, Color(0.66, 0.70, 0.78), 732.0, 22.0)
-	next.text = _next_text()
-	# 没有目标就不留空行（全解锁后）
-	next.visible = not next.text.is_empty()
-	_next_lbl = next
-	_root.add_child(next)
-
-	var how := _mk_label(17, Color(0.82, 0.85, 0.90), 408.0, 72.0)
-	how.text = I18n.t("title_how")
-	_how_lbl = how
-	_root.add_child(how)
-
-	# 单局时长三选一：放在"玩法说明"之上、角色卡之上 —— 开局前最后能改的一个决定，
-	# 不能埋在 START 底下（埋了就等于没有）。
+	# 单局时长三选一：开局前最后能改的一个决定，不能埋在 START 底下
 	var modes = Control.new()
 	modes.set_script(RunModePickerScript)
-	_root.add_child(modes)
-	modes.set_position(Vector2(0.0, 336.0))
+	_box.add_child(modes)
+	modes.custom_minimum_size = (modes.get("content_size") as Vector2)
+	modes.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
-	# ⚠️ 先 add_child 让 CharacterPicker._ready 算真实宽度（卡数×卡宽）再居中 ——
-	#    写死 4 卡宽会在角色变多时把末尾卡挤出屏幕
+	var how := _mk_label(17, Color(0.82, 0.85, 0.90))
+	how.text = I18n.t("title_how")
+	_how_lbl = how
+	_box.add_child(how)
+
+	# ⚠️ 先 add_child 让 CharacterPicker._ready 算出网格尺寸，再拿它当最小尺寸
+	#    （写死卡数会在角色变多时把末尾卡挤出屏幕）
 	var picker = Control.new()
 	picker.set_script(CharacterPickerScript)
-	_root.add_child(picker)
+	_box.add_child(picker)
+	picker.custom_minimum_size = (picker.get("content_size") as Vector2)
+	picker.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	# D3-4：点角色卡 → 详情独立页（layer 55，必须盖住本页 50，否则点不到）
 	_char_detail = CharDetailScript.new()
 	get_parent().add_child(_char_detail)
 	picker.char_detail_requested.connect(_on_char_detail_requested)
 	_char_detail.picked.connect(_on_char_picked)
-	# 网格底部（用 content_size 而非 size —— fit_overlay 已把 picker 撑成整屏）
-	var p_bottom: float = 530.0 + (picker.get("content_size") as Vector2).y
 
 	# 开局前把这条 build 摊开给玩家看（卡片网格本身够直白，阶梯才是要读的信息）
-	var pick_hint := _mk_label(10, Color(0.60, 0.64, 0.72), 482.0, 48.0)
+	var pick_hint := _mk_label(10, Color(0.60, 0.64, 0.72))
 	pick_hint.text = CharTiers.full(Data.character(GameState.character))
-	# 英文下阶梯能超一屏宽，必须 autowrap 自由折行（留 3 行高刚好填满不溢出）
+	# 英文下阶梯能超一屏宽，必须 autowrap 自由折行
 	pick_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_pick_lbl = pick_hint
-	_root.add_child(pick_hint)
+	_box.add_child(pick_hint)
 	Events.character_changed.connect(_on_character_changed)
 
 	var btn := Button.new()
 	btn.text = I18n.t("title_start")
-	btn.set_size(Vector2(280, 78))
-	# 跟随角色网格底部（网格 2 行时不再被 START 压住）
-	btn.set_position(Vector2((540 - 280) * 0.5, p_bottom + 8.0))
+	btn.custom_minimum_size = Vector2(280, 78)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.add_theme_font_size_override("font_size", 28)
 	btn.add_theme_color_override("font_color", Color(0.07, 0.08, 0.05))
 	var n := StyleBoxFlat.new()
@@ -139,9 +146,15 @@ func _build() -> void:
 	btn.add_theme_stylebox_override("hover", hov)
 	btn.pressed.connect(_on_start)
 	_start_btn = btn
-	_root.add_child(btn)
-	# "下一把解锁"提示挪到 START 之下（同样跟随网格高度）
-	_next_lbl.position.y = p_bottom + 8.0 + 78.0 + 6.0
+	_box.add_child(btn)
+
+	# "下一把解锁"提示：START 之下
+	var next := _mk_label(13, Color(0.66, 0.70, 0.78))
+	next.text = _next_text()
+	# 没有目标就不留空行（全解锁后）
+	next.visible = not next.text.is_empty()
+	_next_lbl = next
+	_box.add_child(next)
 	I18n.locale_changed.connect(_on_locale_changed)
 
 	# 开局选武器页：layer=45，压在 HUD(20) 之上、标题(50)之下
@@ -157,14 +170,12 @@ func _build() -> void:
 # 本页的 Label 清一色是"字号/颜色/居中/整行宽"四件套，抽个工厂省掉一半样板。
 # ⚠️ MOUSE_FILTER_IGNORE 是必须的：文字层在"点任意处开始"热区之上，
 #    默认的 STOP 会把落在标题/简介文字上的那一下吃掉 —— 那片区域将怎么戳都没反应。
-func _mk_label(fs: int, c: Color, y: float, h: float) -> Label:
+func _mk_label(fs: int, c: Color) -> Label:
 	var l := Label.new()
 	l.add_theme_font_size_override("font_size", fs)
 	l.add_theme_color_override("font_color", c)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	l.set_position(Vector2(0.0, y))
-	l.set_size(Vector2(540.0, h))
 	return l
 
 # 解锁关系树：一张图回答"下一个能解锁谁"。layer 54 —— 盖住本页(50)但低于角色

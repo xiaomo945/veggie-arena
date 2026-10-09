@@ -26,7 +26,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXPECT = {
     "physics/common/physics_interpolation": "true",          # judder
     "physics/common/physics_ticks_per_second": "60",
-    "display/window/dpi/allow_hidpi": "false",               # 手机填充率命门
+    # 清晰度优先：文字必须按手机原生分辨率渲染（否则整屏发虚，用户已反馈）。
+    # 代价是填充率上升 —— 由 scripts/bust_cache.sh 的 DPR-CAP-JS 把
+    # devicePixelRatio 封顶到 2 来兜住（比满血 DPR 3 省一半以上像素）。
+    "display/window/dpi/allow_hidpi": "true",
+    "display/window/stretch/aspect": "expand",               # 高瘦手机无黑边
     "display/window/size/viewport_width": "540",             # 竖屏
     "display/window/size/viewport_height": "900",
     "input_devices/pointing/emulate_mouse_from_touch": "true",  # 手机点不动
@@ -80,9 +84,12 @@ def main() -> int:
             print("  ⚠ 第 %d 行 [%s] %s 上方紧邻中文注释" % (i, sec, k))
             print("     （本次键名没被污染，但同样的写法污染过两次，建议改英文注释）")
 
+    # 键名列表单点维护在这里：环境变量传给探针，避免两个列表各写一份漂移
+    env = dict(os.environ)
+    env["CFG_KEYS"] = ",".join(EXPECT.keys())
     out = subprocess.run(
         [GODOT, "--headless", "--path", ROOT, "--script", "res://tests/CfgProbe.gd"],
-        capture_output=True, text=True, timeout=120).stdout
+        capture_output=True, text=True, timeout=120, env=env).stdout
     got = dict(re.findall(r"^CFG (\S+)=(.*)$", out, re.M))
     if not got:
         print("  ❌ 探针没输出（tests/CfgProbe.gd 挂了？）")

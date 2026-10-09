@@ -44,12 +44,11 @@ window/size/viewport_width=540
 window/size/viewport_height=900
 window/handheld/orientation=1
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
-; Phone DPR is usually 2~3: with HiDPI enabled we would push 1179x2619 pixels
-; every frame and fill-rate alone eats the frame budget. At DPR=1 this 2D art
-; looks nearly identical, and it is the single biggest win when enemy count is
-; high (measured: 29fps -> ~60fps on a crowded wave).
-window/dpi/allow_hidpi=false
+window/stretch/aspect="expand"
+; HiDPI is ON: text renders at native phone resolution (blurry-text fix).
+; Fill-rate cost is capped at DPR 2 by the DPR-CAP-JS patch in scripts/bust_cache.sh;
+; combined with the HitSpark pool + physics interpolation this stays within budget.
+window/dpi/allow_hidpi=true
 
 [input_devices]
 

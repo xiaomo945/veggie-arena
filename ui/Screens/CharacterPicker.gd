@@ -26,7 +26,6 @@ const COLS := 7
 # 网格可用高度上限：y=530 起，给下方 START(高 78)+间距+解锁提示留足，必须 ≤ ~256，
 # 否则 START 会掉到 900 设计高以下（之前 13 角色 3 行把 START 顶到 y=912）。
 const PICKER_MAX_H := 250.0
-const PICKER_TOP := 530.0
 
 var _keys: Array = []
 var _grid: GridContainer
@@ -82,12 +81,12 @@ func _add_card(key: String) -> void:
 	_grid.add_child(card)
 	_cards[key] = card
 
-# 网格内容尺寸 + 居中摆放（横向居中、纵向落在 PICKER_TOP），供 fit_overlay 缩放
+# 网格内容尺寸 + 横向居中摆放（纵向交给父级容器排布，不再内部硬编码 Y）
 func _relayout() -> void:
 	var gw := float(_cols()) * _cw + float(_cols() - 1) * GAP * _k
 	var gh := float(_rows()) * _ch() + float(_rows() - 1) * GAP * _k
 	content_size = Vector2(gw, gh)
-	_grid.position = Vector2((540.0 - gw) * 0.5, PICKER_TOP)
+	_grid.position = Vector2((540.0 - gw) * 0.5, 0.0)
 	_refresh_selection()
 
 func _on_card(key: String) -> void:
