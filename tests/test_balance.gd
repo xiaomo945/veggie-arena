@@ -9,6 +9,13 @@ const Inventory := preload("res://core/Inventory.gd")
 const Economy := preload("res://core/Economy.gd")
 const Run := preload("res://core/Run.gd")
 
+# "满配"的口径（见下方第 4 条，与 scripts/power_band.py 第 10 波对齐）：
+#   等级 = 该波主力应有的等级；强化 = 该波累计道具堆出来的量（power_band 实测第 10 波
+#   已买 88 件道具，dmg/rate 加成远不止 +50%/+40%）。
+const FULL_LV := 6
+const FULL_DMG := 1.5
+const FULL_RATE := 1.0
+
 var _p := 0
 var _f := 0
 var _failures: Array = []
@@ -56,14 +63,24 @@ func run(data) -> Dictionary:
 			bad = true
 	chk(not bad, "1~30 波刷怪速率都不超过 cap %.1f" % float(spawn_cfg.get("cap", 5)))
 
-	# 4) 满配（6 把武器 + 中等强化）在第 10 波要跟得上
+	# 4) 满配（6 槽填满 + 合成到该波应有等级 + 中等强化）在第 10 波要跟得上。
+	#    ⚠️ 旧口径有三个错：① 把 40 把武器全塞进去当"满配"（游戏只有 6 个槽）
+	#    ② 全用 1 级（那是"一波都没合成"的最差情况，不是满配）
+	#    ③ 强化只给 +50%/+40%，远低于第 10 波真实水平
+	#    —— 三错叠加，敌人血量一抬就误判成"满配也跟不上了"。现在按 power_band 对齐。
 	var inv: Array = []
+	var ccfg: Dictionary = data.balance.get("combat", {}) as Dictionary
 	for k in data.weapon_keys():
-		inv.append(data.weapon(k))
-	var full_dps := Inventory.total_dps(inv, 0.5, 0.4)
+		var d: Dictionary = (data.weapon(k) as Dictionary).duplicate()
+		d["key"] = k
+		Inventory.buy_weapon(inv, d, FULL_LV, 0, 6, ccfg, 20)
+		if inv.size() >= 6:
+			break
+	var full_dps := Inventory.total_dps(inv, FULL_DMG, FULL_RATE)
 	var h10 := Spawner.wave_total_hp(10, spawn_cfg, data.enemies, length)
 	chk(full_dps * length > h10,
-		"满配第10波跟得上：6 武器输出 %.0f vs 总血 %.0f" % [full_dps * length, h10])
+		"满配第10波跟得上：6 把 %d 级 + 强化 +%.0f%%/+%.0f%% 输出 %.0f vs 总血 %.0f" % [
+			FULL_LV, FULL_DMG * 100.0, FULL_RATE * 100.0, full_dps * length, h10])
 
 	# 5) 裸装（只有手枪）在高波次应该打不过 —— 证明养成有意义
 	var h15 := Spawner.wave_total_hp(15, spawn_cfg, data.enemies, length)

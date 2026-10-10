@@ -44,6 +44,7 @@ const TCharDetail := preload("res://tests/test_char_detail.gd")
 const TCharUnlock := preload("res://tests/test_char_unlock.gd")
 const TWeaponInfo := preload("res://tests/test_weapon_info.gd")
 const TUnlockTree := preload("res://tests/test_unlock_tree.gd")
+const TShopAI := preload("res://tests/test_shop_ai.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 var passed := 0
@@ -100,6 +101,7 @@ func _initialize() -> void:
 	_run("CharUnlock(角色解锁阶梯)", TCharUnlock, data)
 	_run("WeaponInfo(武器详情页/候选池)", TWeaponInfo, data)
 	_run("UnlockTree(选角排序/关系树)", TUnlockTree, data)
+	_run("ShopAI(模拟AI购物策略)", TShopAI, data)
 
 	# Data 是 Node，不会自动释放，避免退出时的 ObjectDB 泄漏警告
 	data.free()

@@ -9,6 +9,11 @@ const TitleScene := preload("res://ui/Screens/TitleScreen.gd")
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
 const SkillDef := preload("res://core/SkillDef.gd")
+const ShopAI := preload("res://core/ShopAI.gd")
+const SimArt := preload("res://scripts/SimArt.gd")
+const SimMove := preload("res://scripts/SimMove.gd")
+const ShopPlan := preload("res://core/ShopPlan.gd")
+const FloorScene := preload("res://art/ArenaFloor.gd")
 
 var player: Node2D
 var game: Node
@@ -17,8 +22,6 @@ var _shake := 0.0          # 屏幕震动强度，受伤时拉起、每帧衰减
 var _cam: Camera2D         # 跟随玩家的相机（大地图滚动用，不碰 HUD/摇杆）
 var _prev_hp := 100
 var _floor: Node2D = null  # 厨房战场地面（art/ArenaFloor），切无尽段换砧板可从这里重掷
-
-const FloorScene := preload("res://art/ArenaFloor.gd")
 
 func _ready() -> void:
 	if OS.has_environment("SIM_SEED"):
@@ -102,13 +105,6 @@ func _physics_process(delta: float) -> void:
 			_cam.offset = Vector2.ZERO
 
 # 逐个敌人报告有没有贴图（缺图会退回手绘几何图形，画面看着"少了点什么"但不崩）
-func _enemy_art_report() -> String:
-	var parts := []
-	for k in Data.enemies.keys():
-		var ok := Art.sprite("enemy_" + str(k)) != null
-		parts.append("%s=%s" % [str(k), "贴图" if ok else "手绘"])
-	return " ".join(parts)
-
 func _sim_arg() -> float:
 	# get_cmdline_args() 拿不到（踩过坑，别改回去）
 	for a in OS.get_cmdline_user_args():
@@ -117,60 +113,47 @@ func _sim_arg() -> float:
 	return 0.0
 
 # 模拟 AI：逃离"附近所有怪质心"（1/d 加权）+ 往场地中心靠，比只躲最近一只更像真玩家
-func _dodge_dir(sense: float = 220.0, jitter: float = 0.22) -> Vector2:
-	var a := Data.arena()
-	var center := Vector2(float(a.get("x", 0)) + float(a.get("w", 540)) * 0.5,
-	                      float(a.get("y", 0)) + float(a.get("h", 900)) * 0.5)
-	var pp := player.global_position
-	var flee := Vector2.ZERO
-	var n := 0
-	for e in game.world.enemies:
-		if not e.alive:
-			continue
-		var d := pp.distance_to(e.global_position)
-		if d < sense:
-			# 越近的怪推得越狠（1/d 加权），方向是"远离它"
-			flee += (pp - e.global_position).normalized() / maxf(d, 24.0)
-			n += 1
-	var to_center := (center - pp).normalized()
-	var away := to_center
-	if n > 0:
-		away = flee.normalized().lerp(to_center, 0.2)
-	# 抖动避免被逼到死角后反复横跳卡住
-	away = away.rotated(_rng.randf_range(-jitter, jitter))
-	return away.limit_length(1.0)
-
-# 自动逛补给站：把"买得起的全买"跑一遍（真实游戏里这一步由玩家手指完成，模拟只是代替点击）
+# 自动逛补给站（真实里由玩家手指完成，模拟只代替点击）。买什么由 core/ShopAI.gd 定：
+# 真实购买规则 + 逐张贪心（旧版"顺序扫货 + merge_or_add 跳级"战力虚高，基线不准）。
 func _auto_shop() -> void:
 	var cfg := Data.shop_cfg()
 	var max_slot := int(cfg.get("max_slot", 6))
-	var max_lv := int(cfg.get("max_lv", 10))
+	var max_lv := int(cfg.get("max_lv", 20))
 	var pool := Economy.build_pool(GameState.weapons, Data.weapons, Data.upgrades, max_slot, max_lv,
 		[], 0.0, GameState.wave, float(cfg.get("price_inflation", 0.0)))
-	var offers := Economy.roll_offers(pool, int(cfg.get("offer_count", 4)), _rng, GameState.gold)
-	for o in offers:
-		var cost := int(o.get("cost", 999))
-		if not Economy.can_buy(GameState.gold, cost):
-			continue
-		if str(o.get("kind", "")) == "weapon":
-			var ok := Inventory.merge_or_add(GameState.weapons, o, max_slot, max_lv, Data.combat_cfg())
-			if ok:
+	var st := ShopAI.stats_of(GameState.upgrades, Data.upgrades)
+	# 刷新：钱多的时候真人一定会点刷新（商店就有这个按钮），不建模的话"每波只买 6 件"
+	# 会卡死成长 —— 实测玩家中期攒着几万金无处花、武器等级却跟不上，就是这个原因。
+	var rolls := 0
+	while rolls <= ShopAI.MAX_REROLL:
+		var offers := Economy.roll_offers(pool, ShopPlan.offer_count(GameState.wave, cfg), _rng, GameState.gold)
+		var plan := ShopAI.plan(offers, GameState.weapons, st, GameState.gold, max_slot, max_lv, Data.combat_cfg())
+		if plan.is_empty():
+			break
+		for i in plan:
+			var o: Dictionary = offers[i]
+			var cost := int(o.get("cost", 0))
+			if str(o.get("kind", "")) == "weapon":
+				if not Inventory.buy_weapon(GameState.weapons, o, int(o.get("lv", 1)), cost, max_slot, Data.combat_cfg(), max_lv):
+					continue
 				Events.weapons_changed.emit(GameState.weapons)
 			else:
-				continue
-		else:
-			GameState.buy_upgrade(str(o.get("key", "")))
-		GameState.spend_gold(cost)
+				GameState.buy_upgrade(str(o.get("key", "")))
+			GameState.spend_gold(cost)
+		st = ShopAI.stats_of(GameState.upgrades, Data.upgrades)
+		if rolls == ShopAI.MAX_REROLL:
+			break
+		var rc := Economy.reroll_cost(rolls, cfg)
+		if not Economy.can_buy(GameState.gold, rc):
+			break
+		GameState.spend_gold(rc)
+		rolls += 1
 
 # 有怪进到 70px 内 = 威胁，模拟 AI 这时才按冲刺
 var _threats := 0
 
 func _threat_close(dist: float = 70.0) -> bool:
-	var pp := player.global_position
-	for e in game.world.enemies:
-		if e.alive and e.global_position.distance_to(pp) < dist:
-			return true
-	return false
+	return SimMove.threat_close(player.global_position, game.world.enemies, dist)
 
 func _run_simulation(seconds: float) -> void:
 	var steps := int(seconds * 60.0)
@@ -196,13 +179,15 @@ func _run_simulation(seconds: float) -> void:
 		elif human:
 			dodge_age -= 1
 			if dodge_age <= 0:
-				dodge = _dodge_dir(120.0, 0.6)
+				dodge = SimMove.dodge_dir(player.global_position, game.world.enemies,
+					Data.arena(), 120.0, 0.6, _rng)
 				if _rng.randf() < 0.12:
 					dodge = dodge.rotated(_rng.randf_range(1.2, 2.4))   # 判断失误
 				dodge_age = 12
 			player.set_move_dir(dodge)
 		else:
-			player.set_move_dir(_dodge_dir(280.0, 0.12))
+			player.set_move_dir(SimMove.dodge_dir(player.global_position,
+				game.world.enemies, Data.arena(), 280.0, 0.12, _rng))
 		# --dash：怪贴脸时冲刺脱离，验证冲刺实战路径与收益
 		if use_dash and (i % 90 == 0 or _threat_close(150.0)):
 			_threats += 1
@@ -290,7 +275,7 @@ func _run_simulation(seconds: float) -> void:
 		"贴图" if Art.sprite("player") != null else "手绘兜底",
 		"贴图" if Art.icon("weapon_pistol") != null else "色点兜底"])
 	# 逐个敌人点名：任何一种缺图，这里会显示"手绘"，一眼看出漏了哪张
-	print("  敌人贴图    : %s" % _enemy_art_report())
+	print("  敌人贴图    : %s" % SimArt.enemy_report(Data.enemies.keys()))
 	# 模拟结束写一次存档（真实游戏里由阵亡/通关触发），用来验证存档链路可写
 	SaveMgr.record_run(GameState.wave, GameState.kills, GameState.gold,
 		GameState.run_score(), false)

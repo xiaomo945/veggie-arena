@@ -106,8 +106,7 @@ func combat_power(weapons: Array, st: Dictionary) -> Dictionary:
 		"skill_dps": float(sp["dps"]), "ctrl": float(sp["ctrl"])}
 
 
-# 本波敌人的加权平均掉金。⚠️ 必须按"这波真正会刷的怪"加权，不能对所有敌人取平均：
-# 全体平均 6.08 金，但第 1 波只刷 grunt(2 金)，用全体平均会把前期收入虚高 4 倍。
+# 本波敌人的加权平均掉金。⚠️ 按"这波真正会刷的怪"加权：第 1 波只刷 grunt(2 金)，用全体平均会虚高 4 倍。
 func avg_gold(w: int, scfg: Dictionary) -> float:
 	var fc := 0.0
 	var tc := 0.0
@@ -118,9 +117,18 @@ func avg_gold(w: int, scfg: Dictionary) -> float:
 	if w >= int(scfg.get("tank_late_from_wave", 6)):
 		tc = float(scfg.get("tank_chance_late", 0.1))
 	var gc := maxf(0.0, 1.0 - fc - tc)
-	return (gc * float((enemies.get("grunt", {}) as Dictionary).get("gold", 2))
-		+ fc * float((enemies.get("fast", {}) as Dictionary).get("gold", 2))
-		+ tc * float((enemies.get("tank", {}) as Dictionary).get("gold", 5)))
+	# ⚠️ 掉金必须带【波次成长】，与 core/Spawner.stats_for 同公式：
+	#   gold = gold + round(wave * gold_per_wave)
+	#   以前只取基础值（grunt 恒 2 金），真实第 11 波掉 19.6 金 —— 收入被低估约 10 倍，
+	#   据此调出的通胀 / 血量全是错方向（玩家中期钱多到花不完，后期 ratio 冲到 22）。
+	var per := ["grunt", "fast", "tank"]
+	var wgt := [gc, fc, tc]
+	var total := 0.0
+	for i in per.size():
+		var d: Dictionary = enemies.get(per[i], {}) as Dictionary
+		total += wgt[i] * (float(d.get("gold", 2))
+			+ float(w) * float(d.get("gold_per_wave", 0.0)))
+	return total
 
 
 func _favored(key: String, weapons: Array) -> bool:
