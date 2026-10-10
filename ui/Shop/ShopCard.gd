@@ -1,15 +1,8 @@
 extends Control
 
-# 商店单卡组件（哑组件）：只负责"把一份报价画得好看"，不含任何购买逻辑。
-# 购买逻辑全在 Shop.gd（调 GameState / Inventory / Economy）。
-# data 字段由 Shop.gd 预计算后通过 setup() 灌入，保证本组件保持轻量（架构守卫 300 行红线）。
-#
-# 配色统一走数值总表 §8.4：
-#   武器合成等级角标 Lv1 灰 / Lv2 绿 / Lv3 蓝 / Lv4 紫
-#   道具稀有度边框 rarity1 灰 / rarity2 蓝 / rarity3 紫
-#
-# 卡通暖色规范：卡片圆角 14 / 小药丸圆角 8~14，描边统一 2px；
-# 价格画成"金币药丸"（币图标 + 数字），主次：名称 > 图标/价格 > 标签 > 描述。
+# 商店单卡（哑组件）：只把一份报价画好看，购买逻辑全在 Shop.gd；data 由 Shop 预计算后
+# setup() 灌入（300 行红线）。配色走数值总表 §8.4：武器 Lv 灰/绿/蓝/紫，道具稀有度
+# 灰/蓝/紫。卡通暖色规范：卡片圆角 14 / 药丸 8~14 / 描边 2px，主次：名称 > 图标/价 > 标签。
 # ---- §8.4 配色（用户指定分级：白1/绿2/蓝3/紫4/红5/传说6）----
 const LV_COLORS := [Color(0.85,0.86,0.90), Color(0.25,0.77,0.32), Color(0.18,0.55,1.0),
 	Color(0.63,0.29,1.0), Color(1.0,0.30,0.24), Color(1.0,0.71,0.12)]
@@ -201,10 +194,15 @@ func _draw() -> void:
 	if bool(_d.get("can_lock", false)) and not sold:
 		Ctl.draw(self, size, _d, _font)
 
-	# 已售出遮罩
+	# 已售出：整卡压暗 + 绿色大勾 —— 必须一眼看出"买过了"。旧版只罩半透明黑、
+	# 内容还看得清清楚楚，真机反馈"只是变个边框"，看不出买没买成、反复点。
 	if sold:
-		draw_style_box(_sb(Color(0,0,0,0.5), Color(0,0,0,0), 14.0, 0), r)
-		_center(I18n.t("shop_sold"), r.size.x * 0.5, r.size.y * 0.5 + 8, 22, Color(1,1,1,0.9))
+		draw_style_box(_sb(Color(0.05,0.07,0.04,0.82), Color(0.25,0.77,0.32,0.95), 14.0, 2), r)
+		var cy := r.size.y * 0.5
+		draw_polyline(PackedVector2Array([Vector2(r.size.x*0.5-18.0, cy+2.0),
+			Vector2(r.size.x*0.5-6.0, cy+14.0), Vector2(r.size.x*0.5+16.0, cy-12.0)]),
+			Color(0.38, 0.92, 0.48), 5.0, true)
+		_center(I18n.t("shop_sold"), r.size.x * 0.5, cy + 36, 16, Color(1,1,1,0.95))
 
 func _draw_icon(r: Rect2, accent: Color, ib: float) -> void:
 	var box := Rect2(14.0, (r.size.y - ib) * 0.5, ib, ib)

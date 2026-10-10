@@ -73,6 +73,30 @@ static func roll_offers(pool: Array, count: int, rng: RandomNumberGenerator, gol
 		out.append(best)
 		weapons.erase(best)
 		took_partner = 1
+	# 覆盖位：第 2 张武器固定给【等级最低的持有武器】的搭档。
+	#   为什么必须有：保底位永远给最高档（主力升级路径），随机位又在几十个候选里加权抽
+	#   —— 玩家手里落在后面的低级武器（比如开局送的几把 Lv1）整局都等不到自己的搭档，
+	#   "主力 10 级、还有 3 把 Lv1 合不上去"就是这么来的（真机反馈 2026-10-11）。
+	#   有了覆盖位，每一波必刷一张"最落后武器"的搭档：买两张合成升一级，
+	#   落后的武器就能一级一级追上来。并列最低时随机挑一把（多把 Lv1 轮着来）。
+	if w_quota >= 2 and partners.size() > 0:
+		var cover: Variant = null
+		var cover_lv := 1 << 30
+		var ties: Array = []
+		for pp in partners:
+			if not weapons.has(pp):
+				continue   # 已被保底位选走
+			var pl := int(pp.get("lv", 1))
+			if pl < cover_lv:
+				cover_lv = pl
+				ties = [pp]
+			elif pl == cover_lv:
+				ties.append(pp)
+		if ties.size() > 0:
+			cover = ties[rng.randi() % ties.size()]
+			out.append(cover)
+			weapons.erase(cover)
+			took_partner += 1
 	for _i in (w_quota - took_partner):
 		if weapons.is_empty():
 			break

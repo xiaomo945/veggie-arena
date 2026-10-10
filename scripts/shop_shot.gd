@@ -66,6 +66,23 @@ func _initialize() -> void:
 	_report("第 15 波")
 	_save("shop_w15")
 
+	# ---- 3) 直接构造一张"已购买"的卡目检（不受随机货源影响）----
+	var canvas := CanvasLayer.new()
+	canvas.layer = 40   # 盖过商店（layer 30），目检卡才不会被货架挡住
+	root.add_child(canvas)
+	var card = load("res://ui/Shop/ShopCard.gd").new()
+	card.set_size(Vector2(480, 130))
+	card.set_position(Vector2(30, 330))
+	canvas.add_child(card)
+	card.setup({"kind": "upgrade", "name": "番茄急救", "tip": "立刻回一口血", "cost": 12,
+		"affordable": true, "sold": true, "disabled": false, "icon": null,
+		"base_cost": 12, "inflated": false, "infl_pct": 0,
+		"accent": Color(0.35, 0.66, 1.0), "rarity": 2, "tag": "UPG"})
+	for _f in 8:
+		await process_frame
+	_save("shop_bought")
+	print("[已购] 目检卡已出图")
+
 	print("SHOP SHOT done -> " + OUT)
 	quit(0)
 

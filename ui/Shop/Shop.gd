@@ -1,9 +1,8 @@
 extends CanvasLayer
 
 # 补给站：波次结束后弹出。手机竖屏单列：顶部金币/属性 → 我的武器(可售) → 购买卡 → 合成/刷新/下一波。
-# 骨架与样式在 ShopPanel.gd（纯 UI）；卡片画法在 ShopCard.gd（哑组件）；本文件只做业务。
-# 节奏（core/ShopPlan.gd）：每 big_every 波开一次"大商店"（全场打折），其余波次不打折。
-# ⚠️ 卡数不随波次变：每波固定开满 6 张、货架不留空位（用户硬要求）。单卡可锁 / 可单张刷新。
+# 骨架与样式在 ShopPanel.gd；卡片画法在 ShopCard.gd；本文件只做业务。节奏（core/ShopPlan.gd）：
+# 每 big_every 波开一次"大商店"（全场打折）。⚠️ 卡数不随波次变：每波固定开满 6 张、不留空位（硬要求）。
 
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
@@ -63,16 +62,17 @@ func _build() -> void:
 	_panel.merge_btn.pressed.connect(_merge)
 	_panel.reroll_btn.pressed.connect(_reroll_bought)
 	_panel.next_btn.pressed.connect(_next_wave)
-	# 撤销按钮：浮在面板下方安全区，卖出后才出现（点错了能恢复最近一次卖出）
+	# 撤销按钮：浮在面板下方安全区，卖出后才出现（点错可恢复最近一次卖出）
 	_undo_btn = Button.new()
 	_undo_btn.set_size(Vector2(220, 54)); _undo_btn.set_position(Vector2(160, 824))
 	_undo_btn.text = "↩ 撤销卖出"; _undo_btn.add_theme_font_size_override("font_size", 18)
 	ShopPanelScript.style_btn(_undo_btn, Color(0.30, 0.18, 0.08, 0.95), Color(0.98, 0.86, 0.50), Color(0.60, 0.44, 0.22, 0.95))
 	_undo_btn.visible = false; _root.add_child(_undo_btn)
 	_undo.wire(_undo_btn, Callable(self, "_refresh"))
-	# 独立详情页（点小卡弹出）：连信号 + 给一个拉最新报价的回调（self 内闭包，不读私有字段）
+	# 独立详情页（点小卡弹出）。⚠️ 延后一拍再挂：Shop 常在父节点 _ready 里被 add_child，
+	#   此刻父节点正"busy setting up children"，直接 add 会失败（进不了树 → 点小卡没反应）
 	_offer_detail = ShopOfferDetailScript.new()
-	get_parent().add_child(_offer_detail)
+	get_parent().add_child.call_deferred(_offer_detail)
 	_offer_detail.buy_requested.connect(_buy)
 	_offer_detail.lock_requested.connect(_lock_toggle)
 	_offer_detail.reroll_one_requested.connect(_reroll_one)
@@ -92,7 +92,7 @@ func _roll() -> void:
 	var cfg := Data.shop_cfg()
 	_max_slot = int(cfg.get("max_slot", 6)); _max_lv = int(cfg.get("max_lv", 10))
 	_card_count = clampi(ShopPlan.offer_count(GameState.wave, cfg), 1, _panel.cards.size())
-	# 钱包交给 roll_offers：保底的那张"合成搭档"得挑玩家买得起的最高档
+	# 钱包交给 roll_offers：保底搭档挑玩家买得起的最高档
 	_offers = Economy.roll_offers(_pool_now(), _card_count, _rng, GameState.gold)
 	_sold = []; for i in _offers.size(): _sold.append(false)
 	_panel.layout_cards(_offers.size())
@@ -108,14 +108,13 @@ func _refresh() -> void:
 		var o: Dictionary = _offers[i]
 		var afford := Economy.can_buy(GameState.gold, int(o.get("cost", 0)))
 		var d := _card_data(o, _sold[i], afford)
-		# 单卡可控：锁 / 单张刷新（已售出的卡不给按钮）
-		d["can_lock"] = false   # 锁定/单张刷新移到了独立详情页（小卡上不画按钮）
+		d["can_lock"] = false   # 锁定/单张刷新在详情页，小卡上不画按钮
 		d["locked"] = _locked.has(i)
 		d["reroll_one_cost"] = ShopPlan.single_reroll_cost(_reroll_times, Data.shop_cfg())
 		c.setup(d)
 	_panel.merge_btn.text = I18n.t("shop_merge_btn")
 	_panel.merge_btn.disabled = not Inventory.has_mergeable(GameState.weapons, _max_lv)
-	# 刷新按钮的文字一直没人设置过（截图目检才发现是空白按钮），补上 + 显示当前刷新价
+	# 刷新按钮文字以前没人设过（截图目检才发现是空白按钮），补上 + 显示当前刷新价
 	_panel.reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, Data.shop_cfg())
 	# 槽满提示"先卖一把"；大商店亮促销标识（攒钱这一波能大买的节奏要被看见）
 	var cfg := Data.shop_cfg()
@@ -129,12 +128,10 @@ func _refresh() -> void:
 	_panel.sets_bar.refresh(ShopSetProgress.rows(GameState.weapons, Data.weapons, Data.weapon_sets))
 
 # 套装条数据见 ui/Shop/ShopSetProgress.gd（件数 / 还差几件 / 档位 / 颜色 / 名字）
-
 func _refresh_stats() -> void:
 	if _panel == null or _panel.stats_lbl == null: return
 	var spd := int(round(minf(float(Data.player_cfg().get("speed", 180)) * (1.0 + GameState.stat_value("speed_pct")), float(Data.player_cfg().get("speed_cap", 600.0)))))
-	# 攻击力是派生实数（全武器齐射一轮的伤害），不是道具加成 —— 走 Stats 聚合口径，
-	# 与 entities 层开火时的乘法完全一致，属性页/商店的数字才不会和手感对不上。
+	# 攻击力是派生实数（全武器齐射一轮的伤害）—— 走 Stats 聚合口径，与 entities 开火时的乘法完全一致
 	var atk := Stats.attack_power(GameState.weapons, GameState.stat_value, Data.weapon, Data.combat_cfg())
 	var g1 := "生命 %d   护甲 %d   移速 %d" % [GameState.max_hp, int(GameState.stat_value("armor")), spd]
 	var g2 := "攻击力 %d(+%d%%)   射速 +%d%%   范围 +%d%%   暴击 %d%%" % [int(atk), int(GameState.stat_value("dmg_pct") * 100.0), int(GameState.stat_value("rate_pct") * 100.0), int(GameState.stat_value("range_pct") * 100.0), int(GameState.stat_value("crit_chance") * 100.0)]
@@ -203,6 +200,9 @@ func _buy(index: int) -> void:
 			_pop_effect(I18n.pick(def) + "：" + I18n.tip(def), Color(1.0, 0.82, 0.29))
 			if Inventory.stat_entries(def).any(func(e): return str(e.get("stat", "")) in ["pickup_pct", "autopick", "fullauto"]):
 				Events.player_range_preview.emit(GameState.pickup_magnet())
+	# 买成就关详情页：真机反馈"买完看不出买没买成、容易重复点"，开着也会挡住货架绿勾
+	if bought:
+		_offer_detail.hide_page()
 	_sold[index] = bought; _refresh(); _flash_card(index, bought); _undo.reset()
 
 func _merge_at(index: int) -> void:

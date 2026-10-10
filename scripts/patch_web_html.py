@@ -42,6 +42,41 @@ def main():
     if "移动端防丢页" not in s:
         s = s.replace("</body>", guard + "</body>", 1)
 
+    # 3) 渲染精度调节（Godot 在 web 上按 canvas.width/height 出图，DPR=3 的手机
+    #    一帧要填 1620x2700 ≈ 440 万像素，是"走路发虚/掉帧"的头号嫌疑）。
+    #    这里把 canvas 的像素尺寸压到 CSS 尺寸的某个比例，CSS 尺寸不变 ——
+    #    浏览器负责拉伸，于是渲染像素数按 s² 下降（0.72 → 只剩 52%）。
+    #    Godot 自己 resize 时会把 width/height 改回去，所以用 MutationObserver 顶回去。
+    scale = """
+\t\t<!-- 渲染精度：低画质时降 canvas 像素数，缓解高 DPI 手机的填充率压力 -->
+\t\t<script>
+\t\t(function () {
+\t\t\twindow.vaScale = 1.0;
+\t\t\tfunction apply() {
+\t\t\t\tvar c = document.getElementById('canvas');
+\t\t\t\tif (!c) return;
+\t\t\t\tvar r = c.getBoundingClientRect();
+\t\t\t\tvar w = Math.max(1, Math.round(r.width * window.vaScale));
+\t\t\t\tvar h = Math.max(1, Math.round(r.height * window.vaScale));
+\t\t\t\tif (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+\t\t\t}
+\t\t\twindow.vaSetRenderScale = function (v) {
+\t\t\t\twindow.vaScale = Math.max(0.5, Math.min(1.0, v || 1.0));
+\t\t\t\tapply();
+\t\t\t};
+\t\t\twindow.addEventListener('resize', function () { setTimeout(apply, 60); });
+\t\t\tvar c0 = document.getElementById('canvas');
+\t\t\tif (c0 && window.MutationObserver) {
+\t\t\t\tnew MutationObserver(apply).observe(c0, {
+\t\t\t\t\tattributes: true, attributeFilter: ['width', 'height']
+\t\t\t\t});
+\t\t\t}
+\t\t})();
+\t\t</script>
+"""
+    if "渲染精度" not in s:
+        s = s.replace("</body>", scale + "</body>", 1)
+
     html.write_text(s, encoding="utf-8")
     print("✅ 已注入移动端防护（overscroll-behavior + popstate 守卫）:", html)
 

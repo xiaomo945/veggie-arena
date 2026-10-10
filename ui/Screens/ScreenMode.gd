@@ -87,21 +87,33 @@ func _cam_margin() -> Dictionary:
 	}
 
 # 把"按 540x900 竖屏设计"的整屏菜单（CanvasLayer 下的 _root Control）缩放到当前视口内。
-# 竖屏：dst=540x900，scale=1 原样。横屏：dst=960x540 比竖屏设计矮，按高度 fit
-# （scale = 540/900 = 0.6），内容变 324x540 水平居中、左右留边——菜单功能完全可用，
-# 只是两侧留白。横屏菜单的视觉精修（如把商店网格铺宽）属真机迭代项。
+# 竖屏：scale=1 原样。横屏：按高度 fit（scale = 540/900 = 0.6），内容变 324x540 水平居中。
 # 先把节点固定成 540x900 设计尺寸（竖屏整屏菜单的本意），再缩放/居中：这样节点的
 # 整屏子节点（shade 暗底等）也跟着 540x900 走，横屏下与内容边界一致，不会"暗底比内容宽"。
+#
+# ⚠️ 居中必须用【真实可视矩形】root.get_visible_rect()，不能用 content_scale_size：
+#   content_scale_size 是配置值（恒 540x900），而 stretch/aspect=expand 下真实视口是
+#   "宽或高至少一边 ≥ 设计值"——手机浏览器上还受 DPR / 地址栏高度影响，两者经常不等。
+#   旧代码拿配置值当视口 → s 恒为 1、position 恒为 (0,0) → 面板顶左贴边，
+#   真机上"商店最左边的边框看不到"就是它（本地 540x900/412x915 窗口都复现不了，
+#   因为桌面窗口恰好等于设计值）。
 func fit_overlay(node: Control) -> void:
 	if node == null:
 		return
 	node.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	node.size = Vector2(540.0, 900.0)
-	var dst := _design_size()
+	var dst := _visible_size()
 	var src := Vector2(540.0, 900.0)
 	var s := minf(dst.x / src.x, dst.y / src.y)
 	node.scale = Vector2(s, s)
 	node.position = Vector2((dst.x - src.x * s) * 0.5, (dst.y - src.y * s) * 0.5)
+
+# 真实可视矩形（expand 拉伸后的逻辑视口）；拿不到时退回设计值
+func _visible_size() -> Vector2:
+	var ml = Engine.get_main_loop()
+	if ml is SceneTree:
+		return (ml as SceneTree).root.get_visible_rect().size
+	return Vector2(540.0, 900.0)
 
 func landscape() -> bool:
 	return Data.is_landscape()

@@ -79,6 +79,33 @@ func run() -> Dictionary:
 	var small := Economy.roll_offers(["x"], 4, rng)
 	chk(small.size() == 4, "池子只有 1 个且无备用道具时也不留空位（实测 %d）" % small.size())
 
+	# 4c) 覆盖位：等级最低的持有武器也必须刷得出搭档。
+	#   真机反馈（2026-10-11）"主力 10 级了，还有 3 把 Lv1 合不上去"：保底位永远给
+	#   最高档、随机位又在几十个候选里加权抽，落后的低级武器整局等不到自己的搭档。
+	var wdefs := {"pistol": {"key": "pistol", "dmg": 10, "cd": 0.5, "cost": 10},
+		"bow": {"key": "bow", "dmg": 10, "cd": 0.5, "cost": 10}}
+	var held := [{"key": "pistol", "lv": 5}, {"key": "bow", "lv": 1}]
+	var mix_pool := Economy.build_pool(held, wdefs, {}, 2, 20, [], 0.0, 5, 0.0)
+	var low_hits := 0
+	var high_hits := 0
+	for _t in 30:
+		var mo := Economy.roll_offers(mix_pool, 6, rng, 99999)
+		var got_low := false
+		var got_high := false
+		for o in mo:
+			if not (o is Dictionary) or str(o.get("kind", "")) != "weapon":
+				continue
+			if int(o.get("lv", 0)) <= 1:
+				got_low = true
+			if int(o.get("lv", 0)) >= 5:
+				got_high = true
+		if got_low:
+			low_hits += 1
+		if got_high:
+			high_hits += 1
+	chk(low_hits == 30, "30 次抽卡里最低级(Lv1)搭档出现 %d 次 —— 低级武器有成长链" % low_hits)
+	chk(high_hits == 30, "30 次抽卡里主力(Lv5)搭档出现 %d 次 —— 保底位仍在" % high_hits)
+
 	# 5) 商品池构造
 	var weapon_defs := {
 		"pistol": {"dmg": 9, "cd": 0.42},

@@ -38,6 +38,7 @@ var language: String = "en"
 func _ready() -> void:
 	_load()
 	apply_fps()
+	_apply_render_scale()
 	# 音频总线重路由依赖 Sfx/Bgm 已创建播放器，延后一帧执行更稳妥
 	call_deferred("apply_audio")
 
@@ -151,7 +152,19 @@ func particles_on() -> bool:
 
 func set_quality(v: int) -> void:
 	quality = clampi(v, 0, 2)
+	_apply_render_scale()
 	_save()
+
+# 渲染精度（只在 web 生效）：低画质把 canvas 的像素数压到 CSS 尺寸的 72%。
+#   为什么需要：高 DPI 手机（DPR=3）一帧要填 ~1620x2700 ≈ 440 万像素，
+#   "走路发虚/掉帧"的第一嫌疑就是填充率（CPU 侧实测 88 只怪才占 4% 预算，不是瓶颈）。
+#   压到 0.72 后像素数只剩 52%，画面略软但帧率稳；中/高画质保持 1.0（原样清晰）。
+#   ⚠️ 只在玩家【手选低画质】时触发，默认不动——之前用户明确反馈过"画质太糊"。
+func _apply_render_scale() -> void:
+	if not OS.has_feature("web"):
+		return
+	var s := 0.72 if quality == 0 else 1.0
+	JavaScriptBridge.eval("window.vaSetRenderScale && window.vaSetRenderScale(%f)" % s)
 
 func set_particles(on: bool) -> void:
 	particles_enabled = on
