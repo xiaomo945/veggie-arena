@@ -15,12 +15,14 @@ extends RefCounted
 
 const Shake := preload("res://entities/effects/Shake.gd")
 const SkillDef := preload("res://core/SkillDef.gd")
+const InputBuffer := preload("res://core/InputBuffer.gd")
 
 var world = null                       # BattleWorld（注入）
 var damage_fn: Callable = Callable()   # 伤害漏斗（EnemySystem.damage_enemy），Game 注入
 var _bases: Array = []                 # 技能库原文（data/skills.json）
 var _skills: Dictionary = {}           # id -> 当前生效配置（经 SkillDef 解析后）
 var _cd: Dictionary = {}               # id -> 剩余冷却（秒）
+var _buf: Dictionary = {}              # 输入缓冲：冷却中按下先记着，转好自动放
 var _form: Dictionary = {}             # id -> 当前形态 key（变了才广播）
 var _form_t := 0.0                     # 形态复检节流（秒）
 
@@ -78,10 +80,13 @@ func reset_cooldowns() -> void:
 		Events.skill_cooldown_changed.emit(id, 1.0, true)
 
 # 手动释放：在冷却中返回 false（按钮按下但没放出去）；成功则进 CD 并发特效信号
+# ⚠️ 冷却中按下不丢弃：记进输入缓冲，冷却一归零就自动放出去（见 core/InputBuffer.gd）。
+#   技能冷却是 6 秒量级，玩家"觉得该转好了"和实际转好之间差半秒很常见。
 func cast(id: String) -> bool:
 	if not _skills.has(id):
 		return false
 	if float(_cd.get(id, 0.0)) > 0.0:
+		InputBuffer.arm(_buf, id)
 		return false
 	var cfg: Dictionary = _skills[id]
 	var pp: Vector2 = world.player.global_position
@@ -115,6 +120,11 @@ func tick(delta: float) -> void:
 			c = maxf(0.0, c - delta)
 			_cd[id] = c
 		_emit(id)
+		# 缓冲补发：这一帧刚好转好，而玩家在窗口内按过 → 立刻放出去
+		if InputBuffer.pending(_buf, id) and float(_cd.get(id, 0.0)) <= 0.0:
+			InputBuffer.consume(_buf, id)
+			cast(id)
+	InputBuffer.tick(_buf, delta)
 
 func _emit(id: String) -> void:
 	var c: float = float(_cd.get(id, 0.0))

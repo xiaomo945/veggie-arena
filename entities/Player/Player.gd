@@ -9,6 +9,8 @@ const Movement := preload("res://core/Movement.gd")
 const Weapon := preload("res://core/Weapon.gd")
 const Dash := preload("res://core/Dash.gd")
 const Shake := preload("res://entities/effects/Shake.gd")
+const InputBuffer := preload("res://core/InputBuffer.gd")
+const SpeedCurve := preload("res://core/SpeedCurve.gd")
 const PlayerWeapons := preload("res://entities/Player/PlayerWeapons.gd")
 
 const MOUNT_RADIUS := 42.0
@@ -39,7 +41,9 @@ var _ifr_pct := 0.0        # 无敌帧时长加成
 var _boost_left := 0.0     # 受击后的短暂加速剩余秒数（被动道具 hit_boost）
 var _face := Vector2(0, -1)      # 面朝方向：没推摇杆时冲刺默认朝这边
 var _dash_trail: Array = []      # 冲刺残影 [{pos, t}]
-var dash_count := 0            # 本局冲刺次数（诊断/HUD 用）
+var dash_count := 0
+var _buf := {}            # 输入缓冲（冲刺/技能按下时还没转好就先记着）
+var _dash_want := Vector2.ZERO            # 本局冲刺次数（诊断/HUD 用）
 var hits_taken := 0            # 本局挨打次数（诊断：确认伤害系统真的在打人）
 var damage_taken := 0          # 本局累计受到的伤害
 
@@ -105,13 +109,20 @@ func _on_dir(d: Vector2) -> void:
 func _on_release() -> void:
 	_dir = Vector2.ZERO
 
-# 冲刺按钮：有摇杆方向就朝那边冲，没推摇杆就朝面朝方向冲
+# 冲刺按钮：有摇杆方向就朝那边冲，没推摇杆就朝面朝方向冲。
+# ⚠️ 冷却中按下不丢弃：记进输入缓冲（core/InputBuffer.gd），冷却一到就自动冲出去 ——
+#    冷却 1.8s，玩家凭手感常会早按 0.1 秒，没缓冲就是"按了没反应"。
 func _on_dash_requested() -> void:
 	var d := _dir
 	if d.length_squared() < 0.0001:
 		d = _face
+	_dash_want = d
 	if not Dash.can_start(_dash, _dash_cfg):
+		InputBuffer.arm(_buf, "dash")
 		return
+	_fire_dash(d)
+
+func _fire_dash(d: Vector2) -> void:
 	if Dash.start(_dash, d, _dash_cfg):
 		dash_count += 1
 		Events.dash_started.emit(global_position, d)
@@ -141,6 +152,10 @@ func _physics_process(delta: float) -> void:
 		_boost_left = maxf(0.0, _boost_left - delta)
 	_tick_regen(delta)
 	Dash.step(_dash, delta)
+	InputBuffer.tick(_buf, delta)
+	if InputBuffer.pending(_buf, "dash") and Dash.can_start(_dash, _dash_cfg):
+		InputBuffer.consume(_buf, "dash")
+		_fire_dash(_dash_want if _dash_want.length_squared() > 0.0001 else _face)
 	if Dash.active(_dash):
 		# 冲刺中：直接以冲刺速度位移，不走加速度（这就是"窜出去"的爆发感来源）
 		var dv: Vector2 = (_dash["dir"] as Vector2) * Dash.speed(_dash, _speed, _dash_cfg)
@@ -248,9 +263,9 @@ func _refresh_speed() -> void:
 	# ⚠️ 硬上限：speed_pct 道具可一直堆、frenzy/hit_boost 还会乘，不封顶就会"飘到不跟手"。
 	#   cap 来自 balance.json 的 player.speed_cap（含所有倍率后的最终像素/秒上限）。
 	var cap := float(Data.player_cfg().get("speed_cap", 600.0))
-	_speed = minf(float(Data.player_cfg().get("speed", 180)) \
-		* (1.0 + GameState.stat_value("speed_pct")) \
-		* (float(Settings.move_scale) / 100.0) * mult, cap)
+	# 加成走边际递减（core/SpeedCurve.gd）：堆太多会飘到"画面发晃"，实测不是性能问题
+	_speed = SpeedCurve.final_speed(float(Data.player_cfg().get("speed", 180)),
+		GameState.stat_value("speed_pct"), float(Settings.move_scale) / 100.0, mult, cap)
 	assert(_speed <= cap + 0.001, "玩家速度 %.1f 超过上限 %.1f（speed_pct/frenzy/hit_boost 失控）" % [_speed, cap])
 
 # ---- 给外观层（PlayerVisual）的只读接口 ----

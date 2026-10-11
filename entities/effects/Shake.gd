@@ -10,6 +10,19 @@ static var _tween: Tween = null
 static func register(root: Node2D) -> void:
 	_root = root
 
+# 按"档位"震：同一档在 gap 秒内只震一次。
+#   为什么需要：清场那一秒能死几十只怪，每只都震一次 = 画面持续抽搐（比不震还难受）。
+#   调用方给档位名（"crit" / "big" / "kill"），节流策略由这张表统一管。
+const TIER_GAP := {"crit": 0.22, "big": 0.22, "kill": 0.30}
+static var _tier_at: Dictionary = {}
+
+static func tier(key: String, strength: float, duration: float) -> void:
+	var now := float(Time.get_ticks_msec()) / 1000.0
+	if now - float(_tier_at.get(key, -99.0)) < float(TIER_GAP.get(key, 0.25)):
+		return
+	_tier_at[key] = now
+	kick(strength, duration)
+
 static func kick(strength: float, duration: float) -> void:
 	if _root == null:
 		return

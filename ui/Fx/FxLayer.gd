@@ -31,6 +31,7 @@ var _blast = null          # 颠勺全屏爆炸（屏幕空间，恒定居中于
 const MELEE_LIFE := 0.16
 const Shake := preload("res://entities/effects/Shake.gd")
 const HitStop := preload("res://entities/effects/HitStop.gd")
+const Feel := preload("res://entities/effects/Feel.gd")
 const BossIntroScene := preload("res://ui/Fx/FxBossIntro.gd")
 const SpawnHaloScene := preload("res://ui/Fx/FxSpawnHalo.gd")
 
@@ -126,11 +127,7 @@ func _mk_flash(c: Color) -> Control:
 	return v
 
 func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
-	# 顿帧：重击每次都停；普通命中要节流，否则连射武器会顿成幻灯片
-	if amount >= 30:
-		HitStop.hit(0.045, 0.08)
-	else:
-		HitStop.hit_throttled(0.02, 0.5)
+	Feel.hit(amount, critical)   # 顿帧 + 震屏分档（轻击/重击/暴击，见 Feel.gd）
 	if _floats.size() >= Perf.int_cap("floats", 24):
 		return          # 高射速时宁可少飘几个，也不能拖帧
 	var lab := _take_label()
@@ -138,7 +135,7 @@ func _on_damage(amount: int, pos: Vector2, critical: bool) -> void:
 		return
 	lab.text = str(amount)
 	lab.position = pos + Vector2(randf_range(-8.0, 8.0), -10.0)
-	# 配色/字号与早期 DamageLabel 拉平（暴击=金、大数字≥30=橙、其余=白）；黑描边在 _take_label 统一加
+	# 配色/字号（暴击=金、大数字≥30=橙、其余=白）；黑描边在 _take_label 统一加
 	var big := amount >= 30
 	var sc := 1.28 if (critical or big) else 1.0
 	var col := Color(1.0, 1.0, 1.0)
@@ -168,9 +165,9 @@ func _on_fired(_pos: Vector2, _dir: Vector2, _stats: Dictionary, color: Color, k
 		pop["wide"] = true
 	_pops.append(pop)
 
-# ---- 信号：击杀 → 三层迸溅（碎块/汁液/爆环，画在 FxRings）+ 击杀定帧 ----
+# ---- 信号：击杀 → 三层迸溅（画在 FxRings）+ 击杀定帧 ----
 func _on_killed(_type: String, pos: Vector2) -> void:
-	HitStop.hit(0.05, 0.12)      # 击杀是最值得"顿一下"的时刻
+	Feel.kill(_type)
 	if _rings.size() >= Perf.int_cap("rings", 18):
 		return
 	_rings.append({"pos": pos, "t": 0.0, "life": 0.5, "big": (_type == "boss"),
@@ -205,7 +202,7 @@ func _on_wave_ended(_wave: int, _pos: Vector2) -> void:
 			"dist": randf_range(130.0, 270.0), "spin": randf_range(-7.0, 7.0)})
 
 # ---- 信号：颠勺大招 → 全屏卡通爆炸 + 金闪 + 震屏 ----
-# 爆炸中心跟随玩家实时位置（pos 是玩家世界坐标），不再钉屏幕中心。
+# 爆炸中心跟随玩家实时位置，不再钉屏幕中心。
 func _on_toss(pos: Vector2) -> void:
 	_gold_t = 0.42
 	if _blast != null:
@@ -247,7 +244,7 @@ func _process(delta: float) -> void:
 	_tick_vignettes(delta)
 	HitStop.tick()      # 定帧恢复（用真实时钟，见 HitStop 注释）
 
-# 通用推进：t += delta；超 life 剔除；仅在"有特效在播或刚播完需清空"时重绘（避免空数组每帧白刷）
+# 通用推进：t += delta；超 life 剔除；仅"有特效在播或刚播完需清空"时重绘（避免空数组每帧白刷）
 func _tick(arr: Array, view: Node2D, delta: float) -> void:
 	var had := not arr.is_empty()
 	var i := 0

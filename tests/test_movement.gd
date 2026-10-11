@@ -5,6 +5,7 @@ extends RefCounted
 # 人类对操作延迟的感知阈值约 80ms，本项目红线定在 50ms。
 
 const Movement := preload("res://core/Movement.gd")
+const SpeedCurve := preload("res://core/SpeedCurve.gd")
 
 var _p := 0
 var _f := 0
@@ -123,6 +124,23 @@ func run(data) -> Dictionary:
 
 	# 16) 反向加速常数不小于顺向，否则急转发黏
 	chk(kr >= kf, "急转常数 %.0f ≥ 顺向 %.0f" % [kr, kf])
+
+	# 17) 移速加成的边际递减（core/SpeedCurve.gd）：堆太多会飘到"画面发晃"
+	var pcfg: Dictionary = (data.balance.get("player", {}) as Dictionary) if data != null else {}
+	var base := float(pcfg.get("speed", 180))
+	var cap := float(pcfg.get("speed_cap", 600.0))
+	var s0 := SpeedCurve.final_speed(base, 0.0, 1.0, 1.0, cap)
+	chk(absf(s0 - base) < 0.6, "没加成时就是基础速度 %.0f（实测 %.0f）" % [base, s0])
+	var s20 := SpeedCurve.final_speed(base, 0.20, 1.0, 1.0, cap)
+	chk(absf(s20 - base * 1.20) < 0.6, "前 20%% 加成全额生效（实测 %.0f）" % s20)
+	var s40 := SpeedCurve.final_speed(base, 0.40, 1.0, 1.0, cap)
+	chk(s40 < base * 1.40 - 1.0, "超过 20%% 后开始递减（40%% 实测 %.0f < 线性 %.0f）" % [s40, base * 1.40])
+	chk(s40 > s20, "递减但仍在涨：堆加速永远有正收益（%.0f > %.0f）" % [s40, s20])
+	# 用户那局 speed 299（base 220 + 36%）：递减后应落到"不晃"的区间
+	var s36 := SpeedCurve.final_speed(220.0, 0.36, 1.0, 1.0, cap)
+	chk(s36 < 299.0 and s36 > 250.0, "+36%% 从 299 降到 %.0f（砍掉晃眼段，仍比基础快）" % s36)
+	var s_cap := SpeedCurve.final_speed(base, 9.0, 1.0, 5.0, cap)
+	chk(s_cap <= cap + 0.001, "堆到天上去也压在硬上限 %.0f 内（实测 %.0f）" % [cap, s_cap])
 
 	print("  ---- 手感实测（60fps，1 帧 = %.1fms）----" % frame_ms)
 	print("    静止起步 : %d 帧 / %.0f ms" % [f_start, ms_start])

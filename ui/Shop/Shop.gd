@@ -15,6 +15,7 @@ const Weapon := preload("res://core/Weapon.gd")
 const ShopCardSyn := preload("res://ui/Shop/ShopCardSyn.gd")
 const ShopSetProgress := preload("res://ui/Shop/ShopSetProgress.gd")
 const Stats := preload("res://core/Stats.gd")
+const SpeedCurve := preload("res://core/SpeedCurve.gd")
 const ItemIcons := preload("res://core/ItemIcons.gd")
 const SellUndo := preload("res://ui/Shop/SellUndo.gd")
 const ShopOfferDetailScript := preload("res://ui/Shop/ShopOfferDetail.gd")
@@ -62,15 +63,13 @@ func _build() -> void:
 	_panel.merge_btn.pressed.connect(_merge)
 	_panel.reroll_btn.pressed.connect(_reroll_bought)
 	_panel.next_btn.pressed.connect(_next_wave)
-	# 撤销按钮：浮在面板下方安全区，卖出后才出现（点错可恢复最近一次卖出）
-	_undo_btn = Button.new()
+	_undo_btn = Button.new()   # 浮在面板下方安全区，卖出后才出现（点错可恢复最近一次卖出）
 	_undo_btn.set_size(Vector2(220, 54)); _undo_btn.set_position(Vector2(160, 824))
 	_undo_btn.text = "↩ 撤销卖出"; _undo_btn.add_theme_font_size_override("font_size", 18)
 	ShopPanelScript.style_btn(_undo_btn, Color(0.30, 0.18, 0.08, 0.95), Color(0.98, 0.86, 0.50), Color(0.60, 0.44, 0.22, 0.95))
 	_undo_btn.visible = false; _root.add_child(_undo_btn)
 	_undo.wire(_undo_btn, Callable(self, "_refresh"))
-	# 独立详情页（点小卡弹出）。⚠️ 延后一拍再挂：Shop 常在父节点 _ready 里被 add_child，
-	#   此刻父节点正"busy setting up children"，直接 add 会失败（进不了树 → 点小卡没反应）
+	# 独立详情页。⚠️ 延后一拍再挂：父节点 _ready 里 add_child 会撞 "busy setting up children" 而失败
 	_offer_detail = ShopOfferDetailScript.new()
 	get_parent().add_child.call_deferred(_offer_detail)
 	_offer_detail.buy_requested.connect(_buy)
@@ -114,7 +113,7 @@ func _refresh() -> void:
 		c.setup(d)
 	_panel.merge_btn.text = I18n.t("shop_merge_btn")
 	_panel.merge_btn.disabled = not Inventory.has_mergeable(GameState.weapons, _max_lv)
-	# 刷新按钮文字以前没人设过（截图目检才发现是空白按钮），补上 + 显示当前刷新价
+	# 刷新按钮文字以前没人设过（目检才发现是空白按钮），补上 + 显示当前刷新价
 	_panel.reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, Data.shop_cfg())
 	# 槽满提示"先卖一把"；大商店亮促销标识（攒钱这一波能大买的节奏要被看见）
 	var cfg := Data.shop_cfg()
@@ -130,7 +129,8 @@ func _refresh() -> void:
 # 套装条数据见 ui/Shop/ShopSetProgress.gd（件数 / 还差几件 / 档位 / 颜色 / 名字）
 func _refresh_stats() -> void:
 	if _panel == null or _panel.stats_lbl == null: return
-	var spd := int(round(minf(float(Data.player_cfg().get("speed", 180)) * (1.0 + GameState.stat_value("speed_pct")), float(Data.player_cfg().get("speed_cap", 600.0)))))
+	var spd := int(round(SpeedCurve.final_speed(float(Data.player_cfg().get("speed", 180)), GameState.stat_value("speed_pct"),
+		float(Settings.move_scale) / 100.0, 1.0, float(Data.player_cfg().get("speed_cap", 600.0)))))
 	# 攻击力是派生实数（全武器齐射一轮的伤害）—— 走 Stats 聚合口径，与 entities 开火时的乘法完全一致
 	var atk := Stats.attack_power(GameState.weapons, GameState.stat_value, Data.weapon, Data.combat_cfg())
 	var g1 := "生命 %d   护甲 %d   移速 %d" % [GameState.max_hp, int(GameState.stat_value("armor")), spd]
