@@ -1,46 +1,27 @@
 extends RefCounted
 
-# 轻量震屏：项目无 Camera2D，故直接抖动世界根节点（game）的 position。
-# 整个 world 子树一起抖动，相对几何不变 → 不影响玩法，只抖画面。
-# 玩家受击 / Boss 出现 / 单次大伤害时由调用方触发，受 Settings.screenshake_enabled 控制。
+# 震屏（screen shake）—— 2026-10-12 起【全部取消】，本文件只留空壳。
+#
+# ⚠️ 用户拍板："爽感不是振频，把所有的振频震动取消掉"。
+#   整屏抖动在这类小屏割草游戏里是负担：抖的那几十毫秒里正好看不清怪在哪，
+#   而"看得清"才是这类游戏的手感底线。打击感改由顿帧 / 飘字 / 迸溅 / 音效承担
+#   （档位见 entities/effects/Feel.gd，那些都不抖画面）。
+#
+# 为什么不删掉所有调用点：受伤 / 暴击 / 击杀 / Boss 出场 / 颠勺 / 技能，一共 6 处，
+#   挨个删容易顺手改坏别的逻辑。收口成空操作一次性全部失效，更安全。
+#   要恢复：把 git 历史里这一版实现贴回 kick() 即可（只此一处），调用点都不用动。
 
 static var _root: Node2D = null
-static var _tween: Tween = null
 
-static func register(root: Node2D) -> void:
-	_root = root
+static func register(root_node: Node2D) -> void:
+	_root = root_node
 
-# 按"档位"震：同一档在 gap 秒内只震一次。
-#   为什么需要：清场那一秒能死几十只怪，每只都震一次 = 画面持续抽搐（比不震还难受）。
-#   调用方给档位名（"crit" / "big" / "kill"），节流策略由这张表统一管。
+# 按"档位"震的入口（保留签名，行为为空）。节流表留着，将来恢复能直接用。
 const TIER_GAP := {"crit": 0.22, "big": 0.22, "kill": 0.30}
 static var _tier_at: Dictionary = {}
 
-static func tier(key: String, strength: float, duration: float) -> void:
-	var now := float(Time.get_ticks_msec()) / 1000.0
-	if now - float(_tier_at.get(key, -99.0)) < float(TIER_GAP.get(key, 0.25)):
-		return
-	_tier_at[key] = now
-	kick(strength, duration)
+static func tier(_key: String, _strength: float, _duration: float) -> void:
+	return
 
-static func kick(strength: float, duration: float) -> void:
-	if _root == null:
-		return
-	if not Settings.get_setting("screenshake_enabled", true):
-		return
-	var base: Vector2 = _root.position
-	if _tween != null and _tween.is_valid():
-		_tween.kill()
-	_tween = _root.create_tween()
-	# ⚠️ 必须跑在物理步：Tween 默认在渲染帧（idle）更新，而 game 是战斗世界根节点、
-	# 开了物理插值（120Hz 上两个渲染帧插值同一个物理步）。在渲染帧改它的 position
-	# 会和插值打架，表现为整个世界"抽一下"。放进物理步后震屏跟着插值一起平滑。
-	_tween.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
-	var n := 6
-	var dt: float = duration / float(n + 1)
-	for i in n:
-		var k: float = 1.0 - float(i) / float(n)
-		var s: float = strength * k
-		var off: Vector2 = Vector2(randf_range(-s, s), randf_range(-s, s))
-		_tween.tween_property(_root, "position", base + off, dt)
-	_tween.tween_property(_root, "position", base, dt)
+static func kick(_strength: float, _duration: float) -> void:
+	return

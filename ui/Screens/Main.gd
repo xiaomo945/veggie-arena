@@ -18,7 +18,6 @@ const FloorScene := preload("res://art/ArenaFloor.gd")
 var player: Node2D
 var game: Node
 var _rng := RandomNumberGenerator.new()
-var _shake := 0.0          # 屏幕震动强度，受伤时拉起、每帧衰减
 var _cam: Camera2D         # 跟随玩家的相机（大地图滚动用，不碰 HUD/摇杆）
 var _prev_hp := 100
 var _floor: Node2D = null  # 厨房战场地面（art/ArenaFloor），切无尽段换砧板可从这里重掷
@@ -83,26 +82,20 @@ func _ready() -> void:
 # 标题页"开始" / 死亡页"再来一局" 都走这里：正式开跑一局
 func _begin_run() -> void:
 	_prev_hp = GameState.max_hp
-	_shake = 0.0
 	if game != null and game.has_method("start_run"):
 		game.start_run()
 
-# 掉血 → 屏幕震动（受伤反馈，比单纯闪白更"中被撞"）
+# 掉血：⚠️ 2026-10-12 用户拍板取消一切振频（含这里的相机抖动）。
+#   受伤反馈改由红闪 / 音效 / 顿帧承担，画面不抖 —— 抖起来反而看不清怪在哪。
 func _on_hp_shake(hp: int, _m: int) -> void:
-	if hp < _prev_hp:
-		_shake = 9.0
 	_prev_hp = hp
 
 func _physics_process(delta: float) -> void:
 	# ⚠️ 必须物理步：世界都在物理步更新，相机按渲染帧跟随 = 相机平滑、世界跳（judder）
 	ScreenMode.follow_camera(_cam, player, delta)
-	# 受击震屏：衰减后作为相机 offset 叠加，不影响跟随
+	# 相机 offset 恒为 0：震屏已全部取消（见 entities/effects/Shake.gd）
 	if _cam != null and is_instance_valid(_cam):
-		if _shake > 0.1:
-			_shake = maxf(0.0, _shake - delta * 42.0)
-			_cam.offset = Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake))
-		else:
-			_cam.offset = Vector2.ZERO
+		_cam.offset = Vector2.ZERO
 
 # 逐个敌人报告有没有贴图（缺图会退回手绘几何图形，画面看着"少了点什么"但不崩）
 func _sim_arg() -> float:
