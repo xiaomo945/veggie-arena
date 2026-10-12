@@ -46,9 +46,12 @@ echo "=== 2.5 发行包纯净度（把不该进包的东西拦在上传前）===
 # 试了两版都解出垃圾 size）。
 PCK="$BUILD/index.pck"
 if [ -f "$PCK" ]; then
+  # ⚠️ pck_ls 的每行输出带两空格缩进，grep 必须能匹配行内 —— 曾经写成
+  #    "^res://" 结果永远匹配不到，这个泄漏检查【空跑了很久】：真漏了也报干净。
+  #    已实测：注入 scripts/ 下文件后本段能抓住（2026-10 修黑屏时验证）。
   leak=$("$GODOT" --headless --path "$PROJ" --script res://scripts/pck_ls.gd -- \
     "$PCK" res://tests/ res://scripts/ res://art/store/ res://art/raw/ 2>/dev/null \
-    | grep -E "^res://" | sed 's/^/     /')
+    | grep -oE 'res://(tests|scripts|art/store|art/raw)/[^ "]*' | sort -u | sed 's/^/     /')
   if [ -n "$leak" ]; then
     echo "  ❌ 发行包混进了不该有的文件："
     echo "$leak"

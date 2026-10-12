@@ -107,6 +107,21 @@ else
 fi
 
 echo ""
+echo "=== 1.67 导出引用守卫（硬失败：防"本地全绿、线上黑屏"）==="
+# 事故背景：Main.gd 曾 const preload("res://scripts/SimArt.gd")，而 scripts/* 在
+# export_presets.cfg 的 exclude_filter 里 —— 编辑器/Xvfb 源码跑测天天全绿，
+# web pck 里没这文件 → 主场景脚本加载失败 → 用户加载完看到纯黑屏。
+# 源码跑测永远抓不到这类错（文件在磁盘上），只有按"导出排除清单"扫才拦得住。
+if [ -f scripts/export_ref_guard.py ]; then
+  PY67=$(command -v python3.11 || command -v python3)
+  if ! "$PY67" scripts/export_ref_guard.py; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/export_ref_guard.py，跳过"
+fi
+
+echo ""
 echo "=== 1.68 图集一致性（图标合并进 atlas.png 后的唯一来源校验）==="
 # 散图已删，atlas.png + atlas.json 是全部 UI 图标的唯一来源：
 # 清单漏键 / 区域为空 / 新加武器没图标，这里直接红。
