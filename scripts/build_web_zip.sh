@@ -11,7 +11,6 @@
 # 产物： /workspace/TURNIP_TROUBLE_web.zip
 set -uo pipefail
 
-GODOT="${GODOT:-/opt/godot/Godot_v4.3-stable_linux.x86_64}"
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="$PROJ/web/build"
 ZIP="/workspace/TURNIP_TROUBLE_web.zip"
@@ -20,15 +19,11 @@ fail=0
 echo "=== 1. 从零导出 Web release ==="
 rm -rf "$BUILD"
 mkdir -p "$BUILD"
-"$GODOT" --headless --path "$PROJ" --export-release "Web" >/tmp/exp.log 2>&1
-exp=$?
-if [ $exp -ne 0 ]; then
-  echo "❌ 导出失败（exit $exp），日志尾部："
-  grep -iv "_get_font_data\|text_server_adv" /tmp/exp.log | tail -15
-  exit 1
-fi
-[ -f "$BUILD/index.html" ] || { echo "❌ 导出后没有 index.html"; exit 1; }
-[ -f "$BUILD/index.wasm" ] || { echo "❌ 导出后没有 index.wasm"; exit 1; }
+# 走统一重试封装：清 build 触发全量 reimport 后 Godot 偶发段错误（exit 139），
+# 重试即可成功；脚本语法错等真实错误不重试、直接亮日志。
+bash "$PROJ/scripts/export_with_retry.sh" "Web" /tmp/exp.log || exit 1
+[ -f "$BUILD/index.html" ] || { echo "❌ 导出进程退出 0 但没出 index.html"; exit 1; }
+[ -f "$BUILD/index.wasm" ] || { echo "❌ 导出进程退出 0 但没出 index.wasm"; exit 1; }
 echo "  ✅ 导出完成"
 
 echo

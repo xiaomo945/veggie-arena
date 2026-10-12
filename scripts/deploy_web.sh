@@ -15,24 +15,19 @@ BUILD="$PROJ/web/build"
 PORT=3000
 
 echo "=== 1. 导出 ==="
-# ⚠️ 清掉整个 build 目录会触发 Godot 全量 reimport，实测偶发 segfault（重试就好）。
-# 所以最多试两次，别让一次偶发崩溃卡住整个发版流程。
+# ⚠️ 清掉整个 build 目录会触发 Godot 全量 reimport，实测偶发 segfault（exit 139）。
+# 重试封装在 scripts/export_with_retry.sh：139 自动重试最多 3 次，
+# 其它退出码（脚本语法错/资源丢失）直接亮日志退出，不浪费时间重试。
 rm -rf "$BUILD"
 mkdir -p "$BUILD"
-ok=0
-for attempt in 1 2; do
-  "$GODOT" --headless --path "$PROJ" --export-release "Web" >/tmp/exp.log 2>&1
-  if [ -f "$BUILD/index.html" ] && [ -f "$BUILD/index.wasm" ]; then
-    ok=1
-    break
-  fi
-  echo "  ! 第 $attempt 次导出没出成品（偶发），重试..."
-done
-if [ $ok -ne 1 ]; then
-  echo "❌ 导出失败，日志尾部："
+bash "$PROJ/scripts/export_with_retry.sh" "Web" /tmp/exp.log || exit 1
+# 退出码 0 也要查产物：段错误可能发生在写完全部文件之前，
+# 只看退出码会漏掉"崩了但退出码是 0"之外的所有半成品状态。
+[ -f "$BUILD/index.html" ] && [ -f "$BUILD/index.wasm" ] || {
+  echo "❌ 导出进程退出 0 但没出成品，日志尾部："
   grep -iv "_get_font_data\|text_server_adv" /tmp/exp.log | tail -15
   exit 1
-fi
+}
 echo "  ✅ 导出完成"
 du -m "$BUILD"/index.wasm "$BUILD"/index.pck | awk '{printf "     %-28s %.1f MB\n", $2, $1}'
 
