@@ -25,6 +25,7 @@ var _set: Label                 # 套装凑齐提示（Q1）
 var _set_t := 0.0
 var _effect: Label              # 商店强化反馈：买完强化弹一条"你买了什么/干嘛用的"
 var _effect_t := 0.0
+var _cleared := false           # 暂停/结算的清理只做一次（见 _clear_all 注释）
 const EFFECT_HOLD := 1.5       # 强化反馈：常显 1.5s，末 0.5s 淡出（共 2s）
 const EFFECT_FADE := 0.5
 
@@ -95,7 +96,33 @@ func pop_effect(text: String, col: Color) -> void:
 func queue_unlock(key: String) -> void:
 	_unlock_queue.append(key)
 
+# 暂停 / 每波结算打开时，把还挂在屏幕上的横幅一次性清干净。
+# 为什么必须清：暂停页与结算页的遮罩是半透明的（0.9 左右），横幅文字会穿过遮罩
+# 叠在面板标题上——截图目检抓到过"Firearms ×3! Ranged DMG +8%"正好压在
+# "WAVE 5 CLEAR"上，玩家读两行挤在一起的文字。
+# ⚠️ 为什么放在这里自己查 GameState 而不是让 HUD.gd 接线：HUD.gd 已经 300 行，
+#    正好卡在架构守卫 R1 的单文件行红线，多一行就整批门禁失败。
+func _clear_all() -> void:
+	_banner.text = ""
+	_banner_t = 0.0
+	_wok_banner.text = ""
+	_wok_banner_t = 0.0
+	_set.text = ""
+	_set_t = 0.0
+	_unlock.text = ""
+	_unlock_t = 0.0
+	_effect.text = ""
+	_effect_t = 0.0
+	_unlock_queue.clear()
+
 func tick(delta: float) -> void:
+	# 暂停 / 结算 / 非运行态：清一次就停（重复赋值不会重绘，但每次都清没必要）
+	if GameState.paused or not GameState.running:
+		if not _cleared:
+			_clear_all()
+			_cleared = true
+		return
+	_cleared = false
 	if _banner_t > 0.0:
 		_banner_t -= delta
 		_banner.modulate.a = clampf(_banner_t / FADE, 0.0, 1.0)

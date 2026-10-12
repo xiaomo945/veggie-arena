@@ -75,12 +75,11 @@ func _ready() -> void:
 	_stats_btn.custom_minimum_size = Vector2(40, 40)
 	_stats_btn.size = Vector2(40, 40)
 	_stats_btn.position = HudLayout.top_stats_pos()
-	var si := Art.ui_icon("star")
-	if si != null:
-		_stats_btn.icon = si
-	else:
-		_stats_btn.text = I18n.t("hud_stats")
-	_stats_btn.add_theme_font_size_override("font_size", 16)
+	# ⚠️ 这里曾用星形图标（Art.ui_icon("star")）：玩家原话"右上角那几个图标什么意思
+	#    看不出来，是武器吗？"——星星当不了"属性页"的说明书，可能是收藏/评分/评级。
+	#    改成文字最直白（zh"属性" / en"STATS"，40px 按钮里 13 号字放得下）。
+	_stats_btn.text = I18n.t("hud_stats")
+	_stats_btn.add_theme_font_size_override("font_size", 13)
 	_stats_btn.pressed.connect(_on_stats_pressed)
 	_stats_btn.visible = false
 	add_child(_stats_btn)

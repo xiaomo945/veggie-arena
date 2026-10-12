@@ -30,7 +30,7 @@ func _build() -> void:
 	add_child(_root)
 	var shade := ColorRect.new()
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.color = Color(0.03, 0.05, 0.09, 0.78)
+	shade.color = Color(0.03, 0.05, 0.09, 0.92)
 	_root.add_child(shade)
 	var panel := Panel.new()
 	panel.set_size(Vector2(440, 380))

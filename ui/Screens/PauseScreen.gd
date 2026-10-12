@@ -44,7 +44,7 @@ func _build() -> void:
 
 	var shade := ColorRect.new()
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.color = Color(0.03, 0.04, 0.07, 0.82)
+	shade.color = Color(0.03, 0.04, 0.07, 0.94)
 	_root.add_child(shade)
 
 	var t := Label.new()
