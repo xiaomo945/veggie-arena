@@ -108,9 +108,6 @@ signal dash_state_changed(ratio: float, ready: bool)
 # 冲刺起步的视觉反馈（残影/尘土），纯表现层订阅
 signal dash_started(pos: Vector2, dir: Vector2)
 
-# 快进（2 倍速）开关：HUD 快进按钮按下发出，由 Game 真正改战斗倍率
-signal fast_forward_toggled(on: bool)
-
 # ---- 流程 ----
 signal run_started()
 signal run_ended(wave: int, kills: int)

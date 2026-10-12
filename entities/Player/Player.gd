@@ -186,7 +186,8 @@ func _physics_process(delta: float) -> void:
 func _push_trail() -> void:
 	if _dash_trail.size() >= 6:
 		_dash_trail.remove_at(0)
-	_dash_trail.append({"w": global_position, "t": 0.22})
+	# "d" 存冲刺方向：残影要沿这个方向拉长成条（PlayerVisual 只读本字典）
+	_dash_trail.append({"w": global_position, "t": 0.22, "d": _dash["dir"] as Vector2})
 
 func _age_trails(delta: float) -> void:
 	for i in range(_dash_trail.size() - 1, -1, -1):

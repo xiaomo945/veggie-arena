@@ -18,8 +18,8 @@ const PANEL_H := 762.0
 const CARD_H := 100.0
 const CARD_GAP := 8.0
 const CARD_MAX_H := 132.0      # 卡少时不要撑成巨无霸，剩下的空间居中留白
-const INV_H := 96.0            # 我的武器：6 个固定方格（含标题行；上方留 18px 给提示行）
-const CARDS_Y := 224.0
+const INV_H := 116.0           # 我的武器：6 个固定方格（含标题行；放大图标+武器名后加高）
+const CARDS_Y := 252.0
 const CARDS_BOTTOM := 674.0    # 底部按钮上沿：卡片区总高度 = 674 - 224
 const MAX_CARDS := 6           # 大商店最多 6 张（卡片会变矮）
 const BTN_Y := 674.0
@@ -82,10 +82,9 @@ func _build_stats() -> void:
 	stats_lbl.add_theme_color_override("font_color", Color(0.62, 0.90, 0.63))
 	add_child(stats_lbl)
 	# 满槽提示条：只在"槽位满了还刷不出新武器"时亮，否则玩家只会以为商店坏了。
-	# ⚠️ 位置压着"我的武器"最后一排往下 8px：以前放在 y=200，正好盖住格子里的
-	#    "售 N"按钮（按钮占 195~212），提示一出来售出就点不到了。
+	# ⚠️ 位置在"我的武器"下方（INV_H 加高到 116 后底边到 228），再往下才是卡片区。
 	hint_lbl = Label.new()
-	hint_lbl.set_size(Vector2(PANEL_W - 40, 18)); hint_lbl.set_position(Vector2(22, 206))
+	hint_lbl.set_size(Vector2(PANEL_W - 40, 18)); hint_lbl.set_position(Vector2(22, 230))
 	hint_lbl.add_theme_font_size_override("font_size", 13)
 	hint_lbl.add_theme_color_override("font_color", Color(1.0, 0.72, 0.40))
 	add_child(hint_lbl)

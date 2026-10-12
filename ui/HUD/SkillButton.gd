@@ -1,6 +1,6 @@
 extends Control
 
-# 右侧技能按钮（王者荣耀式）：锅气大按钮 / 冲刺 / 快进 / 主动技，各自处理自己的触摸
+# 右侧技能按钮（王者荣耀式）：锅气大按钮 / 冲刺 / 主动技，各自处理自己的触摸
 # index，与左侧摇杆互不抢指 —— 左手按住摇杆时，右手点这里全部生效。
 # ⚠️ 每个按钮只认领"落在自己矩形内、且还没被占用的那根手指"，记住 index，松开只清
 #   自己的 —— 多指触控下摇杆和按钮各管各的。不处理 GUI 点击（mouse_filter=IGNORE），
@@ -8,7 +8,6 @@ extends Control
 
 const TYPE_WOK := "wok"
 const TYPE_DASH := "dash"
-const TYPE_FF := "ff"
 const TYPE_SKILL := "skill"      # 通用主动技能按钮（冰镇/毒雾…），由 skill_id 区分
 const TYPE_ATTACK := "attack"    # 手动攻击键：右下角大按钮，释放"最常用的技能"（primary）
 
@@ -26,8 +25,6 @@ var _charges := 0
 # 冲刺状态
 var _dash_ratio := 1.0
 var _dash_ready := true
-# 快进状态（本地开关）
-var _ff_on := false
 # 主动技能状态（冷却）
 var _skill_ratio := 1.0
 var _skill_ready := true
@@ -35,7 +32,6 @@ var _skill_form := "base"    # 当前形态 key：凑够某类武器后技能"�
 
 const SIZE := Vector2(88.0, 88.0)
 const WOK_SIZE := Vector2(88.0, 88.0)   # 半圆扇面上要和冰/毒拉开距离，不能太大
-const FF_SIZE := Vector2(80.0, 80.0)
 const SKILL_SIZE := Vector2(76.0, 76.0)
 const ATTACK_SIZE := Vector2(100.0, 100.0)
 
@@ -48,9 +44,6 @@ func _ready() -> void:
 	elif btn_type == TYPE_DASH:
 		size = SIZE
 		Events.dash_state_changed.connect(_on_dash)
-	elif btn_type == TYPE_FF:
-		size = FF_SIZE
-		Events.fast_forward_toggled.connect(_on_ff_sync)
 	elif btn_type == TYPE_SKILL:
 		size = SKILL_SIZE
 		# 没被外部指定的话，就用当前角色自己的专属技能
@@ -148,16 +141,7 @@ func _press(index: int) -> void:
 		Events.dash_requested.emit()
 	elif btn_type == TYPE_SKILL or btn_type == TYPE_ATTACK:
 		Events.skill_requested.emit(skill_id)
-	elif btn_type == TYPE_FF:
-		_ff_on = not _ff_on
-		Events.fast_forward_toggled.emit(_ff_on)
 	queue_redraw()
-
-# 与外部（如开局重置）同步快进状态，避免"按钮还亮着但游戏已恢复 1x"
-func _on_ff_sync(on: bool) -> void:
-	if _ff_on != on:
-		_ff_on = on
-		queue_redraw()
 
 func _draw() -> void:
 	var c := size * 0.5
@@ -170,7 +154,7 @@ func _draw() -> void:
 	elif btn_type == TYPE_ATTACK:
 		_draw_attack(c)
 	else:
-		_draw_ff(c)
+		_draw_dash(c)
 
 # ---- 锅气：大号按钮 + 充能进度环 + 存了几发 ----
 func _draw_wok(c: Vector2) -> void:
@@ -193,7 +177,10 @@ func _draw_wok(c: Vector2) -> void:
 	draw_string(fs, c + Vector2(-22.0, 9.0), wtxt, HORIZONTAL_ALIGNMENT_LEFT, -1,
 		34 if ready else 22, Color(1.0, 1.0, 0.98) if ready else Color(1.0, 0.85, 0.6, 0.8))
 
-# ---- 冲刺：带冷却扇形（从顶部顺时针扫过）----
+# ---- 冲刺：大号双箭头（»）+ "冲刺" 文字标签 ----
+# 旧版被玩家原话吐槽"有两个箭头是冲刺吗？没有效果"：18px 小三角无文字，还和快进键
+# 挨在一起被误认。现在换成 22px 粗双箭头（"向前猛冲"通用符号）+ 底部文字标签，
+# 快进按钮已整体删除（无任何消费者，误触还把冲刺形变算在它头上）。
 func _draw_dash(c: Vector2) -> void:
 	var radius := size.x * 0.5 - 4.0
 	var base := Color(0.16, 0.20, 0.28, 0.42)
@@ -204,28 +191,22 @@ func _draw_dash(c: Vector2) -> void:
 		var span := TAU * (1.0 - _dash_ratio)
 		draw_colored_polygon(_wedge(c, radius - 4.0, -PI * 0.5, -PI * 0.5 + span),
 			Color(0.05, 0.07, 0.12, 0.55))
+	# 双粗箭头（»）：整体偏上，给底部文字标签让位；冷却时整组变暗
 	var a := 0.95 if _dash_ready else 0.35
 	var col := Color(0.86, 0.96, 0.84, a)
+	var cy := c.y - 9.0
 	for i in 2:
-		var x := c.x - 8.0 + float(i) * 11.0
+		var ox := c.x - 9.0 + float(i) * 16.0
 		draw_colored_polygon(PackedVector2Array([
-			Vector2(x - 5.0, c.y - 9.0), Vector2(x + 4.0, c.y),
-			Vector2(x - 5.0, c.y + 9.0)]), col)
-
-# ---- 快进：2 倍速开关 ----
-func _draw_ff(c: Vector2) -> void:
-	var radius := size.x * 0.5 - 4.0
-	var ring := Color(1.0, 0.82, 0.32, 0.95) if _ff_on else Color(0.5, 0.6, 0.72, 0.7)
-	draw_circle(c, radius, Color(0.20, 0.30, 0.42, 0.42))
-	draw_arc(c, radius, 0.0, TAU, 36, ring, 3.0, true)
+			Vector2(ox - 8.0, cy - 11.0), Vector2(ox + 6.0, cy),
+			Vector2(ox - 8.0, cy + 11.0), Vector2(ox - 1.0, cy)]), col)
 	var fs := ThemeDB.fallback_font
 	if fs == null:
 		return
-	var txt := "2x" if _ff_on else "1x"
-	draw_string(fs, c + Vector2(-13.0, -2.0), txt,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(1.0, 1.0, 1.0, 0.95))
-	draw_string(fs, c + Vector2(-20.0, 18.0), I18n.t("hud_ff"),
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.9, 0.7, 0.9))
+	var txt := I18n.t("hud_dash")
+	var tw := fs.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	draw_string(fs, Vector2(c.x - tw * 0.5, c.y + 26.0), txt,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.90, 0.97, 0.90, 0.92))
 
 # 扇形多边形（圆心 + 半径 + 起止角），用于冷却遮罩
 func _wedge(c: Vector2, r: float, from: float, to: float) -> PackedVector2Array:

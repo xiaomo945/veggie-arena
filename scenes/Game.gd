@@ -30,8 +30,6 @@ var skill_sys = null                    # 主动技能系统（冰镇/毒雾…�
 var _stats_flow: Node = null             # 属性页流程协调器（D3-2，见 scenes/StatsFlow.gd）
 var _paused := false
 var _spawn_acc := 0.0
-# 战斗倍率（快进）：每物理帧多跑一次世界步进，而不是改 time_scale
-var _sim_speed := 1
 
 func _ready() -> void:
 	if OS.has_environment("SIM_SEED"):
@@ -124,8 +122,6 @@ func start_run() -> void:
 	skill_sys.reset_cooldowns()
 	_paused = false
 	GameState.paused = false
-	_sim_speed = 1
-	Events.fast_forward_toggled.emit(false)
 	set_physics_process(true)
 	wave_dir.spawn_wave_burst()
 	Events.run_started.emit()
@@ -210,9 +206,7 @@ func alive_enemy_count() -> int:
 func _physics_process(delta: float) -> void:
 	if player == null or not GameState.running or _paused:
 		return
-	# 快进：每物理帧把世界步进多次（UI/补间/震屏按真实时间，不受影响）
-	for _i in _sim_speed:
-		_step_world(delta)
+	_step_world(delta)
 
 func _step_world(delta: float) -> void:
 	GameState.tick_wave(delta)

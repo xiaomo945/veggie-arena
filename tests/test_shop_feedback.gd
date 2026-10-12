@@ -48,12 +48,13 @@ func run() -> Dictionary:
 			"卡高 %d：描述底部(%.0f) < 价格条顶部(%.0f)，不重叠" % [h, desc_bottom, price_top])
 
 	# 5) 小卡价格药丸右侧内边距：数字末位不被 2px 内边框压住。
-	#    布局（ShopCardCtl.draw_tile）：币图标占 [7,23]，数字中心 = 29+cw/2，
-	#    即数字右缘 = 29+cw；药丸右侧内边框在 pw-2。旧版右距仅 1px，"286"的"6"
-	#    被金框啃掉一角（真机反馈"金币数字被框遮挡"）。要求净空 ≥ 4px。
+	#    布局（ShopCardCtl.draw_tile 重做版）：药丸 = 8 内边距 + 币(16) + 间隙(4) + 数字 + 8，
+	#    整组【币+数字】水平居中；数字右缘 = 8+16+4+cw，药丸 2px 内边框在 pw-2。
+	#    旧版右距只有 1px，"286"的"6"被金框啃掉一角（真机反馈"金币数字被框遮挡"）。
+	#    要求净空 ≥ 4px。
 	for cw in [8.0, 16.0, 24.0, 32.0, 40.0]:
 		var pw: float = ShopCardCtl.price_pill_w(cw)
-		var num_right: float = 29.0 + cw
+		var num_right: float = 8.0 + 16.0 + 4.0 + cw
 		var border_inner: float = pw - 2.0
 		chk(num_right <= border_inner - 4.0,
 			"数字宽 %.0f：右缘 %.0f 距内边框 %.0f ≥ 4px（药丸宽 %.0f）" % [cw, num_right, border_inner, pw])

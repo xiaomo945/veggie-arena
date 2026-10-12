@@ -102,19 +102,19 @@ func buttons_dash_center() -> Vector2:
 # ⚠️ skill 槽【不写 id】：技能表已角色化（十个角色十个专属技能），写死 id
 #    就会放出一个技能表里已经没有的招（真踩过：这里写 poison，而 poison 已被
 #    角色专属技能取代 → 按钮点了没反应）。留空 = SkillButton 自己按当前角色取。
+# 扇面里【没有快进】：2 倍速按钮没有任何消费者（Game 从未订阅该信号），
+#    且和冲刺键位太近被玩家误按（"按了快进角色扁一下"= 实际按到冲刺）。
 func buttons_fan() -> Array:
-	# 横屏：dash 就在扇面下沿（(690,470) 离圆心只有 136 ≈ arc_r），150° 会整块压在
-	# 冲刺键上，所以快进挪到 285°（右上方），wok 240° 与它 x 方向让开 84px 以上。
+	# 横屏：dash 就在扇面下沿（(690,470) 离圆心只有 136 ≈ arc_r），扇面只留
+	# wok 240°（左上）与 skill 195°（左），两者与冲刺键 x 方向完全让开。
 	if Data.is_landscape():
 		return [
 			{"type": "wok",   "deg": 240.0},
 			{"type": "skill", "deg": 195.0},
-			{"type": "ff",    "deg": 285.0},
 		]
 	return [
 		{"type": "wok",   "deg": 240.0},
 		{"type": "skill", "deg": 195.0},
-		{"type": "ff",    "deg": 150.0},
 	]
 
 # ---- Joystick：左下移动区 + 固定底盘 ----

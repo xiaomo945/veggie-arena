@@ -55,7 +55,7 @@ const UI := {
   "hud_wok_tier1": {"en": "STIR-FRY! SPD UP", "zh": "翻炒！攻速提升"},
   "hud_toss": {"en": "WOK\nTOSS", "zh": "颠勺\n起锅"},
   "hud_wok_label": {"en": "WOK", "zh": "锅气"},
-  "hud_ff": {"en": "FAST", "zh": "快进"},
+  "hud_dash": {"en": "DASH", "zh": "冲刺"},
   "hud_unlocked": {"en": "UNLOCKED: %s!", "zh": "解锁：%s！"},
   "hud_combo": {"en": "COMBO x%d", "zh": "连击 x%d"},
   "hud_wok_heat": {"en": "WOK HEAT  %d%%", "zh": "锅气  %d%%"},

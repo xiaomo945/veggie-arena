@@ -50,17 +50,23 @@ static func rects(size: Vector2) -> Array:
 # （旧版 30px 高、y=size.y-30，100px 矮卡上会压住描述第一行）。
 const PRICE_FS := 15
 const PRICE_H := 24.0
-const PRICE_COIN := 17.0
 
-# 小卡价格药丸宽度：币图标占 [7,23]，数字从 29 起，右侧留 8px 内边距。
+# 小卡价格药丸宽度：币图标(16) + 间隙(4) + 数字 + 左右各 8px 内边距。
 # ⚠️ 右侧必须留够：StyleBoxFlat 的边框画在矩形内侧（2px），数字末位贴边就会被
 # 压住——旧版 pw=17+cw+14 右距只有 1px，"286"的"6"被金框啃掉一角（真机反馈
-# "金币数字被框遮挡"，三位数价格必现）。抽成静态函数供单测直接守门。
+# "金币数字被框遮挡"，三位数价格必现）。整组【币+数字】作为一组居中，抽成静态
+# 函数供单测直接守门。
 static func price_pill_w(text_w: float) -> float:
-	return 7.0 + 16.0 + 6.0 + text_w + 8.0
+	return 8.0 + 16.0 + 4.0 + text_w + 8.0
+
+# 药丸内布局：币在左、数字紧随其后，整组水平居中（旧版数字偏右 10px，目检"没居中"）
+static func price_coin_x(pill: Rect2) -> float:
+	return pill.position.x + 8.0
+static func price_num_cx(pill: Rect2, text_w: float) -> float:
+	return pill.position.x + 8.0 + 16.0 + 4.0 + text_w * 0.5
 
 static func price_rect(size: Vector2, text_w: float, compact: bool, tx: float) -> Rect2:
-	var w := PRICE_COIN + text_w + 18.0
+	var w := 8.0 + 16.0 + 4.0 + text_w + 8.0
 	var px := (size.x - 14.0 - w) if not compact else tx
 	var py := (size.y - 28.0) if not compact else (size.y - 34.0)
 	return Rect2(px, py, w, PRICE_H)
@@ -79,9 +85,9 @@ static func draw_price(c: Control, size: Vector2, font: Font, cost: String, ok: 
 	c.draw_style_box(sb, rr)
 	if coin != null:
 		c.draw_texture_rect_region(coin,
-			Rect2(rr.position.x + 8.0, rr.position.y + 4.0, PRICE_COIN, PRICE_COIN),
+			Rect2(rr.position.x + 8.0, rr.position.y + 4.0, 16.0, 16.0),
 			Rect2(Vector2.ZERO, coin.get_size()))
-	_center(c, font, cost, rr.position.x + 8.0 + PRICE_COIN + 4.0 + tw * 0.5,
+	_center(c, font, cost, rr.position.x + 8.0 + 16.0 + 4.0 + tw * 0.5,
 		rr.position.y + PRICE_H * 0.5 + PRICE_FS * 0.35, PRICE_FS,
 		gold if ok else Color(1.0, 0.72, 0.66))
 
@@ -150,8 +156,13 @@ static func _center(c: Control, font: Font, text: String, cx: float, y: float,
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	c.draw_string(font, Vector2(cx - w * 0.5, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
 
-# 小卡（网格 tile，宽 < 200）画法：图标居中 + 名称 + 价格 + Lv/稀有度。
+# 小卡（网格 tile，宽 < 200）画法：大图标相框 + 名称 + 价格 + Lv/稀有度。
 # 锁定 / 单张刷新按钮不画在这里，移到独立详情页（点小卡弹出，见 ui/Screens/WeaponDetail.gd）。
+#
+# 布局（151×132 实卡，真机反馈"图标太小、价格文字没居中、框多余"后重做）：
+#   y 6~25    角标行：Lv（武器，右上）/ 稀有度 pips（道具，右上）/ 涨价（左上）
+#   y 26~98   图标相框：近满宽 + 大圆角，图标居中装满（旧版只有 54×54 一只小盒）
+#   y 100~132 底部行：名称在左、价格药丸在右下角（旧版在左下，且数字偏右 10px）
 static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 	if font == null:
 		return
@@ -167,27 +178,56 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 		var lit := bool(d.get("set_on", false))
 		c.draw_style_box(_sb_tile(sc.lightened(0.20) if lit else sc.darkened(0.35),
 			Color(0, 0, 0, 0), 3.0, 0), Rect2(3.0, 8.0, 4.0, r.size.y - 16.0))
-	# 图标：顶部居中
-	var ib := minf(54.0, r.size.y - 52.0)
-	var box := Rect2(r.size.x * 0.5 - ib * 0.5, 8.0, ib, ib)
+	# ---- 角标行（y 6~25）：涨价左上 / Lv 或稀有度右上 ----
+	var infl := int(d.get("infl_pct", 0))
+	if infl > 0 and not sold:
+		var it := "涨 %d%%" % infl
+		var ifs := 11
+		var iw := font.get_string_size(it, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x + 12.0
+		c.draw_style_box(_sb_tile(Color(0.16, 0.10, 0.05, 0.9), Color(1.0, 0.55, 0.25), 9.0, 2),
+			Rect2(10.0, 6.0, iw, 17.0))
+		_center(c, font, it, 10.0 + iw * 0.5, 6.0 + 8.5 + ifs * 0.32, ifs, Color(1, 1, 1, 0.96))
+	if str(d.get("kind", "")) == "weapon":
+		var lv := int(d.get("lv", 1))
+		var txt := "Lv %d" % lv
+		var fs := 12
+		var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var rr := Rect2(r.size.x - tw - 26.0, 6.0, tw + 14.0, 19.0)
+		c.draw_style_box(_sb_tile(accent, accent.darkened(0.35), 8.0, 1), rr)
+		_center(c, font, txt, rr.position.x + rr.size.x * 0.5, 6.0 + 19.0 * 0.5 + fs * 0.35,
+			fs, Color(0.06, 0.07, 0.09))
+	else:
+		# 道具稀有度：右上角一颗=蓝、两颗=紫（与宽卡 _draw_rarity 同色系）
+		var rar := clampi(int(d.get("rarity", 1)), 1, 2)
+		var rcol: Color = [Color(0.35, 0.66, 1.0), Color(0.78, 0.49, 1.0)][rar - 1]
+		var pip := 8.0
+		var pgap := 4.0
+		var px0 := r.size.x - 10.0 - (float(rar) * pip + float(rar - 1) * pgap)
+		for i in rar:
+			c.draw_style_box(_sb_tile(rcol, rcol.darkened(0.35), 3.0, 1),
+				Rect2(px0 + float(i) * (pip + pgap), 10.0, pip, pip))
+	# ---- 图标相框：近满宽大框，图标居中（"装满道具框"的实机诉求）----
+	var fy := 24.0
+	var fh := maxf(36.0, r.size.y - fy - 28.0)     # 底部留给 名称+价格 行
+	var box := Rect2(8.0, fy, r.size.x - 16.0, fh)
 	c.draw_style_box(_sb_tile(accent.darkened(0.62), Color(accent, 0.85), 12.0, 2), box)
 	var tex: Texture2D = d.get("icon", null)
 	if tex != null and tex is Texture2D:
-		var s := ib - 10.0
-		c.draw_texture_rect_region(tex, Rect2(box.position.x + 5.0, box.position.y + 5.0, s, s),
+		var s := minf(box.size.x - 12.0, box.size.y - 10.0)
+		c.draw_texture_rect_region(tex,
+			Rect2(box.position.x + (box.size.x - s) * 0.5, box.position.y + (box.size.y - s) * 0.5, s, s),
 			Rect2(Vector2.ZERO, (tex as Texture2D).get_size()))
 	else:
-		draw_gem(c, box, accent)
-	# 名称：图标下方居中
-	var nm_c := Color(1.0, 1.0, 1.0, 0.97) if not dim else Color(0.6, 0.63, 0.67, 0.8)
-	_center(c, font, str(d.get("name", "")), r.size.x * 0.5, 8.0 + ib + 16.0, 14, nm_c, r.size.x - 12.0)
-	# 价格：底部药丸（买不起/槽满标红）
+		var gs := minf(box.size.x - 12.0, box.size.y - 10.0)
+		draw_gem(c, Rect2(box.position.x + (box.size.x - gs) * 0.5,
+			box.position.y + (box.size.y - gs) * 0.5, gs, gs), accent)
+	# ---- 底部行：名称在左（不居中，给右下角药丸让位），价格药丸右下 ----
 	var cost := str(d.get("cost", 0))
 	var cfs := 13
 	var cw := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs).x
 	var pw := price_pill_w(cw)
 	var ok := afford and not disabled
-	var pill := Rect2(10.0, r.size.y - 30.0, pw, 22.0)
+	var pill := Rect2(r.size.x - 10.0 - pw, r.size.y - 26.0, pw, 22.0)
 	c.draw_style_box(_sb_tile(Color(0.30, 0.21, 0.06, 0.96) if ok else Color(0.28, 0.10, 0.08, 0.96),
 		Color(0.85, 0.66, 0.22) if ok else Color(0.95, 0.42, 0.40), 12.0, 2), pill)
 	var art = Engine.get_singleton("Art")
@@ -195,29 +235,19 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 	if art != null:
 		coin = art.coin_icon()
 	if coin != null:
-		c.draw_texture_rect_region(coin, Rect2(pill.position.x + 7.0, pill.position.y + 3.0, 16.0, 16.0),
+		c.draw_texture_rect_region(coin, Rect2(price_coin_x(pill), pill.position.y + 3.0, 16.0, 16.0),
 			Rect2(Vector2.ZERO, coin.get_size()))
-	_center(c, font, cost, pill.position.x + 29.0 + cw * 0.5,
+	_center(c, font, cost, price_num_cx(pill, cw),
 		pill.position.y + 11.0 + cfs * 0.35, cfs, GOLD if ok else Color(1.0, 0.72, 0.66))
-	# 右上角：武器 Lv 角标 / 道具稀有度 pips
-	if str(d.get("kind", "")) == "weapon":
-		var lv := int(d.get("lv", 1))
-		var txt := "Lv %d" % lv
-		var fs := 12
-		var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var rr := Rect2(r.size.x - tw - 26.0, 8.0, tw + 14.0, 19.0)
-		c.draw_style_box(_sb_tile(accent, accent.darkened(0.35), 8.0, 1), rr)
-		_center(c, font, txt, rr.position.x + rr.size.x * 0.5, rr.position.y + 19.0 * 0.5 + fs * 0.35,
-			fs, Color(0.06, 0.07, 0.09))
-	# 通胀角标：价格上方一点
-	var infl := int(d.get("infl_pct", 0))
-	if infl > 0 and not sold:
-		var it := "涨 %d%%" % infl
-		var ifs := 11
-		var iw := font.get_string_size(it, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x + 12.0
-		c.draw_style_box(_sb_tile(Color(0.16, 0.10, 0.05, 0.9), Color(1.0, 0.55, 0.25), 9.0, 2),
-			Rect2(10.0, r.size.y - 54.0, iw, 17.0))
-		_center(c, font, it, 10.0 + iw * 0.5, r.size.y - 54.0 + 8.5 + ifs * 0.32, ifs, Color(1, 1, 1, 0.96))
+	# 名称：底部行左侧，最大宽度给药丸留位（放不下就截断，绝不压到药丸上）
+	var nm_c := Color(1.0, 1.0, 1.0, 0.97) if not dim else Color(0.6, 0.63, 0.67, 0.8)
+	var nm := str(d.get("name", ""))
+	var nm_fs := 14
+	var nm_maxw := pill.position.x - 10.0 - 12.0
+	while nm_fs > 10 and font.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, nm_fs).x > nm_maxw:
+		nm_fs -= 1
+	c.draw_string(font, Vector2(10.0, r.size.y - 26.0 + 11.0 + 4.0 + nm_fs * 0.35 - 4.0), nm,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, nm_fs, nm_c)
 
 	# 已售出：整卡压暗 + 绿色大勾 + "已售出" + 价格删除线。
 	# 宽卡那套压暗+大勾（ShopCard._draw 宽卡分支）在真实商店里是死代码 —— 商店是

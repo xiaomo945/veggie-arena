@@ -40,10 +40,16 @@ func _draw() -> void:
 	if player.ifr_left() > 0.0:
 		alpha = 0.35 + 0.45 * (0.5 + 0.5 * sin(player.ifr_left() * 40.0))
 	var tex := _skin_texture()
-	# 冲刺瞬间沿冲刺方向拉长（速度感），武器图标不跟着变形，所以画完马上复位
+	# 冲刺瞬间沿冲刺方向轻微拉长（速度感），武器图标不跟着变形，所以画完马上复位
 	if player.Dash.active(player.dash_state()):
-		var ang: float = (player.dash_state()["dir"] as Vector2).angle()
-		draw_set_transform(Vector2.ZERO, ang, Vector2(1.45, 0.72))
+		var ddir: Vector2 = player.dash_state()["dir"] as Vector2
+		var ang: float = ddir.angle()
+		# 冲刺速度线：身后三道短亮线，先于身体画（旧版只有淡残影 + 大幅形变，
+		# 玩家原话"按了一下角色扁一下，没有效果"）
+		_draw_dash_lines(ddir)
+		# 形变从 (1.45,0.72) 收到 (1.28,0.88)：旧值单独看就是"角色被压扁"，
+		# 速度感现在由残影拖尾 + 速度线承担，形变只留一点"前倾"的意味
+		draw_set_transform(Vector2.ZERO, ang, Vector2(1.28, 0.88))
 		if tex != null:
 			_draw_sprite(tex, 1.0, 1.0, 1.0)
 		else:
@@ -139,14 +145,34 @@ func _skin_texture() -> Texture2D:
 		return t
 	return Art.sprite("player")
 
-# 冲刺残影：只画几个半透明的淡影，位置存的是世界坐标（画的时候转回局部）
+# 冲刺残影：沿冲刺方向拉长的半透明椭球。旧版是正圆 + alpha 0.3，太淡，
+# 叠加单独看很丑的大形变，玩家反馈"按了一下就扁一下，没有效果"。
+# 现在：alpha 0.55、沿冲刺方向拉长 1.6 倍——残影从"淡淡的圆"变成"拖出去的条"，
+# 一眼看得出角色往前窜了一截。方向存在残影数据里（Player._push_trail 的 "d"）。
 func _draw_trails() -> void:
 	for item in player.dash_trail():
 		var t: Dictionary = item as Dictionary
 		var k := clampf(float(t.get("t", 0.0)) / 0.22, 0.0, 1.0)
 		var lp: Vector2 = to_local(t.get("w", global_position) as Vector2)
-		draw_circle(lp, player.radius() * 0.85 * (0.6 + 0.4 * k),
-			Color(0.98, 0.98, 1.0, 0.30 * k))
+		var d: Vector2 = t.get("d", Vector2.RIGHT) as Vector2
+		if d == Vector2.ZERO:
+			d = Vector2.RIGHT
+		var r: float = player.radius() * 0.85 * (0.6 + 0.4 * k)
+		draw_set_transform(lp, d.angle(), Vector2(1.6, 0.72))
+		draw_circle(Vector2.ZERO, r, Color(0.86, 0.95, 1.0, 0.55 * k))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# 冲刺速度线：沿冲刺反方向三道短亮线（中间最长），跟在残影后面
+func _draw_dash_lines(d: Vector2) -> void:
+	if d == Vector2.ZERO:
+		return
+	var back: Vector2 = -d.normalized()
+	var perp := Vector2(-back.y, back.x)
+	for i in 3:
+		var off: float = (float(i) - 1.0) * 13.0
+		var tail: Vector2 = perp * off - back * (player.radius() + 4.0)
+		var head: Vector2 = tail - back * (18.0 - absf(off) * 0.25)
+		draw_line(tail, head, Color(0.92, 0.98, 1.0, 0.55), 2.0, true)
 
 # 武器图标绕着角色站位（位置由 core/Weapon.mount_position 算，跟开火点是同一个）
 # 缺图时退化成一个色点，玩家至少能看出"我带了几把武器"
