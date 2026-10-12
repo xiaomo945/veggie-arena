@@ -67,6 +67,9 @@ func _build() -> void:
 	var star_ico := TextureRect.new()
 	star_ico.texture = Art.ui_icon("star")
 	star_ico.custom_minimum_size = Vector2(28, 28)
+	# ⚠️ 必须 EXPAND_IGNORE_SIZE：默认 KEEP_SIZE 下最小尺寸=贴图尺寸（约 120px），
+	# 会把 VBox 后面元素全顶下去 92px，START 被挤出 900px 屏底只剩一条边（真机目检发现）。
+	star_ico.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	star_ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	star_ico.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_box.add_child(star_ico)
@@ -121,10 +124,10 @@ func _build() -> void:
 	picker.char_detail_requested.connect(_on_char_detail_requested)
 	_char_detail.picked.connect(_on_char_picked)
 
-	# 开局前把这条 build 摊开给玩家看（卡片网格本身够直白，阶梯才是要读的信息）
+	# 开局前把这条 build 摊开给玩家看（卡片网格本身够直白，阶梯才是要读的信息）；
+	# 英文下阶梯能超一屏宽，必须 autowrap 自由折行
 	var pick_hint := _mk_label(16, Color(0.60, 0.64, 0.72))
 	pick_hint.text = CharTiers.full(Data.character(GameState.character))
-	# 英文下阶梯能超一屏宽，必须 autowrap 自由折行
 	pick_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_pick_lbl = pick_hint
 	_box.add_child(pick_hint)

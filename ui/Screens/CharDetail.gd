@@ -36,12 +36,21 @@ func _build() -> void:
 	add_child(_root)
 	var shade := ColorRect.new()
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.color = Color(0.02, 0.03, 0.06, 0.86)
+	# 0.94：0.86 时标题页的角色网格会从详情页四周透出来，抢面板里的文字
+	shade.color = Color(0.02, 0.03, 0.06, 0.94)
 	_root.add_child(shade)
 
 	var panel := Panel.new()
 	panel.set_size(Vector2(470, 690))
 	panel.position = Vector2((540 - 470) * 0.5, (900 - 690) * 0.5)
+	# 默认主题 Panel 是半透明的：标题页的 "TURNIP TROUBLE" 会糊在角色名背后
+	# （目检发现）。显式给一块近不透明暗底 + 金色细边，与全项目卡通暖色统一。
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.09, 0.10, 0.14, 0.98)
+	psb.set_corner_radius_all(18)
+	psb.set_border_width_all(2)
+	psb.border_color = Color(0.55, 0.45, 0.25, 0.9)
+	panel.add_theme_stylebox_override("panel", psb)
 	_root.add_child(panel)
 
 	# 头部：立绘 + 名字 + 职业倾向（不随内容滚动）

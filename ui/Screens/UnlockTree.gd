@@ -109,7 +109,9 @@ func _draw() -> void:
 	var fs := ThemeDB.fallback_font
 	if fs == null:
 		return
-	draw_rect(Rect2(Vector2.ZERO, Vector2(540.0, 900.0)), Color(0.03, 0.04, 0.07, 0.94), true)
+	# 整屏底罩：alpha 必须够高——0.94 时标题页的 "TURNIP TROUBLE" 会从节点
+	# 缝隙里透出来，一屏两种标题像没画完（目检发现）。0.985 基本不透。
+	draw_rect(Rect2(Vector2.ZERO, Vector2(540.0, 900.0)), Color(0.03, 0.04, 0.07, 0.985), true)
 	_draw_header(fs)
 	# 每列小标题
 	for i in _lanes.size():

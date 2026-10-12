@@ -52,6 +52,13 @@ const PRICE_FS := 15
 const PRICE_H := 24.0
 const PRICE_COIN := 17.0
 
+# 小卡价格药丸宽度：币图标占 [7,23]，数字从 29 起，右侧留 8px 内边距。
+# ⚠️ 右侧必须留够：StyleBoxFlat 的边框画在矩形内侧（2px），数字末位贴边就会被
+# 压住——旧版 pw=17+cw+14 右距只有 1px，"286"的"6"被金框啃掉一角（真机反馈
+# "金币数字被框遮挡"，三位数价格必现）。抽成静态函数供单测直接守门。
+static func price_pill_w(text_w: float) -> float:
+	return 7.0 + 16.0 + 6.0 + text_w + 8.0
+
 static func price_rect(size: Vector2, text_w: float, compact: bool, tx: float) -> Rect2:
 	var w := PRICE_COIN + text_w + 18.0
 	var px := (size.x - 14.0 - w) if not compact else tx
@@ -178,7 +185,7 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 	var cost := str(d.get("cost", 0))
 	var cfs := 13
 	var cw := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs).x
-	var pw := 17.0 + cw + 14.0
+	var pw := price_pill_w(cw)
 	var ok := afford and not disabled
 	var pill := Rect2(10.0, r.size.y - 30.0, pw, 22.0)
 	c.draw_style_box(_sb_tile(Color(0.30, 0.21, 0.06, 0.96) if ok else Color(0.28, 0.10, 0.08, 0.96),
@@ -190,7 +197,7 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 	if coin != null:
 		c.draw_texture_rect_region(coin, Rect2(pill.position.x + 7.0, pill.position.y + 3.0, 16.0, 16.0),
 			Rect2(Vector2.ZERO, coin.get_size()))
-	_center(c, font, cost, pill.position.x + 7.0 + 16.0 + 7.0 + cw * 0.5,
+	_center(c, font, cost, pill.position.x + 29.0 + cw * 0.5,
 		pill.position.y + 11.0 + cfs * 0.35, cfs, GOLD if ok else Color(1.0, 0.72, 0.66))
 	# 右上角：武器 Lv 角标 / 道具稀有度 pips
 	if str(d.get("kind", "")) == "weapon":
@@ -211,6 +218,29 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 		c.draw_style_box(_sb_tile(Color(0.16, 0.10, 0.05, 0.9), Color(1.0, 0.55, 0.25), 9.0, 2),
 			Rect2(10.0, r.size.y - 54.0, iw, 17.0))
 		_center(c, font, it, 10.0 + iw * 0.5, r.size.y - 54.0 + 8.5 + ifs * 0.32, ifs, Color(1, 1, 1, 0.96))
+
+	# 已售出：整卡压暗 + 绿色大勾 + "已售出" + 价格删除线。
+	# 宽卡那套压暗+大勾（ShopCard._draw 宽卡分支）在真实商店里是死代码 —— 商店是
+	# 3 列网格、卡宽 151px，全走这里的小卡路径，所以"买过了"此前只有名字变灰，
+	# 真机反馈"只变个边框、根本看不出买没买成、反复点"。这里补齐且比宽卡更狠：
+	# 价格药丸一并划掉，杜绝"看着还能再买一次"的错觉。
+	if sold:
+		c.draw_style_box(_sb_tile(Color(0.05, 0.07, 0.04, 0.80), Color(0.25, 0.77, 0.32, 0.95), 14.0, 2), r)
+		var cx := r.size.x * 0.5
+		var cy := r.size.y * 0.5
+		c.draw_polyline(PackedVector2Array([Vector2(cx - 18.0, cy + 2.0),
+			Vector2(cx - 6.0, cy + 14.0), Vector2(cx + 16.0, cy - 12.0)]),
+			Color(0.38, 0.92, 0.48), 5.0, true)
+		var i18n = Engine.get_singleton("I18n")
+		var sold_txt := "SOLD"
+		if i18n != null:
+			sold_txt = str(i18n.t("shop_sold"))
+		_center(c, font, sold_txt, cx, cy + 36.0, 16, Color(1, 1, 1, 0.95))
+		# 价格删除线：红棕一道横穿药丸（画在压暗层之上，保持醒目）
+		var mid_y := pill.position.y + pill.size.y * 0.5
+		c.draw_line(pill.position + Vector2(8.0, mid_y),
+			pill.position + Vector2(pill.size.x - 8.0, mid_y),
+			Color(0.95, 0.45, 0.42, 0.95), 2.0)
 
 # tile 用的圆角盒（每次重绘现 new，简单够用）
 static func _sb_tile(bg: Color, border: Color, radius: float, bw: int) -> StyleBoxFlat:
