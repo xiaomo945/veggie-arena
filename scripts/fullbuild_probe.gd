@@ -130,9 +130,6 @@ func _initialize() -> void:
 			waves = int(a.split("=")[1])
 	var data = DataScript.new()
 	data.load_all()
-	var wk: Dictionary = data.wok_cfg()
-	var wok := ((1.0 + float(wk.get("tier1_fire", 0.3))) + (1.0 + float(wk.get("tier2_fire", 0.65)))
-		* (1.0 + float(wk.get("tier2_dmg", 0.3)))) * 0.5
 	var wcfg: Dictionary = data.wave_cfg()
 	var scfg: Dictionary = data.spawn_cfg()
 	var ccfg: Dictionary = data.combat_cfg()
@@ -146,7 +143,7 @@ func _initialize() -> void:
 	# 预算：通用玩家打到第 W 波的累计收入（真实 Economy 产出，不是拍脑袋常数）。
 	# 每个角色拿到的钱完全一样 —— 差异只能来自角色自身的设计。
 	var sim0 := SimCore.new()
-	sim0.wok = wok
+	sim0.wok_cfg = data.wok_cfg()
 	var budget := 0.0
 	for r in sim0.run(data, waves, 20261005):
 		budget += float(r["income"])
@@ -158,7 +155,7 @@ func _initialize() -> void:
 		var ce: Dictionary = data.character(str(ck))
 		ce["_key"] = str(ck)
 		var sim := SimCore.new()
-		sim.wok = wok
+		sim.wok_cfg = data.wok_cfg()
 		sim.char_entry = ce
 		sim.char_key = str(ck)
 		sim.skills = data.skills_cfg()
@@ -201,7 +198,7 @@ func _initialize() -> void:
 		var sim_rows: Array = []
 		for i in range(SIM_RUNS):
 			var s2 := SimCore.new()
-			s2.wok = wok
+			s2.wok_cfg = data.wok_cfg()
 			s2.char_entry = ce
 			s2.char_key = str(ck)
 			s2.fav = 1.35

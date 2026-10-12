@@ -22,16 +22,16 @@ const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
 const ShopPlan := preload("res://core/ShopPlan.gd")
 const Synergy := preload("res://core/Synergy.gd")
-const WeaponSets := preload("res://core/WeaponSets.gd")
 const SimChar := preload("res://scripts/SimChar.gd")
-const SP := preload("res://tests/SrcParse.gd")
+const SimDps := preload("res://scripts/SimDps.gd")
 
 const MAX_REROLL := 2    # 每波最多整店刷新几次（真实玩家要留钱，也要留时间）
 const SURVIVAL_W := 0.6  # 生存/功能类道具相对最优输出卡的性价比（见 _shop 里的说明）
 
 var targets := 3
 var defs := {}          # key -> 武器原始 def（算对群折算要用 behavior / aoe）
-var wok := 1.7          # 锅气倍率（tier1 与 tier2 的中点）
+var de := SimDps.new()  # DPS 数学（对群折算/锅气档位/DoT），_sync() 后与上面同步
+var wok_cfg := {}       # data/balance.json 的 wok 段（锅气档位倍率用）
 var pieces := 0         # 本局累计买了几件道具
 var gold := 0           # 钱包（_shop 要改它，用成员而不是来回传参）
 var fav := 1.0          # 本命武器溢价：模拟玩家愿为羁绊多付钱（1.0 = 完全不偏心）
@@ -42,68 +42,38 @@ var enemies := {}
 var ch := SimChar.new()   # 角色侧建模（属性/技能/EHP）
 
 
-# 对群折算：单把武器打 N 个目标时输出是单体的几倍。口径与 tests/test_weapon.gd
-# 的 _multiplier 一致 —— 按单体 DPS 排会让 AOE/连锁武器显得很弱，逼着配平去堆
-# 单体数值，正是用户嫌的"武器只是数值堆叠"。链式衰减现读源码，不抄常数。
+# DPS 数学已拆去 scripts/SimDps.gd（锅气按角色浮动 + 自带 DoT 两项新口径没地方长）。
+# 对外保留同名薄壳：探针（wspread_probe 的 sim.group_mult 等）调用点不变。
+func _sync() -> void:
+	de.defs = defs
+	de.targets = targets
+	de.wok_cfg = wok_cfg
+
+
 func group_mult(def: Dictionary) -> float:
-	var beh := Weapon.behavior_of(def)
-	if float(def.get("aoe", 0)) > 0.0 or beh == "pulse" or beh == "beam":
-		return float(targets)
-	if beh == "chain":
-		var m := 1.0
-		var hop := 1.0
-		for _i in range(int(def.get("chain", 0))):
-			hop *= SP.const_val(SP.read("res://scenes/BulletSystem.gd"), "CHAIN_FALLOFF")
-			m += hop
-		return m
-	return 1.6 if beh == "boomerang" else (1.15 if beh == "homing" else 1.0)
+	_sync()
+	return de.group_mult(def)
 
 
 func eff_dps(w: Dictionary, dmg_pct: float, rate_pct: float) -> float:
-	var d: Dictionary = defs.get(str(w.get("key", "")), {})
-	return Combat.weapon_dps(w, dmg_pct, rate_pct) * group_mult(d)
+	_sync()
+	return de.eff_dps(w, dmg_pct, rate_pct)
 
 
-# 当前这堆武器若全停在 Lv1 会有多少输出 —— need_lv / eq_lv 的分母，
-# 让"该到几级"这句话有一个和玩家手上武器同口径的尺子。
-func sum_d1(weapons: Array, ccfg: Dictionary) -> float:
-	var t := 0.0
-	for w in weapons:
-		var d: Dictionary = defs.get(str(w.get("key", "")), {})
-		t += Combat.weapon_dps(Weapon.merged_stats(d, 1, ccfg)) * group_mult(d)
-	return t
-
-
-# 当前总输出。pierce / aoe 只给保守折算（穿透要怪排队才吃得到、范围要够大才多打
-# 到一个），完全不计会让探针只认 dmg/rate/crit 三类道具，把玩家算弱、把敌人配软。
-func total_dps(weapons: Array, st: Dictionary) -> float:
-	var rp := float(st.get("rate_pct", 0.0))
-	var pa := float(st.get("pellets_add", 0.0))
-	var t := 0.0
-	for w in weapons:
-		var key := str(w.get("key", ""))
-		var d: Dictionary = defs.get(key, {})
-		var ww: Dictionary = w.duplicate()
-		ww["pellets"] = float(w.get("pellets", 1)) + pa
-		# ⚠️ 伤害必须走 WeaponSets.damage_mult，不能只套 dmg_pct：实战里
-		#    近战吃 melee_pct、远程吃 ranged_pct、元素额外吃 elem_pct
-		#    （entities/Player/PlayerWeapons.gd 就这么算的）。只套 dmg_pct
-		#    会把所有"元素流 / 近战流"角色的羁绊收益算成 0，排名彻底失真。
-		t += Combat.weapon_dps(ww, 0.0, rp) * WeaponSets.damage_mult(d, st) * group_mult(d)
-	var cc := clampf(float(st.get("crit_chance", 0.0)), 0.0, 1.0)
-	var pierce := 1.0 + 0.10 * minf(float(st.get("pierce_add", 0.0)), 4.0)
-	var aoe := 1.0 + 0.08 * minf(float(st.get("aoe_add", 0.0)) / 20.0, 4.0)
-	return t * (1.0 + cc * float(st.get("crit_mult", 0.0))) * pierce * aoe * wok
-
-
-# 武器 + 技能一起算：技能要么加输出，要么给攻速窗口，要么给生存系数。
+# 武器 + 技能一起算：技能要么加输出，要么给攻速窗口，要么给生存系数，
+# 要么（heat 系）折算成锅气充能当量。角色自带命中 DoT 也在这里进总输出。
 func combat_power(weapons: Array, st: Dictionary) -> Dictionary:
 	var es := ch.eff_st(weapons, st, char_entry, defs)
 	var sp := ch.skill_parts(weapons, es, char_key, char_entry, defs, skills,
 		targets, ch.avg_enemy_hp(enemies))
+	var dot := ch.dot_dps(char_entry, es, ch.avg_enemy_hp(enemies))
+	# 锅气档位：角色/道具的 wok_pct + heat 技能的充能当量，一起把档位推向爆炒
+	var wp := float(es.get("wok_pct", 0.0)) + float(sp.get("wok_pct", 0.0))
+	_sync()
 	return {"es": es,
-		"dps": total_dps(weapons, es) * (1.0 + float(sp["rate"])) + float(sp["dps"]),
-		"skill_dps": float(sp["dps"]), "ctrl": float(sp["ctrl"])}
+		"dps": de.total(weapons, es, dot, wp) * (1.0 + float(sp["rate"])) + float(sp["dps"]),
+		"skill_dps": float(sp["dps"]), "ctrl": float(sp["ctrl"]),
+		"wok_mult": de.wok_mult(wp), "dot_dps": dot}
 
 
 # 本波敌人的加权平均掉金。⚠️ 按"这波真正会刷的怪"加权：第 1 波只刷 grunt(2 金)，用全体平均会虚高 4 倍。
@@ -225,6 +195,8 @@ func run(data, waves: int, seed_base: int) -> Array:
 	var scfg: Dictionary = data.spawn_cfg()
 	var ccfg: Dictionary = data.combat_cfg()
 	var shop: Dictionary = data.shop_cfg()
+	wok_cfg = data.wok_cfg()
+	_sync()
 	var length := float(wcfg.get("length", 45))
 	var max_slot := int(shop.get("max_slot", 6))
 	var max_lv := int(shop.get("max_lv", 10))
@@ -244,7 +216,10 @@ func run(data, waves: int, seed_base: int) -> Array:
 		var total_hp := Spawner.wave_total_hp(w, scfg, data.enemies, length)
 		var n_spawn := Spawner.spawn_rate(w, scfg) * length
 		var clear_dps := total_hp / maxf(0.001, length)
-		var base1 := sum_d1(weapons, ccfg) * wok
+		# base1 与 dps 用同一套锅气档位/DoT 口径：eq_lv 量的是"武器爬了几级"，
+		# 不能被角色被动污染（早先 base1 用固定中点、dps 用角色浮动，scorch 会虚高）。
+		var base1 := de.sum_lv1(weapons, ccfg, float(cp.get("dot_dps", 0.0))) \
+			* float(cp.get("wok_mult", 1.7))
 		# ⚠️ 打这一波用的是【上一波商店之后】的战力，不是本波商店之后的。
 		# 早先拿本波买完的 DPS 去比本波清场需求，等于白送玩家一次采购，
 		# ratio 系统性虚高，配平就会往"敌人再肉一点"的错误方向调。

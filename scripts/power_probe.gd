@@ -39,7 +39,7 @@ func _initialize() -> void:
 	var runs: Array = []
 	for i in range(RUNS):
 		var sim := SimCore.new()
-		sim.wok = wok
+		sim.wok_cfg = wk
 		runs.append(sim.run(data, waves, 20261005 + i * 7919))
 	var rows: Array = []
 	for w in range(waves):
