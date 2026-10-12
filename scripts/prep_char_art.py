@@ -37,6 +37,12 @@ ASSETS = {
     "commando": "Commando_turnip_sprite__same_c_2026-10-04T22-45-31.png",
     "martial": "Martial_artist_turnip_sprite___2026-10-04T22-45-31.png",
     "magnet": "Magnet_engineer_turnip_sprite__2026-10-04T22-45-31.png",
+    "silverblade": "Silverblade_turnip_sprite__sam_2026-10-12T06-04-32.png",
+    "firecracker": "Firecracker_turnip_sprite__sam_2026-10-12T06-04-34.png",
+    "buckshot": "Buckshot_turnip_sprite__same_c_2026-10-12T06-04-34.png",
+    "frost": "Frost_turnip_sprite__same_cute_2026-10-12T06-04-36.png",
+    "steam": "Steam_turnip_sprite__same_cute_2026-10-12T06-04-34.png",
+    "micro": "Micro_turnip_sprite__same_cute_2026-10-12T06-04-34.png",
 }
 
 
@@ -110,11 +116,15 @@ def normalize(rgba: np.ndarray) -> Image.Image:
 
 
 def process(key: str, fname: str) -> bool:
+    dst = os.path.join(DST, "sprite_char_%s.png" % key)
     if key in ALREADY_ALPHA:
         src = os.path.join(DST, "sprite_char_%s.png" % key)
     else:
         src = os.path.join(SRC, fname)
     if not os.path.exists(src):
+        if os.path.exists(dst):
+            print("SKIP %-11s（源图已清理，产物已存在）" % key)
+            return True
         print("MISSING %s <- %s" % (key, src))
         return False
     a = np.array(Image.open(src).convert("RGB"))
@@ -125,7 +135,7 @@ def process(key: str, fname: str) -> bool:
         fg = clean_foreground(~bg)
     rgba = np.dstack([a, (fg * 255).astype(np.uint8)])
     out = normalize(rgba)
-    out.save(os.path.join(DST, "sprite_char_%s.png" % key))
+    out.save(dst)
     arr = np.asarray(out)
     cov = arr[:, :, 3] > 24
     ys, xs = np.where(cov)

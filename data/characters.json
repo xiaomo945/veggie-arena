@@ -1212,5 +1212,573 @@
     },
     "skill": "flashfire",
     "start_wok_charges": 1
+  },
+  "silverblade": {
+    "zh": "银刃萝卜",
+    "en": "Silverblade",
+    "color": "#d7dee9",
+    "affinity": "melee",
+    "trait": "一刀两断",
+    "trait_en": "One clean cut",
+    "best": "三德刀 / 刀工，贴脸一刀流",
+    "best_en": "Santoku / blades up close - one cut ends it",
+    "tip": "刀工是她的语言：攻速和暴击全拉满，贴脸一刀流；身板也练出来了，不再是脆皮",
+    "tip_en": "Her blade does the talking: attack speed and crit maxed, one cut up close; she has bulked up too, no longer glass.",
+    "stats": {
+      "melee_pct": 0.3,
+      "crit_chance": 0.22,
+      "rate_pct": 0.1,
+      "max_hp": 40,
+      "armor": 3,
+      "speed_pct": -0.06
+    },
+    "bond": {
+      "tag": "blade",
+      "tiers": [
+        {
+          "need": 2,
+          "stats": {
+            "crit_chance": 0.06
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "crit_chance": 0.12,
+            "melee_pct": 0.06
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "crit_chance": 0.2,
+            "melee_pct": 0.16,
+            "dmg_pct": 0.1
+          }
+        }
+      ]
+    },
+    "signature": {
+      "key": "santoku",
+      "tiers": [
+        {
+          "need": 1,
+          "stats": {
+            "melee_pct": 0.05
+          }
+        },
+        {
+          "need": 2,
+          "stats": {
+            "melee_pct": 0.1,
+            "crit_chance": 0.04
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "melee_pct": 0.16,
+            "crit_chance": 0.09,
+            "rate_pct": 0.05
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "melee_pct": 0.22,
+            "crit_chance": 0.14,
+            "rate_pct": 0.1
+          }
+        },
+        {
+          "need": 5,
+          "stats": {
+            "melee_pct": 0.28,
+            "crit_chance": 0.2,
+            "rate_pct": 0.15,
+            "dmg_pct": 0.06
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "melee_pct": 0.35,
+            "crit_chance": 0.27,
+            "rate_pct": 0.2,
+            "dmg_pct": 0.12,
+            "max_hp": 25
+          }
+        }
+      ]
+    },
+    "skill": "cross_cut"
+  },
+  "firecracker": {
+    "zh": "炮仗萝卜",
+    "en": "Firecracker",
+    "color": "#ff8a5c",
+    "affinity": "ranged",
+    "trait": "轰一声",
+    "trait_en": "Big bang",
+    "best": "火箭筒，一炸一片",
+    "best_en": "Rocket: one shot, one crowd",
+    "tip": "炮弹会自己拐弯咬人，装得慢换来一大片爆炸；离怪远点，别被近身",
+    "tip_en": "Homing shells, huge blasts, slow reload: keep your distance and let them come to the boom.",
+    "stats": {
+      "ranged_pct": 0.3,
+      "dmg_pct": 0.16,
+      "rate_pct": -0.15,
+      "max_hp": 60,
+      "armor": 3
+    },
+    "bond": {
+      "tag": "gun",
+      "tiers": [
+        {
+          "need": 2,
+          "stats": {
+            "ranged_pct": 0.08
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "ranged_pct": 0.16,
+            "dmg_pct": 0.06
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "ranged_pct": 0.28,
+            "dmg_pct": 0.14
+          }
+        }
+      ]
+    },
+    "signature": {
+      "key": "rocket",
+      "tiers": [
+        {
+          "need": 1,
+          "stats": {
+            "dmg_pct": 0.05
+          }
+        },
+        {
+          "need": 2,
+          "stats": {
+            "dmg_pct": 0.1,
+            "ranged_pct": 0.04
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "dmg_pct": 0.16,
+            "ranged_pct": 0.1
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "dmg_pct": 0.22,
+            "ranged_pct": 0.16
+          }
+        },
+        {
+          "need": 5,
+          "stats": {
+            "dmg_pct": 0.28,
+            "ranged_pct": 0.22
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "dmg_pct": 0.36,
+            "ranged_pct": 0.3
+          }
+        }
+      ]
+    },
+    "skill": "barrage"
+  },
+  "buckshot": {
+    "zh": "霰弹萝卜",
+    "en": "Buckshot",
+    "color": "#f2c14e",
+    "affinity": "ranged",
+    "trait": "弹幕",
+    "trait_en": "Pellet storm",
+    "best": "霰弹枪贴脸扫",
+    "best_en": "Shotgun in their face",
+    "tip": "一次一大片弹丸，射速快但打得近；贴脸是唯一打法，身板还算扛揍",
+    "tip_en": "A whole screen of pellets per shot, fast but short-ranged; up close is the only way to play, and she can take a few hits.",
+    "stats": {
+      "ranged_pct": 0.34,
+      "rate_pct": 0.14,
+      "max_hp": 30,
+      "armor": 2,
+      "speed_pct": -0.08
+    },
+    "bond": {
+      "tag": "gun",
+      "tiers": [
+        {
+          "need": 2,
+          "stats": {
+            "ranged_pct": 0.08
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "ranged_pct": 0.18,
+            "rate_pct": 0.08
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "ranged_pct": 0.3,
+            "rate_pct": 0.18
+          }
+        }
+      ]
+    },
+    "signature": {
+      "key": "shotgun",
+      "tiers": [
+        {
+          "need": 1,
+          "stats": {
+            "ranged_pct": 0.05
+          }
+        },
+        {
+          "need": 2,
+          "stats": {
+            "ranged_pct": 0.1,
+            "rate_pct": 0.05
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "ranged_pct": 0.16,
+            "rate_pct": 0.1
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "ranged_pct": 0.22,
+            "rate_pct": 0.16,
+            "crit_chance": 0.05
+          }
+        },
+        {
+          "need": 5,
+          "stats": {
+            "ranged_pct": 0.28,
+            "rate_pct": 0.22,
+            "crit_chance": 0.1
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "ranged_pct": 0.36,
+            "rate_pct": 0.28,
+            "crit_chance": 0.16
+          }
+        }
+      ]
+    },
+    "skill": "buckshot"
+  },
+  "frost": {
+    "zh": "寒霜萝卜",
+    "en": "Frost",
+    "color": "#8fd8ff",
+    "affinity": "elem",
+    "trait": "冻结",
+    "trait_en": "Deep freeze",
+    "best": "冰桶，先定再打",
+    "best_en": "Ice bucket: lock them, then hit",
+    "tip": "先把怪冻住再慢慢收拾，元素伤害拉满；攻速慢半拍，靠控制补",
+    "tip_en": "Freeze first, ask questions never: elemental damage maxed, tempo a half-step slow - control carries.",
+    "stats": {
+      "elem_pct": 0.3,
+      "wok_pct": 0.1,
+      "rate_pct": -0.12,
+      "max_hp": 0
+    },
+    "bond": {
+      "tag": "elemental",
+      "tiers": [
+        {
+          "need": 2,
+          "stats": {
+            "elem_pct": 0.08
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "elem_pct": 0.16,
+            "wok_pct": 0.08
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "elem_pct": 0.28,
+            "wok_pct": 0.18
+          }
+        }
+      ]
+    },
+    "signature": {
+      "key": "ice_bucket",
+      "tiers": [
+        {
+          "need": 1,
+          "stats": {
+            "elem_pct": 0.05
+          }
+        },
+        {
+          "need": 2,
+          "stats": {
+            "elem_pct": 0.1,
+            "max_hp": 10
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "elem_pct": 0.16,
+            "max_hp": 20
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "elem_pct": 0.22,
+            "max_hp": 30,
+            "wok_pct": 0.05
+          }
+        },
+        {
+          "need": 5,
+          "stats": {
+            "elem_pct": 0.28,
+            "max_hp": 40,
+            "wok_pct": 0.1
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "elem_pct": 0.35,
+            "max_hp": 55,
+            "wok_pct": 0.15
+          }
+        }
+      ]
+    },
+    "skill": "blizzard"
+  },
+  "steam": {
+    "zh": "蒸汽萝卜",
+    "en": "Steam",
+    "color": "#a8e6cf",
+    "affinity": "elem",
+    "trait": "锅气引擎",
+    "trait_en": "Heat engine",
+    "best": "蒸笼 + 锅气技能",
+    "best_en": "Steamer plus heat skills",
+    "tip": "她的元素伤害同时喂饱锅气：颠勺按得比谁都勤，普攻反而慢",
+    "tip_en": "Her elemental hits feed the wok directly: more wok tosses than anyone, at the cost of plain attack tempo.",
+    "stats": {
+      "elem_pct": 0.34,
+      "wok_pct": 0.35,
+      "rate_pct": -0.1,
+      "max_hp": 55,
+      "armor": 3
+    },
+    "bond": {
+      "tag": "elemental",
+      "tiers": [
+        {
+          "need": 2,
+          "stats": {
+            "elem_pct": 0.08
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "elem_pct": 0.16,
+            "wok_pct": 0.1
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "elem_pct": 0.28,
+            "wok_pct": 0.22
+          }
+        }
+      ]
+    },
+    "signature": {
+      "key": "steamer",
+      "tiers": [
+        {
+          "need": 1,
+          "stats": {
+            "wok_pct": 0.1
+          }
+        },
+        {
+          "need": 2,
+          "stats": {
+            "wok_pct": 0.18,
+            "elem_pct": 0.04
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "wok_pct": 0.26,
+            "elem_pct": 0.09
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "wok_pct": 0.36,
+            "elem_pct": 0.15,
+            "rate_pct": -0.03
+          }
+        },
+        {
+          "need": 5,
+          "stats": {
+            "wok_pct": 0.46,
+            "elem_pct": 0.21,
+            "rate_pct": -0.05
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "wok_pct": 0.58,
+            "elem_pct": 0.28,
+            "rate_pct": -0.08
+          }
+        }
+      ]
+    },
+    "skill": "steam_burst"
+  },
+  "micro": {
+    "zh": "微波萝卜",
+    "en": "Micro",
+    "color": "#ffe066",
+    "affinity": "elem",
+    "trait": "超频",
+    "trait_en": "Overclocked",
+    "best": "微波炉，一下叮全场",
+    "best_en": "Microwave: one ding, whole screen",
+    "tip": "极致元素爆发，一发电磁炉叮死一圈；射速是唯一的代价",
+    "tip_en": "Peak elemental burst: one microwave ding clears a whole ring; attack speed is the only price.",
+    "stats": {
+      "elem_pct": 0.42,
+      "dmg_pct": 0.15,
+      "rate_pct": -0.2,
+      "max_hp": 55,
+      "armor": 3,
+      "speed_pct": -0.1
+    },
+    "bond": {
+      "tag": "elemental",
+      "tiers": [
+        {
+          "need": 2,
+          "stats": {
+            "elem_pct": 0.08
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "elem_pct": 0.18,
+            "dmg_pct": 0.06
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "elem_pct": 0.3,
+            "dmg_pct": 0.15
+          }
+        }
+      ]
+    },
+    "signature": {
+      "key": "microwave",
+      "tiers": [
+        {
+          "need": 1,
+          "stats": {
+            "dmg_pct": 0.06
+          }
+        },
+        {
+          "need": 2,
+          "stats": {
+            "dmg_pct": 0.12,
+            "elem_pct": 0.05
+          }
+        },
+        {
+          "need": 3,
+          "stats": {
+            "dmg_pct": 0.18,
+            "elem_pct": 0.1
+          }
+        },
+        {
+          "need": 4,
+          "stats": {
+            "dmg_pct": 0.25,
+            "elem_pct": 0.16,
+            "rate_pct": -0.05
+          }
+        },
+        {
+          "need": 5,
+          "stats": {
+            "dmg_pct": 0.32,
+            "elem_pct": 0.22,
+            "rate_pct": -0.08
+          }
+        },
+        {
+          "need": 6,
+          "stats": {
+            "dmg_pct": 0.4,
+            "elem_pct": 0.3,
+            "rate_pct": -0.12,
+            "crit_chance": 0.1
+          }
+        }
+      ]
+    },
+    "skill": "overload"
   }
 }

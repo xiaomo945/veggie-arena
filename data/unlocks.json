@@ -270,6 +270,78 @@
           "need": 10
         }
       ]
+    },
+    "silverblade": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "mash"
+        },
+        {
+          "type": "wins",
+          "need": 3
+        }
+      ]
+    },
+    "firecracker": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "magnet"
+        },
+        {
+          "type": "total_gold",
+          "need": 12000
+        }
+      ]
+    },
+    "buckshot": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "firecracker"
+        },
+        {
+          "type": "wins",
+          "need": 3
+        }
+      ]
+    },
+    "frost": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "scorch"
+        },
+        {
+          "type": "total_kills",
+          "need": 2000
+        }
+      ]
+    },
+    "steam": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "frost"
+        },
+        {
+          "type": "best_wave",
+          "need": 12
+        }
+      ]
+    },
+    "micro": {
+      "any_of": [
+        {
+          "type": "clear_with",
+          "need": "steam"
+        },
+        {
+          "type": "wins",
+          "need": 4
+        }
+      ]
     }
   }
 }

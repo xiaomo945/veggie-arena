@@ -242,6 +242,91 @@
                 }
             }
         ]
+    },
+    {
+      "id": "cross_cut",
+      "zh": "十字斩",
+      "en": "Cross Cut",
+      "tip": "以自身为中心斩出十字气劲，贴身一圈全切开",
+      "tip_en": "A cross of cutting air around you - everything adjacent gets opened up",
+      "effect": "damage",
+      "cooldown": 6.0,
+      "radius": 150.0,
+      "dmg": 240.0,
+      "variants": [
+        {"char": "silverblade", "tag": "blade", "need": 4, "mul": {"dmg": 1.5, "radius": 1.2}}
+      ]
+    },
+    {
+      "id": "barrage",
+      "zh": "连珠炮",
+      "en": "Barrage",
+      "tip": "朝天一轮齐射，炮弹雨点般落进人群",
+      "tip_en": "Volley skyward; shells rain into the crowd",
+      "effect": "damage",
+      "cooldown": 8.0,
+      "radius": 200.0,
+      "dmg": 200.0,
+      "variants": [
+        {"char": "firecracker", "tag": "gun", "need": 4, "mul": {"dmg": 1.6, "radius": 1.15}}
+      ]
+    },
+    {
+      "id": "buckshot",
+      "zh": "霰弹轰击",
+      "en": "Buckshot",
+      "tip": "一次轰出满屏弹丸，近身一片倒",
+      "tip_en": "A full-screen spread: everything up close goes down",
+      "effect": "damage",
+      "cooldown": 6.5,
+      "radius": 240.0,
+      "dmg": 180.0,
+      "variants": [
+        {"char": "buckshot", "tag": "gun", "need": 4, "mul": {"dmg": 1.55, "radius": 1.1}}
+      ]
+    },
+    {
+      "id": "blizzard",
+      "zh": "暴风雪",
+      "en": "Blizzard",
+      "tip": "一场小型暴风雪：大范围减速 + 冻结",
+      "tip_en": "A pocket blizzard: wide slow and freeze",
+      "effect": "slow",
+      "cooldown": 9.0,
+      "radius": 280.0,
+      "slow_v": 0.55,
+      "slow_dur": 3.5,
+      "freeze_dur": 0.8,
+      "variants": [
+        {"char": "frost", "tag": "elemental", "need": 4, "mul": {"radius": 1.25, "freeze_dur": 1.8}}
+      ]
+    },
+    {
+      "id": "steam_burst",
+      "zh": "蒸汽爆发",
+      "en": "Steam Blast",
+      "tip": "不造成伤害，锅炉直接炸鸣，锅气灌一大截",
+      "tip_en": "No damage: the boiler screams and the wok jumps a full notch",
+      "effect": "heat",
+      "cooldown": 10.0,
+      "amount": 90.0,
+      "variants": [
+        {"char": "steam", "tag": "elemental", "need": 4, "mul": {"amount": 1.6}}
+      ]
+    },
+    {
+      "id": "overload",
+      "zh": "超载",
+      "en": "Overload",
+      "tip": "长时间蓄能后一次性超频释放，大范围高伤",
+      "tip_en": "A long charge spent in one overclocked pulse",
+      "effect": "damage",
+      "cooldown": 14.0,
+      "radius": 300.0,
+      "dmg": 460.0,
+      "variants": [
+        {"char": "micro", "tag": "elemental", "need": 4, "mul": {"dmg": 1.5, "radius": 1.15}}
+      ]
     }
   ]
 }

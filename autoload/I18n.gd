@@ -1,9 +1,6 @@
 extends Node
 
-# 多语言单例（自定义字典映射，与 data/*.json 的 en/zh 内联字段一致）。
-# 默认跟随系统语言；Settings 持久化偏好，可随时切 zh/en。
-# I18n.t(key) 静态文案 / I18n.pick(d) 条目名 / I18n.tip(d) 条目描述 / I18n.set_locale(code) 切换。
-
+# 多语言单例：与 data/*.json 的 en/zh 内联字段一致；I18n.t(key)/pick(d)/tip(d)/set_locale(code)。
 signal locale_changed(locale: String)
 
 var locale: String = "en"   # "en" / "zh"
@@ -66,8 +63,7 @@ const UI := {
   "hud_xp": {"en": "XP %d/%d", "zh": "经验 %d/%d"},
   "level_up": {"en": "LEVEL UP!  LV %d", "zh": "升级！Lv %d"},
   "level_up_multi": {"en": "LEVEL UP!  +%d  →  LV %d", "zh": "连升 %d 级！Lv %d"},
-  # 主动技能名：十个角色各有专属技能（data/skills.json 的 id → 这里）。
-  # 按钮只有 76px 宽，所以这里存的是【短名】（冰镇/穿透/标记…），不是技能全名。
+  # 主动技能短名（按钮仅 76px 宽，存短名而非全名；id 见 data/skills.json）。
   "skill_frost": {"en": "FROST", "zh": "冰镇"},
   "skill_pierce_shot": {"en": "PIERCE", "zh": "穿透"},
   "skill_quake": {"en": "QUAKE", "zh": "震地"},
@@ -88,6 +84,12 @@ const UI := {
   "skill_gold_crash": {"en": "SLAM", "zh": "金砖"},
   "skill_burst_arrow": {"en": "BLAZE", "zh": "爆裂"},
   "skill_char_burst": {"en": "CHAR", "zh": "炭爆"},
+  "skill_cross_cut": {"en": "CROSS", "zh": "十字"},
+  "skill_barrage": {"en": "BARRAGE", "zh": "连炮"},
+  "skill_buckshot": {"en": "BUCK", "zh": "霰弹"},
+  "skill_blizzard": {"en": "SNOW", "zh": "暴雪"},
+  "skill_steam_burst": {"en": "STEAM", "zh": "蒸汽"},
+  "skill_overload": {"en": "OVER", "zh": "超载"},
   "hud_attack": {"en": "ATK", "zh": "攻击"},
 
   # ---- 商店 ----
@@ -175,6 +177,10 @@ const UI := {
   "char_form": {"en": "FORM", "zh": "形态"},
   "syn_next": {"en": "%d more", "zh": "还差 %d 件"},
   "syn_max": {"en": "MAX", "zh": "已满"},
+  "stat_kills": {"en": "kills", "zh": "击杀"},
+  "stat_gold": {"en": "gold", "zh": "金币"},
+  "stat_wave": {"en": "wave", "zh": "波次"},
+  "stat_wins": {"en": "wins", "zh": "通关"},
 
   # ---- 标题 ----
   "title_sub": {"en": "", "zh": "萝 卜 突 围"},
@@ -243,12 +249,6 @@ const UI := {
   "shop_myweapons": {"en": "YOUR WEAPONS", "zh": "我的武器"},
   "shop_full": {"en": "SLOTS FULL", "zh": "槽位已满"},
   "shop_rarity": {"en": "RARITY", "zh": "稀有度"},
-
-  # ---- 统计名（解锁进度） ----
-  "stat_kills": {"en": "kills", "zh": "击杀"},
-  "stat_gold": {"en": "gold", "zh": "金币"},
-  "stat_wave": {"en": "wave", "zh": "波次"},
-  "stat_wins": {"en": "wins", "zh": "通关"},
 }
 
 func _ready() -> void:
