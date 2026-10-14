@@ -103,6 +103,10 @@ signal stick_dir_changed(dir: Vector2)
 signal stick_released()
 # 冲刺闪避：HUD 按钮 / 摇杆避让区点按发出，由 Player 执行
 signal dash_requested()
+# 键盘冲刺（autoload/Keyboard）：dir 为按下瞬间的方向键状态，零向量 = 没按方向键，
+# Player 自己随机挑一个方向。与 dash_requested 分开是因为"无输入时朝哪冲"的语义不同：
+# 触屏沿用面朝方向，键盘按玩家要求随机冲一个方向。
+signal kb_dash_requested(dir: Vector2)
 # Player → HUD：冷却进度(0..1)与是否可用，用于画按钮冷却扇形
 signal dash_state_changed(ratio: float, ready: bool)
 # 冲刺起步的视觉反馈（残影/尘土），纯表现层订阅

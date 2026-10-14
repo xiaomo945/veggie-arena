@@ -2,8 +2,8 @@ extends CanvasLayer
 
 # 补给站：波次结束后弹出。手机竖屏单列：顶部金币/属性 → 我的武器(可售) → 购买卡 → 合成/刷新/下一波。
 # 骨架与样式在 ShopPanel.gd（纯 UI）；卡片画法在 ShopCard.gd（哑组件）；本文件只做业务。
-# 节奏（core/ShopPlan.gd）：每 big_every 波开一次"大商店"（卡多 + 打折），其余波次只有
-# 2 张卡快速选完；单卡可锁定（整店刷新时保留）/ 单独刷新（半价只换这一张）。
+# 节奏（core/ShopPlan.gd）：每 big_every 波开一次"大商店"（卡多 + 打折），其余波次只有 2 张卡快速选完；
+# 单卡可锁定（整店刷新时保留）/ 单独刷新（半价只换这一张）。电脑键盘层见同目录 ShopKeys.gd。
 
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
@@ -42,6 +42,10 @@ func _ready() -> void:
 	ScreenMode.fit_overlay(_root)   # 横屏下把竖屏菜单缩放到 960x540 视口内、居中
 	Events.shop_opened.connect(_open)
 	I18n.locale_changed.connect(_on_locale_changed)
+	add_child(preload("res://ui/Shop/ShopKeys.gd").new())
+
+# 面板骨架公开访问器：键盘层只读这个，不摸 _panel（R3）
+func panel() -> ShopPanelScript: return _panel
 
 func _build() -> void:
 	_root = Control.new()
@@ -162,8 +166,7 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 		if ik != "": d["icon"] = Art.icon(ik)
 	return d
 
-func _owned_lv(key: String) -> int:
-	return Inventory.owned_max_lv(GameState.weapons, key)
+func _owned_lv(key: String) -> int: return Inventory.owned_max_lv(GameState.weapons, key)
 
 # 购买（两态落法）：没满槽 → 单独占一格不自动合；满槽 → 同 key 同等级的那把直接合成升一级。
 # 买入价记进 buy_cost 供售出退款；买不了（满槽且没有可合的搭档）时金币原路退回。

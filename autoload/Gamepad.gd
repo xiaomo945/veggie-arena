@@ -13,16 +13,32 @@ const Stick := preload("res://core/StickInput.gd")
 const DEAD := 0.22          # 左摇杆死区，避免漂移误触
 const TRIGGER := 0.5        # RT 模拟量当作"按下"的阈值
 
+# 键盘层让位窗口（毫秒）：插着手柄玩时，掌根压在键盘上不该同时触发两套输入。
+# 取 1.5s 是因为"刚松手去摸键盘"这个动作通常远快于它，而暂停菜单里走一段神游
+# 回来接着按键盘也不会被手柄残留状态堵住。
+const KB_YIELD_MS := 1500
+
 var _driving := false
 var _dash_prev := false
 var _pause_prev := false
 var _paused := false
+var _last_input_ms := -100000   # 最近一次"手柄真的有活动"的时刻（初始值 = 很久以前）
 
 func _ready() -> void:
 	Events.run_paused.connect(_on_run_paused)
 
 func _on_run_paused(p: bool) -> void:
 	_paused = p
+
+# 最近 KB_YIELD_MS 内手柄有没有活动（有就认为玩家正在用手柄，键盘层让位）。
+# 没手柄时直接 false —— 手机 / 纯桌面键盘零影响。
+func was_pressed() -> bool:
+	return Input.get_connected_joypads().size() > 0 \
+		and Time.get_ticks_msec() - _last_input_ms < KB_YIELD_MS
+
+func _mark_input(active: bool) -> void:
+	if active:
+		_last_input_ms = Time.get_ticks_msec()
 
 func _physics_process(_delta: float) -> void:
 	var pads := Input.get_connected_joypads()
@@ -37,6 +53,7 @@ func _physics_process(_delta: float) -> void:
 		if resume and not _pause_prev:
 			Events.resume_requested.emit()
 		_pause_prev = resume
+		_mark_input(resume)
 		return
 
 	# —— 左摇杆移动 ——
@@ -65,3 +82,4 @@ func _physics_process(_delta: float) -> void:
 	if pause_now and not _pause_prev:
 		Events.pause_requested.emit()
 	_pause_prev = pause_now
+	_mark_input(dir != Vector2.ZERO or dash_now or pause_now)

@@ -33,26 +33,24 @@ var _skill_ratio := 1.0
 var _skill_ready := true
 var _skill_form := "base"    # 当前形态 key：凑够某类武器后技能"换了招"，名字和颜色都跟着变
 
-const SIZE := Vector2(88.0, 88.0)
-const WOK_SIZE := Vector2(88.0, 88.0)   # 半圆扇面上要和冰/毒拉开距离，不能太大
-const FF_SIZE := Vector2(80.0, 80.0)
-const SKILL_SIZE := Vector2(76.0, 76.0)
+const SIZE := Vector2(88.0, 88.0)          # 冲刺键
+const ADDON_SIZE := Vector2(84.0, 84.0)    # 环绕攻击键的三个技能键：统一尺寸，和等角距一起才好看
 const ATTACK_SIZE := Vector2(100.0, 100.0)
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
 	if btn_type == TYPE_WOK:
-		size = WOK_SIZE
+		size = ADDON_SIZE
 		Events.wok_heat_changed.connect(_on_heat)
 		Events.wok_charges_changed.connect(_on_charges)
 	elif btn_type == TYPE_DASH:
 		size = SIZE
 		Events.dash_state_changed.connect(_on_dash)
 	elif btn_type == TYPE_FF:
-		size = FF_SIZE
+		size = ADDON_SIZE
 		Events.fast_forward_toggled.connect(_on_ff_sync)
 	elif btn_type == TYPE_SKILL:
-		size = SKILL_SIZE
+		size = ADDON_SIZE
 		# 没被外部指定的话，就用当前角色自己的专属技能
 		if skill_id.is_empty():
 			skill_id = _char_skill_id()
@@ -139,6 +137,11 @@ func _input(event: InputEvent) -> void:
 
 func _rect() -> Rect2:
 	return get_global_rect()
+
+# 键盘入口（J/K/L/U → HudButtons 按下标转发到这里）：复用 _press，与手指点按
+# 完全同一条路径 —— 冷却判定、信号发射、重绘都只有一份，不会出现"键盘按了没反应"。
+func press() -> void:
+	_press(-1)
 
 func _press(index: int) -> void:
 	_touch_index = index

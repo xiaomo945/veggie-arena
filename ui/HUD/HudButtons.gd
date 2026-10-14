@@ -1,27 +1,27 @@
 extends Control
 
-# HUD 右下角技能簇 + 手动攻击键。
+# HUD 右下角技能簇 + 手动攻击键（王者荣耀式布局）。
 #
-# 布局（全部写死，绝不漂移）：
-#   · 圆心 PIVOT 放"手动攻击键"——释放最常用的那个技能（skills.json 的 primary）
-#   · 三个技能（锅气爆炸 / 冰镇 / 毒雾）绕圆心排成半圆扇面，固定在右下角
-#   · 冲刺挪到扇面外（右上侧），既不压技能环，也不进左下摇杆的移动区
-#
-# 角度用屏幕坐标系（y 向下）：150°=左下、195°=左、240°=左上，
-# 三档正好扫出绕着右下角的半圆扇面，右手拇指一划就能从最常用的技能扫到大招。
+# 布局（全部来自 HudLayout，绝不各写一套）：
+#   · 圆心 = attack_button_center() 放"手动攻击键"——释放最常用的技能（skills.json 的 primary）；
+#     它与左下摇杆底盘水平镜像、垂直方向回补底部安全区，两个大拇拇指到屏幕边等距。
+#   · 三个技能键等角距（45°）环绕圆心：左 / 左上 / 上，与键盘 J/K/L（技能 1/2/3）一一对应。
+#   · 冲刺挪到扇面外（上方），既不压技能环，也不进左下摇杆的移动区。
 #
 # ⚠️ 踩过的坑：以前是 `var sz = b.size` 再 add_child —— _ready 还没跑，size 是 (0,0)，
 #    于是每个按钮都按"左上角对齐中心"摆，整体偏右下半个按钮。现在先入树再对中心。
 
 const SkillButtonScript := preload("res://ui/HUD/SkillButton.gd")
 
-# 圆心 / 半径 / 扇面角度 / 冲刺位 全部走 HudLayout（竖屏 540x900 / 横屏 960x540 双布局）。
+# 圆心 / 弧半径 / 环绕角度 / 冲刺位 全部走 HudLayout（竖屏 540x900 / 横屏 960x540 双布局）。
 # 按钮是"轴对齐方块"，斜向排布时不能只看圆心距 —— 必须让相邻两块的 |dx| 或 |dy|
-# 大于两者半径之和，否则边角会叠、一根手指落进两个按钮被重复触发。
+# 大于两者半宽之和，否则边角会叠、一根手指落进两个按钮被重复触发（守卫见 test_button_layout.gd）。
 
 var _btns: Array = []          # [{type, node}]
 var _wok_btn = null
 var _dash_btn = null
+var _attack_btn = null
+var _addons: Array = []        # 环绕技能键，顺序即键盘 J/K/L（技能 1/2/3）
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
@@ -29,17 +29,17 @@ func _ready() -> void:
 	for s in _slots():
 		_add(s)
 
-# 扇面中心由 (圆心, 半径, 角度) 算出，全部取自 HudLayout（竖屏 / 横屏两套坐标）
+# 圆心 + 半径 + 角度 全部取自 HudLayout；addon_slots 的顺序就是键盘 J/K/L 的顺序
 func _slots() -> Array:
-	var pivot := HudLayout.buttons_pivot()
-	var arc_r := HudLayout.buttons_arc_r()
+	var pivot := HudLayout.attack_button_center()
+	var arc_r := HudLayout.addon_arc_r()
 	var out: Array = []
-	for s in HudLayout.buttons_fan():
+	for s in HudLayout.addon_slots():
 		var a: float = deg_to_rad(float(s["deg"]))
 		out.append({
 			"type": s["type"],
-			"id": str(s.get("id", "")),
 			"center": pivot + Vector2(cos(a), sin(a)) * arc_r,
+			"kb": true,       # 环绕技能键：键盘 J/K/L 按下标取（顺序来自 addon_slots）
 		})
 	out.append({"type": "attack", "center": pivot})
 	out.append({"type": "dash", "center": HudLayout.buttons_dash_center()})
@@ -48,16 +48,27 @@ func _slots() -> Array:
 func _add(s: Dictionary) -> void:
 	var b = SkillButtonScript.new()
 	b.btn_type = str(s.get("type", ""))
-	var sid: String = str(s.get("id", ""))
-	if sid != "":
-		b.skill_id = sid
 	add_child(b)                                    # 先入树，_ready 里才定下 size
 	b.position = (s["center"] as Vector2) - b.size * 0.5
 	if b.btn_type == "wok":
 		_wok_btn = b
 	elif b.btn_type == "dash":
 		_dash_btn = b
+	elif b.btn_type == "attack":
+		_attack_btn = b
+	if bool(s.get("kb", false)):
+		_addons.append(b)
 	_btns.append({"type": b.btn_type, "node": b})
+
+# ---- 键盘入口（autoload/Keyboard 通过 HUD 组拿到这里）----
+
+# 环绕技能键，顺序即 J/K/L。节点上有公开方法 press()（与手指点踩同一条路径）
+func addon_buttons() -> Array:
+	return _addons
+
+# 手动攻击键（对应键盘 U）
+func attack_button():
+	return _attack_btn
 
 # ---- 对外接口（由 HUD.gd 调用）----
 

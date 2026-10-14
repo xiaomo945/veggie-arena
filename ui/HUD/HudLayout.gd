@@ -86,32 +86,46 @@ func text_row_y() -> float: return 56.0
 # ---- HudBanners：横幅宽度（横屏拉满）----
 func banner_w() -> float: return 960.0 if Data.is_landscape() else 540.0
 
-# ---- HudButtons：右下技能簇（圆心 + 扇面半径 + 冲刺位 + 扇面角度）----
-func buttons_pivot() -> Vector2:
-	return Vector2(820.0, 430.0) if Data.is_landscape() else Vector2(468.0, 762.0)
-func buttons_arc_r() -> float: return 130.0 if Data.is_landscape() else 152.0
-func buttons_dash_center() -> Vector2:
-	return Vector2(690.0, 470.0) if Data.is_landscape() else Vector2(455.0, 500.0)
+# ---- HudButtons：右下技能簇（攻击键圆心 + 环绕技能弧 + 冲刺位）----
+# 布局原型：王者荣耀 —— 攻击键在右下，三个技能键等角距环绕它的左 / 左上 / 上方。
+# 键盘 J/K/L 与这三个环绕键一一对应（顺序见 addon_slots，按下标取）。
+#
+# 【圆心为什么要镜像摇杆】玩家要求"左下轮盘和右边攻击键同一个中心点"：
+# 摇杆底盘 joy_fixed_base() 在左下，攻击键圆心取它的水平镜像（d.x - base.x），
+# 两只大拇指到屏幕边缘的距离就完全一致。竖屏还要回补底部安全区：HUD 按钮整体
+# 上移 safe_bottom()（HUD.gd 里统一平移），所以攻击键的布局坐标要 +safe_bottom()，
+# 平移后才正好落在摇杆底盘的同一水平线上。
+func safe_bottom() -> float: return 34.0
+func attack_button_center() -> Vector2:
+	var d := design_size()
+	var base := joy_fixed_base()
+	return Vector2(d.x - base.x, base.y + safe_bottom())
+
+# 环绕技能键：攻击键圆心 + 角度 × 弧半径。角度用屏幕坐标系（y 向下）：
+# 180°=左、225°=左上、270°=上，相邻两个正好 45° 等角距 —— 旧版 150/195/240
+# 一个 45° 一个 90°，弧长忽宽忽窄，就是"技能按钮间隔不一样、太难看"的由来。
+# 【顺序即键盘映射】下标 0/1/2 = J/K/L = 技能 1/2/3。
 # ⚠️ skill 槽【不写 id】：技能表已角色化（十个角色十个专属技能），写死 id
 #    就会放出一个技能表里已经没有的招（真踩过：这里写 poison，而 poison 已被
 #    角色专属技能取代 → 按钮点了没反应）。留空 = SkillButton 自己按当前角色取。
-func buttons_fan() -> Array:
-	# 横屏：dash 就在扇面下沿（(690,470) 离圆心只有 136 ≈ arc_r），150° 会整块压在
-	# 冲刺键上，所以快进挪到 285°（右上方），wok 240° 与它 x 方向让开 84px 以上。
-	if Data.is_landscape():
-		return [
-			{"type": "wok",   "deg": 240.0},
-			{"type": "skill", "deg": 195.0},
-			{"type": "ff",    "deg": 285.0},
-		]
+func addon_slots() -> Array:
 	return [
-		{"type": "wok",   "deg": 240.0},
-		{"type": "skill", "deg": 195.0},
-		{"type": "ff",    "deg": 150.0},
+		{"type": "skill", "deg": 180.0},
+		{"type": "wok",   "deg": 225.0},
+		{"type": "ff",    "deg": 270.0},
 	]
+func addon_arc_r() -> float: return 160.0 if Data.is_landscape() else 152.0
+
+# 冲刺键在扇面外（上方），不压技能环、也不进左下摇杆的移动区。
+func buttons_dash_center() -> Vector2:
+	return Vector2(900.0, 200.0) if Data.is_landscape() else Vector2(455.0, 500.0)
 
 # ---- Joystick：左下移动区 + 固定底盘 ----
 func joy_fixed_base() -> Vector2:
 	return Vector2(118.0, 430.0) if Data.is_landscape() else Vector2(118.0, 786.0)
-func joy_move_zone_w() -> float: return 430.0 if Data.is_landscape() else 250.0
+# ⚠️ 竖屏 220 而不是原来的 250：移动区是"x<=W 且 y>=Y"的整块矩形（见 Joystick._in_zone），
+#    而最左那个技能键的左缘在 x=228。盖住按钮 = 一根手指同时被摇杆和技能键认领
+#    （Joystick 只看在不在矩形里、SkillButton 只看在不在自己矩形里，两边都会触发）。
+#    220 给按钮留 8px 缓冲，拇指落到按钮上就只算技能，不会再带着角色一起走。
+func joy_move_zone_w() -> float: return 430.0 if Data.is_landscape() else 220.0
 func joy_move_zone_y() -> float: return 300.0 if Data.is_landscape() else 400.0

@@ -23,9 +23,9 @@ const WeaponSets := preload("res://core/WeaponSets.gd")
 const Stats := preload("res://core/Stats.gd")
 
 # 竖屏安全区：顶部内容下移避让刘海 / 状态栏，底部按钮上移避让手势条。
-# ⚠️ 顶部这个值原来写死在这里（TOP_SHIFT=34），现已搬到 HudLayout.safe_top()：
-# 相机要按"HUD 到底占多高"来让位，两处各写一份必然漂移（真踩过：角色被 HUD 盖死）。
-const BOTTOM_SHIFT := 34.0
+# ⚠️ 顶部那个值原来写死在这里（TOP_SHIFT=34），现已搬到 HudLayout：相机要按"HUD 到底占多高"
+# 让位，两处各写一份必然漂移（真踩过：角色被 HUD 盖死）。底部同理走 HudLayout.safe_bottom()，
+# 攻击键圆心（HudLayout.attack_button_center）的回补读同一个数，摇杆底盘与攻击键才永远同一水平线。
 
 const COMBO_WINDOW := 2.5   # 连击有效窗口（秒）
 const COMBO_MIN := 2        # 连击 >=2 才显示
@@ -211,6 +211,11 @@ func _refresh() -> void:
 func banners() -> Node:
 	return _banners
 
+# ---- 键盘入口转发（Keyboard 只认 hud 组，不直接摸 HudButtons）----
+# 环绕技能键顺序即 J/K/L；U = 攻击键。最终都走 SkillButton.press()，与手指同路径。
+func addon_buttons() -> Array: return _buttons.addon_buttons()
+func attack_button(): return _buttons.attack_button()
+
 func _wave_text() -> String:
 	if GameState.endless:
 		return I18n.t("hud_endless") % GameState.wave
@@ -256,11 +261,8 @@ func _on_locale_changed(_l: String = "") -> void:
 func _on_unlocked(key: String) -> void:
 	_banners.queue_unlock(key)
 
-func _show_pause() -> void:
-	_top.set_pause_visible(true)
-
-func _hide_pause() -> void:
-	_top.set_pause_visible(false)
+func _show_pause() -> void: _top.set_pause_visible(true)
+func _hide_pause() -> void: _top.set_pause_visible(false)
 
 func _on_run_paused(paused: bool) -> void:
 	_top.set_pause_visible(not paused and GameState.running)
@@ -290,7 +292,7 @@ func _on_killed(_type: String, _pos: Vector2) -> void:
 func _apply_safe_area() -> void:
 	_top.apply_safe_area(HudLayout.safe_top())
 	_banners.apply_safe_area(HudLayout.safe_top())
-	_buttons.apply_safe_area(BOTTOM_SHIFT)
+	_buttons.apply_safe_area(HudLayout.safe_bottom())
 	GameState.wok_toss_rect = _buttons.toss_rect()
 	GameState.dash_rect = _buttons.dash_rect()
 	GameState.pause_rect = _top.pause_rect()

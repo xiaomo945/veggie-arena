@@ -37,6 +37,18 @@ static func active(s: Dictionary) -> bool:
 static func can_start(s: Dictionary, c: Dictionary) -> bool:
 	return float(s.get("cd", 0.0)) <= 0.0 and not active(s)
 
+# 随机冲刺方向：8 个离散方向（0/45/90/…/315°）里等概率挑一个。
+# ⚠️ 全部单位长，一个系数都不乘：本项目的方向口径统一归一化（Movement.stick_direction
+#    除长度、StickInput.stick_vector 用 limit_length(1.0)），键盘斜向移动也是单位长。
+#    早期写法给对角乘 0.7071 想"归一化"，但 45° 的 cos/sin 本来就是 0.7071 ——
+#    再乘一次等于把斜冲刺砍到 70% 速度，"随机"就成了"替你挑最慢的方向"。
+# 这 8 个方向也正是键盘 WASD 能产生的全部 8 个方向（4 个正向 + 4 个斜向），
+# 随机冲刺和手动冲刺的手感因此完全一致。
+# 键盘单独按冲刺键（不配合方向键）时由 Player.kb_dash 调用。
+static func random_dir(rng: RandomNumberGenerator) -> Vector2:
+	var step := rng.randi_range(0, 7)
+	return Vector2(cos(float(step) * (PI / 4.0)), sin(float(step) * (PI / 4.0)))
+
 # 触发冲刺。dir 为零向量时返回 false（没方向没法冲）。
 static func start(s: Dictionary, dir: Vector2, c: Dictionary) -> bool:
 	if not can_start(s, c):

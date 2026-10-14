@@ -197,9 +197,9 @@ func run(data) -> Dictionary:
 		if not skill_ids.has(k) and not form_keys.has(k):
 			orphan.append(k)
 	chk(orphan.is_empty(), "I18n 里没有指向不存在技能/形态的残留词条（残留：%s）" % str(orphan))
-	var fan_body := SP.func_body(layout_src, "func buttons_fan()")
-	chk(fan_body.length() > 0 and not fan_body.contains("\"id\""),
-		"HUD 扇面按钮不写死技能 id（按当前角色取，避免放出技能表里没有的招）")
+	var slots_body := SP.func_body(layout_src, "func addon_slots()")
+	chk(slots_body.length() > 0 and not slots_body.contains("\"id\""),
+		"HUD 环绕技能键不写死技能 id（按当前角色取，避免放出技能表里没有的招）")
 
 	# ---- 10b) 数据表里的 effect 必须在 SkillSystem 里有分支 ----
 	# 反过来的老坑：SkillSystem 曾经实现了 poison 却没有任何技能用它（点了没反应的死技能）。

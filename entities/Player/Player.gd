@@ -88,6 +88,7 @@ func _ready() -> void:
 	Events.stick_dir_changed.connect(_on_dir)
 	Events.stick_released.connect(_on_release)
 	Events.dash_requested.connect(_on_dash_requested)
+	Events.kb_dash_requested.connect(kb_dash)
 	Events.character_changed.connect(_on_character_changed)
 	Events.weapons_changed.connect(_rebuild_weapons)
 	# ⚠️ 关键修复：开局（start_run → reset 设好 GameState.weapons 后）必须重建武器缓存，
@@ -110,6 +111,21 @@ func _on_dash_requested() -> void:
 	var d := _dir
 	if d.length_squared() < 0.0001:
 		d = _face
+	if not Dash.can_start(_dash, _dash_cfg):
+		return
+	if Dash.start(_dash, d, _dash_cfg):
+		dash_count += 1
+		Events.dash_started.emit(global_position, d)
+		Events.dash_state_changed.emit(0.0, false)
+		visual.queue_redraw()
+
+# 键盘冲刺：配合方向键 → 冲刺指定方向；不配合（零向量）→ 随机冲一个方向。
+# 与触屏冲刺的唯一区别就是"无输入时朝哪冲"：触屏沿袭面朝方向（手指没离开轮盘），
+# 键盘是玩家主动提出的行为 —— 单独按就该随机，否则右手悬空时冲刺方向不可预期。
+func kb_dash(dir: Vector2) -> void:
+	var d := dir
+	if d.length_squared() < 0.0001:
+		d = Dash.random_dir(_rng)
 	if not Dash.can_start(_dash, _dash_cfg):
 		return
 	if Dash.start(_dash, d, _dash_cfg):
