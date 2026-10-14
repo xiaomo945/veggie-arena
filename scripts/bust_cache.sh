@@ -222,4 +222,37 @@ if DPR_MARK not in s:
 
 open(p,'w',encoding='utf-8').write(s)
 print("cache-bust -> index.%s （原文件保留兜底 + 移动端手势锁 + 清理旧哈希 + 失败覆盖层可关闭）"%h)
+
+# ---- 3) 刷新压缩副本（踩过的坑，2026-10-14）----
+# serve_web.py 只在【启动时】预压 .br/.gz，之后文件再改也不会重新压。
+# 本脚本改写了 index.html、又新增了哈希 pck/wasm —— 若不在这里补压：
+#   a) index.html.br/.gz 还是击穿前的内容，任何带 Accept-Encoding 的客户端
+#      （含发布网关）拿到的都是旧页面 → 发了新版却加载旧资源；
+#   b) 哈希 pck/wasm 根本没有压缩副本，41MB 裸传。
+# 做法：删掉 index.html 的旧压缩副本强制重建；哈希副本若还没压就压一份。
+# 与 serve_web.py 同一套判据（mtime 不比源旧就跳过），重复执行不会重复压。
+def _refresh(src):
+    import gzip as _gz
+    try:
+        import brotli as _br
+    except ImportError:
+        _br = None
+    for ext, fn in (('.gz', lambda d: _gz.compress(d, 9)),
+                    ('.br', (lambda d: _br.compress(d, quality=9 if len(d) > 8*1024*1024 else 11)) if _br else None)):
+        dst = src + ext
+        if fn is None:
+            continue
+        if os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(src):
+            continue
+        with open(src, 'rb') as f:
+            data = f.read()
+        with open(dst, 'wb') as f:
+            f.write(fn(data))
+        print("  重压 %s%s (%d -> %d B)" % (os.path.basename(src), ext, len(data), os.path.getsize(dst)))
+
+_refresh('index.html')
+for ext in ('pck', 'wasm'):
+    hp = 'index.%s.%s' % (h, ext)
+    if os.path.exists(hp):
+        _refresh(hp)
 PY
