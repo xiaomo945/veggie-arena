@@ -75,6 +75,12 @@ static func title_stat(locale: String) -> String:
 static func title_set(locale: String) -> String:
 	return "SET BONUS" if _en(locale) else "套装 / 羁绊类"
 
+# 羁绊档位行："2 件：拾取半径 +8%" / "2 copies: Pickup Range +8%"
+# （stats_text 已由调用方按 core/Stats.gd 目录拼好，这里只管中英措辞）
+static func set_tier_line(need: int, stats_text: String, locale: String) -> String:
+	return ("%d 件：%s" % [need, stats_text]) if not _en(locale) \
+		else ("%d copies: %s" % [need, stats_text])
+
 static func title_master(locale: String) -> String:
 	return "WHO WANTS IT" if _en(locale) else "谁拿它最狠"
 

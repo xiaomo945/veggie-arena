@@ -179,7 +179,9 @@ func _draw_node(key: String, fs: Font, mainline: bool) -> void:
 		bw += 1.5
 	Art.round_rect(self, b, bg, border, bw, 10.0)
 	# 立绘：优先真人贴图，缺图退化成主色圆点
-	var av := _node_h * 0.62
+	# ⚠️ av 从 0.62 收到 0.56：一列只有 ~118px，旧占比下名字可用宽度仅 ~62px，
+	#    "Silverblade" 在 13px 必被截成 "Silverbl…"（全界面目检差评点）。
+	var av := _node_h * 0.56
 	var c := Vector2(b.position.x + 8.0 + av * 0.5, b.position.y + _node_h * 0.5)
 	var tex := Art.sprite("char_" + key)
 	if tex != null:
@@ -190,7 +192,9 @@ func _draw_node(key: String, fs: Font, mainline: bool) -> void:
 	var tx := b.position.x + 8.0 + av + 8.0
 	var ty := b.position.y + _node_h * 0.5 - 6.0
 	var nm := I18n.pick(entry)
-	_draw_text(fs, nm, Vector2(tx, ty), 13,
+	# 名字自动缩字号直到放下（13 起，保底 10）：截断是最后的兜底，不是第一手段
+	var nsz := UnlockText.fit_size(fs, nm, b.size.x - av - 20.0, 13)
+	_draw_text(fs, nm, Vector2(tx, ty), nsz,
 		Color(0.98, 0.96, 0.92) if opened else Color(0.74, 0.77, 0.83), b.size.x - av - 20.0,
 		HORIZONTAL_ALIGNMENT_LEFT, true)
 	# 状态行：已解锁写"已拥有"，否则写达成条件

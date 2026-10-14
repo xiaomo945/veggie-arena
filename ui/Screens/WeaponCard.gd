@@ -10,7 +10,10 @@ extends Button
 #   1) Button 自己设 custom_minimum_size（否则它被内容挤成一条）
 #   2) 子节点容器设 MOUSE_FILTER_IGNORE（否则子节点吃掉了点击，按钮收不到 pressed）
 
-const CARD_H := 160.0
+# ⚠️ 卡高从 160 提到 190：图标从 44px 放大到 72px（全界面目检发现选武器页
+#    图标太小、武器根本认不出来，和商店卡片同一个问题）。多出的 30px 全给图标，
+#    文字行一点没动，网格列宽不变、每屏少露半张卡，可接受。
+const CARD_H := 190.0
 
 const Weapon := preload("res://core/Weapon.gd")
 
@@ -76,22 +79,22 @@ func setup(key: String, width: float) -> void:
 	vb.add_child(tp)
 	set_selected(false)
 
-# 图标节点（缩小到 44px 高，不再占半张卡）；缺图退化成主色方块
+# 图标节点（放大到 72px 高，武器一眼认得出；缺图退化成主色方块）
 func _icon_node(tex: Texture2D, accent: Color, width: float) -> Control:
 	var tr := TextureRect.new()
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	tr.custom_minimum_size = Vector2(width, 44.0)
+	tr.custom_minimum_size = Vector2(width, 72.0)
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if tex != null:
 		tr.texture = tex
 		return tr
 	var ph := ColorRect.new()
 	ph.color = accent
-	ph.custom_minimum_size = Vector2(40, 40)
+	ph.custom_minimum_size = Vector2(56, 56)
 	ph.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var cc := CenterContainer.new()
-	cc.custom_minimum_size = Vector2(width, 44.0)
+	cc.custom_minimum_size = Vector2(width, 72.0)
 	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cc.add_child(ph)
 	return cc

@@ -13,6 +13,7 @@ extends Control
 # 文案全部走 ui/WeaponInfo.gd（自带中英双语、纯函数），不碰已经满载的 I18n.gd。
 
 const WeaponInfo := preload("res://ui/WeaponInfo.gd")
+const Stats := preload("res://core/Stats.gd")
 
 signal picked(key: String)
 
@@ -66,8 +67,10 @@ func _build() -> void:
 
 	_icon = TextureRect.new()
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_icon.custom_minimum_size = Vector2(64, 64)
-	_icon.set_position(Vector2(470 * 0.5 - 32, 22))
+	# 64px 在这页上偏小：全界面目检时详情页主图像"缩在一角"，认不出是哪把武器。
+	# 与选武器卡片同款写法（IGNORE_SIZE + 自定义最小尺寸 → 节点即绘制尺寸）。
+	_icon.custom_minimum_size = Vector2(96, 96)
+	_icon.set_position(Vector2(470 * 0.5 - 48, 14))
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(_icon)
 
@@ -182,18 +185,23 @@ func _refresh() -> void:
 	for c in _body.get_children():
 		c.queue_free()
 
-	# 1) 一句话卖点
-	_section(WeaponInfo.title_summary(I18n.locale), I18n.tip(def))
-	# 2) 打法特点（哪些机制真的改变了操作）
-	var traits: Array = WeaponInfo.trait_lines(def, I18n.locale)
-	if not traits.is_empty():
-		_section(WeaponInfo.title_trait(I18n.locale), "\n".join(traits))
-	# 3) 数值表
+	# 1) 一句话卖点 + 打法特点合并成一节：
+	#    以前拆两节，但 tip（人写）和 trait_lines（机器生成）经常说的是同一件事
+	#    （长弓："一句话"讲穿透两人、"打法特点"又讲一遍穿透 2），玩家读到两遍重复内容。
+	#    现在：tip 打头，trait 行经过去重后只补讲 tip 没覆盖的机制，逐行列出。
+	var tip := I18n.tip(def)
+	var traits := _dedup_lines(tip, WeaponInfo.trait_lines(def, I18n.locale))
+	var glance := tip
+	for t in traits:
+		glance += ("" if glance.is_empty() else "\n") + "· " + str(t)
+	if not glance.is_empty():
+		_section(WeaponInfo.title_summary(I18n.locale), glance)
+	# 2) 数值表
 	_stat_section()
-	# 4) 套装 / 羁绊类：它归哪一类，决定了"和什么一起买"
-	var sets := _class_text(def)
-	if not sets.is_empty():
-		_section(WeaponInfo.title_set(I18n.locale), sets)
+	# 3) 套装 / 羁绊：当前角色拿这把武器能吃到哪几档加成（有数才看得懂）
+	var set_text := _set_bonus_text(def)
+	if not set_text.is_empty():
+		_section(WeaponInfo.title_set(I18n.locale), set_text)
 	# 5) 谁拿它最狠：把"角色 × 武器"这条线明说出来
 	var masters: Array = WeaponInfo.masters(_key, Data.characters)
 	if not masters.is_empty():
@@ -211,6 +219,70 @@ func _class_text(def: Dictionary) -> String:
 		if not name.is_empty() and name != key:
 			out.append(name)
 	return " / ".join(out) if not out.is_empty() else str(def.get("type", ""))
+
+# 套装加成：当前角色与这把武器的类羁绊（bond）能吃到哪几档。
+# 以前这里只报一个类目名（"厨房套装"）——玩家还是不知道"攒几件、加什么、加多少"，
+# 而羁绊数值就明摆在 characters.json 里，没理由不亮出来。
+# 取不到当前角色 / 该类目不是角色的 bond 时，退回原来的类目名。
+# 属性名与数值格式全部走 core/Stats.gd 的目录（单一真相源，与属性页同一把尺）。
+func _set_bonus_text(def: Dictionary) -> String:
+	var tags: Array = def.get("tags", []) as Array
+	var bond: Dictionary = (Data.character(GameState.character) as Dictionary).get("bond", {}) as Dictionary
+	var btag := str(bond.get("tag", ""))
+	var tiers: Array = bond.get("tiers", []) as Array
+	if btag.is_empty() or tiers.is_empty() or not tags.has(btag):
+		return _class_text(def)
+	var head := I18n.t("set_" + btag)
+	if head == "set_" + btag:
+		head = _class_text(def)
+	var lines := [head]
+	var j := "、" if I18n.locale == "zh" else ", "   # 顿号只属于中文（目检：英文行里混"、"很出戏）
+	for t in tiers:
+		var td := t as Dictionary
+		var parts := []
+		for k in (td.get("stats", {}) as Dictionary):
+			var entry: Dictionary = Stats.entry(str(k))
+			if entry.is_empty():
+				continue
+			parts.append(I18n.t(str(entry.get("name", ""))) + " " \
+				+ Stats.fmt_value(str(entry.get("fmt", "")), float((td.get("stats", {}) as Dictionary)[k])))
+		if not parts.is_empty():
+			lines.append(WeaponInfo.set_tier_line(int(td.get("need", 0)), j.join(parts), I18n.locale))
+	return "\n".join(lines)
+
+# 两句话是不是在讲同一件事：去掉标点空白后互相包含即判重。
+# 例：长弓 tip "Pierces 2 foes in a line." vs trait "Pierces 2 foes" → 后者被去掉。
+func _dedup_lines(tip: String, traits: Array) -> Array:
+	var nt := _norm(tip)
+	var out: Array = []
+	for t in traits:
+		var nl := _norm(str(t))
+		if nl.is_empty():
+			continue
+		if not nt.is_empty() and (nt.find(nl) >= 0 or nl.find(nt) >= 0):
+			continue
+		var dup := false
+		for o in out:
+			if _norm(str(o)) == nl:
+				dup = true
+				break
+		if not dup:
+			out.append(t)
+	return out
+
+# 归一化：只留字母/数字/汉字，其余（标点、空白、引号）全部剔除后转小写。
+func _norm(s: String) -> String:
+	var out := ""
+	for i in s.length():
+		var c := s.substr(i, 1)
+		var code := c.unicode_at(0)
+		var keep := (code >= 48 and code <= 57) \
+			or (code >= 65 and code <= 90) \
+			or (code >= 97 and code <= 122) \
+			or (code >= 0x4E00 and code <= 0x9FFF)
+		if keep:
+			out += c.to_lower()
+	return out
 
 func _on_pick() -> void:
 	if _key.is_empty():

@@ -228,7 +228,10 @@ func _skill_text(entry: Dictionary) -> String:
 		if str(sd.get("id", "")) != sid:
 			continue
 		var tp := I18n.tip(sd)
-		return I18n.pick(sd) if tp.is_empty() else I18n.pick(sd) + "：" + tp
+		# 分隔符随语言：中文全角冒号，英文半角 + 空格。
+		# 以前硬编码全角 "："，英文下出现 "Piercing Shot： One shot…" 这种中西混排（目检差评点）。
+		var sep := "：" if I18n.locale == "zh" else ": "
+		return I18n.pick(sd) if tp.is_empty() else I18n.pick(sd) + sep + tp
 	return I18n.t("skill_" + sid)
 
 func _on_pick() -> void:

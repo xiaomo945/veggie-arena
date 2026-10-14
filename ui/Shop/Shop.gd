@@ -194,10 +194,10 @@ func _buy(index: int) -> void:
 	else:
 		var key := str(o.get("key", ""))
 		GameState.buy_upgrade(key); bought = true
-		# 强化效果可见化：弹一条"你买了什么 / 干嘛用的"，拾取类再补一圈范围环
 		var def := Data.upgrade(key)
 		if def != null:
-			_pop_effect(I18n.pick(def) + "：" + I18n.tip(def), Color(1.0, 0.82, 0.29))
+			# 弹"你买了什么/干嘛用的"；分隔符随语言（中：全角冒号 / 英：半角+空格，修中西混排）
+			_pop_effect(I18n.pick(def) + ("：" if I18n.locale == "zh" else ": ") + I18n.tip(def), Color(1.0, 0.82, 0.29))
 			if Inventory.stat_entries(def).any(func(e): return str(e.get("stat", "")) in ["pickup_pct", "autopick", "fullauto"]):
 				Events.player_range_preview.emit(GameState.pickup_magnet())
 	# 买成就关详情页：真机反馈"买完看不出买没买成、容易重复点"，开着也会挡住货架绿勾

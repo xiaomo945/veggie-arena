@@ -112,5 +112,18 @@ static func btn_route(locale: String) -> String:
 static func route_progress(owned: int, total: int, locale: String) -> String:
 	return ("%d / %d OWNED" % [owned, total]) if _en(locale) else ("已拥有 %d / %d" % [owned, total])
 
+# 文字塞不进给定宽度时，自动逐档缩字号直到放下（保底 floor_size，再不行才交给截断）。
+# 用途：角色卡只有 ~66px 宽、解锁树节点名可用 ~62px，而 "Silverblade" 这类
+# 11 字母名在 14/13px 下必被省略号砍成 "Silverbl…" —— 全界面目检的差评点。
+# 缩到 12px 就能完整放下（实测宽 64px），比截断可读得多。
+static func fit_size(font: Font, text: String, width: float, start: int,
+		floor_size: int = 10) -> int:
+	var s := start
+	while s > floor_size:
+		if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, s).x <= width:
+			return s
+		s -= 1
+	return floor_size
+
 static func _en(locale: String) -> bool:
 	return locale != "zh"

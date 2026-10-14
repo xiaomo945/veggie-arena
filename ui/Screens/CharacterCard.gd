@@ -14,6 +14,7 @@ const _BG := Color(0.18, 0.12, 0.07, 0.92)
 const _BG_SEL := Color(0.27, 0.18, 0.09, 0.98)
 const _GOLD := Color(0.98, 0.86, 0.32)
 const _DIM := Color(0.60, 0.46, 0.22, 0.85)
+const UnlockText := preload("res://ui/UnlockText.gd")
 
 var char_key := ""
 
@@ -42,8 +43,11 @@ func setup(key: String, w: float, h: float) -> void:
 	vb.add_child(ico)
 	var nm := Label.new()
 	nm.text = I18n.pick(entry)
-	nm.add_theme_font_size_override("font_size", 14)
-	# 卡片随网格缩放后只有 ~66px 宽：超宽名字截断成省略号，绝不溢出压到隔壁名字上
+	# 卡片随网格缩放后只有 ~66px 宽：长名字（Silverblade / Firecracker）先自动
+	# 缩字号到放得下（实测 12px 宽 64px 刚好），缩到 10px 还放不下才截断成
+	# 省略号 —— 以前 14px 一刀切，名字直接被砍成 "Firecra…"（全界面目检差评点）。
+	nm.add_theme_font_size_override("font_size",
+		UnlockText.fit_size(ThemeDB.fallback_font, I18n.pick(entry), w - 8.0, 14))
 	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE

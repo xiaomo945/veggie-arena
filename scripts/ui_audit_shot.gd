@@ -111,6 +111,19 @@ func _initialize() -> void:
 		await process_frame
 	_save("aud_weapon_detail")
 
+	# 4b) 羁绊数值镜头：当前角色（turnip，bond=kitchen）拿厨具 spatula →
+	#     SET BONUS 节应显示 2/4/6 件的实际加成（P2-2 修复的验证点）
+	wdetail.call("show_for", "spatula")
+	for _f in 12:
+		await process_frame
+	_save("aud_weapon_detail_bond")
+	# 4c) 中文 locale 复检：档位行措辞（"N 件："）与全角冒号都在中文下走一遍
+	root.get_node("I18n").set_locale("zh")
+	for _f in 4:
+		await process_frame
+	_save("aud_weapon_detail_bond_zh")
+	root.get_node("I18n").set_locale("en")
+
 	canvas.queue_free()
 	await process_frame
 
