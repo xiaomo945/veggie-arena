@@ -214,6 +214,10 @@ func _refresh() -> void:
 	var gain := str(d.get("syn_gain", ""))
 	if gain != "":
 		_section(DetailText.t("bond", I18n.locale), gain)
+	# 携带技能：这张卡白送一个主动技能（武器/道具产出技能，四元素联动第二环）
+	var gt := str(d.get("gift_skill_name", ""))
+	if gt != "":
+		_section(DetailText.t("gift_title", I18n.locale), gt)
 
 	_buy_btn.text = DetailText.t("buy", I18n.locale) % cost
 	_buy_btn.disabled = not ok

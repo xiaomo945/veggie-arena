@@ -165,6 +165,9 @@ func _draw() -> void:
 			if gx > tx + tag_w + 10.0:      # 放不下就不画，绝不叠到标签上
 				draw_string(_font, Vector2(gx, 47.0), gain, HORIZONTAL_ALIGNMENT_LEFT,
 					-1, gfs, Color(1.0, 0.84, 0.32, 0.95))
+	else:
+		# 矮卡例外（#288 第二环）：类型标签整行省略，但"白送主动技"是购买理由，必须露出来
+		Ctl.draw_gift_tag(self, _font, _d, tx, dim, r.size.x)
 
 	# 描述（按字符换行；卡矮就只画 1 行并上移，底部整条留给价格药丸，避免重叠）
 	# 验算：100 高卡 desc y=60（1 行，字底 ~72），药丸 y=72 起 → 分毫不压；

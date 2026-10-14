@@ -196,6 +196,10 @@ func _refresh() -> void:
 		glance += ("" if glance.is_empty() else "\n") + "· " + str(t)
 	if not glance.is_empty():
 		_section(WeaponInfo.title_summary(I18n.locale), glance)
+	# 1.5) 携带技能：武器白送一个主动技能（四元素联动第二环），开局选武器时就该看见
+	var sk := WeaponInfo.skill_line(def, Data.skills, I18n.locale)
+	if not sk.is_empty():
+		_section(WeaponInfo.title_skill(I18n.locale), sk)
 	# 2) 数值表
 	_stat_section()
 	# 3) 套装 / 羁绊：当前角色拿这把武器能吃到哪几档加成（有数才看得懂）

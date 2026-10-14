@@ -39,6 +39,8 @@ var char_entry := {}
 var char_key := ""
 var skills := []
 var enemies := {}
+# 模拟专用商店池（run() 里从 data.upgrades 过滤）：见 run() 里的注释
+var sim_upgrades := {}
 var ch := SimChar.new()   # 角色侧建模（属性/技能/EHP）
 
 
@@ -141,7 +143,7 @@ func _shop(weapons: Array, st: Dictionary, w: int, data, shop: Dictionary,
 	var n := ShopPlan.offer_count(w, shop)
 	var rolls := 0
 	while rolls <= MAX_REROLL * 2:
-		var pool := Economy.build_pool(weapons, data.weapons, data.upgrades,
+		var pool := Economy.build_pool(weapons, data.weapons, sim_upgrades,
 			max_slot, max_lv, [], disc, w, infl)
 		var cand: Array = []
 		var best_pg := 0.0
@@ -204,6 +206,17 @@ func run(data, waves: int, seed_base: int) -> Array:
 	enemies = {}
 	for k in data.enemies:
 		enemies[str(k)] = data.enemy(str(k))
+	# 送技能的道具（upgrades 的 skill 字段）整个滤出模拟商店池。模拟器只折算
+	# 【角色本命技】，估不出赠送技的价；硬塞进池子只有两种坏结果 ——
+	#   ① 当成 0 收益生存件买下：每买一件就触发下一轮抽卡，变成"刷新燃料"，
+	#      采购序列被扭曲成另一局游戏（实测第 19 波 ratio 2.30 → 3.02 出带）；
+	#   ② 占着货架位却永远不买：中等波次被抽干（第 12 波 ratio 1.89 → 1.34）。
+	# 保守起见整个过滤：真实玩家因赠送技变出来的那份强，模拟选择看不见 ——
+	# 低估可以接受，扭曲不行。（要补这块，见 SimChar.skill_parts 的扩展点。）
+	sim_upgrades = {}
+	for k in data.upgrades:
+		if str((data.upgrades[k] as Dictionary).get("skill", "")) == "":
+			sim_upgrades[str(k)] = data.upgrades[k]
 
 	var weapons := _start_weapons(data, ccfg)
 	var st := {}

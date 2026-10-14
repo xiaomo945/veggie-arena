@@ -20,6 +20,13 @@ const Synergy := preload("res://core/Synergy.gd")
 const POWER_KEYS := ["dmg", "dur", "slow_dur", "freeze_dur", "gold", "burn_dps"]
 # 这些字段不吃强度，只按 variants 缩放（半径无限膨胀会破坏手感与性能）
 const PLAIN_KEYS := ["radius", "cooldown", "slow_v"]
+# 赠送技能（武器/道具白给的那一个）的基础值折扣作用在哪些字段上：
+# 强度与范围都打折，唯独 cooldown 不打 —— 白送一个技能已经够好，再送更快冷却就过头。
+# 调用方传的 base_mul 由 core/SkillSlots.gd 统一给（GIFT_MUL = 0.8）。
+# ⚠️ GDScript 的 const 不接受数组拼接（POWER_KEYS + [...] 会报"不是常量表达式"），
+# 只能写字面量；前 6 个强度字段必须与 POWER_KEYS 保持一致（单测有守门）。
+const GIFT_MUL_KEYS := ["dmg", "dur", "slow_dur", "freeze_dur", "gold", "burn_dps",
+	"radius", "poison_dps_pct", "amount", "knock"]
 
 # 形态字段：form 里允许覆盖的"展示字段"（改了不算数值膨胀，算换了招）
 const FORM_META := ["key", "zh", "en", "tip", "tip_en", "color"]
@@ -125,12 +132,21 @@ static func forms_of(base: Dictionary) -> Array:
 
 # 解析最终参数：base → 套形态 form → 套 variant 的 mul → 套属性/道具缩放。
 # stat_of: Callable(stat_name) -> float（GameState.stat_value）
+# base_mul: 赠送技折扣（1.0 = 本命技不打折；0.8 = 武器/道具白送的技能），
+#           只作用于 GIFT_MUL_KEYS，且在形态之前套 —— "打折的基础再变招"，
+#           于是赠送技的形态（爆裂箭/风刃…）也按折扣后的数值起跳，不会反过来超标。
 static func resolve(base: Dictionary, char_key: String, weapons: Array, defs: Dictionary,
-		stat_of: Callable) -> Dictionary:
+		stat_of: Callable, base_mul: float = 1.0) -> Dictionary:
 	if base.is_empty():
 		return {}
 	var out: Dictionary = base.duplicate(true)
 	out.erase("variants")            # 变体规则不参与运行时，免得被误当参数
+
+	# --- 0) 赠送技折扣：白送的招比本命技弱一成，但照样能吃后面的形态与属性 ---
+	if base_mul != 1.0:
+		for k in GIFT_MUL_KEYS:
+			if out.has(k):
+				out[k] = float(out.get(k, 0.0)) * base_mul
 
 	# --- 1) 形态：换一套参数（可能连 effect 都换掉，等于换了招）---
 	var vr := variant_of(base, char_key, weapons, defs)
@@ -165,9 +181,10 @@ static func resolve(base: Dictionary, char_key: String, weapons: Array, defs: Di
 		out["cooldown"] = maxf(1.0, float(out.get("cooldown", 6.0)) * maxf(0.3, cdm))
 	return out
 
-# 一步到位：角色 + 当前武器 → 最终生效的技能（含 id）
+# 一步到位：角色 + 当前武器 → 最终生效的技能（含 id）。
+# base_mul 透传给 resolve（赠送技 0.8 折，见 core/SkillSlots.gd）。
 static func active_skill(char_entry: Dictionary, skills: Array, weapons: Array,
-		defs: Dictionary, stat_of: Callable) -> Dictionary:
+		defs: Dictionary, stat_of: Callable, base_mul: float = 1.0) -> Dictionary:
 	var id := skill_id_of(char_entry)
 	var base := base_of(id, skills)
 	if base.is_empty():
@@ -176,7 +193,7 @@ static func active_skill(char_entry: Dictionary, skills: Array, weapons: Array,
 		base = base_of(id, skills)
 	if base.is_empty():
 		return {}
-	var out := resolve(base, str(char_entry.get("_key", "")), weapons, defs, stat_of)
+	var out := resolve(base, str(char_entry.get("_key", "")), weapons, defs, stat_of, base_mul)
 	out["id"] = id
 	return out
 

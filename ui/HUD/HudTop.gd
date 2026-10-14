@@ -95,6 +95,22 @@ func _ready() -> void:
 		_fs_btn.pressed.connect(_on_fs_pressed)
 		add_child(_fs_btn)
 
+	# 切语言：「属性」按钮文字（zh"属性" / en"STATS"）随语言重取
+	I18n.locale_changed.connect(_on_locale_changed)
+
+func _on_locale_changed(_l: String = "") -> void:
+	if _stats_btn != null:
+		_stats_btn.text = I18n.t("hud_stats")
+	# 顶部文字行的模板（"波次 3/20" / "击杀 12" / "金币 350"）与经验条数字都走 I18n，
+	# 切语言要把当前值按新模板重推一遍（HudBars 自己订阅了 queue_redraw）
+	set_gold_text(I18n.t("hud_gold") % GameState.gold)
+	set_kills_text(I18n.t("hud_kills") % GameState.kills)
+	var bd: Dictionary = GameState.level_info()
+	set_bar("xp_level", int(bd.get("level", 1)))
+	set_bar("xp_into", int(bd.get("into", 0)))
+	set_bar("xp_need", int(bd.get("need", 1)))
+	set_bar("xp_pct", float(bd.get("pct", 0.0)))
+
 func _mk_label(pos: Vector2, size: int, c: Color) -> Label:
 	var l := Label.new()
 	l.position = pos

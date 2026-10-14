@@ -37,6 +37,9 @@ const ATTACK_SIZE := Vector2(100.0, 100.0)
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
+	# 切语言：按钮名/文案全部走 _draw 里的 I18n，重画即刷新
+	# ⚠️ 不能直接 connect(queue_redraw)：locale_changed 带参数，queue_redraw 不收
+	I18n.locale_changed.connect(_on_locale_changed)
 	if btn_type == TYPE_WOK:
 		size = WOK_SIZE
 		Events.wok_heat_changed.connect(_on_heat)
@@ -155,6 +158,9 @@ func _draw() -> void:
 		_draw_attack(c)
 	else:
 		_draw_dash(c)
+
+func _on_locale_changed(_l: String = "") -> void:
+	queue_redraw()
 
 # ---- 锅气：大号按钮 + 充能进度环 + 存了几发 ----
 func _draw_wok(c: Vector2) -> void:

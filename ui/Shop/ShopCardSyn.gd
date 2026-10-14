@@ -13,6 +13,7 @@ extends RefCounted
 
 const Synergy := preload("res://core/Synergy.gd")
 const Stats := preload("res://core/Stats.gd")
+const DetailText := preload("res://ui/Shop/ShopDetailText.gd")
 
 # 给卡片数据打上羁绊标记（原地改 d）。weapons 是玩家当前已持有的武器。
 static func decorate(d: Dictionary, char_entry: Dictionary, weapon_key: String,
@@ -58,3 +59,23 @@ static func gain_text(weapons: Array, char_entry: Dictionary, defs: Dictionary,
 	var e := Stats.entry(k)
 	return I18n.t(str(e.get("name", ""))) + " " + Stats.fmt_value(
 		str(e.get("fmt", "")), float(g.get("delta", 0.0)))
+
+# 携带技能标签："赠·灼烧" / "GIFT: Sear"。
+# 武器/道具白送一个主动技能（core/SkillSlots.gd）—— 货架上看不见这个机制，
+# 玩家就只能买了才知道，"武器产出技能"等于没存在过。返回 "" = 这张不送技能。
+# def 是武器或道具的原始定义（都有 skill 可选字段）。
+static func gift_tag(def: Dictionary, locale: String) -> String:
+	var sid := str(def.get("skill", ""))
+	if sid.is_empty():
+		return ""
+	var en := locale == "en"
+	var name := ""
+	for s in Data.skills.get("skills", []):
+		var d := s as Dictionary
+		if str(d.get("id", "")) == sid:
+			name = str(d.get("en", "")) if en else str(d.get("zh", ""))
+			break
+	if name.is_empty():
+		return ""
+	var word := DetailText.t("gift", locale)
+	return (word + ": " + name) if en else (word + "·" + name)

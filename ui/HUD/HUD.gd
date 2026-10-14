@@ -253,7 +253,7 @@ func _on_wok_charges(n: int) -> void:
 	_buttons.set_charges(n)
 
 func _on_locale_changed(_l: String = "") -> void:
-	_buttons.set_charges(_wok_charges_n)
+	_refresh()   # 波次文本模板走 I18n；gold/kills/xp 归 HudTop 自己刷，技能按钮自己重画
 
 func _on_unlocked(key: String) -> void:
 	_banners.queue_unlock(key)

@@ -49,6 +49,10 @@ signal skill_cooldown_changed(id: String, ratio: float, ready: bool)
 signal skill_cast(id: String, pos: Vector2, radius: float, form: String)
 # 形态变化（买了第 3 把刀、换了角色…）：HUD 按钮跟着改名换色，玩家一眼看到"我换招了"
 signal skill_form_changed(id: String, form: String)
+# 槽位集合变化（买了带技能的武器/道具 → 多一个技能；卖了 → 少一个）：
+# HUD 按新槽位数重建技能按钮（id 序列，顺序即扇面顺序）。
+# 只在序列真的变了时发（见 core/SkillSlots.same_slots），否则按钮会每帧闪。
+signal skill_slots_changed(ids: Array)
 
 # ---- 调试（仅调试模式，见 core/DebugMode：正式版按钮都不创建，此信号没人发）----
 # HUD 调试面板"跳到第 N 波"发出，由 WaveDirector 真正执行（清场后直接开那一波）

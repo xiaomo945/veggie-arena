@@ -62,6 +62,29 @@ static func masters(key: String, characters: Dictionary) -> Array:
 			out.append(str(k))
 	return out
 
+# 携带技能：武器/道具白送一个主动技能（四元素联动第二环，core/SkillSlots.gd）。
+# 商店货架、武器详情、商店详情三处共用这段文案，保证"哪里看到的都是同一句话"。
+# skills_cfg 传 data/skills.json 整个字典（含 skills 数组），用来按 id 取双语名；
+# 没有 skill 字段返回 ""（调用方直接跳过这一节）。
+static func skill_line(def: Dictionary, skills_cfg: Dictionary, locale: String) -> String:
+	var sid := str(def.get("skill", ""))
+	if sid.is_empty():
+		return ""
+	var name := ""
+	for s in (skills_cfg.get("skills", []) as Array):
+		var d := s as Dictionary
+		if str(d.get("id", "")) == sid:
+			name = str(d.get("en", "")) if _en(locale) else str(d.get("zh", ""))
+			break
+	if name.is_empty():
+		return ""
+	return _x("携带技能：%s（白送的招比本命技弱一成，但照样能吃武器羁绊强化）",
+		"Grants skill: %s (gifted skills hit at 80%%, but still scale with your weapon bonds)",
+		_en(locale), [name])
+
+static func title_skill(locale: String) -> String:
+	return "BONUS SKILL" if _en(locale) else "携带技能"
+
 # ---- 详情页用的小标题 / 按钮词 ----
 static func title_summary(locale: String) -> String:
 	return "AT A GLANCE" if _en(locale) else "一句话"
@@ -102,8 +125,14 @@ static func _x(zh: String, en_txt: String, en: bool, args: Array = []) -> String
 	return (t % args) if (not args.is_empty() and _needs_args(t)) else t
 
 # 中英%参数顺序一致才能这么写；不一致的场景各自在函数内用三元分支
+# ⚠️ 必须认"有效格式符"（%s/%d/%f/%c），不能只 find("%")：文案里出现裸百分号
+# （如 "hit at 80%"）时，旧逻辑会把 %, 当格式符 → "unsupported format character"
+# 报错、整行文案丢失（英文详情页的"携带技能"节就这样消失过）。
 static func _needs_args(t: String) -> bool:
-	return t.find("%") >= 0
+	for f in ["%s", "%d", "%f", "%c", "%v"]:
+		if t.find(f) >= 0:
+			return true
+	return false
 
 static func _attr(s: String, en: bool) -> String:
 	match s:

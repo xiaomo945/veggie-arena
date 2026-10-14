@@ -280,3 +280,15 @@ static func _sb_tile(bg: Color, border: Color, radius: float, bw: int) -> StyleB
 	sb.border_color = border
 	sb.set_border_width_all(bw)
 	return sb
+
+# 矮卡的赠送技能标签（#288 第二环）："赠·冰镇" / "GIFT: Chill"。
+# 矮卡原本整行省略类型标签（空间不够），但"这张卡白送一个主动技"是购买理由，
+# 必须露出来；y=47 行矮卡本就空着，不与左下价格药丸（y=34~58）抢位。
+static func draw_gift_tag(c: Control, font: Font, d: Dictionary, tx: float,
+		dim: bool, card_w: float) -> void:
+	var gt := str(d.get("gift_skill_name", ""))
+	if gt.is_empty():
+		return
+	var col := Color(0.66, 0.90, 1.0) if not dim else Color(0.5, 0.55, 0.6, 0.8)
+	var w := font.get_string_size(gt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	_center(c, font, gt, tx + 8.0 + w * 0.5, 47, 12, col, card_w - tx - 92.0)

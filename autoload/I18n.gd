@@ -103,6 +103,8 @@ const UI := {
   "shop_next": {"en": "NEXT WAVE →", "zh": "下一波 →"},
   "shop_slots_full_hint": {"en": "SLOTS FULL — sell one to roll new weapons", "zh": "槽位已满：先卖掉一把，才能刷出新武器"},
   "shop_big_tag": {"en": "★ BIG SALE  −%d%% ALL", "zh": "★ 大促销  全场 −%d%%"},
+  "shop_stats_hp": {"en": "HP %d   Armor %d   Speed %d", "zh": "生命 %d   护甲 %d   移速 %d"},
+  "shop_stats_atk": {"en": "ATK %d(+%d%%)   Rate +%d%%   Range +%d%%   Crit %d%%", "zh": "攻击力 %d(+%d%%)   射速 +%d%%   范围 +%d%%   暴击 %d%%"},
 
   # ---- 暂停 ----
   "pause_title": {"en": "PAUSED", "zh": "暂停"},
@@ -253,10 +255,7 @@ const UI := {
 
 func _ready() -> void:
   # autoload 顺序保证 Settings 已 _ready；这里直接读已加载的语言偏好
-  if Settings != null:
-    locale = Settings.get_language()
-  else:
-    locale = "en"
+  locale = Settings.get_language() if Settings != null else "en"
 
 # UI 静态文案
 func t(key: String) -> String:

@@ -1633,5 +1633,35 @@
     "cat": "passive",
     "rarity": 1,
     "spare": true
+  },
+  "hand_fan": {
+    "zh": "折扇",
+    "en": "Hand Fan",
+    "cat": "skill",
+    "cost": 30,
+    "rarity": 2,
+    "skill": "gust",
+    "tip": "随身带把折扇：疾风上手（赠送的技能比本命技弱一成）",
+    "tip_en": "A folding fan in your pocket: Gust comes with it (gifted skills hit at 80%)"
+  },
+  "snow_globe": {
+    "zh": "雪景球",
+    "en": "Snow Globe",
+    "cat": "skill",
+    "cost": 45,
+    "rarity": 3,
+    "skill": "blizzard",
+    "tip": "摇一摇，暴风雪跟着来（赠送的技能比本命技弱一成）",
+    "tip_en": "Shake it and a blizzard answers (gifted skills hit at 80%)"
+  },
+  "golden_bell": {
+    "zh": "金铃",
+    "en": "Golden Bell",
+    "cat": "skill",
+    "cost": 40,
+    "rarity": 2,
+    "skill": "coin_rain",
+    "tip": "铃响钱落：金币雨上手，边打边捡（赠送的技能比本命技弱一成）",
+    "tip_en": "Ring it: coins rain down and pay (gifted skills hit at 80%)"
   }
 }

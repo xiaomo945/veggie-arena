@@ -133,8 +133,8 @@ func _refresh_stats() -> void:
 		float(Settings.move_scale) / 100.0, 1.0, float(Data.player_cfg().get("speed_cap", 600.0)))))
 	# 攻击力是派生实数（全武器齐射一轮的伤害）—— 走 Stats 聚合口径，与 entities 开火时的乘法完全一致
 	var atk := Stats.attack_power(GameState.weapons, GameState.stat_value, Data.weapon, Data.combat_cfg())
-	var g1 := "生命 %d   护甲 %d   移速 %d" % [GameState.max_hp, int(GameState.stat_value("armor")), spd]
-	var g2 := "攻击力 %d(+%d%%)   射速 +%d%%   范围 +%d%%   暴击 %d%%" % [int(atk), int(GameState.stat_value("dmg_pct") * 100.0), int(GameState.stat_value("rate_pct") * 100.0), int(GameState.stat_value("range_pct") * 100.0), int(GameState.stat_value("crit_chance") * 100.0)]
+	var g1 := I18n.t("shop_stats_hp") % [GameState.max_hp, int(GameState.stat_value("armor")), spd]
+	var g2 := I18n.t("shop_stats_atk") % [int(atk), int(GameState.stat_value("dmg_pct") * 100.0), int(GameState.stat_value("rate_pct") * 100.0), int(GameState.stat_value("range_pct") * 100.0), int(GameState.stat_value("crit_chance") * 100.0)]
 	_panel.stats_lbl.text = g1 + "\n" + g2
 
 func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
@@ -146,20 +146,17 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 	var infl_pct := 0
 	if base_cost > 0 and inflated: infl_pct = int(round(float(cost - base_cost) / float(base_cost) * 100.0))
 	var d: Dictionary = {"kind": kind, "name": I18n.pick(def), "tip": I18n.tip(def), "cost": cost,
-		"affordable": afford, "sold": sold, "disabled": false, "icon": null,
-		"base_cost": base_cost, "inflated": inflated, "infl_pct": infl_pct}
+		"affordable": afford, "sold": sold, "disabled": false, "icon": null, "base_cost": base_cost,
+		"inflated": inflated, "infl_pct": infl_pct}
 	if kind == "weapon":
 		var lv := int(o.get("lv", 1))
 		d["accent"] = ShopTiers.new().tier_color(lv)
 		d["lv"] = lv; d["icon"] = Art.icon("weapon_" + key)
-		# 套装名前置：买之前就知道"这把属于哪一套"
 		var tags: Array = def.get("tags", [])
 		var set_name := I18n.t("set_" + str(tags[0])) if tags.size() > 0 else ""
 		var state := I18n.t("shop_merge") if Inventory.owned_max_lv(GameState.weapons, key) > 0 else I18n.t("shop_new")
 		d["tag"] = (set_name + "·" if set_name != "" else "") + state
-		# 羁绊标记（本命描金边 / 羁绊类描蓝边），见 ui/Shop/ShopCardSyn.gd
-		ShopCardSyn.decorate(d, Data.character(GameState.character), key, Data.weapons, GameState.weapons)
-		# 左侧套装色竖条：整套已激活就亮起来（与 HUD 武器槽同一套视觉语言）
+		ShopCardSyn.decorate(d, Data.character(GameState.character), key, Data.weapons, GameState.weapons)  # 本命金边/羁绊蓝边
 		if tags.size() > 0:
 			var sd := Data.weapon_set(str(tags[0]))
 			var cnt := int(WeaponSets.tag_counts(GameState.weapons, Data.weapons).get(str(tags[0]), 0))
@@ -170,15 +167,18 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 			d["set_count"] = cnt
 			d["set_need"] = WeaponSets.next_need(cnt, sd)
 			d["set_tier"] = WeaponSets.tier_of(cnt, sd)
-		# 行为类型：买之前就知道这把"怎么打"（追踪/弹射/连锁…）
 		d["behavior_zh"] = Weapon.behavior_zh(def)
 		d["disabled"] = not Inventory.can_accept_tier(GameState.weapons, key, lv, _max_slot, _max_lv)
 	else:
 		var rar := clampi(int(def.get("rarity", 1)), 1, 3)
 		d["accent"] = RARITY_COLORS[rar - 1]; d["rarity"] = rar; d["tag"] = I18n.t("shop_upgrade")
-		# 道具也有真图标了（18 类覆盖 136 个）；没配映射的 stat 落回宝石画法
-		var ik := str(ItemIcons.key_for_def(def))
+		var ik := str(ItemIcons.key_for_def(def))   # 道具真图标（18 类覆盖 146 个）；没配映射落回宝石画法
 		if ik != "": d["icon"] = Art.icon(ik)
+	# 携带技能（武器/道具白送一个主动技）：货架标签 + 详情页同源展示
+	var gt := ShopCardSyn.gift_tag(def, I18n.locale)
+	if gt != "":
+		d["gift_skill_name"] = gt
+		d["tag"] = gt + " " + str(d.get("tag", ""))
 	return d
 func _buy(index: int) -> void:
 	if index >= _offers.size() or _sold[index]: return

@@ -28,6 +28,7 @@ const GOLD := Color(0.99, 0.87, 0.40)
 const GOLD_DK := Color(0.80, 0.60, 0.26)
 
 var gold_lbl: Label
+var title_lbl: Label
 var stats_lbl: Label
 var hint_lbl: Label
 var cards: Array = []
@@ -47,6 +48,12 @@ func build() -> void:
 	_build_cards()
 	_build_buttons()
 	_build_sets()
+	# 切语言：标题与下一波按钮跟着换（卡片区内容由 Shop._refresh 重建）
+	I18n.locale_changed.connect(_on_locale_changed)
+
+func _on_locale_changed(_l: String = "") -> void:
+	title_lbl.text = I18n.t("shop_title")
+	next_btn.text = I18n.t("shop_next")
 
 # 套装条：面板最底一条（按钮下方还剩 30px），常驻显示五套的件数进度
 func _build_sets() -> void:
@@ -56,12 +63,12 @@ func _build_sets() -> void:
 
 func _build_header() -> void:
 	add_child(coin_rect(Vector2(18, 16), 30))
-	var title := Label.new()
-	title.text = I18n.t("shop_title")
-	title.set_position(Vector2(58, 17))
-	title.add_theme_font_size_override("font_size", 25)
-	title.add_theme_color_override("font_color", GOLD)
-	add_child(title)
+	title_lbl = Label.new()
+	title_lbl.text = I18n.t("shop_title")
+	title_lbl.set_position(Vector2(58, 17))
+	title_lbl.add_theme_font_size_override("font_size", 25)
+	title_lbl.add_theme_color_override("font_color", GOLD)
+	add_child(title_lbl)
 	var pill := Panel.new()
 	pill.set_size(Vector2(152, 38)); pill.set_position(Vector2(PANEL_W - 166, 12))
 	pill.add_theme_stylebox_override("panel", flat_box(Color(0.30, 0.21, 0.06, 0.95), Color(0.85, 0.66, 0.22), 19))

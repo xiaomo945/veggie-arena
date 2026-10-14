@@ -285,10 +285,9 @@ func _on_wok_toss_requested() -> void:
 # ---- 主动技能（冰镇/毒雾…）：右手按钮按下 → 这里真正施放 ----
 func _on_skill_requested(id: String) -> void:
 	if skill_sys != null:
-		# 施放前按【当前角色 + 武器 + 属性道具】重算技能：买了把枪、堆够 4 件本命，
-		# 下一次按键的伤害/半径/时长立刻跟着变 —— 四元素联动就落在这一行上。
-		skill_sys.refresh(Data.character(GameState.character), GameState.weapons,
-			Data.weapons, GameState.stat_value)
+		# 施放前按【当前角色 + 武器 + 道具 + 属性】重算技能：买了把枪、堆够 4 件本命、
+		# 买了带技能的武器，下一次按键立刻多一招/变一招 —— 四元素联动就落在这一行上。
+		skill_sys.refresh()
 		skill_sys.cast(id)
 
 # 颠勺冲击波环已并入 FxBlast：整发爆炸统一画在玩家当前位置，不在 Game 里另画一圈。

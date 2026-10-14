@@ -40,8 +40,13 @@ func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
 	position = HudLayout.synergy_pos()
 	size = Vector2(HudLayout.synergy_w(), HudLayout.synergy_h())
-	I18n.locale_changed.connect(queue_redraw)
+	# ⚠️ 不能直接 connect(queue_redraw)：locale_changed 带一个 locale 参数，
+	#    queue_redraw 不收参数 → 每次切语言都抛 "Method expected 0 arguments"
+	I18n.locale_changed.connect(_on_locale_changed)
 	_refresh()
+
+func _on_locale_changed(_l: String = "") -> void:
+	queue_redraw()
 
 func _process(delta: float) -> void:
 	_t += delta

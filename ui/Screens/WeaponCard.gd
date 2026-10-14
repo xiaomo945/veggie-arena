@@ -17,6 +17,9 @@ const CARD_H := 190.0
 
 const Weapon := preload("res://core/Weapon.gd")
 
+# 武器白送主动技时，货架标签同款"赠·XX"前缀（ ShopCardSyn 是标签/详情的单一来源）
+const ShopCardSyn := preload("res://ui/Shop/ShopCardSyn.gd")
+
 const _GOLD := Color(0.99, 0.87, 0.40)
 const _DIM := Color(0.60, 0.46, 0.22, 0.85)
 const _BG := Color(0.18, 0.12, 0.07, 0.96)
@@ -57,7 +60,7 @@ func setup(key: String, width: float) -> void:
 	if beh != "":
 		vb.add_child(_badge(beh, accent, width))
 
-	# 套装 / 羁绊名：知道它归哪一类（决定"和什么一起买"）
+# 套装 / 羁绊名：知道它归哪一类（决定"和什么一起买"）；武器送技能时前缀"赠·XX"
 	var st := _set_text(def)
 	if st != "":
 		var sl := Label.new()
@@ -118,14 +121,20 @@ func _badge(text: String, accent: Color, width: float) -> Panel:
 	bh.add_child(bl)
 	return bh
 
-# 套装 / 羁绊名（取第一个 tag 映射；没有就空）
+# 套装 / 羁绊名（取第一个 tag 映射；没有就空）。武器/道具白送主动技时前缀
+# "赠·XX"（见 ShopCardSyn.gift_tag）：选武器时一眼看到这把多送一个技能。
 func _set_text(def: Dictionary) -> String:
+	var text := ""
 	var tags: Array = def.get("tags", [])
-	if tags.is_empty():
-		return ""
-	var key := "set_" + str(tags[0])
-	var name := I18n.t(key)
-	return name if (name != "" and name != key) else ""
+	if not tags.is_empty():
+		var key := "set_" + str(tags[0])
+		var name := I18n.t(key)
+		if name != "" and name != key:
+			text = name
+	var gt := ShopCardSyn.gift_tag(def, I18n.locale)
+	if gt == "":
+		return text
+	return gt if text == "" else gt + " · " + text
 
 func set_selected(on: bool) -> void:
 	var sb := StyleBoxFlat.new()

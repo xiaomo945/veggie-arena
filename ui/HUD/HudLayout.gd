@@ -98,23 +98,32 @@ func buttons_pivot() -> Vector2:
 	return Vector2(820.0, 430.0) if Data.is_landscape() else Vector2(468.0, 762.0)
 func buttons_arc_r() -> float: return 130.0 if Data.is_landscape() else 152.0
 func buttons_dash_center() -> Vector2:
-	return Vector2(690.0, 470.0) if Data.is_landscape() else Vector2(455.0, 500.0)
-# ⚠️ skill 槽【不写 id】：技能表已角色化（十个角色十个专属技能），写死 id
-#    就会放出一个技能表里已经没有的招（真踩过：这里写 poison，而 poison 已被
-#    角色专属技能取代 → 按钮点了没反应）。留空 = SkillButton 自己按当前角色取。
+	# 竖屏：冲刺在扇面左上 (455,500)，远离技能环也不进摇杆移动区。
+	# 横屏：原来贴扇面下沿 (690,470)，但扇面现在有 3 个技能槽（170° 落在
+	# (692,453)），冲刺会和最左下那个技能按钮边角相叠 —— 实测 |dx|/|dy| 都
+	# 小于两者半径和。挪到 (600,385)：与 205° 差 102px、与 170° 差 92px，
+	# 都 > 82（88 冲刺 + 76 技能 的半径和），且仍在右手拇指舒适区。
+	return Vector2(600.0, 385.0) if Data.is_landscape() else Vector2(455.0, 500.0)
+# ⚠️ skill 槽【不写 id】：技能表已角色化，且武器/道具还会【赠送】技能
+#    （见 core/SkillSlots.gd）—— 写死 id 就会放出一个招不出来的按钮（真踩过：
+#    这里写 poison，而 poison 已被角色专属技能取代 → 按钮点了没反应）。
+#    留空 = 由 SkillSystem 槽位广播（Events.skill_slots_changed）决定放几个、什么 id。
 # 扇面里【没有快进】：2 倍速按钮没有任何消费者（Game 从未订阅该信号），
 #    且和冲刺键位太近被玩家误按（"按了快进角色扁一下"= 实际按到冲刺）。
 func buttons_fan() -> Array:
-	# 横屏：dash 就在扇面下沿（(690,470) 离圆心只有 136 ≈ arc_r），扇面只留
-	# wok 240°（左上）与 skill 195°（左），两者与冲刺键 x 方向完全让开。
-	if Data.is_landscape():
-		return [
-			{"type": "wok",   "deg": 240.0},
-			{"type": "skill", "deg": 195.0},
-		]
+	# 4 个槽位固定角度（竖横屏同一套，省得两处漂移）：
+	#   wok 275°（顶偏右）/ 技能 240° / 205° / 170°（向左下扫）。
+	# 为什么不是 285/245/200/155：竖屏 pivot x=468，285° 会让 wok 右缘探出
+	# 540 屏宽（圆心 +39 + 按钮半径 44 = 551）；155° 又离 dash 太近。
+	# 相邻槽弦长验算（arc_r=152 竖屏 / 130 横屏，相邻角差 35°）：
+	#   竖屏 152·2·sin17.5° = 91px > 82（按钮半径和）✓；
+	#   横屏 130·2·sin17.5° = 78px，靠 |dx| > 82 保底（见 HudButtons 注释）✓。
+	# 技能按槽位顺序填入：槽 0（本命技）在最顺手的 240°，赠送技依次排 205/170。
 	return [
-		{"type": "wok",   "deg": 240.0},
-		{"type": "skill", "deg": 195.0},
+		{"type": "wok",   "deg": 275.0},
+		{"type": "skill", "deg": 240.0},
+		{"type": "skill", "deg": 205.0},
+		{"type": "skill", "deg": 170.0},
 	]
 
 # ---- Joystick：左下移动区 + 固定底盘 ----

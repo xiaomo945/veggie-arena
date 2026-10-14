@@ -15,46 +15,78 @@ extends RefCounted
 
 const Shake := preload("res://entities/effects/Shake.gd")
 const SkillDef := preload("res://core/SkillDef.gd")
+const SkillSlots := preload("res://core/SkillSlots.gd")
 const InputBuffer := preload("res://core/InputBuffer.gd")
 
 var world = null                       # BattleWorld（注入）
 var damage_fn: Callable = Callable()   # 伤害漏斗（EnemySystem.damage_enemy），Game 注入
 var _bases: Array = []                 # 技能库原文（data/skills.json）
 var _skills: Dictionary = {}           # id -> 当前生效配置（经 SkillDef 解析后）
+var _slots: Array = []                 # 当前生效的技能槽位（本命 + 武器/道具赠送，见 SkillSlots）
 var _cd: Dictionary = {}               # id -> 剩余冷却（秒）
 var _buf: Dictionary = {}              # 输入缓冲：冷却中按下先记着，转好自动放
 var _form: Dictionary = {}             # id -> 当前形态 key（变了才广播）
-var _form_t := 0.0                     # 形态复检节流（秒）
+var _form_t := 0.0                     # 形态/槽位复检节流（秒）
 
-# 由 Game 在 _ready 里调用：注入世界 + 读技能表
+# 由 Game 在 _ready 里调用：注入世界 + 读技能表。
+# ⚠️ _skills 只装【槽位内】的技能（由 _recompute 填），不再把整张技能表塞进去 ——
+#    否则 cast() 的 has(id) 守门形同虚设，测试/调试点一下就能放出没解锁的招。
 func setup(arr: Array, wld) -> void:
 	world = wld
 	_skills.clear()
 	_cd.clear()
+	_slots.clear()
+	_form.clear()
+	_buf.clear()
 	_bases = arr
-	for s in arr:
-		var d: Dictionary = s
-		var id: String = str(d.get("id", ""))
-		if id == "":
-			continue
-		_skills[id] = d
-		_cd[id] = 0.0
+	refresh()   # 开局就算好槽位（本命 + 初始武器赠送），HUD 第一时间拿到按钮清单
 
-# 按【当前角色 + 当前武器 + 当前属性】重算技能参数。
+# 按【当前角色 + 武器 + 道具 + 属性】重算全部技能槽位与参数。
 # 施放前调一次即可，参数永远是最新的：卖了把武器、买了件道具、换了角色，
 # 下一次按键立刻反映出来（技能强度随构筑变化，这正是四元素联动的手感来源）。
-func refresh(char_entry: Dictionary, weapons: Array, defs: Dictionary,
-		stat_of: Callable) -> void:
-	var act := SkillDef.active_skill(char_entry, _bases, weapons, defs, stat_of)
-	if act.is_empty():
-		return
-	var id := str(act.get("id", ""))
-	if id == "":
-		return
-	_skills[id] = act
-	if not _cd.has(id):
-		_cd[id] = 0.0
-	_publish_form(id, str(act.get("form", SkillDef.BASE_FORM)))
+func refresh() -> void:
+	_recompute()
+
+# 槽位 + 参数全量重算（refresh 与 tick 的节流复检都走这里）。
+# 为什么不缓存入参、而是现取 autoload：GameState.weapons / upgrades 都是被
+# 原地修改的同一个对象，现取永远最新；本类在 scenes/ 层、不在 core/，
+# 引用 autoload 不犯架构守卫 R2（_recheck_forms 原本就是这么读的）。
+func _recompute() -> void:
+	var char_entry: Dictionary = Data.character(GameState.character)
+	var weapons: Array = GameState.weapons
+	var new_slots := SkillSlots.slots_of(char_entry, weapons, Data.weapons,
+		GameState.upgrades.keys(), Data.upgrades, Data.skills)
+	# 槽位集合变了（买了带技能的武器/道具，或卖了）→ 广播，HUD 重建按钮
+	if not SkillSlots.same_slots(new_slots, _slots):
+		_slots = new_slots
+		_prune()
+		Events.skill_slots_changed.emit(SkillSlots.ids_of(_slots))
+	for s in _slots:
+		var id := str(s.get("id", ""))
+		var base := SkillDef.base_of(id, _bases)
+		if base.is_empty():
+			continue
+		# base_mul：本命技 1.0，武器/道具白送的 0.8（SkillSlots.GIFT_MUL）
+		var act := SkillDef.resolve(base, str(char_entry.get("_key", "")), weapons,
+			Data.weapons, GameState.stat_value, float(s.get("mul", 1.0)))
+		act["id"] = id
+		_skills[id] = act
+		if not _cd.has(id):
+			_cd[id] = 0.0
+		_publish_form(id, str(act.get("form", SkillDef.BASE_FORM)))
+
+# 槽位没了（卖了带技能的武器/道具）：技能/冷却/缓冲/形态记录一起清掉，
+# 否则按钮没了冷却还在跳，卖完再买回来 CD 还是旧的。
+func _prune() -> void:
+	var live: Dictionary = {}
+	for s in _slots:
+		live[str(s.get("id", ""))] = true
+	for id in _skills.keys():
+		if not live.has(id):
+			_skills.erase(id)
+			_cd.erase(id)
+			_form.erase(id)
+			_buf.erase(id)
 
 # 形态变了才广播：按钮改名/换色、特效换样式，全靠这一下（别每帧刷 UI）
 func _publish_form(id: String, form: String) -> void:
@@ -63,15 +95,10 @@ func _publish_form(id: String, form: String) -> void:
 	_form[id] = form
 	Events.skill_form_changed.emit(id, form)
 
-# 武器栏变了（买/卖/合成）但还没按键时也要复检形态 —— 否则玩家凑够 3 把刀，
-# 技能按钮却还是旧名字，"我换招了"的惊喜要等到下一次按键才出现。
+# 武器栏/道具栏变了（买/卖/合成）但还没按键时也要复检 —— 否则玩家凑够 3 把刀，
+# 技能按钮却还是旧名字；买了带技能的武器，按钮也要立刻多出来（tick 节流调用）。
 func _recheck_forms() -> void:
-	var char_entry := Data.character(GameState.character) as Dictionary
-	var base := SkillDef.base_of(SkillDef.skill_id_of(char_entry), _bases)
-	if base.is_empty():
-		return
-	_publish_form(str(base.get("id", "")), SkillDef.form_key_of(base,
-		str(char_entry.get("_key", "")), GameState.weapons, Data.weapons))
+	_recompute()
 
 # 开新一局时清冷却（Game.start_run 调用），避免上一局残留的 CD 带到开局
 func reset_cooldowns() -> void:

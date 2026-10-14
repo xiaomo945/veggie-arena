@@ -127,15 +127,22 @@ func run(data) -> Dictionary:
 				missing.append("enemy." + k + "." + f)
 	for k in data.upgrade_keys():
 		var u: Dictionary = data.upgrade(k)
-		# 单属性道具写 stat/value，多属性道具（"有取舍"类）写 stats 字典，二选一即可
+		# 单属性道具写 stat/value，多属性道具（"有取舍"类）写 stats 字典，二选一即可；
+		# 送技能的道具（skill 字段）效果就是那个主动技，同样算数，不强制带属性
 		var multi_stats: Dictionary = u.get("stats", {}) as Dictionary
+		var has_skill: bool = str(u.get("skill", "")) != ""
 		for f in ["zh", "cost"]:
 			if not u.has(f):
 				missing.append("upgrade." + k + "." + f)
 		if multi_stats.is_empty():
-			for f in ["stat", "value"]:
-				if not u.has(f):
-					missing.append("upgrade." + k + "." + f)
+			if has_skill:
+				# 白送技能的道具：stat/value 可省，但 tip 必须说清送的是什么
+				if str(u.get("tip", "")).is_empty():
+					missing.append("upgrade." + k + ".tip")
+			else:
+				for f in ["stat", "value"]:
+					if not u.has(f):
+						missing.append("upgrade." + k + "." + f)
 		else:
 			# 多属性道具的每一条也必须落在属性目录里，不然买了没效果
 			for sk in multi_stats:

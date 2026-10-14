@@ -47,6 +47,11 @@ func _ready() -> void:
 	WOK_W = HudLayout.wok_w()
 	RUN_W = HudLayout.run_w()
 	XP_W = HudLayout.xp_w()
+	# 切语言：_draw 里的 I18n 文案（锅气%/经验数字）全部重取
+	I18n.locale_changed.connect(_on_locale_changed)
+
+func _on_locale_changed(_l: String = "") -> void:
+	queue_redraw()
 
 func _draw() -> void:
 	_draw_run_progress()

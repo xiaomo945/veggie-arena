@@ -35,7 +35,8 @@
     "en": "SMG",
     "tags": [
       "gun"
-    ]
+    ],
+    "skill": "combo"
   },
   "shotgun": {
     "zh": "霰弹枪",
@@ -118,7 +119,8 @@
     "en": "Rocket",
     "tags": [
       "gun"
-    ]
+    ],
+    "skill": "barrage"
   },
   "cleaver": {
     "zh": "菜刀",
@@ -139,7 +141,8 @@
     "tip_en": "Heavy close-range chop: high dmg, slow swing. Hits everything in the arc.",
     "tags": [
       "blade"
-    ]
+    ],
+    "skill": "cross_cut"
   },
   "skewer": {
     "zh": "竹签",
@@ -287,6 +290,7 @@
     "tags": [
       "elemental"
     ],
+    "skill": "overload",
     "scl": {
       "elem": 1.0
     }
@@ -411,7 +415,8 @@
     "tip_en": "Mid dmg/speed with a big knockback: shove swarming foes away.",
     "tags": [
       "heavy"
-    ]
+    ],
+    "skill": "quake"
   },
   "strainer": {
     "key": "strainer",
@@ -570,7 +575,8 @@
     "tags": [
       "heavy",
       "kitchen"
-    ]
+    ],
+    "skill": "steam_burst"
   },
   "tongs": {
     "key": "tongs",
@@ -613,7 +619,8 @@
     "tip_en": "Pounds a small area.",
     "tags": [
       "heavy"
-    ]
+    ],
+    "skill": "spike_burst"
   },
   "oil_sprayer": {
     "key": "oil_sprayer",
@@ -722,7 +729,8 @@
     },
     "tags": [
       "elemental"
-    ]
+    ],
+    "skill": "frost"
   },
   "steamer": {
     "zh": "蒸笼",
@@ -769,7 +777,8 @@
     },
     "tags": [
       "elemental"
-    ]
+    ],
+    "skill": "sear"
   },
   "meat_tenderizer": {
     "zh": "松肉锤",

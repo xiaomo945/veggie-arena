@@ -42,6 +42,10 @@ const POOLS := {
 # 一条升级定义 → Art.icon() 的键。没有 stat 字段的多属性道具（如 melee_focus）
 # 用 stats 字典的键排序后拼成 "multi:a/b" 再进表 —— 同一组合共用一张图。
 static func key_for_def(def: Dictionary) -> String:
+	# 送技能的卡（武器/道具白给一个主动技）：图标直接用品类技能图标 ——
+	# 货架上一眼认出"这是给技能池加招的那张卡"（tests/test_art_icons.gd 全量比对）
+	if str(def.get("skill", "")) != "":
+		return "item_skill"
 	var st := str(def.get("stat", ""))
 	if st == "" and def.get("stats") is Dictionary:
 		var keys: Array = (def["stats"] as Dictionary).keys()
