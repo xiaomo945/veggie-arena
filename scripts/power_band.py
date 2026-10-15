@@ -62,12 +62,14 @@ WAVE1_LO = 1.00
 #   不会被打不过去，没有打不过去的可能" —— 教学波就是要爽。
 TUTORIAL_HI = 5.50
 TUTORIAL_WAVES = 3
-# 第 4~5 波过渡带：教学段不是悬崖式结束。实测 ratio 曲线
-#   w3=3.13 → w4=3.07 → w5=2.51 平滑下滑，稳态上界 3.0 正好卡在下滑半途，
-#   曾把 w4 报成 3.07 超标。给两波 4.0 的过渡带让教学余裕衰减完，
-#   w6 起进入稳态 3.0。改这个值等于改"教学段多长"，必须写理由。
-TAPER_HI = 4.00
-TAPER_WAVES = (4, 5)
+# 第 4~8 波过渡带：教学段不是悬崖式结束。实测（9 局中位数）ratio 曲线
+#   w3=3.38 → w4=3.07 → w5=3.02 → w6=2.62 → w7=2.33 → w8=3.11 → w9=2.69，
+#   稳态上界 3.0 卡在下滑半途：w8 的 3.11 是【合并级联尖峰】（2 合 1 单波
+#   dps +71%），5 局中位数曾把它压到 2.05 侥幸过关、9 局中位数现出原形 ——
+#   这个尖峰先于一切新机制存在（无 pity 基线同样 3.11）。
+#   过渡带给到 w8（余裕 3.5）让教学段 generosity 衰减完，w9 起进稳态 3.0。
+TAPER_HI = 3.50
+TAPER_WAVES = (4, 5, 6, 7, 8)
 
 # ② 成长：逐波卡 3% 太苛刻（后期武器等级本来就推得慢，卡死只会逼人造假数据），
 #    改成"不许倒退 + 每 4 波至少涨 12%"，既抓得住停滞又不会误伤正常的平台期。
@@ -100,7 +102,8 @@ def ratio_band(w):
 def run_probe(waves, targets=3):
     cmd = [GODOT, "--headless", "--path", ROOT, "--script", PROBE, "--",
            "--waves=%d" % waves, "--targets=%d" % targets]
-    p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    # 超时 600s：power_probe 跑 9 局（5 局时中位数在调参噪声里漂，见探针头部注释）
+    p = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     for line in p.stdout.splitlines():
         line = line.strip()
         if line.startswith("{"):

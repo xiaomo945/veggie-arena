@@ -12,7 +12,12 @@ const SimCore := preload("res://scripts/SimCore.gd")
 const DataScript := preload("res://autoload/Data.gd")
 
 const MAX_WAVES := 12
-const RUNS := 5          # 商店是随机的：跑几局取中位数，不让单局运气决定配平
+# 局数：商店随机，取中位数不让单局运气决定配平。
+# ⚠️ 5 → 9（2026-10 属性线续抽调参时发现）：5 局的中位数会随倍率变化
+#   整体跳到不同轨迹上（同一倍率改 0.25，违例波从 w18 凹陷跳到 w19 超标），
+#   等于中位数本身在噪声里漂 —— 调参信号被淹没。9 局后中位数收敛，
+#   power_band 的 subprocess 超时同步放到 600 秒。
+const RUNS := 9
 
 
 func _med(arr: Array) -> float:
