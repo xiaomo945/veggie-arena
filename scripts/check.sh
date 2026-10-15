@@ -175,6 +175,21 @@ else
 fi
 
 echo ""
+echo "=== 2.9 道具定价不变式（硬失败：同属性不得有严格劣势的死卡）==="
+# 判据见 scripts/upgrade_audit.py：道具可跨波重复购买且线性叠加，所以
+# "同属性更贵还更少"或"被 k 件基础档严格优势替代"的卡永远是死卡。
+# 2026-10-15 清掉 13 个死卡（速度线整线、hp2/dmg2/rate2/armor2/pellets3/
+# pellets4/wokdmg3/wokdmg4/wokkeep 等）后立此闸为据。
+if [ -f scripts/upgrade_audit.py ]; then
+  PY7=$(command -v python3.11 || command -v python3)
+  if ! "$PY7" scripts/upgrade_audit.py; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/upgrade_audit.py，跳过"
+fi
+
+echo ""
 echo "=== 3. 说明 ==="
 echo "  单文件 >300 行的检查已并入 1.7 架构守卫（硬失败，不再是只告警不拦人）"
 
