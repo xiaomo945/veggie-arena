@@ -13,10 +13,16 @@ static func wave_bonus(wave: int, cfg: Dictionary) -> int:
 	return base + wave * per
 
 # 刷新第 n 次的价格（越刷越贵）
-static func reroll_cost(times: int, cfg: Dictionary) -> int:
+# ⚠️ wave/inflation_pct 与 price_of 同口径：刷新也是金币出口，必须一起吃波次通胀，
+# 否则后期道具价 ×6.7（0.3/波）而刷新还是原价 3 金 —— "金币必须有处可花"的通胀
+# 被刷新这条路整个漏掉。默认 0 = 不通胀（旧调用与单测零改动）。
+static func reroll_cost(times: int, cfg: Dictionary, wave: int = 0, inflation_pct: float = 0.0) -> int:
 	var base := int(cfg.get("reroll_base", 3))
 	var step := int(cfg.get("reroll_step", 2))
-	return base + times * step
+	var p := float(base + times * step)
+	if inflation_pct > 0.0 and wave > 1:
+		p *= (1.0 + float(wave - 1) * inflation_pct)
+	return maxi(1, int(round(p)))
 
 static func can_buy(gold: int, cost: int) -> bool:
 	return gold >= cost

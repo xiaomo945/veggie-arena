@@ -32,8 +32,9 @@ static func discount(wave: int, cfg: Dictionary) -> float:
 	return clampf(float(cfg.get("big_discount_pct", 0.15)), 0.0, 0.6)
 
 # 单张刷新的价格：整店刷的一半（向上取整，至少 1），避免比整店还贵
-static func single_reroll_cost(times: int, cfg: Dictionary) -> int:
-	var full := Economy.reroll_cost(times, cfg)
+# wave/inflation_pct 透传给整店价（刷新同样吃波次通胀，见 Economy.reroll_cost）
+static func single_reroll_cost(times: int, cfg: Dictionary, wave: int = 0, inflation_pct: float = 0.0) -> int:
+	var full := Economy.reroll_cost(times, cfg, wave, inflation_pct)
 	var ratio := clampf(float(cfg.get("single_reroll_ratio", 0.5)), 0.1, 1.0)
 	return maxi(1, int(ceil(float(full) * ratio)))
 

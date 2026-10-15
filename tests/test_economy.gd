@@ -28,6 +28,14 @@ func run() -> Dictionary:
 	chk(Economy.reroll_cost(0, SHOP_CFG) == 3, "首次刷新 3 金币")
 	chk(Economy.reroll_cost(1, SHOP_CFG) == 5, "第二次刷新 5 金币")
 	chk(Economy.reroll_cost(3, SHOP_CFG) == 9, "第四次刷新 9 金币（越刷越贵）")
+	# 2b) 刷新与道具同口径吃波次通胀：刷新也是金币出口，
+	#     否则后期道具价 ×6.7 而刷新还是原价 3 金，通胀就漏了一个出水口
+	chk(Economy.reroll_cost(0, SHOP_CFG, 20, 0.3) == 20,
+		"第20波首次刷新吃通胀 3→20（×6.7，与 price_of 同口径）")
+	chk(Economy.reroll_cost(3, SHOP_CFG, 20, 0.3) == 60,
+		"第20波第四次刷新 9→60（次数涨价与通胀相乘）")
+	chk(Economy.reroll_cost(0, SHOP_CFG, 1, 0.3) == 3,
+		"第1波不涨价（首店还没经历通胀，与 price_of 的 wave>1 判据一致）")
 
 	# 3) 购买力
 	chk(Economy.can_buy(20, 12) == true, "钱够能买")

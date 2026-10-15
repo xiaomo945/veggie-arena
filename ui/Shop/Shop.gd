@@ -86,6 +86,8 @@ func _roll() -> void:
 	_refresh()
 
 func _refresh() -> void:
+	var cfg := Data.shop_cfg()
+	var infl := float(cfg.get("price_inflation", 0.0))
 	_panel.gold_lbl.text = I18n.t("shop_gold") % GameState.gold
 	_refresh_stats()
 	for i in _panel.cards.size():
@@ -98,14 +100,13 @@ func _refresh() -> void:
 		# 单卡可控：锁 / 单张刷新（已售出的卡不给按钮）
 		d["can_lock"] = not _sold[i]
 		d["locked"] = _locked.has(i)
-		d["reroll_one_cost"] = ShopPlan.single_reroll_cost(_reroll_times, Data.shop_cfg())
+		d["reroll_one_cost"] = ShopPlan.single_reroll_cost(_reroll_times, cfg, GameState.wave, infl)
 		c.setup(d)
 	_panel.merge_btn.text = I18n.t("shop_merge_btn")
 	_panel.merge_btn.disabled = not Inventory.has_mergeable(GameState.weapons, _max_lv)
-	# 刷新按钮的文字一直没人设置过（截图目检才发现是空白按钮），补上 + 显示当前刷新价
-	_panel.reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, Data.shop_cfg())
+	# 刷新按钮的文字一直没人设置过（截图目检才发现是空白按钮）；刷新价与道具同口径吃波次通胀
+	_panel.reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, cfg, GameState.wave, infl)
 	# 槽满提示"先卖一把"；大商店亮促销标识（攒钱这一波能大买的节奏要被看见）
-	var cfg := Data.shop_cfg()
 	if _slots_full():
 		_panel.hint_lbl.text = I18n.t("shop_slots_full_hint")
 	elif ShopPlan.is_big(GameState.wave, cfg):
@@ -266,8 +267,7 @@ func _lock_toggle(index: int) -> void:
 func _reroll_one(index: int) -> void:
 	if index >= _offers.size() or _locked.has(index):
 		return
-	var cfg := Data.shop_cfg()
-	var cost := ShopPlan.single_reroll_cost(_reroll_times, cfg)
+	var cfg := Data.shop_cfg(); var cost := ShopPlan.single_reroll_cost(_reroll_times, cfg, GameState.wave, float(cfg.get("price_inflation", 0.0)))
 	if not Economy.can_buy(GameState.gold, cost): return
 	var pool := _pool_now()
 	GameState.spend_gold(cost); _reroll_times += 1
@@ -284,7 +284,7 @@ func _pool_now() -> Array:
 
 # 整店刷新：锁定的卡保留
 func _reroll_bought() -> void:
-	var cfg := Data.shop_cfg(); var cost := Economy.reroll_cost(_reroll_times, cfg)
+	var cfg := Data.shop_cfg(); var cost := Economy.reroll_cost(_reroll_times, cfg, GameState.wave, float(cfg.get("price_inflation", 0.0)))
 	if not Economy.can_buy(GameState.gold, cost): return
 	GameState.spend_gold(cost); _reroll_times += 1
 	if _locked.is_empty():

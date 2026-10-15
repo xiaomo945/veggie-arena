@@ -201,7 +201,7 @@ func _shop(weapons: Array, st: Dictionary, w: int, data, shop: Dictionary,
 		if bought > 0:
 			if rolls >= MAX_REROLL:
 				break
-			gold -= Economy.reroll_cost(rolls, shop)
+			gold -= Economy.reroll_cost(rolls, shop, w, infl)
 			rolls += 1
 			continue
 		if Inventory.merge_pairs(weapons, max_lv, ccfg).is_empty():
