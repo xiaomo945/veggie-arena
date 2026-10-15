@@ -1,7 +1,22 @@
 {
-  "_comment": "武器解锁：开局只开放 6 把基础武器，其余靠累计成就解锁。目的是给玩家一个长期的'再来一局'理由，同时不让新手被 12 把武器淹没。",
+  "_comment": "武器解锁：开局只开放 7 把基础武器，其余 33 把靠累计成就解锁。目的是给玩家一个长期的'再来一局'理由，同时不让新手开局就被武器池淹没。2026-10-15 补齐：武器从 20 把扩到 40 把后，本表停留在了 20 武器时代，导致 20 把武器（含 5 个角色的 signature 本命武器）永远不进商店橱窗。现已 40 把全覆盖。signature 武器（peeler/mortar/chopsticks/blowtorch/wok_scoop）给最低档 total_kills 50 —— 它们是角色身份系统的一部分，第一局前几波就该能够到，不该被长期锁死。",
   "start_weapons": ["pistol", "smg", "shotgun", "bow", "staff", "rocket", "spatula"],
   "weapons": {
+    "peeler": { "type": "total_kills", "need": 50, "en": "Reach 50 total kills" },
+    "mortar": { "type": "total_kills", "need": 50, "en": "Reach 50 total kills" },
+    "chopsticks": { "type": "total_kills", "need": 50, "en": "Reach 50 total kills" },
+    "blowtorch": { "type": "total_kills", "need": 50, "en": "Reach 50 total kills" },
+    "wok_scoop": { "type": "total_kills", "need": 50, "en": "Reach 50 total kills" },
+    "strainer": { "type": "total_kills", "need": 80, "en": "Reach 80 total kills" },
+    "egg_beater": { "type": "total_kills", "need": 80, "en": "Reach 80 total kills" },
+    "oil_sprayer": { "type": "total_kills", "need": 100, "en": "Reach 100 total kills" },
+    "tongs": { "type": "total_kills", "need": 120, "en": "Reach 120 total kills" },
+    "ice_bucket": { "type": "total_kills", "need": 120, "en": "Reach 120 total kills" },
+    "lemon_squeezer": { "type": "best_wave", "need": 4, "en": "Reach wave 4" },
+    "santoku": { "type": "best_wave", "need": 4, "en": "Reach wave 4" },
+    "meat_tenderizer": { "type": "best_wave", "need": 5, "en": "Reach wave 5" },
+    "griddle": { "type": "total_kills", "need": 150, "en": "Reach 150 total kills" },
+    "baking_tray": { "type": "total_kills", "need": 150, "en": "Reach 150 total kills" },
     "cleaver": { "type": "total_kills", "need": 100, "en": "Reach 100 total kills" },
     "skewer": { "type": "best_wave", "need": 5, "en": "Reach wave 5" },
     "ladle": { "type": "total_kills", "need": 300, "en": "Reach 300 total kills" },
@@ -14,6 +29,11 @@
     "fork": { "type": "best_wave", "need": 7, "en": "Reach wave 7" },
     "whisk": { "type": "best_wave", "need": 12, "en": "Reach wave 12" },
     "grater": { "type": "total_gold", "need": 5000, "en": "Collect 5000 total gold" },
-    "rolling_pin": { "type": "total_kills", "need": 50, "en": "Reach 50 total kills" }
+    "rolling_pin": { "type": "total_kills", "need": 50, "en": "Reach 50 total kills" },
+    "steamer": { "type": "best_wave", "need": 6, "en": "Reach wave 6" },
+    "vinegar_sprayer": { "type": "total_gold", "need": 2000, "en": "Collect 2000 total gold" },
+    "clay_pot": { "type": "total_kills", "need": 250, "en": "Reach 250 total kills" },
+    "pressure_cooker": { "type": "total_kills", "need": 300, "en": "Reach 300 total kills" },
+    "garlic_press": { "type": "total_gold", "need": 5000, "en": "Collect 5000 total gold" }
   }
 }
