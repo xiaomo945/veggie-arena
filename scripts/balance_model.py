@@ -73,9 +73,31 @@ CONTACT_K = 0.027
 # =====================================================================
 
 def spawn_rate(wave):
-    """每秒刷几只。线性增长到 cap 后封顶（core/Spawner.spawn_rate）。"""
+    """每秒刷几只。线性增长到 cap 后封顶（core/Spawner.spawn_rate）。
+    用 (wave - 1)：第 1 波不吃波次成长（Spawner.gd 同款，旧式 base+wave×per
+    会把第 1 波刷到 155 只、模型判"开局清不掉"，而 core 早已改成 126 只）。"""
     return min(float(SPAWN["cap"]),
-               float(SPAWN["base_rate"]) + wave * float(SPAWN["per_wave"]))
+               float(SPAWN["base_rate"]) + (wave - 1) * float(SPAWN["per_wave"]))
+
+
+def enemy_gold(t, wave):
+    """镜像 Spawner.stats_for：掉金 = 基值 + wave × gold_per_wave。"""
+    d = ENEMIES[t]
+    return float(d.get("gold", 1)) + float(wave) * float(d.get("gold_per_wave", 0))
+
+
+def elite_chance(wave):
+    """镜像 Spawner.elite_chance：第 elite_from_wave 波起每 elite_every 波一轮。"""
+    from_ = int(SPAWN.get("elite_from_wave", 0))
+    if from_ <= 0 or wave < from_:
+        return 0.0
+    every = max(1, int(SPAWN.get("elite_every", 1)))
+    if (wave - from_) % every != 0:
+        return 0.0
+    base = float(SPAWN.get("elite_chance", 0.0))
+    per = float(SPAWN.get("elite_chance_per_wave", 0.0))
+    cap = float(SPAWN.get("elite_chance_cap", 1.0))
+    return min(cap, base + per * (wave - from_))
 
 
 def type_mix(wave):
@@ -119,24 +141,36 @@ def fastest_speed(wave):
 
 def wave_profile(wave):
     """这一波的加权平均：刷怪总数 / 平均血量 / 平均伤害 / 平均金币 / 最快速度。
-    镜像 Spawner.stats_for 的成长公式；Boss 波额外算首领 + 精英。"""
+    镜像 Spawner.stats_for 的成长公式；Boss 波额外算首领 + 精英。
+    2026-10-15 口径修正：① gold 加 wave×gold_per_wave（stats_for 同款，原来只读基值）；
+    ② boss 波普通怪 ×boss_rate_mult（Game.gd:225，把注意力留给首领）；③ boss 金币
+    原来只摊了血没计金；④ 终局 boss 走 final_boss.gold_mult；⑤ elite 按轮次判定。"""
     mix = type_mix(wave)
-    n = spawn_rate(wave) * WAVE_LEN
+    is_boss = int(SPAWN["boss_every"]) > 0 and wave % int(SPAWN["boss_every"]) == 0
+    rate = spawn_rate(wave)
+    if is_boss:
+        rate *= float(SPAWN.get("boss_rate_mult", 1.0))
+    n = rate * WAVE_LEN
     hp = sum(pr * enemy_stat(t, wave, "hp_base", "hp_per_wave") for t, pr in mix.items())
     dmg = sum(pr * enemy_stat(t, wave, "dmg_base", "dmg_per_wave") for t, pr in mix.items())
-    gold = sum(pr * float(ENEMIES[t]["gold"]) for t, pr in mix.items())
-    is_boss = int(SPAWN["boss_every"]) > 0 and wave % int(SPAWN["boss_every"]) == 0
+    gold = sum(pr * enemy_gold(t, wave) for t, pr in mix.items())
     if is_boss:
         # Boss 波：额外一只首领（stats_for("boss")）；普通怪有 elite_chance 概率变精英
         # 精英：血×2.2、伤×1.5、金×3（见 Spawner.stats_for elite 分支）
         e_hp = enemy_stat("boss", wave, "hp_base", "hp_per_wave")
         hp = hp + e_hp / max(n, 1.0)
-        ec = float(SPAWN["elite_chance"])
+        ec = elite_chance(wave)
         hp *= 1.0 + ec * 1.2
         dmg *= 1.0 + ec * 0.5
         gold *= 1.0 + ec * 2.0
+        # 首领的金币单独计（不进"每只期望"），终局波吃 final_boss.gold_mult
+        fb = BAL.get("final_boss", {})
+        bm = 1.0
+        if wave == WAVE_TOTAL and bool(fb.get("enabled", True)):
+            bm = float(fb.get("gold_mult", 1.0))
+        gold = gold + enemy_gold("boss", wave) * bm / max(n, 1.0)
     return {"n": n, "hp": hp, "dmg": dmg, "gold": gold, "boss": is_boss,
-            "rate": spawn_rate(wave), "fastest": fastest_speed(wave)}
+            "rate": rate, "fastest": fastest_speed(wave)}
 
 
 # =====================================================================
