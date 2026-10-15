@@ -79,6 +79,9 @@ def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     force = "--force" in sys.argv[1:]
     parent, target, branch = args
+    # 全部归一成全 sha：传短 sha 进来时，末尾的 match 比对会假阴性，误导排查方向
+    parent = sh("git", "rev-parse", parent)
+    target = sh("git", "rev-parse", target)
 
     # 1. 变更文件清单（相对父提交）
     files = changed_files(parent, target)
