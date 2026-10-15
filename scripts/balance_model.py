@@ -647,13 +647,34 @@ def main():
     death = print_table_a(20)
     print_table_b(max_wave)
     print_table_c(20)
-    # 不变式速查
+    # 不变式速查 —— 口径与 tests/test_difficulty.gd 的三条移速硬断言一致，
+    # 同源于 52b7f8d 的用户反馈设计："第一关 grunt 比玩家快约 10%（张力、逼走位），
+    # 后期靠 speed_pct 道具反超，speed_cap 硬封顶"。
+    # ⚠️ 旧口径"第20波最快怪 ≤ 玩家 90%"是 e809df4 层的残留：它假设"零投资也
+    # 该风筝一切"，与上述设计直接矛盾，把刻意设计误报成过"失败"——已重写。
     pspeed = float(PLAYER["speed"])
-    fs20 = fastest_speed(20)
+    spd_cap = float(PLAYER.get("speed_cap", 999.0))
     print("\n【不变式速查】")
-    print("  第20波最快敌人 %d  ≤ 玩家速度 %d 的 90%% (%d) ? %s"
-          % (int(fs20), int(pspeed), int(pspeed * 0.9),
-             "OK" if fs20 <= pspeed * 0.9 else "失败"))
+    # 1) 第 1 波小兵"稍快一点点"：开局张力来源（1.10 倍是设计值，不是倒挂 bug）
+    grunt1 = float(ENEMIES["grunt"]["speed_base"]) + 1.0 * float(ENEMIES["grunt"]["speed_per_wave"])
+    ok_band = pspeed * 0.9 <= grunt1 <= pspeed * 1.25
+    print("  第1波小兵 %.0f ∈ 玩家 %.0f 的 [0.9,1.25] 倍 ? %s"
+          % (grunt1, pspeed, "OK" if ok_band else "失败"))
+    # 2) 第 20 波没有任何怪超过玩家硬上限：满配玩家也甩得掉（不黏死）
+    over = []
+    for k in ENEMIES:
+        if k == "_doc":
+            continue
+        d = ENEMIES[k]
+        s20 = float(d["speed_base"]) + 20.0 * float(d["speed_per_wave"])
+        if s20 > spd_cap:
+            over.append("%s(%.0f)" % [k, s20])
+    print("  第20波无怪超过玩家硬上限 %.0f ? %s%s"
+          % (spd_cap, "OK" if not over else "失败",
+             ("  超速: " + ", ".join(over)) if over else ""))
+    # 3) 每波增长 ≤3.0：移速增长已放缓（+6.0/波 是"速度太快"的直接成因）
+    growth = max(float(ENEMIES[k].get("speed_per_wave", 0.0)) for k in ENEMIES if k != "_doc")
+    print("  移速每波增长 ≤3.0（现状 %.1f）? %s" % (growth, "OK" if growth <= 3.0 else "失败"))
     print("  零道具死亡波（目标 6~8）：%s"
           % ("OK" if death and 6 <= death <= 8 else ("%.0f" % death if death else "未死")))
     return 0
