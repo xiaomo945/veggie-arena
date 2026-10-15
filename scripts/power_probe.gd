@@ -37,6 +37,22 @@ func _initialize() -> void:
 		var sim := SimCore.new()
 		sim.wok = wok
 		runs.append(sim.run(data, waves, 20261005 + i * 7919))
+	# 代表局：末波 dps_reach 最接近五局中位数的那一局，整条轨迹一起发出。
+	# 为什么要它：逐波中位数是"把 5 局的同一波搅在一起"，单波统计没问题，
+	# 但【跨波】的成长/倒退检查在搅过的序列上就是假的 —— 第 19 波就报过
+	# 一次假倒退（中位数序列上下跳，没有任何一局真的倒退）。成长是一条轨迹
+	# 的性质，必须在局内判：局内战力单调不减由购买判据（gain>0 才掏钱）
+	# 构造保证，代表局 = 中位数里位的真实玩家。
+	var finals: Array = []
+	for run in runs:
+		finals.append(float((run[waves - 1] as Dictionary).get("dps_reach", 0.0)))
+	var rep_i := 0
+	var rep_gap := INF
+	for i in range(runs.size()):
+		var gap: float = absf(finals[i] - _med(finals))
+		if gap < rep_gap:
+			rep_gap = gap
+			rep_i = i
 	var rows: Array = []
 	for w in range(waves):
 		var r: Dictionary = {}
@@ -51,5 +67,6 @@ func _initialize() -> void:
 		r["w"] = w + 1
 		r["ratio_reach"] = float(r["dps_reach"]) / maxf(0.001, float(r["clear_dps"]))
 		rows.append(r)
-	print(JSON.stringify({"runs": RUNS, "targets": 3, "wok": wok, "rows": rows}))
+	print(JSON.stringify({"runs": RUNS, "targets": 3, "wok": wok, "rows": rows,
+		"rep_run": rep_i, "rep_dps_final": _med(finals), "rep_rows": runs[rep_i]}))
 	quit()

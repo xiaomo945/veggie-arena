@@ -201,7 +201,13 @@ func _shop(weapons: Array, st: Dictionary, w: int, data, shop: Dictionary,
 		if bought > 0:
 			if rolls >= MAX_REROLL:
 				break
-			gold -= Economy.reroll_cost(rolls, shop, w, infl)
+			# ⚠️ 刷新也要先问买不买得起：真实 UI（ui/Shop/Shop.gd）有 Economy.can_buy
+			#    前置检查，这里漏了曾让探针多局刷出负金币（w6 -4 / w14 -5），
+			#    等于偷偷给模拟玩家开了一笔"不用还的刷新贷"。
+			var rc := Economy.reroll_cost(rolls, shop, w, infl)
+			if gold < rc:
+				break
+			gold -= rc
 			rolls += 1
 			continue
 		if Inventory.merge_pairs(weapons, max_lv, ccfg).is_empty():
