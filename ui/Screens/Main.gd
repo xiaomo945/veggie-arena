@@ -148,7 +148,7 @@ func _auto_shop() -> void:
 	var max_slot := int(cfg.get("max_slot", 6))
 	var max_lv := int(cfg.get("max_lv", 10))
 	var pool := Economy.build_pool(GameState.weapons, Data.weapons, Data.upgrades, max_slot, max_lv,
-		[], 0.0, GameState.wave, float(cfg.get("price_inflation", 0.0)))
+		[], 0.0, GameState.wave, float(cfg.get("price_inflation", 0.0)), GameState.upgrades)
 	var offers := Economy.roll_offers(pool, int(cfg.get("offer_count", 4)), _rng, GameState.gold)
 	for o in offers:
 		var cost := int(o.get("cost", 999))

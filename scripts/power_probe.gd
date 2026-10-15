@@ -25,6 +25,21 @@ func _med(arr: Array) -> float:
 	a.sort()
 	return float(a[a.size() / 2])
 
+# 各属性线的购买张数：属性线续抽的验收指标 —— 线喂得出来吗？
+# crit_mult 线 4 张全买到 = 构筑线在单局时长内完成；只买到 1~2 张 = 续抽力度不够
+# （设计背景见 data/shop_tiers.json 的 _doc_chain_pity：无续抽时中位 24 波才凑齐）。
+func _line_counts(bought_keys: Dictionary, data) -> Dictionary:
+	var counts := {}
+	for key in bought_keys:
+		var u: Dictionary = data.upgrade(str(key))
+		if u.is_empty() or u.get("stats") is Dictionary:
+			continue          # 多属性卡不属于任何单属性线
+		var s := str(u.get("stat", ""))
+		if s.is_empty():
+			continue
+		counts[s] = int(counts.get(s, 0)) + int(bought_keys[key])
+	return counts
+
 
 func _initialize() -> void:
 	var waves := MAX_WAVES
@@ -38,10 +53,12 @@ func _initialize() -> void:
 		* (1.0 + float(wk.get("tier2_dmg", 0.3)))) * 0.5
 
 	var runs: Array = []
+	var sims: Array = []
 	for i in range(RUNS):
 		var sim := SimCore.new()
 		sim.wok = wok
 		runs.append(sim.run(data, waves, 20261005 + i * 7919))
+		sims.append(sim)
 	# 代表局：末波 dps_reach 最接近五局中位数的那一局，整条轨迹一起发出。
 	# 为什么要它：逐波中位数是"把 5 局的同一波搅在一起"，单波统计没问题，
 	# 但【跨波】的成长/倒退检查在搅过的序列上就是假的 —— 第 19 波就报过
@@ -73,5 +90,7 @@ func _initialize() -> void:
 		r["ratio_reach"] = float(r["dps_reach"]) / maxf(0.001, float(r["clear_dps"]))
 		rows.append(r)
 	print(JSON.stringify({"runs": RUNS, "targets": 3, "wok": wok, "rows": rows,
-		"rep_run": rep_i, "rep_dps_final": _med(finals), "rep_rows": runs[rep_i]}))
+		"rep_run": rep_i, "rep_dps_final": _med(finals),
+		"rep_lines": _line_counts(sims[rep_i].bought_keys, data),
+		"rep_rows": runs[rep_i]}))
 	quit()

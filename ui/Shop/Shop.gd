@@ -280,7 +280,8 @@ func _pool_now() -> Array:
 	var infl := float(cfg.get("price_inflation", 0.0))
 	var disc := GameState.stat_value("shop_discount") + ShopPlan.discount(GameState.wave, cfg)
 	return Economy.build_pool(GameState.weapons, Data.weapons, Data.upgrades,
-		_max_slot, _max_lv, SaveMgr.unlocked_weapons(), disc, GameState.wave, infl)
+		_max_slot, _max_lv, SaveMgr.unlocked_weapons(), disc, GameState.wave, infl,
+		GameState.upgrades)   # 末参：属性线续抽，投过资的线更容易出（见 Economy.invested_lines）
 
 # 整店刷新：锁定的卡保留
 func _reroll_bought() -> void:

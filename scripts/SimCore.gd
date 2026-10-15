@@ -8,10 +8,8 @@ extends RefCounted
 # 卡都是玩家最想要的那张，成长被全记到武器上、ratio 冲到 20 —— 纯属建模偏差。
 # 两套口径 = 两次犯同样错的机会，所以只留一份实现，两个探针都是薄壳 CLI。
 #
-# 数据源原则：**一律直调真实 core/ 代码**，不重造第二套公式。
-#   敌人侧 Spawner.wave_total_hp ／ 玩家侧 Combat.weapon_dps + Inventory.buy_weapon
-#   ／ 商店侧 Economy.build_pool + roll_offers ／ 合成侧 Inventory.merge_pairs
-#   ／ 收入侧 Economy.wave_income ／ 羁绊侧 Synergy.bonuses（在 SimChar 里）。
+# 数据源原则：**一律直调真实 core/ 代码**，不重造第二套公式（敌人侧 Spawner ／
+#   玩家侧 Combat+Inventory ／ 商店侧 Economy ／ 合成 Inventory ／ 收入 Economy ／ 羁绊 Synergy）。
 # =====================================================================
 
 const DataScript := preload("res://autoload/Data.gd")
@@ -28,12 +26,15 @@ const SP := preload("res://tests/SrcParse.gd")
 
 const MAX_REROLL := 2    # 每波最多整店刷新几次（真实玩家要留钱，也要留时间）
 const SURVIVAL_W := 0.6  # 生存/功能类道具相对最优输出卡的性价比（见 _shop 里的说明）
+const SURV_LINE_MAX := 6  # 每条非战斗线单局购买上限：贪心买家会把续抽放量的整条生存线买穿（实测 armor 14 件/heal 12 件），真实玩家按对局压力自主购买、不会这么干
 
 var targets := 3
 var defs := {}          # key -> 武器原始 def（算对群折算要用 behavior / aoe）
 var wok := 1.7          # 锅气倍率（tier1 与 tier2 的中点）
 var pieces := 0         # 本局累计买了几件道具
 var gold := 0           # 钱包（_shop 要改它，用成员而不是来回传参）
+var bought_keys := {}    # 已购强化 key -> 次数，供属性线续抽（与真机 GameState.upgrades 同口径）
+var line_load := {}      # 各属性线(stat)已购件数：非战斗线饱和上限的判据（SURV_LINE_MAX）
 var fav := 1.0          # 本命武器溢价：模拟玩家愿为羁绊多付钱（1.0 = 完全不偏心）
 var char_entry := {}
 var char_key := ""
@@ -134,9 +135,8 @@ func _favored(key: String, weapons: Array) -> bool:
 
 
 # 买这张卡能涨多少 DPS（买不了返回 -1）。用真实 Inventory 落法，不自己推演。
-# ⚠️ 基准与候选必须用【同一套】属性口径（都过一遍 eff_st 带上角色 + 羁绊）：
-#    早先基准用道具裸属性、候选却带上羁绊，等于把羁绊的收益记成"这张卡的功劳"，
-#    高羁绊角色每张卡都显得超值，贪心就会无脑买满 —— 排名因此完全失真。
+# ⚠️ 基准与候选必须同一套属性口径（都过 eff_st 带上角色+羁绊）：早先基准用裸属性、
+#    候选带羁绊，等于把羁绊收益记成卡的功劳，高羁绊角色每张卡都超值、贪心无脑买满。
 func gain(weapons: Array, st: Dictionary, o: Dictionary, max_slot: int,
 		max_lv: int, ccfg: Dictionary) -> float:
 	var base := combat_power(weapons, st)["dps"] as float
@@ -154,9 +154,8 @@ func gain(weapons: Array, st: Dictionary, o: Dictionary, max_slot: int,
 
 
 # 一间店的完整流程：抽卡 → 贪心买 → 有余钱就刷新再来一轮。
-# ⚠️ 合成（merge_pairs）绝不是每波无条件做：2 合 1 只涨 1.398 倍却少一半槽位，
-#   总输出是【下降】的，真实玩家不会干。早先每波无条件合成，6 把武器塌成 1 把，
-#   输出直接失真。合成真正的用处只有一个：满槽且啥也买不动时腾槽买更强的。
+# ⚠️ 合成不是每波无条件做：2 合 1 只涨 1.398 倍却少一半槽位，总输出反而下降 ——
+#   真实玩家只在满槽且买不动时合成腾槽。早先每波无条件合成，6 把武器塌成 1 把、输出失真。
 func _shop(weapons: Array, st: Dictionary, w: int, data, shop: Dictionary,
 		ccfg: Dictionary, infl: float, max_slot: int, max_lv: int, rng) -> void:
 	var disc := ShopPlan.discount(w, shop)
@@ -164,7 +163,7 @@ func _shop(weapons: Array, st: Dictionary, w: int, data, shop: Dictionary,
 	var rolls := 0
 	while rolls <= MAX_REROLL * 2:
 		var pool := Economy.build_pool(weapons, data.weapons, data.upgrades,
-			max_slot, max_lv, [], disc, w, infl)
+			max_slot, max_lv, [], disc, w, infl, bought_keys)
 		var cand: Array = []
 		var best_pg := 0.0
 		var noncombat: Array = []
@@ -176,11 +175,13 @@ func _shop(weapons: Array, st: Dictionary, w: int, data, shop: Dictionary,
 				cand.append([o, pg])
 			elif str(o.get("kind", "")) != "weapon":
 				noncombat.append(o)
-		# 生存 / 功能类道具对 DPS 增益是 0，但真实玩家一定会买 —— 不建模就会得出
-		# "后期钱永远花不掉"的假象（实测第 19 波余钱攒到 3288，其实是探针自己
-		# 判定成'没用'才剩下的）。折算成最优输出卡 60% 的性价比，钱就有去处了。
+		# 生存/功能类道具对 DPS 增益是 0，但真实玩家一定会买 —— 不建模就会得出
+		# "后期钱花不完"的假象（实测第 19 波余钱攒到 3288）。按最优输出卡 60% 性价比折算。
+		# ⚠️ 饱和上限：续抽放量后贪心买家会把整条生存线买穿（armor 14 件 / heal 12 件），
+		#    金币全砸生存线、dps 腰斩出带 —— 超出 SURV_LINE_MAX 的线不再以性价比进场。
 		for o in noncombat:
-			cand.append([o, best_pg * SURVIVAL_W])
+			if int(line_load.get(str(o.get("stat", "")), 0)) < SURV_LINE_MAX:
+				cand.append([o, best_pg * SURVIVAL_W])
 		cand.sort_custom(func(a, b): return a[1] > b[1])
 		var bought := 0
 		for c in cand:
@@ -195,15 +196,17 @@ func _shop(weapons: Array, st: Dictionary, w: int, data, shop: Dictionary,
 			else:
 				st = Inventory.apply_upgrade(st, o)
 				pieces += 1
+				var bk := str(o.get("key", "")); bought_keys[bk] = int(bought_keys.get(bk, 0)) + 1
+				var bs := str(o.get("stat", ""))
+				if bs != "": line_load[bs] = int(line_load.get(bs, 0)) + 1
 			if ok:
 				gold -= cost
 				bought += 1
 		if bought > 0:
 			if rolls >= MAX_REROLL:
 				break
-			# ⚠️ 刷新也要先问买不买得起：真实 UI（ui/Shop/Shop.gd）有 Economy.can_buy
-			#    前置检查，这里漏了曾让探针多局刷出负金币（w6 -4 / w14 -5），
-			#    等于偷偷给模拟玩家开了一笔"不用还的刷新贷"。
+			# ⚠️ 刷新也要先问买不买得起：真实 UI（Shop.gd）有 can_buy 前置检查，
+			#    漏了曾让探针刷出负金币（w6 -4），等于给模拟玩家开一笔不用还的刷新贷。
 			var rc := Economy.reroll_cost(rolls, shop, w, infl)
 			if gold < rc:
 				break
@@ -234,7 +237,7 @@ func run(data, waves: int, seed_base: int) -> Array:
 	var weapons := _start_weapons(data, ccfg)
 	var st := {}
 	var rows: Array = []
-	pieces = 0
+	pieces = 0; bought_keys = {}; line_load = {}
 	gold = 0
 	for w in range(1, waves + 1):
 		var cp := combat_power(weapons, st)
@@ -243,9 +246,8 @@ func run(data, waves: int, seed_base: int) -> Array:
 		var n_spawn := Spawner.spawn_rate(w, scfg) * length
 		var clear_dps := total_hp / maxf(0.001, length)
 		var base1 := sum_d1(weapons, ccfg) * wok
-		# ⚠️ 打这一波用的是【上一波商店之后】的战力，不是本波商店之后的。
-		# 早先拿本波买完的 DPS 去比本波清场需求，等于白送玩家一次采购，
-		# ratio 系统性虚高，配平就会往"敌人再肉一点"的错误方向调。
+		# ⚠️ 打这一波用【上一波商店之后】的战力：拿本波买完的 DPS 比本波清场需求，
+		#    等于白送一次采购，ratio 系统性虚高、配平往"敌人再肉一点"的错误方向调。
 		var dps := float(cp["dps"])
 		var lv := log(float(ccfg.get("merge_dmg_multiplier", 1.3))
 			/ float(ccfg.get("merge_cd_multiplier", 0.93)))
