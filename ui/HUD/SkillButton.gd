@@ -1,10 +1,8 @@
 extends Control
 
-# 右侧技能按钮（王者荣耀式）：锅气大按钮 / 冲刺 / 主动技，各自处理自己的触摸
-# index，与左侧摇杆互不抢指 —— 左手按住摇杆时，右手点这里全部生效。
-# ⚠️ 每个按钮只认领"落在自己矩形内、且还没被占用的那根手指"，记住 index，松开只清
-#   自己的 —— 多指触控下摇杆和按钮各管各的。不处理 GUI 点击（mouse_filter=IGNORE），
-#   触摸靠 _input 判矩形命中，移动端/桌面同一条路径，不会"点一下触发两次"。
+# 右侧技能按钮（王者荣耀式）：锅气大按钮 / 冲刺 / 主动技，各自认领自己矩形内还没被
+# 占用的那根手指（多指各管各的）；不处理 GUI 点击（mouse_filter=IGNORE），触摸靠
+# _input 判矩形命中，桌面同路径，不会"点一下触发两次"。
 
 const TYPE_WOK := "wok"
 const TYPE_DASH := "dash"
@@ -18,15 +16,13 @@ var btn_type := "dash"
 var skill_id := ""               # TYPE_SKILL 时有效：对应 data/skills.json 的 id
 
 var _touch_index := -1
+var _flash := 0.0   # 键盘触发白环的剩余强度（1→0 衰减，见 flash()/_process）
 
-# 锅气状态
-var _heat := 0.0
-var _charges := 0
-# 冲刺状态
-var _dash_ratio := 1.0
+var _heat := 0.0          # 锅气状态：火候 0..100
+var _charges := 0         # 存了几发颠勺
+var _dash_ratio := 1.0    # 冲刺状态：冷却进度
 var _dash_ready := true
-# 主动技能状态（冷却）
-var _skill_ratio := 1.0
+var _skill_ratio := 1.0   # 主动技能（冷却）
 var _skill_ready := true
 var _skill_form := "base"    # 当前形态 key：凑够某类武器后技能"换了招"，名字和颜色都跟着变
 
@@ -37,8 +33,7 @@ const ATTACK_SIZE := Vector2(100.0, 100.0)
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
-	# 切语言：按钮名/文案全部走 _draw 里的 I18n，重画即刷新
-	# ⚠️ 不能直接 connect(queue_redraw)：locale_changed 带参数，queue_redraw 不收
+	# 切语言：按钮名/文案全部走 _draw 里的 I18n，重画即刷新（locale_changed 带参数，不能直连 queue_redraw）
 	I18n.locale_changed.connect(_on_locale_changed)
 	if btn_type == TYPE_WOK:
 		size = WOK_SIZE
@@ -52,8 +47,8 @@ func _ready() -> void:
 		# 没被外部指定的话，就用当前角色自己的专属技能
 		if skill_id.is_empty():
 			skill_id = _char_skill_id()
-			# 换角色 = 换招：角色是进战斗前才定的（标题页/选角页），按钮必须跟着换。
-			# 外部指定过 id 的按钮是绑死某技能的，不跟随。
+			# 换角色 = 换招：角色进战斗前才定（标题页/选角页），按钮必须跟着换；
+			# 外部指定过 id 的按钮绑死某技能，不跟随。
 			Events.character_changed.connect(_on_char_changed)
 		Events.skill_cooldown_changed.connect(_on_skill_cd)
 		Events.skill_form_changed.connect(_on_form_changed)
@@ -114,7 +109,9 @@ func _on_dash(ratio: float, ready: bool) -> void:
 	queue_redraw()
 
 func _input(event: InputEvent) -> void:
-	if not GameState.running or GameState.paused:
+	# between_waves：结算页/补给站期间按钮不响应 —— 那两层遮罩之上触摸事件照样
+	# 会投递到按钮矩形上（_input 不吃 GUI 遮挡），不拦就是"商店里放技能"（既有漏洞）。
+	if not GameState.running or GameState.paused or GameState.between_waves:
 		return
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch
@@ -138,6 +135,10 @@ func _rect() -> Rect2:
 
 func _press(index: int) -> void:
 	_touch_index = index
+	_trigger()
+
+# 触发动作：手指点按与键盘等价路径共用（只发 Events 信号，不碰任何数据/冷却）
+func _trigger() -> void:
 	if btn_type == TYPE_WOK:
 		Events.wok_toss_requested.emit()
 	elif btn_type == TYPE_DASH:
@@ -145,6 +146,22 @@ func _press(index: int) -> void:
 	elif btn_type == TYPE_SKILL or btn_type == TYPE_ATTACK:
 		Events.skill_requested.emit(skill_id)
 	queue_redraw()
+
+# 公开触发（键盘 J/K/L/U/空格 经 HudButtons 的三个 press_*）：与手指点按同一条
+# _trigger，附带白环闪一下，让玩家看见"这键我按到了"
+func press() -> void:
+	_trigger()
+	flash()
+
+# 键盘触发反馈：白环强度置 1，由 _process 衰减、_draw 画（手指点按不走这里）
+func flash() -> void:
+	_flash = 1.0
+	queue_redraw()
+
+func _process(delta: float) -> void:
+	if _flash > 0.0:
+		_flash = maxf(0.0, _flash - delta * 4.0)
+		queue_redraw()
 
 func _draw() -> void:
 	var c := size * 0.5
@@ -158,6 +175,9 @@ func _draw() -> void:
 		_draw_attack(c)
 	else:
 		_draw_dash(c)
+	# 键盘触发白环：贴外圈、随 _flash 淡出（和冷却扇形/充能环区分开）
+	if _flash > 0.0:
+		draw_arc(c, size.x * 0.5 - 1.0, 0.0, TAU, 48, Color(1, 1, 1, _flash), 3.0, true)
 
 func _on_locale_changed(_l: String = "") -> void:
 	queue_redraw()
@@ -184,9 +204,8 @@ func _draw_wok(c: Vector2) -> void:
 		34 if ready else 22, Color(1.0, 1.0, 0.98) if ready else Color(1.0, 0.85, 0.6, 0.8))
 
 # ---- 冲刺：大号双箭头（»）+ "冲刺" 文字标签 ----
-# 旧版被玩家原话吐槽"有两个箭头是冲刺吗？没有效果"：18px 小三角无文字，还和快进键
-# 挨在一起被误认。现在换成 22px 粗双箭头（"向前猛冲"通用符号）+ 底部文字标签，
-# 快进按钮已整体删除（无任何消费者，误触还把冲刺形变算在它头上）。
+# 旧版被玩家吐槽"有两个箭头是冲刺吗？没有效果"：18px 小三角无文字还和快进键挨着被误认。
+# 现在换成 22px 粗双箭头 + 底部文字标签，快进按钮已整体删除（无消费者，误触还背锅）。
 func _draw_dash(c: Vector2) -> void:
 	var radius := size.x * 0.5 - 4.0
 	var base := Color(0.16, 0.20, 0.28, 0.42)
@@ -243,7 +262,6 @@ func _draw_skill(c: Vector2) -> void:
 	var txt := I18n.t("skill_" + _skill_form) if _skill_form != "base" \
 		else I18n.t("skill_" + skill_id)
 	# 按钮只有 76px 宽：技能名先按 18 号画，超宽一路缩到 12 号，绝不溢出按钮外
-	# （技能名已角色化、长度不一，写死 18 号会让长名字顶出按钮）
 	var tfs := 18
 	var tw := fs.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs).x
 	while tw > size.x - 12.0 and tfs > 12:
@@ -252,8 +270,7 @@ func _draw_skill(c: Vector2) -> void:
 	draw_string(fs, Vector2(c.x - tw * 0.5, c.y + 7.0), txt,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, Color(1.0, 1.0, 1.0, 0.96))
 
-# ---- 手动攻击键：右下角最大最显眼，释放"最常用的技能"（primary）；
-# 复用 _skill_ready/_skill_ratio（_ready 已把 skill_id 绑到 primary，冷却自动同步）
+# ---- 手动攻击键：右下角最大最显眼，释放"最常用的技能"（primary，冷却自动同步）----
 func _draw_attack(c: Vector2) -> void:
 	var radius := size.x * 0.5 - 4.0
 	var col := _skill_color()

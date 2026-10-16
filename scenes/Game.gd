@@ -181,6 +181,7 @@ func _on_quit_to_title() -> void:
 	set_physics_process(false)
 	_paused = false
 	GameState.paused = false
+	GameState.between_waves = false
 	GameState.running = false
 	for e in world.enemies:
 		e.recycle()

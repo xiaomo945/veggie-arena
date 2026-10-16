@@ -101,26 +101,33 @@ func _build_inventory() -> void:
 	inv.set_size(Vector2(PANEL_W - 28, INV_H)); inv.set_position(Vector2(14, 112))
 	add_child(inv)
 
-# 一次建满 MAX_CARDS 张，实际显示几张由本场节奏决定（高度随之自适应）
+# 一次建满 MAX_CARDS 张，实际显示几张由本场节奏决定（高度随之自适应）。
+# 入 "shop_cards" 组：ShopKeys（键盘操作）按组取可见卡片做焦点金圈与购买下标。
 func _build_cards() -> void:
 	var y := CARDS_Y
 	for _i in MAX_CARDS:
 		var c = ShopCardScript.new()
 		c.set_size(Vector2(PANEL_W - 28, CARD_H)); c.set_position(Vector2(14, y))
+		c.add_to_group("shop_cards")
 		add_child(c); cards.append(c)
 		y += CARD_H + CARD_GAP
 
 func _build_buttons() -> void:
+	# ⚠️ 三个按钮全部 FOCUS_NONE：否则任一按钮拿到焦点后，键盘"空格/回车"会走
+	#    ui_accept 直接触发它（空格在战斗里是冲刺），与 kb_* 信号双路触发。
 	merge_btn = Button.new(); merge_btn.set_size(Vector2(126, 58)); merge_btn.set_position(Vector2(14, BTN_Y))
 	merge_btn.add_theme_font_size_override("font_size", 17)
+	merge_btn.focus_mode = Control.FOCUS_NONE
 	style_btn(merge_btn, Color(0.95, 0.62, 0.16), Color(0.22, 0.13, 0.03), Color(0.86, 0.56, 0.14))
 	add_child(merge_btn)
 	reroll_btn = Button.new(); reroll_btn.set_size(Vector2(144, 58)); reroll_btn.set_position(Vector2(146, BTN_Y))
 	reroll_btn.add_theme_font_size_override("font_size", 17)
+	reroll_btn.focus_mode = Control.FOCUS_NONE
 	style_btn(reroll_btn, Color(0.24, 0.33, 0.18), Color(0.74, 0.91, 0.54), Color(0.48, 0.64, 0.32))
 	add_child(reroll_btn)
 	next_btn = Button.new(); next_btn.set_size(Vector2(180, 58)); next_btn.set_position(Vector2(296, BTN_Y))
 	next_btn.text = I18n.t("shop_next"); next_btn.add_theme_font_size_override("font_size", 19)
+	next_btn.focus_mode = Control.FOCUS_NONE
 	style_btn(next_btn, Color(0.98, 0.80, 0.22), Color(0.24, 0.15, 0.04), Color(0.88, 0.66, 0.16))
 	add_child(next_btn)
 

@@ -49,6 +49,14 @@ static func start(s: Dictionary, dir: Vector2, c: Dictionary) -> bool:
 	s["ifr"] = float(c.get("ifr", 0.30))
 	return true
 
+# 无方向输入时冲刺朝哪：随机一个方向。
+# 玩家原话："冲刺技能如果不配合方向键单独按，就随机冲刺一个方向"。
+# 为什么不是朝面对方向：那常常正面冲进怪堆；随机至少有一半机会冲向空档，
+# 而且"急救闪"本来就不该有确定方向 —— 有方向Input时走 Input 侧，不走这里。
+static func random_dir() -> Vector2:
+	var a := randf() * TAU
+	return Vector2(cos(a), sin(a))
+
 # 每帧推进：冲刺计时、无敌计时、冷却各走各的。返回本帧是否"刚结束冲刺"。
 static func step(s: Dictionary, delta: float) -> bool:
 	var just_ended := false

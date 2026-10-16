@@ -11,6 +11,9 @@ var xp: int = 0            # 累计经验（core/Level 换算成等级）
 var elapsed_in_wave: float = 0.0
 var running: bool = false
 var paused: bool = false     # 暂停菜单是否打开（Joystick 据此停止接管触摸，避免暂停时还在走位）
+# 结算页/补给站开着（波间世界暂停）。⚠️ 与 paused 是两件事：波间走 Game.set_paused
+# （不碰 paused），三处输入门禁必须两个都查，否则"商店开着还能走位/放技能"（触屏既有漏洞）。
+var between_waves := false
 var won: bool = false        # 本局是不是打通关了（区分"阵亡"与"通关"，结算页/自测报告都要用）
 var endless: bool = false    # 是否已进入无尽段（通关后选了"继续"，波次越过 wave.total）
 
@@ -18,12 +21,10 @@ var endless: bool = false    # 是否已进入无尽段（通关后选了"继续
 var character: String = "turnip"
 
 # 开局自选的初始武器（data/weapons.json 的键），在标题页"选武器页"落地。
-# 空串 = 未选，reset() 退回 pistol+smg 双武器起步；选了则"所选 1 把 + 手枪保底"，
-# 手枪永远在，避免新手只拿一把近战被围死。
+# 空串 = 未选，reset() 退回 pistol+smg；选了 = 所选 1 把 + 手枪保底（避免新手被围死）。
 var start_weapon: String = ""
 
-# 装备：元素形如 {"key": "pistol", "lv": 1}
-# ⚠️ 字段名必须是 "lv"（core/Inventory 里就用这个），写成 "level" 会让合成静默失效
+# 装备：元素形如 {"key": "pistol", "lv": 1}（⚠️ 键名必须是 "lv"，写成 "level" 合成会静默失效）
 var weapons: Array = []
 # 强化：{"key": 数量}
 var upgrades: Dictionary = {}
@@ -67,6 +68,7 @@ func reset() -> void:
 	running = true
 	won = false
 	endless = false
+	between_waves = false
 	weapons = []
 	upgrades = {}
 	wok = Wok.make(Data.wok_cfg())
@@ -78,8 +80,6 @@ func reset() -> void:
 	shield = 0
 	frenzy_left = 0.0
 	Events.shield_changed.emit(shield)
-	# 开局武器：标题页选的 1 把 + 手枪保底（没选则 pistol+smg 双武器起步）
-	weapons = []
 	if start_weapon != "" and start_weapon != "pistol":
 		weapons.append({"key": start_weapon, "lv": 1})
 	weapons.append({"key": "pistol", "lv": 1})

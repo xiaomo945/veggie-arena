@@ -9,6 +9,7 @@ extends RefCounted
 # 买武器 / 整店刷新 / 重新开商店时 reset，避免撤销出"超出槽位 / 状态错乱"。
 
 const Inventory := preload("res://core/Inventory.gd")
+const ShopPanelScript := preload("res://ui/Shop/ShopPanel.gd")
 # GameState / Events 是 autoload 单例，直接用全局名访问（不要 preload 成类，
 # 否则会把同名的全局单例遮蔽掉，解析期就报"对非静态类调用"，本脚本编译失败→SellUndo.new() 返回 Nil）。
 # 参考 Shop.gd：它也是直接用 GameState.gold / Events.xxx 的全局名。
@@ -16,6 +17,17 @@ const Inventory := preload("res://core/Inventory.gd")
 var _snap: Dictionary = {}      # {"w": 武器副本, "gold": 回收金币}；空 = 无可撤销
 var _btn: Button = null
 var _refresh: Callable = Callable()
+
+# 建撤销按钮并挂到 parent 下：Shop.gd 已顶 R1 的 300 行红线，按钮构造搬来这里
+# （业务接线仍留在 Shop：_undo.wire(...)）。默认隐藏，卖出后才出现。
+static func build_button(parent: Control) -> Button:
+	var b := Button.new()
+	b.set_size(Vector2(220, 54)); b.set_position(Vector2(160, 824))
+	b.text = "↩ 撤销卖出"; b.add_theme_font_size_override("font_size", 18)
+	b.focus_mode = Control.FOCUS_NONE   # 防 ui_accept（空格/回车）误触发射击撤销
+	ShopPanelScript.style_btn(b, Color(0.30, 0.18, 0.08, 0.95), Color(0.98, 0.86, 0.50), Color(0.60, 0.44, 0.22, 0.95))
+	b.visible = false; parent.add_child(b)
+	return b
 
 # 把撤销按钮接进来：默认隐藏，点按时恢复最近一次卖出
 func wire(btn: Button, refresh_cb: Callable) -> void:

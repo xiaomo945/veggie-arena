@@ -55,8 +55,10 @@ func _ready() -> void:
 	_view.visible = bool(f.get("joystick_visible", true))
 
 func _input(event: InputEvent) -> void:
-	# 只有"一局进行中"才接管触摸：标题页 / 暂停 / 死亡 / 通关页都不响应
-	if not GameState.running or GameState.paused:
+	# 只有"一局进行中"才接管触摸：标题页 / 暂停 / 死亡 / 通关页都不响应。
+	# between_waves：结算页/补给站期间也拦住 —— 那两层遮罩之上摇杆照样收到触摸事件，
+	# 不拦的话玩家在商店里顺手一拖，人已经在遮罩后面走远了（既有漏洞）。
+	if not GameState.running or GameState.paused or GameState.between_waves:
 		return
 	# 触屏（手机真机）
 	if event is InputEventScreenTouch:

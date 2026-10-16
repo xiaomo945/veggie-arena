@@ -124,4 +124,32 @@ func run(data = null) -> Dictionary:
 	chk(dist > 60.0, "冲刺距离 %.0fpx 够远（有位移感）" % dist)
 	chk(dist < 180.0, "冲刺距离 %.0fpx 不至于冲太远（可控）" % dist)
 
+	# 11) 无方向输入时的随机冲刺方向：必须非零、单位长、且真的会转
+	#     （纯逻辑层面：不设种子连抽 N 次，角度应覆盖不止一个象限）
+	var nonzero := true
+	var unit := true
+	var seen: Array[Vector2] = []
+	for _m in 64:
+		var d := Dash.random_dir()
+		if d.length_squared() < 0.0001:
+			nonzero = false
+		if absf(d.length() - 1.0) > 0.0001:
+			unit = false
+		if seen.size() < 8:
+			seen.append(d)
+	chk(nonzero, "random_dir() 从不返回零向量（零向量 start 会拒）")
+	chk(unit, "random_dir() 始终是单位向量（start 里还要再 normalized）")
+	var distinct := 0
+	for a in seen:
+		var dup := false
+		for b in seen:
+			if a != b and absf(a.angle_to(b)) < 0.01:
+				dup = true
+		if not dup:
+			distinct += 1
+	chk(distinct >= 4, "random_dir() 多次调用方向互不相同（真的随机：%d/8 个不同朝向）" % distinct)
+	# 随机方向能直接启动冲刺（玩家无方向按冲刺 = 随机冲一个方向）
+	var s8 := Dash.make()
+	chk(Dash.start(s8, Dash.random_dir(), c), "random_dir() 的返回值可直接启动冲刺")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}

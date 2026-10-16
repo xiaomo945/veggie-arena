@@ -41,9 +41,9 @@ var _ifr_pct := 0.0        # 无敌帧时长加成
 var _boost_left := 0.0     # 受击后的短暂加速剩余秒数（被动道具 hit_boost）
 var _face := Vector2(0, -1)      # 面朝方向：没推摇杆时冲刺默认朝这边
 var _dash_trail: Array = []      # 冲刺残影 [{pos, t}]
-var dash_count := 0
-var _buf := {}            # 输入缓冲（冲刺/技能按下时还没转好就先记着）
-var _dash_want := Vector2.ZERO            # 本局冲刺次数（诊断/HUD 用）
+var dash_count := 0                 # 本局冲刺次数（诊断/HUD 用）
+var _buf := {}                      # 输入缓冲（冲刺/技能按下时还没转好就先记着）
+var _dash_want := Vector2.ZERO      # 最近一次冲刺请求的方向（无方向输入时已置随机向）
 var hits_taken := 0            # 本局挨打次数（诊断：确认伤害系统真的在打人）
 var damage_taken := 0          # 本局累计受到的伤害
 
@@ -109,13 +109,14 @@ func _on_dir(d: Vector2) -> void:
 func _on_release() -> void:
 	_dir = Vector2.ZERO
 
-# 冲刺按钮：有摇杆方向就朝那边冲，没推摇杆就朝面朝方向冲。
+# 冲刺按钮：有方向输入（摇杆/键盘 WASD）就朝那边冲；没有就随机冲一个方向
+# （玩家原话："不配合方向键单独按就随机冲刺，配合方向键就冲指定方向"）。
 # ⚠️ 冷却中按下不丢弃：记进输入缓冲（core/InputBuffer.gd），冷却一到就自动冲出去 ——
 #    冷却 1.8s，玩家凭手感常会早按 0.1 秒，没缓冲就是"按了没反应"。
 func _on_dash_requested() -> void:
 	var d := _dir
 	if d.length_squared() < 0.0001:
-		d = _face
+		d = Dash.random_dir()
 	_dash_want = d
 	if not Dash.can_start(_dash, _dash_cfg):
 		InputBuffer.arm(_buf, "dash")
@@ -155,7 +156,8 @@ func _physics_process(delta: float) -> void:
 	InputBuffer.tick(_buf, delta)
 	if InputBuffer.pending(_buf, "dash") and Dash.can_start(_dash, _dash_cfg):
 		InputBuffer.consume(_buf, "dash")
-		_fire_dash(_dash_want if _dash_want.length_squared() > 0.0001 else _face)
+		# _dash_want 在按下那一刻就定好了方向（无方向输入已回退随机向），缓冲只延后触发
+		_fire_dash(_dash_want)
 	if Dash.active(_dash):
 		# 冲刺中：直接以冲刺速度位移，不走加速度（这就是"窜出去"的爆发感来源）
 		var dv: Vector2 = (_dash["dir"] as Vector2) * Dash.speed(_dash, _speed, _dash_cfg)

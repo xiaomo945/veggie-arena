@@ -67,6 +67,7 @@ func end_wave() -> void:
 		return
 	# 波末先弹"结算页"（世界暂停，给玩家缓冲），点"继续"再开补给站
 	game.set_paused(true)
+	GameState.between_waves = true
 	Events.wave_result_ready.emit(GameState.wave)
 
 # 结算页"继续" → 开补给站（波末已暂停世界，保持暂停直到商店关）
@@ -76,6 +77,7 @@ func _on_result_closed() -> void:
 # 商店关闭：恢复战斗并推进到下一波（复用开波流程）
 func on_shop_closed() -> void:
 	game.set_paused(false)
+	GameState.between_waves = false
 	GameState.next_wave()
 	begin_wave()
 

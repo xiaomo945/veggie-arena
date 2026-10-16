@@ -22,6 +22,8 @@ func _ready() -> void:
 	ScreenMode.fit_overlay(_root)
 	Events.wave_result_ready.connect(_on_ready)
 	Events.wave_result_closed.connect(_on_closed)
+	# 键盘"回车=下一波"（电脑版）：开着才响应，与触屏"继续"同一条 _on_continue
+	Events.kb_next_wave.connect(_on_kb_next)
 	I18n.locale_changed.connect(_on_locale_changed)
 
 func _build() -> void:
@@ -55,6 +57,9 @@ func _build() -> void:
 	_cont_btn.set_size(Vector2(360, 56))
 	_cont_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_cont_btn.add_theme_font_size_override("font_size", 22)
+	# ⚠️ FOCUS_NONE：否则按钮拿到焦点后，键盘"回车=下一波"会同时走 ui_accept 和
+	#    kb_next_wave 两条路，_on_continue 跑两遍 = wave_result_closed 发两次。
+	_cont_btn.focus_mode = Control.FOCUS_NONE
 	Art.style_button(_cont_btn, Color(0.98, 0.62, 0.22), Color(0.30, 0.14, 0.04), Color(0.88, 0.52, 0.16))
 	_cont_btn.pressed.connect(_on_continue)
 	vb.add_child(_cont_btn)
@@ -87,6 +92,11 @@ func _on_continue() -> void:
 	_open = false
 	_root.visible = false
 	Events.wave_result_closed.emit()
+
+# 键盘回车=下一波：只在结算页开着时接（与点"继续"完全同路径）
+func _on_kb_next() -> void:
+	if _open:
+		_on_continue()
 
 func _on_locale_changed(_l: String = "") -> void:
 	if _open:

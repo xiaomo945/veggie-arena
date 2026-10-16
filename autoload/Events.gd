@@ -121,6 +121,17 @@ signal shop_opened()
 signal shop_closed()
 signal wave_result_ready(wave: int)   # 每波结束 → 结算页（金币/击杀/连击）
 signal wave_result_closed()           # 结算页"继续" → 开补给站
+
+# ---- 键盘（电脑版，见 autoload/Keyboard.gd）----
+# 战斗中 J/K/L=技能 1/2/3、U=攻击、空格=冲刺，都走按钮层公开方法（不另发信号）；
+# 补给站开着时同样的键换一套语义，经下面四个信号转交 ShopKeys：
+#   J=确定（买焦点卡）/ K=锁定 / L=整店刷新 / U=关闭。
+# 回车=下一波：结算页（WaveResultScreen）与补给站（ShopKeys）都订阅，各自判开合态。
+signal kb_shop_confirm()
+signal kb_shop_lock()
+signal kb_shop_reroll()
+signal kb_shop_close()
+signal kb_next_wave()
 # 标题页"开始"/死亡页"再来一局"都发这个，由 Main 统一接管开跑/重开
 signal run_requested()
 # 暂停：HUD 暂停键发出 → Game 真正暂停；PauseScreen 监听 run_paused 显隐自己

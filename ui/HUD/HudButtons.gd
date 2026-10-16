@@ -2,13 +2,13 @@ extends Control
 
 # HUD 右下角技能簇 + 手动攻击键。
 #
-# 布局（全部写死，绝不漂移）：
+# 布局（王者荣耀式环绕，全部写死，绝不漂移）：
 #   · 圆心 PIVOT 放"手动攻击键"——释放最常用的那个技能（skills.json 的 primary）
-#   · 锅气 + 主动技按钮绕圆心排成半圆扇面，固定在右下角
-#   · 冲刺挪到扇面正上方（(455,500) 竖屏），既不压技能环，也不进左下摇杆的移动区
+#   · 技能 1/2/3 绕圆心排在【正左 / 左上 / 正上】，锅气大按钮去左下
+#   · 冲刺固定在扇面左上 (455,500) 竖屏，不压技能环、不进左下摇杆移动区
 #
-# 角度用屏幕坐标系（y 向下）：wok 275°=顶偏右，技能 240/205/170°=从左上扫到左下，
-# 右手拇指一划就能从最常用的技能扫到大招。技能槽不再是写死的 1 个 ——
+# 角度用屏幕坐标系（y 向下）：wok 135°=左下，技能 180/225/270°=从正左扫到正上，
+# 等角距 45°（治旧版"间隔不一样太难看"）。技能槽不再是写死的 1 个 ——
 # 武器/道具会【赠送】技能（core/SkillSlots.gd，最多 3 槽），槽位序列由
 # Events.skill_slots_changed 广播驱动重建；序列没变就一个按钮都不动
 # （重建会重置按钮上的冷却扇形，所以"变了才建"很重要）。
@@ -28,10 +28,13 @@ var _skill_btns: Array = []    # 只装技能按钮（槽位变化时整体重�
 var _skill_ids: Array = []     # 当前技能槽位的 id 序列（没变就不重建）
 var _wok_btn = null
 var _dash_btn = null
+var _attack_btn = null         # 攻击键（圆心大按钮）：键盘 U 经 press_attack 触发
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
 	size = HudLayout.design_size()
+	# 键盘操作（autoload/Keyboard）经本组找按钮层：发信号 + 白环闪，零跨对象私有访问
+	add_to_group("hud_buttons")
 	# 技能槽位广播：买了带技能的武器/道具 → 多一个按钮；卖了 → 少一个
 	Events.skill_slots_changed.connect(_on_slots_changed)
 	for s in _slots():
@@ -103,6 +106,8 @@ func _add(s: Dictionary) -> void:
 		_wok_btn = b
 	elif b.btn_type == "dash":
 		_dash_btn = b
+	elif b.btn_type == "attack":
+		_attack_btn = b
 	elif b.btn_type == "skill":
 		_skill_btns.append(b)
 	_btns.append({"type": b.btn_type, "node": b})
@@ -133,6 +138,26 @@ func slot_rect(index: int) -> Rect2:
 
 func tick(_delta: float) -> void:
 	pass   # 各按钮自行绘制，无需统一脉动
+
+# ---- 键盘操作入口（autoload/Keyboard 经 "hud_buttons" 组调用）----
+# 只让按钮自己 _trigger（发 Events 信号 + 白环闪），不碰 SkillSlots/数据 ——
+# 键盘与手指点按走完全同一条路径，冷却/充能/形态的账仍只在一处算。
+
+# 第 i 个技能槽（0/1/2 = J/K/L）：槽位不够就静默忽略（赠送技没那么多）
+func press_slot(i: int) -> void:
+	if i < 0 or i >= _skill_btns.size():
+		return
+	(_skill_btns[i] as SkillButtonScript).press()
+
+# 攻击键（U）：释放当前角色专属技能
+func press_attack() -> void:
+	if _attack_btn != null:
+		_attack_btn.press()
+
+# 冲刺键（空格）：有方向输入冲那边，没有就随机冲（见 Player._on_dash_requested）
+func press_dash() -> void:
+	if _dash_btn != null:
+		_dash_btn.press()
 
 # 竖屏安全区：底部按钮上移，避开全面屏手势条 / Home Indicator。
 func apply_safe_area(bottom: float) -> void:

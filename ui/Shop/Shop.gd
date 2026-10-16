@@ -19,6 +19,7 @@ const SpeedCurve := preload("res://core/SpeedCurve.gd")
 const ItemIcons := preload("res://core/ItemIcons.gd")
 const SellUndo := preload("res://ui/Shop/SellUndo.gd")
 const ShopOfferDetailScript := preload("res://ui/Shop/ShopOfferDetail.gd")
+const ShopKeysScript := preload("res://ui/Shop/ShopKeys.gd")
 
 const RARITY_COLORS := [Color(0.60,0.63,0.65), Color(0.35,0.66,1.0), Color(0.78,0.49,1.0)]
 
@@ -63,11 +64,8 @@ func _build() -> void:
 	_panel.merge_btn.pressed.connect(_merge)
 	_panel.reroll_btn.pressed.connect(_reroll_bought)
 	_panel.next_btn.pressed.connect(_next_wave)
-	_undo_btn = Button.new()   # 浮在面板下方安全区，卖出后才出现（点错可恢复最近一次卖出）
-	_undo_btn.set_size(Vector2(220, 54)); _undo_btn.set_position(Vector2(160, 824))
-	_undo_btn.text = "↩ 撤销卖出"; _undo_btn.add_theme_font_size_override("font_size", 18)
-	ShopPanelScript.style_btn(_undo_btn, Color(0.30, 0.18, 0.08, 0.95), Color(0.98, 0.86, 0.50), Color(0.60, 0.44, 0.22, 0.95))
-	_undo_btn.visible = false; _root.add_child(_undo_btn)
+	# 撤销按钮：浮在面板下方安全区，卖出后才出现（构造在 SellUndo.build_button）
+	_undo_btn = SellUndo.build_button(_root)
 	_undo.wire(_undo_btn, Callable(self, "_refresh"))
 	# 独立详情页。⚠️ 延后一拍再挂：父节点 _ready 里 add_child 会撞 "busy setting up children" 而失败
 	_offer_detail = ShopOfferDetailScript.new()
@@ -75,11 +73,13 @@ func _build() -> void:
 	_offer_detail.buy_requested.connect(_buy)
 	_offer_detail.lock_requested.connect(_lock_toggle)
 	_offer_detail.reroll_one_requested.connect(_reroll_one)
-	_offer_detail.data_cb = func(idx):
-		return _card_data(_offers[idx], _sold[idx], Economy.can_buy(GameState.gold, int(_offers[idx].get("cost", 0))))
+	_offer_detail.data_cb = func(idx): return _card_data(_offers[idx], _sold[idx], Economy.can_buy(GameState.gold, int(_offers[idx].get("cost", 0))))
 	for i in _panel.cards.size():
 		var c: ShopCardScript = _panel.cards[i]
 		c.on_click = _offer_detail.show_for.bind(i)
+	# 键盘操作（电脑版补给站）：挂 _root 下与卡片同父级（继承横屏缩放），shop 供它回调业务方法
+	var keys := ShopKeysScript.new(); keys.shop = self
+	_root.add_child(keys)
 
 func _open() -> void:
 	_reroll_times = 0; _locked = []; _undo.reset(); _roll(); _root.visible = true

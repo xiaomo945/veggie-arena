@@ -36,6 +36,7 @@ var _rerolled_once := false   # 本页打开期间是否已刷新过一次（刷
 
 func _ready() -> void:
 	layer = 55
+	add_to_group("shop_offer_detail")   # ShopKeys 据此判断"详情页开着，键盘归它"
 	_build()
 	_root.visible = false
 	ScreenMode.fit_overlay(_root)
@@ -99,6 +100,7 @@ func _build() -> void:
 	_buy_btn.set_size(Vector2(232, 60))
 	_buy_btn.set_position(Vector2(20, 622))
 	_buy_btn.add_theme_font_size_override("font_size", 21)
+	_buy_btn.focus_mode = Control.FOCUS_NONE   # 防 ui_accept（空格/回车）误触发
 	Art.style_button(_buy_btn, Color(0.98, 0.62, 0.22), Color(0.30, 0.14, 0.04), Color(0.88, 0.52, 0.16))
 	_buy_btn.pressed.connect(_on_buy)
 	panel.add_child(_buy_btn)
@@ -107,6 +109,7 @@ func _build() -> void:
 	_lock_btn.set_size(Vector2(94, 60))
 	_lock_btn.set_position(Vector2(260, 622))
 	_lock_btn.add_theme_font_size_override("font_size", 16)
+	_lock_btn.focus_mode = Control.FOCUS_NONE
 	Art.style_button(_lock_btn, Color(0.30, 0.24, 0.30, 0.95), Color(0.99, 0.84, 0.35), Color(0.62, 0.55, 0.30))
 	_lock_btn.pressed.connect(_on_lock)
 	panel.add_child(_lock_btn)
@@ -115,6 +118,7 @@ func _build() -> void:
 	_reroll_btn.set_size(Vector2(110, 60))
 	_reroll_btn.set_position(Vector2(360, 622))
 	_reroll_btn.add_theme_font_size_override("font_size", 16)
+	_reroll_btn.focus_mode = Control.FOCUS_NONE
 	Art.style_button(_reroll_btn, Color(0.20, 0.30, 0.42, 0.95), Color(0.72, 0.90, 1.0), Color(0.45, 0.62, 0.80))
 	_reroll_btn.pressed.connect(_on_reroll)
 	panel.add_child(_reroll_btn)
@@ -124,6 +128,7 @@ func _build() -> void:
 	_close_btn.set_size(Vector2(34, 34))
 	_close_btn.set_position(Vector2(470 - 44, 14))
 	_close_btn.add_theme_font_size_override("font_size", 20)
+	_close_btn.focus_mode = Control.FOCUS_NONE
 	Art.style_button(_close_btn, Color(0.40, 0.30, 0.18, 0.95), Color(0.98, 0.86, 0.50), Color(0.60, 0.46, 0.24))
 	_close_btn.pressed.connect(_on_close)
 	panel.add_child(_close_btn)
@@ -232,6 +237,10 @@ func _on_buy() -> void:
 	Sfx.ui_click()
 	buy_requested.emit(_index)
 	hide_page()   # 用户选了"购买"即自动关闭，不再多一次关闭点击
+
+# 键盘"确定"（J，电脑版）：与点购买键同路径；ShopKeys 在详情页开着时转来这里
+func kb_confirm() -> void:
+	_on_buy()
 
 func _on_lock() -> void:
 	if _index < 0 or _lock_btn.disabled:
