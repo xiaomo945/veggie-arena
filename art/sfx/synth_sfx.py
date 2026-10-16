@@ -267,32 +267,50 @@ def sfx_skill():
     # 主动技能施放"灵光迸发"：纯音上扬蓄力滑音 + 高频钟磬闪光（无噪声底）。
     # 刻意区别于颠勺(金属哐当)/开火(短噗)/升级(叮咚) —— 让"我放了个大招"在余光里也听得见。
     #
-    # 2026-10-17 按试听重做：上一版用 bp_sweep_noise(0.30s) 做蓄力风声，但那个 helper
-    # 的包络是 `linspace*exp(...)[::-1]` —— 反转后噪声在【结尾最响】，"叮"之后拖着一段
-    # 呲呲啦啦的杂音。这里改用纯音滑音做蓄力：蓄力感保留、沙沙底噪彻底去掉。
-    # （bp_sweep_noise 是 hit/kill/dash/wok 共用的，不动它，免得改坏已通过的音效。）
+    # 2026-10-17 两轮试听重做：
+    #   v1 用 bp_sweep_noise(0.30s) 做蓄力风声，但那个 helper 的包络是
+    #      `linspace*exp(...)[::-1]` —— 反转后噪声在【结尾最响】，"叮"之后拖着一段
+    #      呲呲啦啦的杂音。v2 起改用纯音滑音蓄力：杂音去掉，但试听仍偏亮偏硬。
+    #   v3 按 sfx_coin 那套既定柔和化配方再柔一档：降调(E6->C6) / 去非谐(删 2.01x，
+    #      只留 2x·3x) / 慢起音(0.001->0.010 去"咔哒") / 轻度低通(约 3kHz 磨高频毛刺)，
+    #      蓄力滑音顶端 1600Hz->1250Hz，另垫一层五度正弦补厚度。
+    # （bp_sweep_noise 是 hit/kill/dash/wok 共用的 helper，始终没动它，免得改坏已通过的音效。）
     # 形态 form 不同则由 Sfx.gd 用 pitch_scale 调出层次，这里给一个干净的底音。
-    L = int(SR * 0.26)
-    # 蓄力滑音：440->1600Hz 指数上扬（比线性自然），0.11s 达到最强 —— 正好"叮"落下
+    L = int(SR * 0.28)
+    # 蓄力滑音：440->1250Hz 指数上扬（比 v2 的 1600Hz 更暗），0.11s 达峰 —— 正好"叮"落下
     n_sw = int(SR * 0.15)
     t = np.arange(n_sw) / SR
-    freq = 440.0 * (1600.0 / 440.0) ** (t / 0.15)
+    freq = 440.0 * (1250.0 / 440.0) ** (t / 0.15)
     sweep = np.sin(2 * np.pi * np.cumsum(freq) / SR)
     # 包络显式分段：0->0.11s 渐强蓄力，0.11->0.15s 收干净（尾部必须归零，不能最响）
     env = np.ones(n_sw)
     rise_n = int(SR * 0.11)
     env[:rise_n] = np.linspace(0.15, 1.0, rise_n)
     env[rise_n:] = np.linspace(1.0, 0.0, n_sw - rise_n)
-    sweep = sweep * env * 0.85
-    sweep[:int(SR*0.003)] *= np.linspace(0, 1, int(SR*0.003))   # 3ms 淡入防爆音
-    # "叮"：钟磬闪光 E6/G6 + 一枚高倍分音提亮，快起快衰（金属感但更"亮"而非"哐"）
-    shim = metallic([(PENTA["E6"], 1.0), (PENTA["G6"], 0.7), (PENTA["E6"]*2.01, 0.30)],
-                    dur=0.15, amp=1.0, attack=0.001, decay=0.075)
+    sweep = sweep * env * 0.80
+    sweep[:int(SR*0.008)] *= np.linspace(0, 1, int(SR*0.008))   # 8ms 淡入，去掉起音硬边
+
+    # "叮"（柔和版）：降调 E6(1318)->C6(1046)；只留 2x/3x 整数倍泛音，删掉 2.01x 非谐尖啸；
+    # attack 0.001->0.010 去掉起音"咔哒"；decay 加长到 0.105 让尾巴圆润不刺耳
+    base = PENTA["C6"]
+    shim = metallic([(base, 1.0), (base * 2.0, 0.26), (base * 3.0, 0.08)],
+                    dur=0.17, amp=0.85, attack=0.010, decay=0.105)
+    # 垫一层五度正弦增加"厚度"（sfx_coin 柔和版同款做法），让"叮"不单薄
+    shim += align(note(base * 1.5, 0.15, "sine", amp=0.10, attack=0.014, decay=0.08), len(shim))
+
     x = np.zeros(L)
     x[:n_sw] += sweep
     off = int(SR * 0.11)
     x[off:off+len(shim)] += shim[:L-off]
-    return norm(add_silence(x, 0.006))
+    # 轻度一阶低通（截止约 4.5kHz）：磨掉高频毛刺，但留住基音与 2 倍泛音，
+    # 别把"叮"的辨识度一起滤掉（先用 a=0.7 试过，谱质心 925Hz 偏闷）
+    a = 0.62
+    y = np.zeros(len(x))
+    prev = 0.0
+    for i in range(len(x)):
+        prev = a * prev + (1 - a) * x[i]
+        y[i] = prev
+    return norm(add_silence(y, 0.006)) * 0.88
 
 
 BUILDERS = {
