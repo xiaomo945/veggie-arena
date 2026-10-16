@@ -67,6 +67,9 @@ func _ready() -> void:
 	add_child(title)
 	Events.run_requested.connect(_begin_run)
 	Events.player_hp_changed.connect(_on_hp_shake)
+	# 窗口缩放 / Web 画布跟随浏览器导致的横竖屏翻转：局内要重铺地面 + 钳玩家
+	# （竞技场尺寸随模式变，不处理的话玩家会走进没铺地面的漆黑区域）
+	ScreenMode.layout_changed.connect(_on_layout_changed)
 
 	queue_redraw()
 
@@ -96,6 +99,23 @@ func _physics_process(delta: float) -> void:
 	# 相机 offset 恒为 0：震屏已全部取消（见 entities/effects/Shake.gd）
 	if _cam != null and is_instance_valid(_cam):
 		_cam.offset = Vector2.ZERO
+
+# 横竖屏翻转（窗口缩放 / Web 画布跟随浏览器）：局内才需要善后。
+# 竞技场尺寸随模式变（竖 1080x1620 / 横 1620x1080）：地面按新尺寸重铺、
+# 玩家钳回新边界 —— 不处理的话玩家会站在没铺地面的漆黑区域里，相机限位
+# 也会按旧 arena 算（CamLimits 每帧重算，Data.arena() 翻了它自己会跟上）。
+func _on_layout_changed(_land: bool) -> void:
+	if not GameState.running:
+		return   # 标题页/选武器页期间翻转：HUD 与菜单各自重排即可，世界还没铺
+	var a := Data.arena()
+	var r := Rect2(float(a.get("x", 0)), float(a.get("y", 0)),
+		float(a.get("w", 1080)), float(a.get("h", 1620)))
+	if _floor != null and is_instance_valid(_floor):
+		_floor.setup(r)
+	if player != null and is_instance_valid(player):
+		player.position = Vector2(
+			clampf(player.position.x, r.position.x + 24.0, r.end.x - 24.0),
+			clampf(player.position.y, r.position.y + 24.0, r.end.y - 24.0))
 
 # 逐个敌人报告有没有贴图（缺图会退回手绘几何图形，画面看着"少了点什么"但不崩）
 func _sim_arg() -> float:

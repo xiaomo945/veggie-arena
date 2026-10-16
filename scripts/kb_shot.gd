@@ -8,6 +8,7 @@ extends SceneTree
 #   ⑤ 回车 = 下一波（kb_next_wave 信号）
 #   ⑥ 轮盘中心与攻击键中心同一水平线；技能 1/2/3 环绕攻击键（左/左上/上，等角距 45°）
 #   ⑦ 商店：J=确定(买)/K=锁定/L=刷新/U=关闭 + WASD 网格移焦点（金圈）
+#   ⑧ ESC = 暂停 / 再按恢复（电脑端标配：gamepad START 早接了，键盘补上）
 #
 # 跑法：
 #   xvfb-run -a -s "-screen 0 540x900x24" /opt/godot/Godot_v4.3-stable_linux.x86_64 \
@@ -135,12 +136,23 @@ func _layout() -> void:
 func _combat() -> void:
 	print("== B. 战斗键盘 ==")
 	# ① WASD 斜走先测：冲刺位移会污染位移测量（放在 J/K/L/空格之前）
+	# 先量【直走基线】，且两段都数 physics_frame（40 tick = 40/60 s 模拟位移，
+	# 与渲染快慢解耦）：process_frame 在无头软渲染下一帧 30~50ms，一个窗口里
+	# 能挤进 74~118 个物理 tick，比值被帧时波动主导（实测斜/直 = 1.59 的假警报）。
+	# 斜走要跟同 tick 数直走比，才是"归一化"的真意（不归一化 = 1.414 倍）。
+	var bp0: Vector2 = (_main.player as Node2D).global_position
+	_press(KEY_W)
+	for _f in 40:
+		await physics_frame
+	_release(KEY_W)
+	await _wait(0.2)
+	var straight: float = ((_main.player as Node2D).global_position - bp0).length()
 	var p0: Vector2 = (_main.player as Node2D).global_position
 	var dir_during := Vector2.ZERO
 	_press(KEY_W)
 	_press(KEY_A)
 	for _f in 40:
-		await process_frame
+		await physics_frame
 		# 松键后 Keyboard 会补发 ZERO，按住期间的最后一个非零值才是斜走向量
 		if _last_dir != Vector2.INF and _last_dir != Vector2.ZERO:
 			dir_during = _last_dir
@@ -152,7 +164,7 @@ func _combat() -> void:
 	_chk(dir_during.length() > 0.9 and dir_during.length() < 1.1 and dir_during.x < 0.0 and dir_during.y < 0.0,
 		"W+A = 左上斜走且向量归一化 len=%.3f dir=" % dir_during.length() + str(dir_during))
 	_chk(mv.x < -20.0 and mv.y < -20.0, "斜走实际位移朝左上（Δ=" + str(mv) + "，屏幕 y 向下）")
-	_chk(mv.length() < 220.0, "斜走没有比直走快（40 帧位移 %.0fpx，归一化生效）" % mv.length())
+	_chk(mv.length() < straight * 1.06, "斜走没有比直走快（斜 %.0fpx vs 直走基线 %.0fpx，各 40 物理 tick）" % [mv.length(), straight])
 	# ② J/K/L = 技能 1/2/3（白环反馈见 kb_j 截图）
 	var before := _skills_fired
 	_tap(KEY_J)
@@ -174,6 +186,14 @@ func _combat() -> void:
 	_tap(KEY_ENTER)
 	await _wait(0.05)
 	_chk(_next_fired == nbefore + 1, "回车 = 下一波（kb_next_wave +1；战斗中无人消费，不漏发）")
+	# ⑧ ESC = 暂停 / 再按恢复（GameState.paused 翻转；电脑端必备）
+	var gs2 := root.get_node("GameState")
+	_tap(KEY_ESCAPE)
+	await _wait(0.1)
+	_chk(gs2.paused == true, "ESC = 暂停（GameState.paused=true）")
+	_tap(KEY_ESCAPE)
+	await _wait(0.1)
+	_chk(gs2.paused == false, "再按 ESC = 恢复（GameState.paused=false）")
 
 # ============ C. 商店键盘：J/K/L/U + WASD 网格焦点（需求⑦）============
 func _shop() -> void:

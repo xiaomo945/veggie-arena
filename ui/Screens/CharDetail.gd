@@ -28,6 +28,8 @@ func _ready() -> void:
 	_build()
 	_root.visible = false
 	ScreenMode.fit_overlay(_root)
+	# 横竖屏翻转 / 窗口缩放：菜单按新视口重新缩放居中
+	ScreenMode.layout_changed.connect(_on_layout_changed)
 	I18n.locale_changed.connect(_on_locale_changed)
 
 func _build() -> void:
@@ -244,3 +246,9 @@ func _on_pick() -> void:
 func _on_close() -> void:
 	Sfx.ui_click()
 	hide_page()
+
+
+# 布局模式翻转（横竖屏切换/窗口缩放）：按新视口重fit，
+# 否则横屏里竖屏菜单会按旧缩放比留错边/溢出
+func _on_layout_changed(_land: bool) -> void:
+	ScreenMode.fit_overlay(_root)

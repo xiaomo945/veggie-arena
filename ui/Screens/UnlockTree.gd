@@ -43,6 +43,8 @@ func _ready() -> void:
 	I18n.locale_changed.connect(_on_locale_changed)
 	queue_redraw()
 	ScreenMode.fit_overlay(self)
+	# 横竖屏翻转 / 窗口缩放：菜单按新视口重新缩放居中
+	ScreenMode.layout_changed.connect(_on_layout_changed)
 
 func show_page() -> void:
 	_refresh()
@@ -284,3 +286,9 @@ func _on_char_unlocked(_key: String) -> void:
 
 func _on_locale_changed(_l: String = "") -> void:
 	queue_redraw()
+
+
+# 布局模式翻转（横竖屏切换/窗口缩放）：按新视口重fit，
+# 否则横屏里竖屏菜单会按旧缩放比留错边/溢出
+func _on_layout_changed(_land: bool) -> void:
+	ScreenMode.fit_overlay(self)

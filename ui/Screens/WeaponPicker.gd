@@ -44,6 +44,8 @@ func _ready() -> void:
 	_refresh_pool()
 	I18n.locale_changed.connect(_on_locale_changed)
 	ScreenMode.fit_overlay(self)   # 横屏下把竖屏选武器页缩放到 960x540 视口内、居中
+	# 横竖屏翻转 / 窗口缩放：菜单按新视口重新缩放居中
+	ScreenMode.layout_changed.connect(_on_layout_changed)
 	_build_detail()
 
 # 骨架：标题 / 提示 / 可滚动网格 / 阵容提示 / 确认 / 返回
@@ -246,3 +248,9 @@ func _scroll_bg() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.10, 0.11, 0.16, 0.0)
 	return sb
+
+
+# 布局模式翻转（横竖屏切换/窗口缩放）：按新视口重fit，
+# 否则横屏里竖屏菜单会按旧缩放比留错边/溢出
+func _on_layout_changed(_land: bool) -> void:
+	ScreenMode.fit_overlay(self)

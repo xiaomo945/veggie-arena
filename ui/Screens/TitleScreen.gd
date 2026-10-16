@@ -1,8 +1,7 @@
 extends CanvasLayer
 
-# 标题页：游戏名 + 一句话玩法 + 开始按钮。
-# 开始按钮发 Events.run_requested，由 Main 统一接管开跑（标题页自己只负责隐藏）。
-# 出海游戏，主文案用英文；"萝卜突围"作中文品牌副标（项目已嵌 CJK 字体，能正常显示）。
+# 标题页：游戏名 + 一句话玩法 + 开始按钮。开始按钮发 Events.run_requested，由 Main
+# 统一接管开跑（标题页自己只负责隐藏）。主文案用英文，"萝卜突围"作中文品牌副标。
 
 const CharacterPickerScript := preload("res://ui/Screens/CharacterPicker.gd")
 const CharDetailScript := preload("res://ui/Screens/CharDetail.gd")
@@ -35,8 +34,14 @@ func _ready() -> void:
 	# aspect=expand 下高瘦手机可视高度 >900，流式容器需要真实可视高度
 	if ScreenMode.is_widescreen():
 		ScreenMode.fit_overlay(_root)
+	# 横竖屏翻转 / 窗口缩放：菜单是"540x900 设计尺寸缩放居中"的，模式翻了要重fit
+	ScreenMode.layout_changed.connect(_on_layout_changed)
 	Events.run_requested.connect(_on_run_requested)
 	Events.quit_to_title_requested.connect(_on_quit_to_title)
+
+# 布局模式翻转：按新视口重新缩放居中（不重fit 的话横屏里竖屏菜单会溢出/留错边）
+func _on_layout_changed(_land: bool) -> void:
+	ScreenMode.fit_overlay(_root)
 
 func _build() -> void:
 	_root = Control.new()
@@ -53,9 +58,8 @@ func _build() -> void:
 	#    在手机上尤其容易跳页（用户反馈"误触返回/乱跳"）。开始只走下方明确的 START 按钮。
 
 	# ---- 流式纵向布局：所有元素按顺序排进 VBox，物理上不可能互相重叠 ----
-	# 旧版是硬编码 Y 坐标（172/234/308/336/408/482...），文案长度或角色卡行数一变
-	# 就互相叠字（真机截图已翻车）。高瘦手机上 aspect=expand 可视区更高，
-	# VBox 居中排布自然适应任何屏幕比例。
+	# 旧版硬编码 Y 坐标，文案一变长就叠字（真机截图翻车过）；高瘦手机上
+	# aspect=expand 可视区更高，VBox 居中排布自然适应任何屏幕比例。
 	_box = VBoxContainer.new()
 	_box.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_box.offset_top = 72.0     # 顶部让给"解锁路线"按钮，标题从它下面开始
@@ -67,8 +71,8 @@ func _build() -> void:
 	var star_ico := TextureRect.new()
 	star_ico.texture = Art.ui_icon("star")
 	star_ico.custom_minimum_size = Vector2(28, 28)
-	# ⚠️ 必须 EXPAND_IGNORE_SIZE：默认 KEEP_SIZE 下最小尺寸=贴图尺寸（约 120px），
-	# 会把 VBox 后面元素全顶下去 92px，START 被挤出 900px 屏底只剩一条边（真机目检发现）。
+	# ⚠️ 必须 EXPAND_IGNORE_SIZE：默认 KEEP_SIZE 下最小尺寸=贴图尺寸（约 120px），会把
+	# START 挤出 900px 屏底只剩一条边（真机目检发现）。
 	star_ico.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	star_ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	star_ico.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -124,8 +128,7 @@ func _build() -> void:
 	picker.char_detail_requested.connect(_on_char_detail_requested)
 	_char_detail.picked.connect(_on_char_picked)
 
-	# 开局前把这条 build 摊开给玩家看（卡片网格本身够直白，阶梯才是要读的信息）；
-	# 英文下阶梯能超一屏宽，必须 autowrap 自由折行
+	# 开局前把这条 build 摊开给玩家看；英文下阶梯能超一屏宽，必须 autowrap 自由折行
 	var pick_hint := _mk_label(16, Color(0.60, 0.64, 0.72))
 	pick_hint.text = CharTiers.full(Data.character(GameState.character))
 	pick_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -171,8 +174,7 @@ func _build() -> void:
 	_build_route()
 
 # 本页的 Label 清一色是"字号/颜色/居中/整行宽"四件套，抽个工厂省掉一半样板。
-# ⚠️ MOUSE_FILTER_IGNORE 是必须的：文字层在"点任意处开始"热区之上，
-#    默认的 STOP 会把落在标题/简介文字上的那一下吃掉 —— 那片区域将怎么戳都没反应。
+# ⚠️ MOUSE_FILTER_IGNORE 必须：默认 STOP 会把落在标题/简介文字上的点击吃掉。
 func _mk_label(fs: int, c: Color) -> Label:
 	var l := Label.new()
 	l.add_theme_font_size_override("font_size", fs)
@@ -181,9 +183,8 @@ func _mk_label(fs: int, c: Color) -> Label:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
 
-# 解锁关系树：一张图回答"下一个能解锁谁"。layer 54 —— 盖住本页(50)但低于角色
-# 详情(55)，所以在树里点节点会顺势叠出那个角色的详情页；入口放右上角空白处，
-# 因为它讲的是"还没拿到的萝卜"，不该挤进开始流程那一坨。
+# 解锁关系树：一张图回答"下一个能解锁谁"。layer 54 —— 盖住本页(50)但低于角色详情(55)，
+# 在树里点节点会顺势叠出详情页；入口放右上角空白处，不挤进开始流程那一坨。
 func _build_route() -> void:
 	_tree_layer = CanvasLayer.new()
 	_tree_layer.layer = 54
@@ -231,8 +232,7 @@ func _on_start() -> void:
 	# START 是整局的第一次点击：在这里出第一声，保证 Web/iOS 的 AudioContext
 	# 在"用户手势内"被解锁（iOS 上手势外出的第一声可能整局静音）。
 	Sfx.ui_click()
-	# 存档里记过上次的角色就默认选它（省得每次重选）；
-	# 但上一个角色已经"被锁"的情况要挡掉 —— 例如清过档、或旧存档里玩的角色现在是阶梯后段的
+	# 存档里记过上次的角色就默认选它；已"被锁"的要挡掉（清过档 / 阶梯后段调整）
 	var last := SaveMgr.last_character()
 	if not last.is_empty() and SaveMgr.is_character_unlocked(last):
 		GameState.set_character(last)
@@ -282,8 +282,8 @@ func _on_locale_changed(_l: String = "") -> void:
 	_next_lbl.text = _next_text()
 	_next_lbl.visible = not _next_lbl.text.is_empty()
 
-# 标题页底部那行"下一把能拿到什么"：**优先报角色**，没有才报武器。
-# 角色比武器值钱 —— 它是"一整条新玩法路线"，玩家看见它更想再来一局（土豆兄弟的做法）。
+# 标题页底部那行"下一把能拿到什么"：优先报角色，没有才报武器。
+# 角色比武器值钱 —— 它是一整条新玩法路线，玩家看见它更想再来一局（土豆兄弟的做法）。
 func _next_text() -> String:
 	var nc := SaveMgr.next_character_unlock()
 	if not nc.is_empty():

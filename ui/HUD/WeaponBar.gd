@@ -27,6 +27,12 @@ func _ready() -> void:
 	SLOT_RIGHT = HudLayout.slot_right()
 	SLOT_Y = HudLayout.slot_y()
 
+# 布局重排（横竖屏翻转）：右边界/Y 重读，重绘即生效
+func relayout(_land: bool = false) -> void:
+	SLOT_RIGHT = HudLayout.slot_right()
+	SLOT_Y = HudLayout.slot_y()
+	queue_redraw()
+
 const INK := Color(0.05, 0.04, 0.08, 0.92)
 const LIT := Color(1.0, 1.0, 1.0, 0.95)
 

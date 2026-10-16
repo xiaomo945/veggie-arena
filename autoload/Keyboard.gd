@@ -3,7 +3,8 @@ extends Node
 # 键盘操作（电脑版）。玩家原话：
 #   "WSAD 分别代表上下左右，还要能斜着走，AW 就是左上" —— 向量归一化，斜向速率与直走一致；
 #   "JKL 分别代表 123 技能" / "U 代表攻击" / "空格冲刺" / "回车键代表下一波"；
-#   "J 在商店代表确定，K 在商店代表锁定，L 代表刷新，U 代表商店的关闭"。
+#   "J 在商店代表确定，K 在商店代表锁定，L 代表刷新，U 代表商店的关闭"；
+#   "ESC 代表暂停，再按一次恢复"（电脑端标配：gamepad 的 START 早接了暂停，键盘不能没有）。
 #
 # 与触屏摇杆/手柄走同一条信号管线（Events + "hud_buttons" 组公开方法）：
 # Player/SkillSystem 只认信号不认来源，这里零战斗耦合、零跨对象私有访问（R3）。
@@ -69,6 +70,16 @@ func _input(event: InputEvent) -> void:
 
 func _on_key(e: InputEventKey) -> void:
 	var k := e.keycode
+	if k == KEY_ESCAPE:
+		# 桌面端必备：ESC = 暂停 / 恢复（gamepad 的 START 早就接了暂停，键盘一直没有 ——
+		# 电脑玩家只能伸鼠标去点右上角小按钮，太反人类）。补给站开着 = 关店再按。
+		if GameState.paused and GameState.running:
+			Events.resume_requested.emit()
+		elif _shop_open:
+			Events.kb_shop_close.emit()
+		elif _live():
+			Events.pause_requested.emit()
+		return
 	if _live():
 		# 战斗：J/K/L=技能 1/2/3，U=攻击，空格=冲刺（都经按钮层，带白环反馈）
 		if k == KEY_J or k == KEY_K or k == KEY_L:

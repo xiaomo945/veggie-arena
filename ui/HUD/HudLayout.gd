@@ -29,6 +29,11 @@ const TOP_BLOCK_PAD := 6.0
 # 顶部 HUD 在屏幕上占的总高 —— 相机上边距就按这个让位。
 func hud_block_h() -> float: return safe_top() + TOP_CONTENT_H + TOP_BLOCK_PAD
 
+# ---- 竖屏安全区：底部按钮上移量（避开全面屏手势条 / Home Indicator）----
+# 从 HUD.gd 搬来： HudButtons.relayout 要自己重放这次平移（横竖屏翻转时），
+# 而组件不该反向依赖 HUD.gd 的常量。两处各写一份必然漂移。
+func bottom_shift() -> float: return 34.0
+
 # ---- HudTop：暂停按钮（右上角）----
 # 40px 而不是原来的 48px：右上角要让给暂停，三条进度条的右端必须停在它左边。
 # 位置 (492,2) / (908,2) → 占 y 2~42，右下角留给武器槽那一行。
@@ -90,6 +95,14 @@ func slot_gap() -> float: return 5.0
 # 全部挤在 y 56~73 这一行，且右端收在 306 —— 右边 347 起是武器槽，两者同一行不重叠。
 func text_row_y() -> float: return 56.0
 
+# ---- HudBanners：五条横幅的 Y ----
+# 竖屏 900 高铺得开（锅气 196 / 套装 244 / Boss 300 / 解锁 360 / 强化 560）；
+# 横屏 540 高：560 直接出屏（强化反馈永远看不见）——压到 150~420 中上部带。
+# 顺序固定 [wok, set, boss, unlock, effect]，HudBanners 按序取。
+func banner_ys() -> Array:
+	return [150.0, 195.0, 240.0, 285.0, 420.0] if Data.is_landscape() \
+		else [196.0, 244.0, 300.0, 360.0, 560.0]
+
 # ---- HudBanners：横幅宽度（横屏拉满）----
 func banner_w() -> float: return 960.0 if Data.is_landscape() else 540.0
 
@@ -121,8 +134,8 @@ func buttons_fan() -> Array:
 	#         技2↔技3 |dx|=107.5>76；技3↔攻击 |dy|=152>88（38+50）。全部通过。
 	#   横屏：wok↔技1 |dy|=91.9>82；技1↔技2 91.9>76；技2↔技3 |dx|=91.9>76；
 	#         技3↔攻击 |dy|=130>88。同样通过。
-	# ⚠️ 竖屏 wok 局部底边 869.5+44=913.5 会出屏：靠 HUD 的 BOTTOM_SHIFT=34
-	#    整体上移兜底（屏上底边 879.5<900）。技1 左缘 278 与摇杆旋钮极值
+# ⚠️ 竖屏 wok 局部底边 869.5+44=913.5 会出屏：靠 HudLayout.bottom_shift()=34
+#    整体上移兜底（屏上底边 879.5<900）。技1 左缘 278 与摇杆旋钮极值
 	#    （基址钳 220 + 半径 70 = 290）有 12px 交叠，但触摸按"先认领"分配，
 	#    摇杆只认领移动区内落指，不会双触发。
 	return [
@@ -134,10 +147,10 @@ func buttons_fan() -> Array:
 
 # ---- Joystick：左下移动区 + 固定底盘 ----
 # 底盘中心与右侧攻击键【同一水平线】（玩家原话："左下轮盘调整一下中心跟右边
-# 攻击按钮一样的中心点"）：攻击键屏上中心 = buttons_pivot − HUD.BOTTOM_SHIFT
+# 攻击按钮一样的中心点"）：攻击键屏上中心 = buttons_pivot − bottom_shift()
 # （竖屏 (468,762−34)=(468,728)；横屏 (820,430−34)=(820,396)）。
 # ⚠️ Joystick 是 Main 下的独立 CanvasLayer，不吃 HUD 给 _buttons 的那次平移，
-#    所以 BOTTOM_SHIFT 必须在这里自己减掉（常量定义在 HUD.gd）。
+#    所以 bottom_shift 必须在这里自己减掉。
 func joy_fixed_base() -> Vector2:
 	return Vector2(118.0, 396.0) if Data.is_landscape() else Vector2(118.0, 728.0)
 func joy_move_zone_w() -> float: return 430.0 if Data.is_landscape() else 250.0

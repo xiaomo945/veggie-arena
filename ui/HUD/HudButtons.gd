@@ -32,18 +32,38 @@ var _attack_btn = null         # 攻击键（圆心大按钮）：键盘 U 经 p
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
-	size = HudLayout.design_size()
 	# 键盘操作（autoload/Keyboard）经本组找按钮层：发信号 + 白环闪，零跨对象私有访问
 	add_to_group("hud_buttons")
 	# 技能槽位广播：买了带技能的武器/道具 → 多一个按钮；卖了 → 少一个
 	Events.skill_slots_changed.connect(_on_slots_changed)
-	for s in _slots():
-		_add(s)
+	relayout()
 	# 初始槽位自己算一份：HUD._ready 早于 Game._ready（子节点先就绪），
 	# 那时 SkillSystem 还没 setup；等它的广播来了会再对齐一次（同一序列不会重建）。
 	var ce := Data.character(GameState.character)
 	_rebuild_skills(SkillSlots.ids_of(SkillSlots.slots_of(ce, GameState.weapons,
 		Data.weapons, GameState.upgrades.keys(), Data.upgrades, Data.skills)))
+
+# 布局重排（横竖屏翻转 / 窗口缩放）：坐标全来自 HudLayout，整体重建最省事 ——
+# 逐个挪会漏（按钮种类会随槽位变），重建和 _ready 走同一条码路。
+# ⚠️ _skill_ids 先存档再清：_rebuild_skills 用"序列没变就不重建"防抖，清了才会重建。
+func relayout(_land: bool = false) -> void:
+	var ids := _skill_ids.duplicate()
+	for b in _btns:
+		if is_instance_valid(b["node"]):
+			(b["node"] as Node).queue_free()
+	_btns.clear()
+	_skill_btns.clear()
+	_skill_ids.clear()
+	position = Vector2.ZERO
+	size = HudLayout.design_size()
+	for s in _slots():
+		_add(s)
+	_rebuild_skills(ids)
+	# 底部安全区自己重放（HUD 不再代为转发）：翻转时 position 已归零，重放一次刚好
+	apply_safe_area(HudLayout.bottom_shift())
+	# 共享矩形（Keyboard 点按钮 / Joystick 避让都读 GameState 这两个）自刷
+	GameState.wok_toss_rect = toss_rect()
+	GameState.dash_rect = dash_rect()
 
 # 固定槽（wok + 攻击键 + 冲刺）；技能槽不在这里 —— 序列由 SkillSystem 广播驱动。
 func _slots() -> Array:

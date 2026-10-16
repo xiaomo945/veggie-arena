@@ -188,11 +188,14 @@ func _on_hp(hp: int, _max_hp: int) -> void:
 		_hurt_t = 0.26
 	_last_hp = hp
 
-# ---- 信号：波次结束 → 过关庆祝（卡通彩纸从屏幕中央四散） ----
-func _on_wave_ended(_wave: int, _pos: Vector2) -> void:
+# ---- 信号：波次结束 → 过关庆祝（卡通彩纸从玩家身边四散）----
+# ⚠️ 以前写死世界坐标 (270,450)（竖屏设计图中心）：横屏竞技场 1620x1080 中心在
+#    (0,0)，玩家也从不在那儿待着 —— 横屏目检看到彩纸在屏幕外炸开。本层跟着相机走
+#    （世界坐标），信号带的 pos 就是玩家实时位置 ≈ 屏幕中央。
+func _on_wave_ended(_wave: int, pos: Vector2) -> void:
 	if _celeb.size() >= 26:
 		return
-	var cx := Vector2(270.0, 450.0)
+	var cx := pos
 	var cols := [Color(1.0, 0.82, 0.29), Color(0.55, 0.85, 0.45),
 		Color(1.0, 0.55, 0.45), Color(0.55, 0.78, 1.0)]
 	var n := 16

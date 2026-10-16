@@ -50,6 +50,14 @@ func _ready() -> void:
 	# 切语言：_draw 里的 I18n 文案（锅气%/经验数字）全部重取
 	I18n.locale_changed.connect(_on_locale_changed)
 
+# 布局重排（横竖屏翻转）：宽度全部重读，_draw 用的是实例变量，重绘即生效
+func relayout(_land: bool = false) -> void:
+	BAR_W = HudLayout.bar_w()
+	WOK_W = HudLayout.wok_w()
+	RUN_W = HudLayout.run_w()
+	XP_W = HudLayout.xp_w()
+	queue_redraw()
+
 func _on_locale_changed(_l: String = "") -> void:
 	queue_redraw()
 

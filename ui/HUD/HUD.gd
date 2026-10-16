@@ -1,14 +1,9 @@
 extends CanvasLayer
 
 # HUD：血条、波次进度、金币、击杀、武器槽、横幅、底部按钮。
-#
-# 【架构】本文件是"编排器 / orchestrator"，不含任何控件构造细节：
-#   - 只做一件事：订阅 Events → 把数据分发给三个子组件 → 驱动它们的 tick。
-#   - HudTop（顶部信息）/ HudBanners（横幅）/ HudButtons（底部按钮）各自
-#     管自己的控件与安全区平移，互相不认识对方。
-#   - 这样单文件不会随功能增长而失控（历史教训：曾经长到 389 行）。
-#
-# 布局约束：手机竖屏 540x900，顶部 74px 是 HUD 区（竞技场从 y=74 开始），信息全放顶部。
+# 【架构】本文件是编排器：订阅 Events → 分发给子组件 → 驱动 tick，不含控件构造细节；
+#   HudTop / HudBanners / HudButtons / HudSynergy 各自管控件与安全区平移，互不认识
+#   （历史教训：曾长到 389 行，拆组件后单文件才不再随功能膨胀）。竖屏 540x900。
 
 const HudTopScript := preload("res://ui/HUD/HudTop.gd")
 const HudBannersScript := preload("res://ui/HUD/HudBanners.gd")
@@ -20,9 +15,6 @@ const DebugMode := preload("res://core/DebugMode.gd")
 const Weapon := preload("res://core/Weapon.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
 const Stats := preload("res://core/Stats.gd")
-
-# 竖屏安全区：顶部下移避让刘海（HudLayout.safe_top()，相机让位也用它），底部按钮上移避手势条。
-const BOTTOM_SHIFT := 34.0
 
 const COMBO_WINDOW := 2.5   # 连击有效窗口（秒）
 const COMBO_MIN := 2        # 连击 >=2 才显示
@@ -59,11 +51,11 @@ func _ready() -> void:
 	_buttons = HudButtonsScript.new()
 	add_child(_buttons)
 
-	# 调试"跳到第 N 波"：只在测试模式创建节点（core/DebugMode），正式版玩家看不到
+	# 调试"跳到第 N 波"：只在测试模式创建（core/DebugMode），正式版玩家看不到
 	if DebugMode.enabled():
 		add_child(WaveSkipScript.new())
 
-	# FPS 计数器：默认隐藏，Settings 里打开后才显示（排查卡顿要玩家报 FPS + 同屏怪数）
+	# FPS 计数器：默认隐藏，Settings 打开才显示（排查卡顿要玩家报 FPS + 同屏怪数）
 	_fps = FpsMeterScript.new()
 	_fps.set_position(HudLayout.fps_pos())
 	add_child(_fps)
@@ -90,8 +82,7 @@ func _ready() -> void:
 	Events.run_paused.connect(_on_run_paused)
 	Events.xp_changed.connect(_on_xp)
 	Events.level_up.connect(_on_level_up)
-	# 语言切换时刷新静态文案（颠勺按钮文本等）
-	I18n.locale_changed.connect(_on_locale_changed)
+	I18n.locale_changed.connect(_on_locale_changed)   # 切语言刷新静态文案（颠勺按钮文本等）
 
 	_run_total = int(Data.wave_cfg().get("total", 20))
 	_top.set_bar("run_wave", GameState.wave)
@@ -99,9 +90,22 @@ func _ready() -> void:
 	_on_weapons()
 	_refresh()
 
-	# 竖屏安全区：必须在所有子组件建好后统一平移（子组件的矩形会跟着变）
+	# 子组件全建好后统一平移一次（矩形会跟着变）
 	_apply_safe_area()
+	# 横竖屏翻转 / 窗口缩放：ScreenMode 广播后各子组件按新模式自排
+	ScreenMode.layout_changed.connect(_on_layout_changed)
 
+# 布局模式翻转（横↔竖）：各子组件 relayout 内部已自 reset + 自重放安全区 +
+# 自刷共享矩形（HudTop/HudButtons 末尾；HudBanners 自接信号），HUD 只补挪 FPS 位。
+func _on_layout_changed(_land: bool) -> void:
+	if _top != null and _top.has_method("relayout"):
+		_top.relayout()
+	if _syn != null and _syn.has_method("relayout"):
+		_syn.relayout()
+	if _buttons != null and _buttons.has_method("relayout"):
+		_buttons.relayout()
+	if _fps != null:
+		_fps.set_position(HudLayout.fps_pos())
 # ---- 信号 → 子组件 ----
 
 func _on_hp(hp: int, max_hp: int) -> void:
@@ -115,7 +119,7 @@ func _on_wave_started(_wave: int) -> void:
 
 func _on_wave_progress(elapsed: float, length: float) -> void:
 	_top.set_bar("wave_progress", elapsed / maxf(0.001, length))
-	# 击杀数每帧跟着刷新（省一个信号，反正波次进度也是每帧发）
+	# 击杀数每帧跟着刷新（省一个信号，波次进度本来就每帧发）
 	_top.set_kills_text(I18n.t("hud_kills") % GameState.kills)
 	_top.set_bar("run_wave", GameState.wave)
 	_top.set_wave_text(_wave_text())
@@ -164,8 +168,7 @@ func _on_weapons(_ignored: Array = []) -> void:
 	_top.set_bar("slots", slots)
 	_check_set_tier_up()
 
-# 套装档位刚跨过去时弹一条横幅：不弹的话，"我凑齐了一套"这件大事
-# 只表现为属性面板里的一行数字，玩家根本注意不到。
+# 套装档位刚跨过去时弹一条横幅：不弹的话，"我凑齐了一套"这件大事只在属性面板里变个数字
 func _check_set_tier_up() -> void:
 	var now := WeaponSets.active_sets(GameState.weapons, Data.weapons, Data.weapon_sets)
 	var tiers: Dictionary = {}    # 只存档位：存整个 active_sets 会拿 Dictionary 去 int() 崩掉
@@ -181,8 +184,7 @@ func _check_set_tier_up() -> void:
 			Color(str(sd.get("color", "#ffd08a"))))
 	_set_tiers = tiers
 
-# 羁绊跨档（本命/武器类多凑够一件）：与套装跨档走同一条横幅通道。
-# 不弹的话，"我又凑齐一档"只表现为面板里的一行数字，玩家根本注意不到。
+# 羁绊跨档（本命/武器类多凑够一件）：与套装跨档走同一条横幅通道，不弹就只变成面板里的一行数字
 func _on_syn_tier_up(text: String, color: Color) -> void:
 	_banners.pop_set(text, color)
 
@@ -287,14 +289,12 @@ func _on_killed(_type: String, _pos: Vector2) -> void:
 	_combo += 1
 	_combo_t = COMBO_WINDOW
 
-# 竖屏安全区 / 异屏适配：
-# - 顶部内容（血条 / 图标 / 波次 / 横幅）整体下移 TOP，避开刘海 / 状态栏；
-# - 底部按钮（颠勺、冲刺）上移 BOTTOM，避开全面屏手势条 / Home Indicator；
-# - 平移后同步更新共享给 Joystick 的避让区，避免"按钮挪走了摇杆还守旧坐标"。
+# 竖屏安全区 / 异屏适配：顶部内容整体下移 TOP 避让刘海，底部按钮上移 BOTTOM 避让
+# 手势条；平移后同步刷新共享给 Joystick 的避让区（按钮挪走了摇杆不能还守旧坐标）。
 func _apply_safe_area() -> void:
 	_top.apply_safe_area(HudLayout.safe_top())
 	_banners.apply_safe_area(HudLayout.safe_top())
-	_buttons.apply_safe_area(BOTTOM_SHIFT)
-	GameState.wok_toss_rect = _buttons.toss_rect()
-	GameState.dash_rect = _buttons.dash_rect()
+	# _buttons 不在这里平移：HudButtons._ready→relayout() 已自重放 bottom_shift，
+	# 并自刷 wok_toss_rect/dash_rect。这里再放 = 双重平移（攻击键/技能环整体上移
+	# 34px，轮盘与攻击键不再同一水平线）—— kb_shot 布局断言抓到过这个回归。
 	GameState.pause_rect = _top.pause_rect()

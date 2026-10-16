@@ -14,14 +14,32 @@ const HI := Color(0.98, 0.86, 0.32)
 var _panel: PanelContainer = null
 var _slider: HSlider = null
 var _val: Label = null
+var _btn: Button = null
 
 func _ready() -> void:
 	position = Vector2.ZERO
-	size = Vector2(540, 900)
+	size = HudLayout.design_size()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE     # 自身不挡触摸，只有按钮/面板挡
-	var b := _flat_btn("WAVE >>", Rect2(10, 116, 84, 30), 15)
-	b.pressed.connect(_toggle)
+	_btn = _flat_btn("WAVE >>", Rect2(10, 116, 84, 30), 15)
+	add_child(_btn)   # 曾经漏了这句：按钮建成孤儿节点，不渲染也不可点（浏览器里怎么点都没反应）
+	_btn.pressed.connect(_toggle)
 	_build_panel()
+	_place()
+	# 横竖屏翻转：入口键/面板按新模式重摆（原竖屏坐标在横屏下压羁绊条、面板出屏）
+	ScreenMode.layout_changed.connect(_on_layout_changed)
+
+func _on_layout_changed(_land: bool) -> void:
+	_place()
+
+# 双布局坐标：入口键贴顶部 HUD 块下沿（原 (10,116) 在竖屏就压住了羁绊条），
+# 面板挂键盘下方；横屏 540 高里原 (104,320) 会把 GO 键挤出屏幕底。
+func _place() -> void:
+	size = HudLayout.design_size()
+	if _btn != null:
+		_btn.position = Vector2(10.0, HudLayout.hud_block_h() + 6.0)
+	if _panel != null:
+		var by: float = HudLayout.hud_block_h() + 44.0
+		_panel.position = Vector2(104.0, minf(by, HudLayout.design_size().y - 250.0))
 
 func _toggle() -> void:
 	_panel.visible = not _panel.visible
@@ -102,8 +120,9 @@ func _flat_btn(txt: String, rect: Rect2, fs: int) -> Button:
 	b.position = rect.position
 	b.size = rect.size
 	b.add_theme_font_size_override("font_size", fs)
-	b.add_theme_color_override("font_color", Color(0.10, 0.09, 0.07))
-	b.add_theme_color_override("font_hover_color", Color(0.05, 0.05, 0.04))
+	b.add_theme_color_override("font_color", Color(0.95, 0.89, 0.72))
+	b.add_theme_color_override("font_hover_color", Color(1.0, 0.97, 0.88))
+	b.add_theme_color_override("font_pressed_color", Color(0.12, 0.10, 0.08))
 	var n := StyleBoxFlat.new()
 	n.bg_color = BTN_STYLE
 	n.set_border_width_all(2)

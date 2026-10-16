@@ -23,6 +23,8 @@ var _pause_btn: Button
 var _fs_btn: Button
 var _stats_btn: Button               # D3-2：主界面「属性」键（暂停键左侧）
 var _stats_screen: CanvasLayer = null   # Game 单例注入的属性页实例
+var _heart_icon: TextureRect = null    # 血条左侧红心（_relayout 要重摆）
+var _coin_icon: TextureRect = null     # 金币行左侧金饼（_relayout 要重摆）
 
 func _ready() -> void:
 	# 容器本身不吃触摸：让事件穿透到按钮 / Joystick（否则整块会挡住摇杆）
@@ -38,7 +40,7 @@ func _ready() -> void:
 	add_child(_weapon_bar)
 
 	# 血条左侧红心图标（代表血量），血条已左移到 x=36 给图标腾出空间
-	_mk_icon("heart", Vector2(6, 4), 22)
+	_heart_icon = _mk_icon("heart", Vector2(6, 4), 22)
 
 	# 文字行：波次 / 金币 / 击杀 / 连击，全挤在 y 56~73 一行。
 	# ⚠️ 以前是上下两行（波次一行、金币/击杀/连击一行），下面那行正好压着武器槽；
@@ -52,7 +54,7 @@ func _ready() -> void:
 	_combo_label.text = ""
 
 	# 金币左侧金币图标（用 Art.coin_icon 的卡通金饼替换旧的 48px 方块coin；缩到 14px 不再显大）
-	_mk_icon("coin", Vector2(98, ty + 1), 14, Art.coin_icon())
+	_coin_icon = _mk_icon("coin", Vector2(98, ty + 1), 14, Art.coin_icon())
 
 	# 暂停按钮：右上角，游戏中显示，暂停 / 结算时隐藏
 	_pause_btn = Button.new()
@@ -86,17 +88,58 @@ func _ready() -> void:
 
 	# 全屏切换按钮：仅横屏显示（桌面 / 平板方便切全屏；手机本就全屏，平时隐藏）
 	if Data.is_landscape():
-		_fs_btn = Button.new()
-		_fs_btn.custom_minimum_size = Vector2(48, 48)
-		_fs_btn.size = Vector2(48, 48)
-		_fs_btn.position = Vector2(852.0, 2.0)
-		_fs_btn.text = "▢"
-		_fs_btn.add_theme_font_size_override("font_size", 18)
-		_fs_btn.pressed.connect(_on_fs_pressed)
-		add_child(_fs_btn)
+		_mk_fs_btn()
 
 	# 切语言：「属性」按钮文字（zh"属性" / en"STATS"）随语言重取
 	I18n.locale_changed.connect(_on_locale_changed)
+
+# 全屏切换按钮（仅横屏）：桌面 / 平板方便切全屏，手机本就全屏、平时隐藏
+func _mk_fs_btn() -> void:
+	if _fs_btn != null:
+		return
+	_fs_btn = Button.new()
+	_fs_btn.custom_minimum_size = Vector2(48, 48)
+	_fs_btn.size = Vector2(48, 48)
+	_fs_btn.position = Vector2(852.0, 2.0)
+	_fs_btn.text = "▢"
+	_fs_btn.add_theme_font_size_override("font_size", 18)
+	_fs_btn.pressed.connect(_on_fs_pressed)
+	add_child(_fs_btn)
+
+# ---- 布局重排（ScreenMode.layout_changed → HUD.gd 调用）----
+# 横竖屏翻转 / 窗口缩放：按新模式把顶部 HUD 的所有元素重摆一遍。
+# ⚠️ position 先归零再摆：本容器还会被 HUD.gd 的安全区平移（apply_safe_area 是
+#    累加式 position += ），不归零的话每次翻转都多叠一次平移。
+func relayout(_land: bool = false) -> void:
+	if _pause_btn == null:
+		return   # _ready 还没跑完（不可能，防御）
+	position = Vector2.ZERO
+	size = HudLayout.design_size()
+	var ty := HudLayout.text_row_y()
+	_wave.position = Vector2(36, ty)
+	_gold.position = Vector2(114, ty)
+	_kill.position = Vector2(180, ty)
+	_combo_label.position = Vector2(238, ty)
+	if _heart_icon != null:
+		_heart_icon.position = Vector2(6, 4)
+	if _coin_icon != null:
+		_coin_icon.position = Vector2(98, ty + 1)
+	_pause_btn.position = HudLayout.top_pause_pos()
+	_stats_btn.position = HudLayout.top_stats_pos()
+	# 全屏键跟着模式增删（横屏才建；翻回竖屏撤掉）
+	if Data.is_landscape():
+		_mk_fs_btn()
+	elif _fs_btn != null:
+		_fs_btn.queue_free()
+		_fs_btn = null
+	# 子组件（血条/武器槽）各自重读 HudLayout 后重绘
+	if _bars != null and _bars.has_method("relayout"):
+		_bars.relayout()
+	if _weapon_bar != null and _weapon_bar.has_method("relayout"):
+		_weapon_bar.relayout()
+	# 顶部安全区自己重放 + 共享矩形自刷（HUD 不再代为转发）
+	apply_safe_area(HudLayout.safe_top())
+	GameState.pause_rect = pause_rect()
 
 func _on_locale_changed(_l: String = "") -> void:
 	if _stats_btn != null:
@@ -121,9 +164,9 @@ func _mk_label(pos: Vector2, size: int, c: Color) -> Label:
 
 # 在 HUD 上放一个小图标（TextureRect）。没图时（Art 兜底）直接跳过，不影响布局。
 # override 传纹理时用它代替按名字查的图；HUD 图标都是大图缩小，统一走线性+mipmap。
-func _mk_icon(name: String, pos: Vector2, sz: float, override: Texture2D = null) -> void:
+func _mk_icon(name: String, pos: Vector2, sz: float, override: Texture2D = null) -> TextureRect:
 	if override == null and not Art.has_ui_icon(name):
-		return
+		return null
 	var tex = TextureRect.new()
 	tex.texture = override if override != null else Art.ui_icon(name)
 	tex.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -136,6 +179,7 @@ func _mk_icon(name: String, pos: Vector2, sz: float, override: Texture2D = null)
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tex.position = pos
 	add_child(tex)
+	return tex
 
 # ---- 对外接口（由 HUD.gd 调用）----
 

@@ -20,6 +20,8 @@ func _ready() -> void:
 	_build()
 	_root.visible = false
 	ScreenMode.fit_overlay(_root)
+	# 横竖屏翻转 / 窗口缩放：菜单按新视口重新缩放居中
+	ScreenMode.layout_changed.connect(_on_layout_changed)
 	Events.wave_result_ready.connect(_on_ready)
 	Events.wave_result_closed.connect(_on_closed)
 	# 键盘"回车=下一波"（电脑版）：开着才响应，与触屏"继续"同一条 _on_continue
@@ -112,3 +114,9 @@ func _refresh(wave: int) -> void:
 
 func is_open() -> bool:
 	return _open
+
+
+# 布局模式翻转（横竖屏切换/窗口缩放）：按新视口重fit，
+# 否则横屏里竖屏菜单会按旧缩放比留错边/溢出
+func _on_layout_changed(_land: bool) -> void:
+	ScreenMode.fit_overlay(_root)

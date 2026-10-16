@@ -45,6 +45,12 @@ func _ready() -> void:
 	I18n.locale_changed.connect(_on_locale_changed)
 	_refresh()
 
+# 布局重排（横竖屏翻转）：屏幕绝对坐标重读 + 重绘
+func relayout(_land: bool = false) -> void:
+	position = HudLayout.synergy_pos()
+	size = Vector2(HudLayout.synergy_w(), HudLayout.synergy_h())
+	queue_redraw()
+
 func _on_locale_changed(_l: String = "") -> void:
 	queue_redraw()
 
@@ -160,5 +166,4 @@ func _chip(fs: Font, x: float, kind: String, d: Dictionary, with_sub: bool) -> f
 	var sx := tx + w + 6.0
 	draw_string(fs, Vector2(sx, CHIP_H - 3.0), sub,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, col)
-	return sx + w2 + CHIP_GAP
 	return sx + w2 + CHIP_GAP

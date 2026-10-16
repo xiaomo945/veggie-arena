@@ -43,6 +43,13 @@ Perf="*res://autoload/Perf.gd"
 
 window/size/viewport_width=540
 window/size/viewport_height=900
+; Desktop EXE window size. Without an override Godot opens the hard 540x900
+; portrait window from the viewport settings, so the PC build never triggers
+; the widescreen layout ("computer has no adaptation"). 1280x720 is 16:9, so
+; the desktop build boots straight into the landscape layout; Web export is
+; unaffected (canvas_resize_policy=2 follows the browser window instead).
+window/size/window_width_override=1280
+window/size/window_height_override=720
 window/handheld/orientation=1
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"

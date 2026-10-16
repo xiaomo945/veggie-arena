@@ -9,6 +9,7 @@ extends Node
 
 const LANDSCAPE_AR := 1.3
 const LANDSCAPE_SIZE := Vector2i(960, 540)
+const PORTRAIT_SIZE := Vector2i(540, 900)
 # 限位是纯计算，独立成文件（不依赖 autoload），探针与单测才能直接验证它
 const CamLimits := preload("res://core/CamLimits.gd")
 # 相机跟随平滑速度（等效原 Camera2D.position_smoothing_speed）
@@ -18,6 +19,22 @@ const CAM_FOLLOW_SPEED := 18.0
 # 露的是深色灶台地面而非黑框，玩家能看清"这里是战场边界"，又不会像之前那样
 # 露出半屏黑区。改这个值只需动这里，CamLimits 已经把它做成参数。
 const RIM_MARGIN := 24.0
+
+# 布局模式切换广播（横竖屏翻转时发一次，带新模式）。
+# 为什么需要它：以前 apply() 只在 Main._ready 跑一次 —— Web 端画布尺寸在引擎
+# 启动前后会变（浏览器窗口缩放 / 地址栏收起 / 先小窗后最大化），桌面端窗口
+# 也能随时拖大拖小。只在启动时判一次，用户把窗口拉宽后 HUD 还留在竖屏坐标上
+# （拉伸得稀烂），就是"电脑端没有自适应"的根因。现在根视口 size_changed 一响
+# 就重判，翻转时让 HUD/菜单各自 relayout。
+signal layout_changed(landscape: bool)
+
+var _cur_landscape := false     # 当前生效的模式（初值即竖屏默认）
+var _mode_applied := false      # 是否已至少应用过一次
+
+func _ready() -> void:
+	# 根视口尺寸变化 = 窗口缩放 / 转屏 / Web 画布跟随浏览器窗口。
+	# 挂在这里（autoload，保证被加载）而不是 Main：Main 会被 free 重建，监听会丢。
+	get_tree().root.size_changed.connect(_on_root_size_changed)
 func _win_size() -> Vector2:
 	return Vector2(DisplayServer.window_get_size())
 
@@ -41,12 +58,23 @@ func _design_size() -> Vector2:
 # 在读取 arena 之前调用（Main._ready 顶部）：设定横竖屏标志 + 翻转设计分辨率。
 # 竖屏时本函数完全不动作（Data 标志保持 false，arena 走原值）。
 func apply() -> void:
-	var land := should_landscape()
+	_set_mode(should_landscape())
+
+# 根视口尺寸变了（窗口缩放/转屏/Web 画布跟随）：重新判定，真翻转了才广播。
+func _on_root_size_changed() -> void:
+	_set_mode(should_landscape())
+
+# 统一的模式应用入口：幂等。模式没变就直接返回（缩放窗口时每帧都可能响，
+# 不能每次都去改 content_scale_size + 全场重排）。
+func _set_mode(land: bool) -> void:
+	if _mode_applied and land == _cur_landscape:
+		return
+	_mode_applied = true
+	_cur_landscape = land
 	Data.set_landscape(land)
-	if land:
-		var ml = Engine.get_main_loop()
-		if ml is SceneTree:
-			(ml as SceneTree).root.content_scale_size = LANDSCAPE_SIZE
+	var st := get_tree().root
+	st.content_scale_size = LANDSCAPE_SIZE if land else PORTRAIT_SIZE
+	layout_changed.emit(land)
 
 # 相机跟随：跟玩家走；玩家靠近场地边缘时把镜头钳住，屏幕边正好贴住场地边（不露黑框）。
 #

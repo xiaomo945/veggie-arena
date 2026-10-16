@@ -24,6 +24,8 @@ func _ready() -> void:
 	_build()
 	_root.visible = false
 	ScreenMode.fit_overlay(_root)   # 横屏下把竖屏菜单缩放到 960x540 视口内、居中
+	# 横竖屏翻转 / 窗口缩放：菜单按新视口重新缩放居中
+	ScreenMode.layout_changed.connect(_on_layout_changed)
 	Events.run_paused.connect(_on_paused)
 	# 设置菜单 / 属性页作为同级 CanvasLayer 挂到 Game 下（layer 35/36 > 本菜单 30）
 	var p := get_parent()
@@ -195,3 +197,9 @@ func set_stats_screen(s: CanvasLayer) -> void:
 func _close_stats() -> void:
 	if _stats != null:
 		_stats.hide_menu()
+
+
+# 布局模式翻转（横竖屏切换/窗口缩放）：按新视口重fit，
+# 否则横屏里竖屏菜单会按旧缩放比留错边/溢出
+func _on_layout_changed(_land: bool) -> void:
+	ScreenMode.fit_overlay(_root)

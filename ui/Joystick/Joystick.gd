@@ -44,15 +44,22 @@ func _ready() -> void:
 	var f := Movement.feel(Data.feel_cfg())
 	_radius = maxf(float(f["radius"]), RADIUS)   # 放大底盘，手机更好操作
 	_deadzone = float(f["deadzone"])
-	# 横屏：移动区随宽屏放宽（竖屏保持原值）
+	_view.radius = _radius
+	_view.visible = bool(f.get("joystick_visible", true))
+	_relayout()
+	# 布局模式翻转（横竖屏切换/窗口缩放）：移动区与固定底盘重读
+	ScreenMode.layout_changed.connect(_relayout)
+
+# 布局重排：移动区 / 固定底盘按当前模式重读。没在拖拽时才挪现役底盘
+# （拖拽中被重排会跳一下，但那种情况极少，宁可跳也不能把手指下的底盘撕走）。
+func _relayout(_land: bool = false) -> void:
 	MOVE_ZONE_W = HudLayout.joy_move_zone_w()
 	MOVE_ZONE_Y = HudLayout.joy_move_zone_y()
 	_base = HudLayout.joy_fixed_base()
-	_anchor = _base
-	_knob = _base
-	_view.radius = _radius
-	_view.base = _base
-	_view.visible = bool(f.get("joystick_visible", true))
+	if not _active:
+		_anchor = _base
+		_knob = _base
+		_view.base = _base
 
 func _input(event: InputEvent) -> void:
 	# 只有"一局进行中"才接管触摸：标题页 / 暂停 / 死亡 / 通关页都不响应。
