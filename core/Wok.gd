@@ -60,6 +60,20 @@ static func add(s: Dictionary, cfg: Dictionary, amount: float) -> void:
 			v = cap
 	_apply(s, cfg, v)
 
+# 一次击杀涨多少火候。⚠️ 为什么必须限幅（wok.max_gain）：
+#   heat = kill_heat × (1 + 0.2 × 掉金) × (1 + wok_pct)，而掉金随波次线性涨
+#   —— 第 20 波裸角色一击 111 点、爆炒萝卜满 build 一击 338 点，一次击杀就把整条
+#   打满、随即归零，火候条退化成「满 / 空」二值：档位增益（翻炒 +30% 攻速、
+#   爆炒 +65% 攻速 +30% 伤害）变成靠运气，decay_per_sec 也彻底失去意义。
+#   限到 max/3（34）：任何波次都至少 3 杀才攒满，且能完整走过微温(28)→爆炒(58)
+#   两档，档位阶梯重新可读（限到 50 就只能停在 50，爆炒档永远够不到，等于删内容）。
+# ⚠️ 只钳【击杀】这一路：技能 flashfire 的一次性灌火（34，爆炒变体 ×1.7 = 57.8）
+#   是刻意设计的量，钳在总入口 add() 上等于把那个变体删掉。
+static func kill_heat(cfg: Dictionary, gold: float, wok_pct: float) -> float:
+	var h := float(cfg.get("kill_heat", 12)) * (1.0 + 0.2 * maxf(0.0, gold))
+	return minf(h * (1.0 + maxf(0.0, wok_pct)), float(cfg.get("max_gain", 34)))
+
+
 # 白送充能（开局教学用）：爆炒萝卜一进局就有一个颠勺能按 —— 按一下就看见
 # "输出全在颠勺"这件事，比任何 tip 文案都快。上限仍由 max_charges 卡住。
 static func grant(s: Dictionary, n: int) -> void:

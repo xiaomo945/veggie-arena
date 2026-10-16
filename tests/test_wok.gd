@@ -103,4 +103,23 @@ func run(data) -> Dictionary:
 	var h_boss := Wok.heat_of(s)
 	chk(h_boss > h_grunt, "击杀 Boss 攒的锅气(%.1f) > 小怪(%.1f)" % [h_boss, h_grunt])
 
+	# 9) 击杀火候限幅：后期一击不许打满整条，否则火候条退化成"满/空"二值
+	#    （掉金随波次线性涨：不限的话第 20 波裸角色一击 111、爆炒满 build 一击 338）
+	var mg := float(w.get("max_gain", 34))
+	var kh := float(w.get("kill_heat", 12))
+	chk(Wok.kill_heat(w, 1.0, 0.0) < mg - 0.001, "小额击杀（第 1 波）不受限幅影响")
+	chk(absf(Wok.kill_heat(w, 40.0, 0.0) - mg) < 0.001,
+		"第 20 波击杀限到 %.0f（限前 %.0f）" % [mg, kh * (1.0 + 0.2 * 40.0)])
+	chk(absf(Wok.kill_heat(w, 40.0, 2.05) - mg) < 0.001,
+		"爆炒满 build 同样限到 %.0f（越押 wok_pct 越该限）" % mg)
+	# 限幅的意义不只是"别打满"，还要保证档位阶梯走得完：
+	# 1 杀进翻炒档、2 杀进爆炒档、3 杀才攒满 —— 限到 50 就只能停在 50，爆炒档永远够不到
+	s = Wok.make(w)
+	Wok.add(s, w, Wok.kill_heat(w, 40.0, 2.05))
+	chk(Wok.tier(s) == 1, "限幅后第 1 杀进翻炒档（火候 %.0f）" % Wok.heat_of(s))
+	Wok.add(s, w, Wok.kill_heat(w, 40.0, 2.05))
+	chk(Wok.tier(s) == 2, "第 2 杀进爆炒档（火候 %.0f）" % Wok.heat_of(s))
+	Wok.add(s, w, Wok.kill_heat(w, 40.0, 2.05))
+	chk(Wok.charges_of(s) == 1, "第 3 杀才攒满并银行 1 个充能（任何波次至少 3 杀/条）")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
