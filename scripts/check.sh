@@ -190,6 +190,35 @@ else
 fi
 
 echo ""
+echo "=== 2.95 零道具死亡波不变式（硬失败：零道具玩家必须 6~8 波阵亡）==="
+# 用户设计：零道具（只开局手枪+冲锋枪、不买任何东西）必须在一个"硬门槛"波阵亡，
+# 否则就没有购买压力。这是逼氪/逼构筑的核心不变式。
+# ⚠️ 历史教训（2026-10-16）：这个指标此前没有任何闸门守着，密度提升
+#   （max_alive 36→38 等）后它从文档记录的 6 静默漂到 3，没人发现。
+#   立此闸为据：任何改动若把零道具死亡波推到 [6,8] 之外，这里立刻红。
+# 判定：以普通技术（skill=0.5）跑 none 策略，死亡波落在 [6,8] 闭区间才算过。
+#   none 策略不进商店，结果对随机种子不敏感（确定性），seed=1 即可。
+if [ -f scripts/balance_model.py ]; then
+  PY8=$(command -v python3.11 || command -v python3)
+  dw=$("$PY8" - "$ROOT" <<'PY'
+import os, sys
+sys.path.insert(0, os.path.join(sys.argv[1], 'scripts'))
+import balance_model as bm
+r = bm.run('none', 0.5, max_wave=40, seed=1)
+print(r['death'] if r['death'] else 40)
+PY
+)
+  if [ -n "$dw" ] && [ "$dw" -ge 6 ] && [ "$dw" -le 8 ]; then
+    echo "  ✅ 零道具死亡波 = 第 $dw 波（∈[6,8]，硬门槛逼购买）"
+  else
+    echo "  ❌ 零道具死亡波 = ${dw:-?} 波（必须落在 [6,8]，否则购买压力消失）"
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/balance_model.py，跳过"
+fi
+
+echo ""
 echo "=== 3. 说明 ==="
 echo "  单文件 >300 行的检查已并入 1.7 架构守卫（硬失败，不再是只告警不拦人）"
 
