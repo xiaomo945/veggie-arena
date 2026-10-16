@@ -369,7 +369,7 @@
       "pellets_add": 1,
       "dmg_pct": -0.25
     },
-    "cost": 30,
+    "cost": 38,
     "tip": "每次开火多打一发，但单发伤害 -25%",
     "tip_en": "One more pellet per shot, but -25% damage per pellet.",
     "cat": "weapon",
@@ -646,7 +646,7 @@
       "pellets_add": 2,
       "dmg_pct": -0.42
     },
-    "cost": 46,
+    "cost": 54,
     "tip": "每次开火多打两发，但单发伤害 -42%",
     "tip_en": "Two more pellets per shot, but -42% damage per pellet.",
     "cat": "weapon",

@@ -56,6 +56,7 @@
 | 9 | `scripts/build_steam.sh` 产出 `build/steam/` 包（已 cp `steam_appid.txt`） | ❌ | 你（本地跑） |
 | 10 | SteamPipe 上传构建到对应 Depot | ❌ | 你 |
 | 11 | 提交审核（建议先 Early Access，再转 1.0） | ❌ | 你 |
+| 12 | **AI 美术披露**（Steam 2024 政策：构建内含 AI 生成精灵图源，见 [`docs/ai_art_disclosure.md`](ai_art_disclosure.md)）：填 AI 披露问卷，注明工具+人工修改 | ❌ | 你 |
 
 ### 代码侧已就绪（无需你再做）
 - `autoload/Steam.gd` 安全封装：未挂载 GodotSteam 时全 no-op，游戏不崩。
