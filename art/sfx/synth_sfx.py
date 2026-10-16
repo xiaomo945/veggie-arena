@@ -264,18 +264,35 @@ def sfx_wok():
     return norm(add_silence(x[:int(SR*0.24)], 0.005))
 
 def sfx_skill():
-    # 主动技能施放"灵光迸发"：上扬 whoosh（蓄力释放感）+ 高频钟磬闪光（能量迸发），
+    # 主动技能施放"灵光迸发"：纯音上扬蓄力滑音 + 高频钟磬闪光（无噪声底）。
     # 刻意区别于颠勺(金属哐当)/开火(短噗)/升级(叮咚) —— 让"我放了个大招"在余光里也听得见。
+    #
+    # 2026-10-17 按试听重做：上一版用 bp_sweep_noise(0.30s) 做蓄力风声，但那个 helper
+    # 的包络是 `linspace*exp(...)[::-1]` —— 反转后噪声在【结尾最响】，"叮"之后拖着一段
+    # 呲呲啦啦的杂音。这里改用纯音滑音做蓄力：蓄力感保留、沙沙底噪彻底去掉。
+    # （bp_sweep_noise 是 hit/kill/dash/wok 共用的，不动它，免得改坏已通过的音效。）
     # 形态 form 不同则由 Sfx.gd 用 pitch_scale 调出层次，这里给一个干净的底音。
-    L = int(SR * 0.30)
-    # 蓄力→释放：0.30s 内 500->2400Hz 上扬风声，先弱后强再收尾
-    whoosh = bp_sweep_noise(0.30, 500, 2400, amp=0.55, q=1.1)[:L]
-    # 能量闪光钟磬：E6/G6 非谐簇，快起快衰（金属感但更"亮"而非"哐"）
-    shimmer = metallic([(PENTA["E6"], 1.0), (PENTA["G6"], 0.7), (PENTA["E6"]*2.01, 0.30)],
-                       dur=0.22, amp=0.8, attack=0.001, decay=0.09)
-    shimmer = align(shimmer, L)
-    x = align(whoosh, L) * 0.8 + shimmer
-    return norm(add_silence(x[:L], 0.006))
+    L = int(SR * 0.26)
+    # 蓄力滑音：440->1600Hz 指数上扬（比线性自然），0.11s 达到最强 —— 正好"叮"落下
+    n_sw = int(SR * 0.15)
+    t = np.arange(n_sw) / SR
+    freq = 440.0 * (1600.0 / 440.0) ** (t / 0.15)
+    sweep = np.sin(2 * np.pi * np.cumsum(freq) / SR)
+    # 包络显式分段：0->0.11s 渐强蓄力，0.11->0.15s 收干净（尾部必须归零，不能最响）
+    env = np.ones(n_sw)
+    rise_n = int(SR * 0.11)
+    env[:rise_n] = np.linspace(0.15, 1.0, rise_n)
+    env[rise_n:] = np.linspace(1.0, 0.0, n_sw - rise_n)
+    sweep = sweep * env * 0.85
+    sweep[:int(SR*0.003)] *= np.linspace(0, 1, int(SR*0.003))   # 3ms 淡入防爆音
+    # "叮"：钟磬闪光 E6/G6 + 一枚高倍分音提亮，快起快衰（金属感但更"亮"而非"哐"）
+    shim = metallic([(PENTA["E6"], 1.0), (PENTA["G6"], 0.7), (PENTA["E6"]*2.01, 0.30)],
+                    dur=0.15, amp=1.0, attack=0.001, decay=0.075)
+    x = np.zeros(L)
+    x[:n_sw] += sweep
+    off = int(SR * 0.11)
+    x[off:off+len(shim)] += shim[:L-off]
+    return norm(add_silence(x, 0.006))
 
 
 BUILDERS = {
