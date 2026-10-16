@@ -274,33 +274,38 @@ def sfx_skill():
     #   v3 按 sfx_coin 那套既定柔和化配方再柔一档：降调(E6->C6) / 去非谐(删 2.01x，
     #      只留 2x·3x) / 慢起音(0.001->0.010 去"咔哒") / 轻度低通(约 3kHz 磨高频毛刺)，
     #      蓄力滑音顶端 1600Hz->1250Hz，另垫一层五度正弦补厚度。
+    #   v4 再柔再短（要求"再柔和一点、再短一点"）：基音 C6->A5(880) 再降一档、
+    #      泛音再减(2x 0.26->0.20, 3x 0.08->0.05)、滑音顶端 1250->1150Hz；
+    #      全长 0.286s->0.205s：蓄力段 0.15->0.105s（峰值点 0.11->0.075s）、
+    #      叮 dur 0.17->0.125s / decay 0.105->0.075。
+    #      短了之后"闷"的风险变小（闷多半来自长尾），故低通维持 a=0.62 不再收紧。
     # （bp_sweep_noise 是 hit/kill/dash/wok 共用的 helper，始终没动它，免得改坏已通过的音效。）
     # 形态 form 不同则由 Sfx.gd 用 pitch_scale 调出层次，这里给一个干净的底音。
-    L = int(SR * 0.28)
-    # 蓄力滑音：440->1250Hz 指数上扬（比 v2 的 1600Hz 更暗），0.11s 达峰 —— 正好"叮"落下
-    n_sw = int(SR * 0.15)
+    L = int(SR * 0.20)
+    # 蓄力滑音：440->1150Hz 指数上扬，0.075s 达峰 —— 正好"叮"落下
+    n_sw = int(SR * 0.105)
     t = np.arange(n_sw) / SR
-    freq = 440.0 * (1250.0 / 440.0) ** (t / 0.15)
+    freq = 440.0 * (1150.0 / 440.0) ** (t / 0.105)
     sweep = np.sin(2 * np.pi * np.cumsum(freq) / SR)
-    # 包络显式分段：0->0.11s 渐强蓄力，0.11->0.15s 收干净（尾部必须归零，不能最响）
+    # 包络显式分段：0->0.075s 渐强蓄力，0.075->0.105s 收干净（尾部必须归零，不能最响）
     env = np.ones(n_sw)
-    rise_n = int(SR * 0.11)
+    rise_n = int(SR * 0.075)
     env[:rise_n] = np.linspace(0.15, 1.0, rise_n)
     env[rise_n:] = np.linspace(1.0, 0.0, n_sw - rise_n)
     sweep = sweep * env * 0.80
     sweep[:int(SR*0.008)] *= np.linspace(0, 1, int(SR*0.008))   # 8ms 淡入，去掉起音硬边
 
-    # "叮"（柔和版）：降调 E6(1318)->C6(1046)；只留 2x/3x 整数倍泛音，删掉 2.01x 非谐尖啸；
-    # attack 0.001->0.010 去掉起音"咔哒"；decay 加长到 0.105 让尾巴圆润不刺耳
-    base = PENTA["C6"]
-    shim = metallic([(base, 1.0), (base * 2.0, 0.26), (base * 3.0, 0.08)],
-                    dur=0.17, amp=0.85, attack=0.010, decay=0.105)
+    # "叮"（柔和版 v4）：基音 C6(1046)->A5(880) 再降一档；只留 2x/3x 整数倍泛音且幅度再减，
+    # attack 0.010 保持（去"咔哒"）；decay 0.075 让尾巴短促干净
+    base = PENTA["A5"]
+    shim = metallic([(base, 1.0), (base * 2.0, 0.20), (base * 3.0, 0.05)],
+                    dur=0.125, amp=0.85, attack=0.010, decay=0.075)
     # 垫一层五度正弦增加"厚度"（sfx_coin 柔和版同款做法），让"叮"不单薄
-    shim += align(note(base * 1.5, 0.15, "sine", amp=0.10, attack=0.014, decay=0.08), len(shim))
+    shim += align(note(base * 1.5, 0.11, "sine", amp=0.09, attack=0.014, decay=0.055), len(shim))
 
     x = np.zeros(L)
     x[:n_sw] += sweep
-    off = int(SR * 0.11)
+    off = int(SR * 0.075)
     x[off:off+len(shim)] += shim[:L-off]
     # 轻度一阶低通（截止约 4.5kHz）：磨掉高频毛刺，但留住基音与 2 倍泛音，
     # 别把"叮"的辨识度一起滤掉（先用 a=0.7 试过，谱质心 925Hz 偏闷）
@@ -310,7 +315,7 @@ def sfx_skill():
     for i in range(len(x)):
         prev = a * prev + (1 - a) * x[i]
         y[i] = prev
-    return norm(add_silence(y, 0.006)) * 0.88
+    return norm(add_silence(y, 0.005)) * 0.86
 
 
 BUILDERS = {
@@ -332,7 +337,9 @@ BUILDERS = {
 LIMITS = {
     "sfx_shoot": 0.18, "sfx_hit": 0.15, "sfx_kill": 0.30, "sfx_coin": 0.18,
     "sfx_dash": 0.32, "sfx_levelup": 0.50, "sfx_unlock": 0.60, "sfx_victory": 1.20,
-    "sfx_defeat": 0.90,     "sfx_button": 0.08, "sfx_wok": 0.25, "sfx_skill": 0.32,
+    "sfx_defeat": 0.90,     "sfx_button": 0.08, "sfx_wok": 0.25,
+    # sfx_skill 上限收紧到 0.22（v4 定稿 0.205s）：反馈要求"短"，配闸门防以后被改长
+    "sfx_skill": 0.22,
 }
 
 def main(names=None):
