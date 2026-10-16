@@ -263,6 +263,20 @@ def sfx_wok():
     x = x + np.concatenate([nz, np.zeros(int(SR*0.22)-len(nz))])
     return norm(add_silence(x[:int(SR*0.24)], 0.005))
 
+def sfx_skill():
+    # 主动技能施放"灵光迸发"：上扬 whoosh（蓄力释放感）+ 高频钟磬闪光（能量迸发），
+    # 刻意区别于颠勺(金属哐当)/开火(短噗)/升级(叮咚) —— 让"我放了个大招"在余光里也听得见。
+    # 形态 form 不同则由 Sfx.gd 用 pitch_scale 调出层次，这里给一个干净的底音。
+    L = int(SR * 0.30)
+    # 蓄力→释放：0.30s 内 500->2400Hz 上扬风声，先弱后强再收尾
+    whoosh = bp_sweep_noise(0.30, 500, 2400, amp=0.55, q=1.1)[:L]
+    # 能量闪光钟磬：E6/G6 非谐簇，快起快衰（金属感但更"亮"而非"哐"）
+    shimmer = metallic([(PENTA["E6"], 1.0), (PENTA["G6"], 0.7), (PENTA["E6"]*2.01, 0.30)],
+                       dur=0.22, amp=0.8, attack=0.001, decay=0.09)
+    shimmer = align(shimmer, L)
+    x = align(whoosh, L) * 0.8 + shimmer
+    return norm(add_silence(x[:L], 0.006))
+
 
 BUILDERS = {
     "sfx_shoot": sfx_shoot,
@@ -276,13 +290,14 @@ BUILDERS = {
     "sfx_defeat": sfx_defeat,
     "sfx_button": sfx_button,
     "sfx_wok": sfx_wok,
+    "sfx_skill": sfx_skill,
 }
 
 # 时长上限自检 (秒)
 LIMITS = {
     "sfx_shoot": 0.18, "sfx_hit": 0.15, "sfx_kill": 0.30, "sfx_coin": 0.18,
     "sfx_dash": 0.32, "sfx_levelup": 0.50, "sfx_unlock": 0.60, "sfx_victory": 1.20,
-    "sfx_defeat": 0.90, "sfx_button": 0.08, "sfx_wok": 0.25,
+    "sfx_defeat": 0.90,     "sfx_button": 0.08, "sfx_wok": 0.25, "sfx_skill": 0.32,
 }
 
 def main(names=None):
