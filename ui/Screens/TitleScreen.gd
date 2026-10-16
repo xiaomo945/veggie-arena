@@ -235,7 +235,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if k.keycode == KEY_ENTER or k.keycode == KEY_SPACE or k.keycode == KEY_J:
 		if _root.visible and _picker_layer != null and not _picker_layer.visible:
 			_on_start()
-			accept_event()
+			get_viewport().set_input_as_handled()
 
 func _on_picker_back() -> void:
 	# 从选武器页返回标题：重新显示标题，隐藏选武器页

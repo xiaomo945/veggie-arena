@@ -92,13 +92,13 @@ func _gui_input(event: InputEvent) -> void:
 		var t := event as InputEventScreenTouch
 		if t.pressed:
 			_on_tap(t.position)
-		accept_event()
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
 			_on_tap(mb.position)
-		accept_event()
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
@@ -158,7 +158,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_ESCAPE, KEY_U:
 			if back_cb.is_valid():
 				back_cb.call()
-	accept_event()
+	get_viewport().set_input_as_handled()
 
 func _move_sel(d: int) -> void:
 	_selected = clampi(_selected + d, 0, _keys.size() - 1)

@@ -133,8 +133,8 @@ func _link_focus() -> void:
 	var chain := [_resume_btn, _stats_btn, _settings_btn, _restart_btn, _quit_btn, _sfx_btn, _music_btn]
 	for i in chain.size():
 		var a: Button = chain[i]
-		a.focus_next = chain[(i + 1) % chain.size()]
-		a.focus_previous = chain[(i - 1 + chain.size()) % chain.size()]
+		a.focus_next = chain[(i + 1) % chain.size()].get_path()
+		a.focus_previous = chain[(i - 1 + chain.size()) % chain.size()].get_path()
 
 # 键盘：Esc 直接继续（和戳"继续"同路径）
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -146,7 +146,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if k.keycode == KEY_ESCAPE:
 		if _root.visible:
 			_on_resume()
-			accept_event()
+			get_viewport().set_input_as_handled()
 
 func _on_locale_changed(_l: String = "") -> void:
 	if _title_lbl != null:

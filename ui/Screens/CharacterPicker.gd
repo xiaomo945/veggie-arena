@@ -101,7 +101,7 @@ func _gui_input(event: InputEvent) -> void:
 			var k := _key_at(t.position)
 			if not k.is_empty():
 				GameState.set_character(k)
-		accept_event()
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -109,7 +109,7 @@ func _gui_input(event: InputEvent) -> void:
 			var k := _key_at(mb.position)
 			if not k.is_empty():
 				GameState.set_character(k)
-		accept_event()
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion

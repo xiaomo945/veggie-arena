@@ -131,12 +131,12 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if (event as InputEventScreenTouch).pressed:
 			_tap((event as InputEventScreenTouch).position)
-		accept_event(); return
+		get_viewport().set_input_as_handled(); return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
 			_tap(mb.position)
-		accept_event(); return
+		get_viewport().set_input_as_handled(); return
 
 # 命中优先级：先判"售"按钮（小目标优先），再判整格（合成）
 func _tap(pos: Vector2) -> void:

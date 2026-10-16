@@ -59,7 +59,7 @@ func _gui_input(event: InputEvent) -> void:
 		pressed = mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT
 	if pressed:
 		_dismiss()
-		accept_event()
+		get_viewport().set_input_as_handled()
 
 func _process(delta: float) -> void:
 	if not _shown:
