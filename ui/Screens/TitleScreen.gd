@@ -224,6 +224,19 @@ func _on_start() -> void:
 	# run_requested 直接开打、不复用此页，因此仍保留上次选择的初始武器。
 	_picker_layer.visible = true
 
+# 键盘：Enter / Space / J 也能开始（和戳 START 同一条路径）。
+# 仅在标题可见、且选武器页未弹出时响应 —— 选武器页有自己的键盘导航。
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var k := event as InputEventKey
+	if not k.pressed or k.echo:
+		return
+	if k.keycode == KEY_ENTER or k.keycode == KEY_SPACE or k.keycode == KEY_J:
+		if _root.visible and _picker_layer != null and not _picker_layer.visible:
+			_on_start()
+			accept_event()
+
 func _on_picker_back() -> void:
 	# 从选武器页返回标题：重新显示标题，隐藏选武器页
 	_picker_layer.visible = false

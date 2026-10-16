@@ -105,6 +105,7 @@ func _show() -> void:
 		GameState.wave, GameState.kills, GameState.gold, sc]
 	_recap.text = Recap.text()   # 羁绊复盘：这局堆到哪了，下一局才知道该往哪走
 	_root.visible = true
+	_btn.grab_focus()   # 键盘可重开：Enter / Space 直接再来一局
 	# 登场小动画：装饰从 0.4 弹到 1（一次性 Tween，弹完就不占性能）
 	_deco.scale = Vector2(0.4, 0.4)
 	var tw := create_tween()

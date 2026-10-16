@@ -14,6 +14,7 @@ var xp_level := 1          # 当前等级（画在经验条上）
 var xp_into := 0           # 当前等级内已攒经验
 var xp_need := 1           # 升下一级所需经验
 var xp_flash := 0.0        # 升级闪光余量（HUD 每帧衰减，>0 时整条往白色插值）
+var _pulse := 0.0          # 通用脉动相位：低血量紧急态用它驱动红色描边一呼一吸
 
 const BAR_X := 36.0
 const BAR_Y := 8.0
@@ -88,6 +89,11 @@ func _draw_hp_bar() -> void:
 	var c := Color(0.92, 0.32, 0.30) if r < 0.3 else Color(0.40, 0.82, 0.44)
 	var frame := Color(0.95, 0.45, 0.42) if r < 0.3 else Color(0.20, 0.30, 0.16)
 	_bar(BAR_X, BAR_Y, BAR_W, BAR_H, r, c, frame)
+	# 危急态：血量 <30% 时红色描边随 _pulse 脉动，余光里也能感到"快死了"
+	if r < 0.3:
+		var a := 0.40 + 0.40 * (0.5 + 0.5 * sin(_pulse * 7.0))
+		_round(BAR_X - 3.0, BAR_Y - 3.0, BAR_W + 6.0, BAR_H + 6.0,
+			Color(1.0, 0.2, 0.2, 0.0), Color(1.0, 0.28, 0.22, a), 3, 9.0)
 	# 分段刻度，方便估算还剩多少血
 	for i in range(1, 5):
 		var x := BAR_X + BAR_W * float(i) / 5.0
@@ -113,16 +119,28 @@ func _draw_wok() -> void:
 	_draw_tick(float(Data.wok_cfg().get("wokhei_from", 68)) / 100.0, Color(1, 0.45, 0.3, 0.9))
 	# 满锅气线（颠勺就绪）
 	_draw_tick(1.0, Color(1, 1, 1, 0.9))
-	# 百分比文字：直接在条上写，玩家一眼看到火候涨到多少
+	# 百分比 + 档位文字：直接在条上写，玩家一眼看到火候涨到多少、现在是什么档
 	var pct := int(round(r * 100.0))
-	var txt := I18n.t("hud_wok_heat") % pct
+	var tier_tag := ""
+	if wok_tier >= 2:
+		tier_tag = "  SEAR"      # 爆炒
+	elif wok_tier >= 1:
+		tier_tag = "  STIR"      # 翻炒
+	var txt := (I18n.t("hud_wok_heat") % pct) + tier_tag
 	draw_string(ThemeDB.fallback_font, Vector2(WOK_X + 6.0, WOK_Y + WOK_H - 3.0),
 		txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 1.0, 1.0, 0.92))
 
-# 升级闪光衰减：0.5 秒内从 1 降到 0，经验条同步重画
+# 升级闪光衰减：0.5 秒内从 1 降到 0，经验条同步重画；
+# 低血量紧急态每帧重画，让红色描边随 _pulse 一呼一吸（余光里也能感到"快死了"）
 func _process(delta: float) -> void:
+	_pulse += delta
+	var need := false
 	if xp_flash > 0.0:
 		xp_flash = maxf(0.0, xp_flash - delta * 2.0)
+		need = true
+	if hp_ratio < 0.3:
+		need = true
+	if need:
 		queue_redraw()
 
 # 经验条：细条 + 左侧等级数字 + 条上"经验 12/40"。

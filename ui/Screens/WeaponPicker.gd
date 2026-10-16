@@ -136,6 +136,35 @@ func _confirm() -> void:
 		GameState.start_weapon = str(_keys[_selected])
 	Events.run_requested.emit()
 
+# 键盘导航：方向键 / WASD 在卡片网格里移动选择，Enter/Space/J 确认，Esc/U 返回标题。
+# 选武器页只在"未开打"时出现（GameState.running 仍为 false），不会和游戏内键盘层打架。
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var k := event as InputEventKey
+	if not k.pressed or k.echo:
+		return
+	match k.keycode:
+		KEY_LEFT, KEY_A:
+			_move_sel(-1)
+		KEY_RIGHT, KEY_D:
+			_move_sel(1)
+		KEY_UP, KEY_W:
+			_move_sel(-COLS)
+		KEY_DOWN, KEY_S:
+			_move_sel(COLS)
+		KEY_ENTER, KEY_SPACE, KEY_J:
+			_confirm()
+		KEY_ESCAPE, KEY_U:
+			if back_cb.is_valid():
+				back_cb.call()
+	accept_event()
+
+func _move_sel(d: int) -> void:
+	_selected = clampi(_selected + d, 0, _keys.size() - 1)
+	Sfx.ui_click()
+	queue_redraw()
+
 func _center(text: String, cx: float, y: float, fs: int, c: Color) -> void:
 	var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	draw_string(_font, Vector2(cx - w * 0.5, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, c)

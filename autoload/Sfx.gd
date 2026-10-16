@@ -45,6 +45,9 @@ func _ready() -> void:
 	_load("dash", "res://art/sfx/sfx_dash.ogg")
 	_load("unlock", "res://art/sfx/sfx_unlock.ogg")
 	_load("victory", "res://art/sfx/sfx_victory.ogg")
+	# 角色升级（XP）专属音：复用 levelup 合成音，与"波次开始"的 wave 键区分开来，
+	# 这样"升了一级"和"新一波来了"是两个可分辨的听觉信号。
+	_load("levelup", "res://art/sfx/sfx_levelup.ogg")
 	# 击杀/重击分层音（资源缺失则静默跳过，不影响既有调用方）
 	_load("hit_heavy", "res://art/sfx/sfx_hit_heavy.ogg")
 	_load("kill_boss", "res://art/sfx/sfx_kill_boss.ogg")
@@ -61,6 +64,8 @@ func _ready() -> void:
 	Events.dash_started.connect(_on_dash)
 	Events.unlocked.connect(_on_unlock)
 	Events.run_won.connect(_on_victory)
+	# 角色升级（XP）：专属升级音，让"升了一级"在余光里也能听出来（不止经验条闪一下）。
+	Events.level_up.connect(_on_level_up)
 	# 按设置应用音量（音效开关/总静音）；设置变了也由 PauseScreen 回调重调
 	# call_deferred：autoload 全局名在所有 _ready 跑完后才注册，此处延迟避免 Settings 仍是 Nil
 	call_deferred("apply_volume")
@@ -163,6 +168,10 @@ func _on_dash(_pos: Vector2, _dir: Vector2) -> void:
 
 func _on_unlock(_key: String) -> void:
 	_play("unlock", 0)
+
+func _on_level_up(_level: int, _gained: int) -> void:
+	# 升级音：无节流（一局也就几次），音调随等级微升，越往后越"爽"
+	_play("levelup", 0)
 
 func _on_victory() -> void:
 	_play("victory", 0)
