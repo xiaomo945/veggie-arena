@@ -41,11 +41,13 @@ var char_key := ""
 var skills := []
 var enemies := {}
 var ch := SimChar.new()   # 角色侧建模（属性/技能/EHP）
+var hp_avg := 0.0       # 本波敌人平均血量：毒系结算的乘数（敌血随波次二次成长）
+var spawn_ps := 0.0     # 本波每秒刷新只数：算"同时能点着几只"
+var alive_cap := 38.0   # 同屏上限（spawn.max_alive）
 
 
-# 对群折算：单把武器打 N 个目标时输出是单体的几倍。口径与 tests/test_weapon.gd
-# 的 _multiplier 一致 —— 按单体 DPS 排会让 AOE/连锁武器显得很弱，逼着配平去堆
-# 单体数值，正是用户嫌的"武器只是数值堆叠"。链式衰减现读源码，不抄常数。
+# 对群折算：单把武器打 N 个目标时输出是单体的几倍，口径与 tests/test_weapon.gd 一致
+# —— 按单体 DPS 排会让 AOE/连锁显得很弱，逼着配平堆单体数值。链式衰减现读源码。
 func group_mult(def: Dictionary) -> float:
 	var beh := Weapon.behavior_of(def)
 	if float(def.get("aoe", 0)) > 0.0 or beh == "pulse" or beh == "beam":
@@ -101,14 +103,13 @@ func total_dps(weapons: Array, st: Dictionary) -> float:
 func combat_power(weapons: Array, st: Dictionary) -> Dictionary:
 	var es := ch.eff_st(weapons, st, char_entry, defs)
 	var sp := ch.skill_parts(weapons, es, char_key, char_entry, defs, skills,
-		targets, ch.avg_enemy_hp(enemies))
+		targets, hp_avg, ch.lit_count(char_entry, spawn_ps, alive_cap))
 	return {"es": es,
 		"dps": total_dps(weapons, es) * (1.0 + float(sp["rate"])) + float(sp["dps"]),
 		"skill_dps": float(sp["dps"]), "ctrl": float(sp["ctrl"])}
 
 
-# 本波敌人的加权平均掉金。⚠️ 必须按"这波真正会刷的怪"加权，不能对所有敌人取平均：
-# 全体平均 6.08 金，但第 1 波只刷 grunt(2 金)，用全体平均会把前期收入虚高 4 倍。
+# 本波加权平均掉金。⚠️ 必须按"这波真正会刷的怪"加权：全体平均 6.08 金，第 1 波只刷 grunt(2 金)，取全体平均会把前期收入虚高 4 倍。
 func avg_gold(w: int, scfg: Dictionary) -> float:
 	var fc := 0.0
 	var tc := 0.0
@@ -135,8 +136,7 @@ func _favored(key: String, weapons: Array) -> bool:
 
 
 # 买这张卡能涨多少 DPS（买不了返回 -1）。用真实 Inventory 落法，不自己推演。
-# ⚠️ 基准与候选必须同一套属性口径（都过 eff_st 带上角色+羁绊）：早先基准用裸属性、
-#    候选带羁绊，等于把羁绊收益记成卡的功劳，高羁绊角色每张卡都超值、贪心无脑买满。
+# ⚠️ 基准与候选必须同一口径（都过 eff_st 带角色+羁绊）：早先基准用裸属性、候选带羁绊，等于把羁绊收益记成卡的功劳。
 func gain(weapons: Array, st: Dictionary, o: Dictionary, max_slot: int,
 		max_lv: int, ccfg: Dictionary) -> float:
 	var base := combat_power(weapons, st)["dps"] as float
@@ -154,8 +154,7 @@ func gain(weapons: Array, st: Dictionary, o: Dictionary, max_slot: int,
 
 
 # 一间店的完整流程：抽卡 → 贪心买 → 有余钱就刷新再来一轮。
-# ⚠️ 合成不是每波无条件做：2 合 1 只涨 1.398 倍却少一半槽位，总输出反而下降 ——
-#   真实玩家只在满槽且买不动时合成腾槽。早先每波无条件合成，6 把武器塌成 1 把、输出失真。
+# ⚠️ 合成不是每波无条件做：2 合 1 只涨 1.398 倍却少一半槽位，总输出反而下降 —— 真实玩家只在满槽且买不动时合成腾槽。
 func _shop(weapons: Array, st: Dictionary, w: int, data, shop: Dictionary,
 		ccfg: Dictionary, infl: float, max_slot: int, max_lv: int, rng) -> void:
 	var disc := ShopPlan.discount(w, shop)
@@ -175,10 +174,8 @@ func _shop(weapons: Array, st: Dictionary, w: int, data, shop: Dictionary,
 				cand.append([o, pg])
 			elif str(o.get("kind", "")) != "weapon":
 				noncombat.append(o)
-		# 生存/功能类道具对 DPS 增益是 0，但真实玩家一定会买 —— 不建模就会得出
-		# "后期钱花不完"的假象（实测第 19 波余钱攒到 3288）。按最优输出卡 60% 性价比折算。
-		# ⚠️ 饱和上限：续抽放量后贪心买家会把整条生存线买穿（armor 14 件 / heal 12 件），
-		#    金币全砸生存线、dps 腰斩出带 —— 超出 SURV_LINE_MAX 的线不再以性价比进场。
+		# 生存/功能类道具对 DPS 增益是 0，但真实玩家一定会买 —— 不建模就会得出"后期钱花不完"的假象（实测第 19 波余钱攒到 3288）。按最优输出卡 60% 性价比折算。
+		# ⚠️ 饱和上限：续抽放量后贪心买家会把整条生存线买穿（armor 14 件 / heal 12 件），金币全砸生存线、dps 腰斩出带 —— 超出 SURV_LINE_MAX 的线不再以性价比进场。
 		for o in noncombat:
 			if int(line_load.get(str(o.get("stat", "")), 0)) < SURV_LINE_MAX:
 				cand.append([o, best_pg * SURVIVAL_W])
@@ -240,14 +237,17 @@ func run(data, waves: int, seed_base: int) -> Array:
 	pieces = 0; bought_keys = {}; line_load = {}
 	gold = 0
 	for w in range(1, waves + 1):
+		var sr := Spawner.spawn_rate(w, scfg)
+		var total_hp := Spawner.wave_total_hp(w, scfg, data.enemies, length)
+		var n_spawn := sr * length
+		hp_avg = total_hp / maxf(0.001, n_spawn)
+		spawn_ps = sr
+		alive_cap = float(scfg.get("max_alive", 38))
 		var cp := combat_power(weapons, st)
 		var es: Dictionary = cp["es"]
-		var total_hp := Spawner.wave_total_hp(w, scfg, data.enemies, length)
-		var n_spawn := Spawner.spawn_rate(w, scfg) * length
 		var clear_dps := total_hp / maxf(0.001, length)
 		var base1 := sum_d1(weapons, ccfg) * wok
-		# ⚠️ 打这一波用【上一波商店之后】的战力：拿本波买完的 DPS 比本波清场需求，
-		#    等于白送一次采购，ratio 系统性虚高、配平往"敌人再肉一点"的错误方向调。
+		# ⚠️ 打这一波用【上一波商店之后】的战力：拿本波买完的 DPS 比本波清场需求，等于白送一次采购，ratio 系统性虚高。
 		var dps := float(cp["dps"])
 		var lv := log(float(ccfg.get("merge_dmg_multiplier", 1.3))
 			/ float(ccfg.get("merge_cd_multiplier", 0.93)))

@@ -17,6 +17,8 @@ extends RefCounted
 
 const Synergy := preload("res://core/Synergy.gd")
 const Character := preload("res://core/Character.gd")
+const SimChar := preload("res://scripts/SimChar.gd")
+const SimCore := preload("res://scripts/SimCore.gd")
 
 var _p := 0
 var _f := 0
@@ -125,5 +127,35 @@ func run(data) -> Dictionary:
 			swc.append("%s×%d" % [ck, n])
 	chk(Character.start_wok_charges(chars["sizzle"] as Dictionary) == 1,
 		"爆炒萝卜开局自带 1 次颠勺（实际有此机制的角色：%s）" % str(swc))
+
+	# ---- 8) 模拟器必须真的把命中 DoT 算进去（配平看不见的人设 = 不存在）----
+	# 焦辣萝卜的面板是负的（dmg_pct -0.18 / rate_pct -0.08），全部收益压在"打中
+	# 就着火"这一层上。模拟器不算它，13 角色强度排名看到的就是一个只有代价、
+	# 没有收益的角色；而毒按敌人【最大血量】结算、敌血随波次二次成长，拿常数
+	# 血量算毒（旧口径 59）会把第 12 波（真实 277）低估约 4.7 倍。
+	var sc_entry := chars["scorch"] as Dictionary
+	var d1 := SimChar.innate_dot(sc_entry, {}, 59.0, 1.0)
+	var d12 := SimChar.innate_dot(sc_entry, {}, 277.0, 1.0)
+	chk(d1 > 0.0, "焦辣萝卜的命中 DoT 在模拟器里有输出（%.2f/秒/只）" % d1)
+	chk(d12 > d1 * 1.5,
+		"毒伤随敌血成长：敌血 59→277 时 DoT %.2f→%.2f（不随敌血 = 人设失效）"
+		% [d1, d12])
+	chk(SimChar.innate_dot(chars["turnip"] as Dictionary, {}, 277.0, 10.0) == 0.0,
+		"没有 on_hit_dot 的角色在模拟器里不产出 DoT")
+	chk(absf(SimChar.lit_count(sc_entry, 1000.0, 38.0) - 38.0) < 0.001,
+		"DoT 同时挂着的敌人数被同屏上限封住（刷新率再高也不超 max_alive）")
+	# 接线层：DoT 必须进 combat_power 的输出，否则建模了也没人用
+	var sim := SimCore.new()
+	sim.char_entry = sc_entry
+	sim.char_key = "scorch"
+	sim.skills = data.skills_cfg()
+	sim.spawn_ps = 10.0
+	sim.alive_cap = 38.0
+	sim.hp_avg = 59.0
+	var lo := float(sim.combat_power([], {})["dps"])
+	sim.hp_avg = 277.0
+	var hi := float(sim.combat_power([], {})["dps"])
+	chk(hi > lo and lo > 0.0,
+		"命中 DoT 真的进了模拟器的输出（敌血 59→277 时 dps %.1f→%.1f）" % [lo, hi])
 
 	return {"pass": _p, "fail": _f, "failures": _failures}

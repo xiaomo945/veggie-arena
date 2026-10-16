@@ -37,10 +37,11 @@ func eff_st(weapons: Array, st: Dictionary, char_entry: Dictionary,
 #   poison → 敌人最大血量占比 × 持续 / 冷却（另加 burn_dps）
 #   frenzy → 攻速窗口折算成平均倍率（乘在武器输出上）
 #   slow/freeze/heat → 不算输出，折算成生存系数（ctrl）
+#   另加：角色自带命中 DoT（innate_dot）—— 不依赖技能冷却，命中即生效
 func skill_parts(weapons: Array, es: Dictionary, char_key: String,
 		char_entry: Dictionary, defs: Dictionary, skills: Array,
-		targets: int, avg_hp: float) -> Dictionary:
-	var out := {"dps": 0.0, "rate": 0.0, "ctrl": 1.0}
+		targets: int, avg_hp: float, lit: float = 0.0) -> Dictionary:
+	var out := {"dps": innate_dot(char_entry, es, avg_hp, lit), "rate": 0.0, "ctrl": 1.0}
 	if char_entry.is_empty() or skills.is_empty():
 		return out
 	var base := SkillDef.base_of(SkillDef.skill_id_of(char_entry), skills)
@@ -54,12 +55,14 @@ func skill_parts(weapons: Array, es: Dictionary, char_key: String,
 		"damage":
 			var per := float(c.get("dmg", 0.0))
 			per += float(c.get("burn_dps", 0.0)) * float(c.get("dur", 0.0))
-			out["dps"] = per * n / cd
+			# ⚠️ 用 += 不是 =：首行已经把角色自带命中 DoT 记进 out["dps"]，
+			#    直接赋值会把它整层抹掉（焦辣萝卜的 DoT 就是这么静默消失的）。
+			out["dps"] += per * n / cd
 		"poison":
 			var dur := float(c.get("dur", 0.0))
 			var per := float(c.get("poison_dps_pct", 0.0)) * avg_hp
 			per += float(c.get("burn_dps", 0.0))
-			out["dps"] = per * dur * n / cd
+			out["dps"] += per * dur * n / cd
 		"frenzy":
 			out["rate"] = FRENZY_RATE * float(c.get("dur", 0.0)) / cd
 		_:
@@ -93,14 +96,33 @@ func ehp(es: Dictionary, w: int, length: float, kills: float,
 	return (hp + regen + ls) * mult / (1.0 - dodge)
 
 
-func avg_enemy_hp(enemies: Dictionary) -> float:
-	var t := 0.0
-	var n := 0
-	for k in enemies:
-		var e: Dictionary = enemies[k]
-		t += float(e.get("hp_base", 10.0))
-		n += 1
-	return t / maxf(1.0, float(n))
+# 角色自带命中 DoT 的等效输出（真机 scenes/InnateDot.gd：每一发命中都点火上毒）。
+#
+# 为什么必须建模 —— 这不是细节，是配平的盲区：
+#   焦辣萝卜的人设【全压在这一层】：它的面板是负的（dmg_pct -0.18 / rate_pct -0.08），
+#   卖点只有"你碰过的怪都在慢慢掉血"。模拟器不算这一层，配平看到的就是一个只有
+#   代价、没有收益的焦辣萝卜 —— 13 角色强度排名会把它的身份直接记成 0。
+#
+# ⚠️ 毒必须随敌血成长：poison_pct 按【敌人最大血量】结算，而敌血是
+#    base + 波次×线性 + 波次²×加速（core/Spawner.stats_for）。拿波次无关的常数
+#    血量算毒（旧口径 = 全体 hp_base 均值 59），第 12 波会低估约 4.7 倍。
+static func innate_dot(entry: Dictionary, es: Dictionary, avg_hp: float,
+		lit: float) -> float:
+	var d := Character.on_hit_dot(entry)
+	if d.is_empty():
+		return 0.0
+	var scale := 1.0 + float(es.get("elem_pct", 0.0))
+	return (float(d.get("burn", 0.0))
+		+ float(d.get("poison_pct", 0.0)) * avg_hp) * scale * maxf(0.0, lit)
+
+
+# 同时点着几只。apply_fx 取 max 不叠层（一只怪只吃一份），但【每只被碰到的怪各吃
+# 一份】。上限 = 本波刷新率 × 持续秒数（碰得到的都点着了），再封同屏上限。
+static func lit_count(entry: Dictionary, spawn_ps: float, alive_cap: float) -> float:
+	var d := Character.on_hit_dot(entry)
+	if d.is_empty():
+		return 0.0
+	return minf(alive_cap, spawn_ps * float(d.get("dur", 0.0)))
 
 
 static func _merge_add(dst: Dictionary, src: Dictionary) -> void:
