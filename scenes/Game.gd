@@ -70,9 +70,12 @@ func _ready() -> void:
 	Events.melee_swung.connect(_on_melee_swung)
 	Events.player_died.connect(_on_player_died)
 	Events.run_won.connect(_on_run_won)
-	# ⚠️ 不在这里 reset：一局由标题页"开始"/死亡页"再来一局"触发 start_run()
+	# ⚠️ 不再这里 reset —— 一局由标题页"开始"或死亡页"再来一局"触发 start_run()
+	# （reset 会把 running 置 true，若提前调了，标题页还没点就开始刷怪了）
+	# 首局引导层挂到 HUD 之下、HUD 按钮之上（HUD 自己最后 add_child），非首局自卸
 	var hud := HUDScene.instantiate()
 	add_child(hud)
+	hud.add_child(preload("res://ui/HUD/Onboarding.gd").new())
 	add_child(FxScene.instantiate())
 	add_child(ShopScene.instantiate())
 	add_child(DeathScene.instantiate())

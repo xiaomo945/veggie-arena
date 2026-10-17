@@ -105,7 +105,9 @@ signal melee_visual(origin: Vector2, dir: Vector2, reach: float, half_arc: float
 # 摇杆只发信号，不认识 Player；Player 只收信号，不认识摇杆。
 signal stick_dir_changed(dir: Vector2)
 signal stick_released()
-# 冲刺闪避：HUD 按钮 / 摇杆避让区点按发出，由 Player 执行
+# 冲刺闪避：HUD 按钮 / 摇杆避让区点按 / 键盘空格（走 HUD 按钮同一条路）发出，由 Player 执行。
+# 方向不写在信号里：Player 读当前的移动方向（摇杆或 WASD 都会更新它），
+# 零向量 = 没推方向 → 随机冲一个（玩家原话："不配合方向键单独按就随机冲刺"）。
 signal dash_requested()
 # Player → HUD：冷却进度(0..1)与是否可用，用于画按钮冷却扇形
 signal dash_state_changed(ratio: float, ready: bool)

@@ -17,8 +17,18 @@ from fontTools import subset as ft_subset
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 系统全量 Noto Sans CJK（简体中文字面序号 2）。若路径不同请改这里。
-FULL = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
-SC_FACE = 2  # Noto Sans CJK SC
+# 按平台给多个候选：Linux 开发机用 ttc，Windows 用预装 otf，找到哪个用哪个。
+FULL_CANDIDATES = [
+    ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 2),   # Linux
+    ("C:/Windows/Fonts/Noto Sans SC (TrueType).otf", None),          # Windows 10/11 预装
+]
+FULL = None
+SC_FACE = None
+for _p, _n in FULL_CANDIDATES:
+    if os.path.exists(_p):
+        FULL = _p
+        SC_FACE = _n
+        break
 OUT = os.path.join(ROOT, "fonts", "NotoSansSC-Subset.otf")
 CJK = re.compile(r'[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]')
 

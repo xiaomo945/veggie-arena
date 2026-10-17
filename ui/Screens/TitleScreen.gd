@@ -1,7 +1,6 @@
 extends CanvasLayer
 
-# 标题页：游戏名 + 一句话玩法 + 开始按钮。开始按钮发 Events.run_requested，由 Main
-# 统一接管开跑（标题页自己只负责隐藏）。主文案用英文，"萝卜突围"作中文品牌副标。
+# 标题页：游戏名 + 一句话玩法 + 开始按钮。开始按钮发 Events.run_requested，由 Main 统一接管开跑（标题页自己只负责隐藏）。主文案用英文，"萝卜突围"作中文品牌副标。
 
 const CharacterPickerScript := preload("res://ui/Screens/CharacterPicker.gd")
 const CharDetailScript := preload("res://ui/Screens/CharDetail.gd")
@@ -30,8 +29,7 @@ var _start_btn: Button
 func _ready() -> void:
 	layer = 50
 	_build()
-	# 只有横屏才把 540x900 菜单缩放居中；竖屏保持 FULL_RECT —— stretch
-	# aspect=expand 下高瘦手机可视高度 >900，流式容器需要真实可视高度
+	# 只有横屏才把 540x900 菜单缩放居中；竖屏保持 FULL_RECT —— stretch aspect=expand 下高瘦手机可视高度 >900，流式容器需要真实可视高度
 	if ScreenMode.is_widescreen():
 		ScreenMode.fit_overlay(_root)
 	# 横竖屏翻转 / 窗口缩放：菜单是"540x900 设计尺寸缩放居中"的，模式翻了要重fit
@@ -54,12 +52,10 @@ func _build() -> void:
 	shade.color = Color(0.05, 0.06, 0.09, 0.82)
 	_root.add_child(shade)
 
-	# ⚠️ 不再放"点任意处开始"的全屏热区：它会把角色卡之间的空白、误触都当成"开始"，
-	#    在手机上尤其容易跳页（用户反馈"误触返回/乱跳"）。开始只走下方明确的 START 按钮。
+	# ⚠️ 不再放"点任意处开始"的全屏热区：它会把角色卡之间的空白、误触都当成"开始"，手机上尤其容易跳页（用户反馈"误触返回/乱跳"）。开始只走下方明确的 START 按钮。
 
 	# ---- 流式纵向布局：所有元素按顺序排进 VBox，物理上不可能互相重叠 ----
-	# 旧版硬编码 Y 坐标，文案一变长就叠字（真机截图翻车过）；高瘦手机上
-	# aspect=expand 可视区更高，VBox 居中排布自然适应任何屏幕比例。
+	# 旧版硬编码 Y 坐标，文案一变长就叠字（真机截图翻车过）；高瘦手机 aspect=expand 可视区更高，VBox 居中自然适应任何屏幕比例。
 	_box = VBoxContainer.new()
 	_box.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_box.offset_top = 72.0     # 顶部让给"解锁路线"按钮，标题从它下面开始
@@ -71,8 +67,7 @@ func _build() -> void:
 	var star_ico := TextureRect.new()
 	star_ico.texture = Art.ui_icon("star")
 	star_ico.custom_minimum_size = Vector2(28, 28)
-	# ⚠️ 必须 EXPAND_IGNORE_SIZE：默认 KEEP_SIZE 下最小尺寸=贴图尺寸（约 120px），会把
-	# START 挤出 900px 屏底只剩一条边（真机目检发现）。
+	# ⚠️ 必须 EXPAND_IGNORE_SIZE：默认 KEEP_SIZE 下最小尺寸=贴图尺寸（约 120px），会把 START 挤出 900px 屏底只剩一条边（真机目检发现）。
 	star_ico.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	star_ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	star_ico.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -115,8 +110,7 @@ func _build() -> void:
 	_how_lbl = how
 	_box.add_child(how)
 
-	# ⚠️ 先 add_child 让 CharacterPicker._ready 算出网格尺寸，再拿它当最小尺寸
-	#    （写死卡数会在角色变多时把末尾卡挤出屏幕）
+	# ⚠️ 先 add_child 让 CharacterPicker._ready 算出网格尺寸，再拿它当最小尺寸（写死卡数会在角色变多时把末尾卡挤出屏幕）
 	var picker = Control.new()
 	picker.set_script(CharacterPickerScript)
 	_box.add_child(picker)
@@ -173,8 +167,7 @@ func _build() -> void:
 	_picker_layer.visible = false
 	_build_route()
 
-# 本页的 Label 清一色是"字号/颜色/居中/整行宽"四件套，抽个工厂省掉一半样板。
-# ⚠️ MOUSE_FILTER_IGNORE 必须：默认 STOP 会把落在标题/简介文字上的点击吃掉。
+# 本页的 Label 清一色是"字号/颜色/居中/整行宽"四件套，抽个工厂省掉一半样板。⚠️ MOUSE_FILTER_IGNORE 必须：默认 STOP 会把落在标题/简介文字上的点击吃掉。
 func _mk_label(fs: int, c: Color) -> Label:
 	var l := Label.new()
 	l.add_theme_font_size_override("font_size", fs)
@@ -183,8 +176,7 @@ func _mk_label(fs: int, c: Color) -> Label:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
 
-# 解锁关系树：一张图回答"下一个能解锁谁"。layer 54 —— 盖住本页(50)但低于角色详情(55)，
-# 在树里点节点会顺势叠出详情页；入口放右上角空白处，不挤进开始流程那一坨。
+# 解锁关系树：一张图回答"下一个能解锁谁"。layer 54 —— 盖住本页(50)但低于角色详情(55)，在树里点节点会顺势叠出详情页；入口放右上角空白处，不挤进开始流程那一坨。
 func _build_route() -> void:
 	_tree_layer = CanvasLayer.new()
 	_tree_layer.layer = 54
@@ -229,23 +221,31 @@ func _on_char_picked(key: String) -> void:
 		_pick_lbl.text = CharTiers.full(Data.character(GameState.character))
 
 func _on_start() -> void:
-	# START 是整局的第一次点击：在这里出第一声，保证 Web/iOS 的 AudioContext
-	# 在"用户手势内"被解锁（iOS 上手势外出的第一声可能整局静音）。
+	# START 是整局第一次点击：在这里出第一声，保证 Web/iOS 的 AudioContext 在"用户手势内"被解锁（iOS 上手势外出的第一声可能整局静音）。
 	Sfx.ui_click()
 	# 存档里记过上次的角色就默认选它；已"被锁"的要挡掉（清过档 / 阶梯后段调整）
 	var last := SaveMgr.last_character()
 	if not last.is_empty() and SaveMgr.is_character_unlocked(last):
 		GameState.set_character(last)
-	# 兜底：万一当前选中的是锁着的角色（旧存档 / 改过解锁表），退回第一个免费角色，
-	# 绝不让"开始"带着一个不该能玩的角色进局
+	# 兜底：万一当前选中的是锁着的角色（旧存档/改过解锁表），退回第一个免费角色，绝不让"开始"带着一个不该能玩的角色进局
 	if not SaveMgr.is_character_unlocked(GameState.character):
 		var open := SaveMgr.unlocked_characters()
 		if not open.is_empty():
 			GameState.set_character(str(open[0]))
 	_root.visible = false
-	# 进入"选初始武器"页（角色选完 → 选武器 → 开打）。死亡页"再来一局"走
-	# run_requested 直接开打、不复用此页，因此仍保留上次选择的初始武器。
+	# 进入"选初始武器"页（角色选完 → 选武器 → 开打）。死亡页"再来一局"走 run_requested 直接开打、不复用此页，因此仍保留上次选择的初始武器。
 	_picker_layer.visible = true
+
+# 键盘：Enter/Space/J 也能开始（和戳 START 同一条路）；选武器页有自己的键盘导航，这里不抢。
+func _unhandled_key_input(event: InputEvent) -> void:
+	var k := event as InputEventKey
+	if k == null or not k.pressed or k.echo:
+		return
+	if k.keycode != KEY_ENTER and k.keycode != KEY_SPACE and k.keycode != KEY_J:
+		return
+	if _root.visible and _picker_layer != null and not _picker_layer.visible:
+		_on_start()
+		get_viewport().set_input_as_handled()
 
 func _on_picker_back() -> void:
 	# 从选武器页返回标题：重新显示标题，隐藏选武器页
@@ -282,8 +282,7 @@ func _on_locale_changed(_l: String = "") -> void:
 	_next_lbl.text = _next_text()
 	_next_lbl.visible = not _next_lbl.text.is_empty()
 
-# 标题页底部那行"下一把能拿到什么"：优先报角色，没有才报武器。
-# 角色比武器值钱 —— 它是一整条新玩法路线，玩家看见它更想再来一局（土豆兄弟的做法）。
+# 标题页底部那行"下一把能拿到什么"：优先报角色，没有才报武器。角色比武器值钱 —— 它是一整条新玩法路线，玩家看见它更想再来一局（土豆兄弟的做法）。
 func _next_text() -> String:
 	var nc := SaveMgr.next_character_unlock()
 	if not nc.is_empty():

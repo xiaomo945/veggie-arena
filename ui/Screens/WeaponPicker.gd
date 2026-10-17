@@ -218,6 +218,40 @@ func _on_back() -> void:
 	if back_cb.is_valid():
 		back_cb.call()
 
+# 键盘导航（main 线 359fc29 的产品决策，适配 ours 的卡片模型）：方向键 / WASD
+# 在卡片网格里移动选择，Enter/Space/J 确认，Esc/U 返回标题。
+# 选武器页只在"未开打"时出现（GameState.running 仍为 false），不会和游戏内键盘层打架。
+# ⚠️ ours 口径 _selected 是武器 key（不是下标）：移动 = 在 _keys 里按索引步进后 select()。
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var k := event as InputEventKey
+	if not k.pressed or k.echo:
+		return
+	match k.keycode:
+		KEY_LEFT, KEY_A:
+			_move_sel(-1)
+		KEY_RIGHT, KEY_D:
+			_move_sel(1)
+		KEY_UP, KEY_W:
+			_move_sel(-COLS)
+		KEY_DOWN, KEY_S:
+			_move_sel(COLS)
+		KEY_ENTER, KEY_SPACE, KEY_J:
+			_on_confirm()
+		KEY_ESCAPE, KEY_U:
+			_on_back()
+	get_viewport().set_input_as_handled()
+
+func _move_sel(d: int) -> void:
+	if _keys.is_empty():
+		return
+	var i := _keys.find(_selected)
+	i = clampi((i if i >= 0 else 0) + d, 0, _keys.size() - 1)
+	if str(_keys[i]) != _selected:
+		Sfx.ui_click()
+		select(str(_keys[i]))
+
 func _on_locale_changed(_l: String = "") -> void:
 	_refresh_pool()
 

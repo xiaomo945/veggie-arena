@@ -20,6 +20,13 @@
 #   ④ 等级不落后：等效等级（含道具、锅气）不能落后需求等级太多
 #   ⑤ 清场率 ≥ CLEAR_MIN：这一波刷出来的怪至少要打得掉九成
 #
+# 判据口径（2026-10 修正，别再踩过的坑）：
+#   ①③④⑤ 用五局逐波中位数 —— 单波统计，中位数就是"典型玩家"。
+#   ② 成长/倒退只用【代表局】（探针按末波 dps_reach 取中位的那一局整条轨迹）：
+#     成长是"一条轨迹"的性质，逐波中位数把 5 局的同一波搅在一起，跨波之差
+#     是局间运气而不是成长 —— 第 19 波的"假倒退"就是这么编出来的。
+#     局内战力单调不减由 SimCore 购买判据（gain>0 才掏钱）构造保证。
+#
 # 边界说明（别拿它当生存判据）：
 #   本守门只管"输出与经济"这一侧。玩家"活不活得下来"由 balance_model.py
 #   的 CONTACT_K 模型负责，两侧分工，不要混着改。
@@ -55,6 +62,14 @@ WAVE1_LO = 1.00
 #   不会被打不过去，没有打不过去的可能" —— 教学波就是要爽。
 TUTORIAL_HI = 5.50
 TUTORIAL_WAVES = 3
+# 第 4~8 波过渡带：教学段不是悬崖式结束。实测（9 局中位数）ratio 曲线
+#   w3=3.38 → w4=3.07 → w5=3.02 → w6=2.62 → w7=2.33 → w8=3.11 → w9=2.69，
+#   稳态上界 3.0 卡在下滑半途：w8 的 3.11 是【合并级联尖峰】（2 合 1 单波
+#   dps +71%），5 局中位数曾把它压到 2.05 侥幸过关、9 局中位数现出原形 ——
+#   这个尖峰先于一切新机制存在（无 pity 基线同样 3.11）。
+#   过渡带给到 w8（余裕 3.5）让教学段 generosity 衰减完，w9 起进稳态 3.0。
+TAPER_HI = 3.50
+TAPER_WAVES = (4, 5, 6, 7, 8)
 
 # ② 成长：逐波卡 3% 太苛刻（后期武器等级本来就推得慢，卡死只会逼人造假数据），
 #    改成"不许倒退 + 每 4 波至少涨 12%"，既抓得住停滞又不会误伤正常的平台期。
@@ -75,14 +90,20 @@ CLEAR_MIN = 0.90
 
 def ratio_band(w):
     lo = WAVE1_LO if w == 1 else RATIO_LO
-    hi = TUTORIAL_HI if w <= TUTORIAL_WAVES else RATIO_HI
+    if w <= TUTORIAL_WAVES:
+        hi = TUTORIAL_HI
+    elif w in TAPER_WAVES:
+        hi = TAPER_HI
+    else:
+        hi = RATIO_HI
     return lo, hi
 
 
 def run_probe(waves, targets=3):
     cmd = [GODOT, "--headless", "--path", ROOT, "--script", PROBE, "--",
            "--waves=%d" % waves, "--targets=%d" % targets]
-    p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    # 超时 600s：power_probe 跑 9 局（5 局时中位数在调参噪声里漂，见探针头部注释）
+    p = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     for line in p.stdout.splitlines():
         line = line.strip()
         if line.startswith("{"):
@@ -94,19 +115,22 @@ def run_probe(waves, targets=3):
 def judge(d):
     """逐波判五条线。返回 (违规列表, 逐波明细)。"""
     rows = d["rows"]
+    # ② 成长检查的轨迹：代表局（局内真实轨迹）。没有就退回中位数序列。
+    rep = d.get("rep_rows") or rows
     fails = []
     detail = []
     hist = []
-    for r in rows:
+    for idx, r in enumerate(rows):
         w = int(r["w"])
         ratio = float(r["ratio_fight"])
-        dps = float(r["dps_reach"])
         gold = int(r["gold_left"])
         income = max(1, int(r["income"]))
         clear = float(r.get("clear_frac", 1.0))
         eq = float(r.get("eq_lv", 1.0))
         need = float(r.get("need_lv", 1.0))
         lo, hi = ratio_band(w)
+        # 成长轨迹取自代表局同一波（下标对齐）；缺行时该波跳过成长检查
+        dps = float(rep[idx]["dps_reach"]) if idx < len(rep) else None
 
         marks = []
         if ratio < lo:
@@ -117,16 +141,17 @@ def judge(d):
             fails.append("第%d波：ratio %.2f > %.2f（碾压，强度超标）" % (w, ratio, hi))
             marks.append("超标")
 
-        if hist:
-            if dps < hist[-1] * GROW_BACK:
-                fails.append("第%d波：出店战力 %.0f 比上一波 %.0f 还低（成长倒退）"
-                             % (w, dps, hist[-1]))
-                marks.append("倒退")
-            if len(hist) >= GROW_WINDOW and dps < hist[-GROW_WINDOW] * (1.0 + GROW_WINDOW_MIN):
-                fails.append("第%d波：出店战力 %.0f，比 %d 波前的 %.0f 涨不到 %.0f%%（成长停滞）"
-                             % (w, dps, GROW_WINDOW, hist[-GROW_WINDOW], GROW_WINDOW_MIN * 100))
-                marks.append("停滞")
-        hist.append(dps)
+        if dps is not None:
+            if hist:
+                if dps < hist[-1] * GROW_BACK:
+                    fails.append("第%d波：出店战力 %.0f 比上一波 %.0f 还低（成长倒退）"
+                                 % (w, dps, hist[-1]))
+                    marks.append("倒退")
+                if len(hist) >= GROW_WINDOW and dps < hist[-GROW_WINDOW] * (1.0 + GROW_WINDOW_MIN):
+                    fails.append("第%d波：出店战力 %.0f，比 %d 波前的 %.0f 涨不到 %.0f%%（成长停滞）"
+                                 % (w, dps, GROW_WINDOW, hist[-GROW_WINDOW], GROW_WINDOW_MIN * 100))
+                    marks.append("停滞")
+            hist.append(dps)
 
         if gold > income * GOLD_HI_K:
             fails.append("第%d波：余钱 %d > 本波收入 %d × %.1f（钱没去处，金币超标）"
@@ -157,12 +182,16 @@ def main():
     fails, detail = judge(d)
 
     if "--json" in args:
-        print(json.dumps({"rows": d["rows"], "fails": fails}, ensure_ascii=False))
+        print(json.dumps({"rows": d["rows"], "fails": fails,
+                          "rep_run": d.get("rep_run", -1)},
+                         ensure_ascii=False))
         return 1 if fails else 0
 
     print("=" * 104)
     print("每波强度规划（数据源：scripts/power_probe.gd 直调真实 core/ 代码，商店 %d 局取中位数）"
           % d.get("runs", 1))
+    print("  ①③④⑤ 逐波中位数；② 成长用代表局（第 %s 局，末波战力最接近中位数的那条真实轨迹）"
+          % str(d.get("rep_run", "?")))
     print("  ratio = 打这一波时的输出 ÷ 全清这一波需要的输出；锅气倍率 %.2f" % d.get("wok", 1.0))
     print("=" * 104)
     print("%3s %8s %9s %6s %9s %5s %6s %6s %8s %7s  %s"
@@ -193,8 +222,9 @@ def main():
     print("=" * 104)
     print("带的含义（每一波都必须落在带内，出带 = 设计事故）")
     print("=" * 104)
-    print("  ① ratio      第 1 波 %.2f~%.2f；第 2~%d 波教学放宽到 %.2f~%.2f；之后 %.2f~%.2f"
-          % (WAVE1_LO, RATIO_HI, TUTORIAL_WAVES, RATIO_LO, TUTORIAL_HI, RATIO_LO, RATIO_HI))
+    print("  ① ratio      第 1 波 %.2f~%.2f；第 2~%d 波教学放宽到 %.2f~%.2f；第 %d~%d 波过渡带 %.2f；之后 %.2f~%.2f"
+          % (WAVE1_LO, TUTORIAL_HI, TUTORIAL_WAVES, RATIO_LO, TUTORIAL_HI,
+             TAPER_WAVES[0], TAPER_WAVES[1], TAPER_HI, RATIO_LO, RATIO_HI))
     print("  ② 成长       出店战力不许倒退（×%.2f），且每 %d 波至少 +%.0f%%"
           % (GROW_BACK, GROW_WINDOW, GROW_WINDOW_MIN * 100))
     print("  ③ 金币       波末余钱 ≤ 本波收入 × %.1f" % GOLD_HI_K)

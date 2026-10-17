@@ -68,6 +68,7 @@ func _build() -> void:
 	_sfx_btn = _mk_toggle(620, _on_sfx)
 	_music_btn = _mk_toggle(698, _on_music)
 	_refresh_toggles()
+	_link_focus()
 
 func _mk_btn(text: String, y: float, cb: Callable, icon_name := "") -> Button:
 	var b := Button.new()
@@ -116,11 +117,34 @@ func _on_paused(p: bool) -> void:
 	_root.visible = p
 	if p:
 		_refresh_toggles()
+		# 键盘可导航：把焦点落在"继续"上，方向键在按钮间循环、Enter 触发
+		if _resume_btn != null:
+			_resume_btn.grab_focus()
 	else:
 		# 取消暂停（恢复 / 重开 / 退出）时把叠在上层的设置与属性页一并收掉
 		if _settings != null:
 			_settings.hide_menu()
 		_close_stats()
+
+# 让暂停菜单的按钮形成竖直闭环焦点链：方向键/ Tab 在其中循环，不会跑丢到 HUD 按钮。
+func _link_focus() -> void:
+	var chain := [_resume_btn, _stats_btn, _settings_btn, _restart_btn, _quit_btn, _sfx_btn, _music_btn]
+	for i in chain.size():
+		var a: Button = chain[i]
+		a.focus_next = chain[(i + 1) % chain.size()].get_path()
+		a.focus_previous = chain[(i - 1 + chain.size()) % chain.size()].get_path()
+
+# 键盘：Esc 直接继续（和戳"继续"同路径）
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var k := event as InputEventKey
+	if not k.pressed or k.echo:
+		return
+	if k.keycode == KEY_ESCAPE:
+		if _root.visible:
+			_on_resume()
+			get_viewport().set_input_as_handled()
 
 func _on_locale_changed(_l: String = "") -> void:
 	if _title_lbl != null:

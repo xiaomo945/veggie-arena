@@ -63,9 +63,29 @@ SKILLS = {"新手": 0.0, "普通": 0.5, "高手": 1.0}
 # ⚠️ 全模型唯一需要实机校准的经验参数：场上每只漏网怪平均每秒让玩家挨几下。
 # 不是拍脑袋：玩家有 ifr_seconds 的无敌帧，被摸再密也吃不满 CONTACT_CAP。
 # 这个值标定自"普通玩家普通走位"的实测手感，模型其余部分全是可推导的。
-# 0.045 = 调参落库值：配合下方敌人/刷怪/经济缩放，使三画像死亡波位落在目标区间
-# （零道具 6~8 / 随机买 12~15 / 最优买 25~35）。若实机觉得偏易/偏难，这是唯一旋钮。
-CONTACT_K = 0.027
+#
+# 2026-10-16 重标定：密度提升（max_alive 36→38 等，见 spawn._doc_density）后，
+# 零道具死亡波从文档记录的 6 静默漂到 3 —— 且没有闸门守着，所以没人发现。
+# 重标定把三画像重新实测一遍（8 种子中位数，普通技术 skill=0.5）：
+#     CONTACT_K   零道具   随机买   最优买
+#       0.045      3        6        9
+#       0.027      3        6       12
+#       0.012      5        7       15
+#       0.010      5        8       15
+#       0.009      6        8       40+(无限)
+#       0.008      6        8       40+(无限)   ← 采用
+#       0.007      7        9       40+(无限)
+# 选 0.008：零道具精确落回文档目标 6 波（∈[6,8]），且给"被淹没后流血"一个合理的
+#   挨打频率（19 只贴脸时 ≈ 每秒 0.1 下，符合"会走位就扛得住"的设计）。
+#
+# ⚠️ 模型结构限制（务必知道）：本模型唯一的死亡机制是"被淹没后按 CONTACT_K 流血"，
+#   强玩家（最优买）输出足以永远不被淹没 → K 一旦低到让零道具=6，最优买就活到
+#   40 波（= 无限模式）。所以"随机 12~15 / 最优 25~35"是密度提升前、模型更松时的
+#   旧目标，当前结构下不可同时达成；当前自洽画面是 零道具 6 / 随机 8 / 最优 无限。
+#   若想让最优买也在有限波阵亡，需要给模型再加一个"后期缩放威胁"的死亡机制
+#   （不是拧 CONTACT_K 能解决的）—— 列为后续专项。
+# 实机手感偏易→调大，偏难→调小；改完跑 scripts/check.sh 的 2.95 闸门确认不漂。
+CONTACT_K = 0.008
 
 
 # =====================================================================
@@ -73,9 +93,31 @@ CONTACT_K = 0.027
 # =====================================================================
 
 def spawn_rate(wave):
-    """每秒刷几只。线性增长到 cap 后封顶（core/Spawner.spawn_rate）。"""
+    """每秒刷几只。线性增长到 cap 后封顶（core/Spawner.spawn_rate）。
+    用 (wave - 1)：第 1 波不吃波次成长（Spawner.gd 同款，旧式 base+wave×per
+    会把第 1 波刷到 155 只、模型判"开局清不掉"，而 core 早已改成 126 只）。"""
     return min(float(SPAWN["cap"]),
-               float(SPAWN["base_rate"]) + wave * float(SPAWN["per_wave"]))
+               float(SPAWN["base_rate"]) + (wave - 1) * float(SPAWN["per_wave"]))
+
+
+def enemy_gold(t, wave):
+    """镜像 Spawner.stats_for：掉金 = 基值 + wave × gold_per_wave。"""
+    d = ENEMIES[t]
+    return float(d.get("gold", 1)) + float(wave) * float(d.get("gold_per_wave", 0))
+
+
+def elite_chance(wave):
+    """镜像 Spawner.elite_chance：第 elite_from_wave 波起每 elite_every 波一轮。"""
+    from_ = int(SPAWN.get("elite_from_wave", 0))
+    if from_ <= 0 or wave < from_:
+        return 0.0
+    every = max(1, int(SPAWN.get("elite_every", 1)))
+    if (wave - from_) % every != 0:
+        return 0.0
+    base = float(SPAWN.get("elite_chance", 0.0))
+    per = float(SPAWN.get("elite_chance_per_wave", 0.0))
+    cap = float(SPAWN.get("elite_chance_cap", 1.0))
+    return min(cap, base + per * (wave - from_))
 
 
 def type_mix(wave):
@@ -119,24 +161,36 @@ def fastest_speed(wave):
 
 def wave_profile(wave):
     """这一波的加权平均：刷怪总数 / 平均血量 / 平均伤害 / 平均金币 / 最快速度。
-    镜像 Spawner.stats_for 的成长公式；Boss 波额外算首领 + 精英。"""
+    镜像 Spawner.stats_for 的成长公式；Boss 波额外算首领 + 精英。
+    2026-10-15 口径修正：① gold 加 wave×gold_per_wave（stats_for 同款，原来只读基值）；
+    ② boss 波普通怪 ×boss_rate_mult（Game.gd:225，把注意力留给首领）；③ boss 金币
+    原来只摊了血没计金；④ 终局 boss 走 final_boss.gold_mult；⑤ elite 按轮次判定。"""
     mix = type_mix(wave)
-    n = spawn_rate(wave) * WAVE_LEN
+    is_boss = int(SPAWN["boss_every"]) > 0 and wave % int(SPAWN["boss_every"]) == 0
+    rate = spawn_rate(wave)
+    if is_boss:
+        rate *= float(SPAWN.get("boss_rate_mult", 1.0))
+    n = rate * WAVE_LEN
     hp = sum(pr * enemy_stat(t, wave, "hp_base", "hp_per_wave") for t, pr in mix.items())
     dmg = sum(pr * enemy_stat(t, wave, "dmg_base", "dmg_per_wave") for t, pr in mix.items())
-    gold = sum(pr * float(ENEMIES[t]["gold"]) for t, pr in mix.items())
-    is_boss = int(SPAWN["boss_every"]) > 0 and wave % int(SPAWN["boss_every"]) == 0
+    gold = sum(pr * enemy_gold(t, wave) for t, pr in mix.items())
     if is_boss:
         # Boss 波：额外一只首领（stats_for("boss")）；普通怪有 elite_chance 概率变精英
         # 精英：血×2.2、伤×1.5、金×3（见 Spawner.stats_for elite 分支）
         e_hp = enemy_stat("boss", wave, "hp_base", "hp_per_wave")
         hp = hp + e_hp / max(n, 1.0)
-        ec = float(SPAWN["elite_chance"])
+        ec = elite_chance(wave)
         hp *= 1.0 + ec * 1.2
         dmg *= 1.0 + ec * 0.5
         gold *= 1.0 + ec * 2.0
+        # 首领的金币单独计（不进"每只期望"），终局波吃 final_boss.gold_mult
+        fb = BAL.get("final_boss", {})
+        bm = 1.0
+        if wave == WAVE_TOTAL and bool(fb.get("enabled", True)):
+            bm = float(fb.get("gold_mult", 1.0))
+        gold = gold + enemy_gold("boss", wave) * bm / max(n, 1.0)
     return {"n": n, "hp": hp, "dmg": dmg, "gold": gold, "boss": is_boss,
-            "rate": spawn_rate(wave), "fastest": fastest_speed(wave)}
+            "rate": rate, "fastest": fastest_speed(wave)}
 
 
 # =====================================================================
@@ -613,13 +667,34 @@ def main():
     death = print_table_a(20)
     print_table_b(max_wave)
     print_table_c(20)
-    # 不变式速查
+    # 不变式速查 —— 口径与 tests/test_difficulty.gd 的三条移速硬断言一致，
+    # 同源于 52b7f8d 的用户反馈设计："第一关 grunt 比玩家快约 10%（张力、逼走位），
+    # 后期靠 speed_pct 道具反超，speed_cap 硬封顶"。
+    # ⚠️ 旧口径"第20波最快怪 ≤ 玩家 90%"是 e809df4 层的残留：它假设"零投资也
+    # 该风筝一切"，与上述设计直接矛盾，把刻意设计误报成过"失败"——已重写。
     pspeed = float(PLAYER["speed"])
-    fs20 = fastest_speed(20)
+    spd_cap = float(PLAYER.get("speed_cap", 999.0))
     print("\n【不变式速查】")
-    print("  第20波最快敌人 %d  ≤ 玩家速度 %d 的 90%% (%d) ? %s"
-          % (int(fs20), int(pspeed), int(pspeed * 0.9),
-             "OK" if fs20 <= pspeed * 0.9 else "失败"))
+    # 1) 第 1 波小兵"稍快一点点"：开局张力来源（1.10 倍是设计值，不是倒挂 bug）
+    grunt1 = float(ENEMIES["grunt"]["speed_base"]) + 1.0 * float(ENEMIES["grunt"]["speed_per_wave"])
+    ok_band = pspeed * 0.9 <= grunt1 <= pspeed * 1.25
+    print("  第1波小兵 %.0f ∈ 玩家 %.0f 的 [0.9,1.25] 倍 ? %s"
+          % (grunt1, pspeed, "OK" if ok_band else "失败"))
+    # 2) 第 20 波没有任何怪超过玩家硬上限：满配玩家也甩得掉（不黏死）
+    over = []
+    for k in ENEMIES:
+        if k == "_doc":
+            continue
+        d = ENEMIES[k]
+        s20 = float(d["speed_base"]) + 20.0 * float(d["speed_per_wave"])
+        if s20 > spd_cap:
+            over.append("%s(%.0f)" % [k, s20])
+    print("  第20波无怪超过玩家硬上限 %.0f ? %s%s"
+          % (spd_cap, "OK" if not over else "失败",
+             ("  超速: " + ", ".join(over)) if over else ""))
+    # 3) 每波增长 ≤3.0：移速增长已放缓（+6.0/波 是"速度太快"的直接成因）
+    growth = max(float(ENEMIES[k].get("speed_per_wave", 0.0)) for k in ENEMIES if k != "_doc")
+    print("  移速每波增长 ≤3.0（现状 %.1f）? %s" % (growth, "OK" if growth <= 3.0 else "失败"))
     print("  零道具死亡波（目标 6~8）：%s"
           % ("OK" if death and 6 <= death <= 8 else ("%.0f" % death if death else "未死")))
     return 0

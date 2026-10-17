@@ -66,6 +66,8 @@ func run(_data) -> Dictionary:
 	chk(ShopPlan.single_reroll_cost(0, CFG) == 2, "首次单张刷新 2 金（整店 3 的一半向上取整）")
 	chk(ShopPlan.single_reroll_cost(1, CFG) == 3, "第二次单张刷新 3 金（整店 5 的一半向上取整）")
 	chk(ShopPlan.single_reroll_cost(0, CFG) < 3, "单张刷新必须比整店刷新便宜")
+	chk(ShopPlan.single_reroll_cost(0, CFG, 20, 0.3) == 10,
+		"第20波单张刷新吃通胀：整店 20 的一半向上取整 = 10")
 
 	# --- 整店刷新保留锁定项 ---
 	var rng := RandomNumberGenerator.new(); rng.seed = 7

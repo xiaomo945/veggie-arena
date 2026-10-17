@@ -60,8 +60,9 @@ func wok_mult(wok_pct_eff: float) -> float:
 
 # 当前这堆武器若全停在 Lv1 会有多少输出 —— need_lv / eq_lv 的分母，
 # 让"该到几级"这句话有一个和玩家手上武器同口径的尺子。
-# dot 一起传进来：它是角色被动、与武器等级无关，两边都带才公平。
-func sum_lv1(weapons: Array, ccfg: Dictionary, dot: float = 0.0) -> float:
+# passive 一起传进来：角色自带 DoT 与武器等级无关，两边都带才公平
+# （只算当前 build 会把"武器爬了几级"算虚高，早先 scorch 就这么虚高过）。
+func sum_lv1(weapons: Array, ccfg: Dictionary, passive: float = 0.0) -> float:
 	var t := 0.0
 	var gsum := 0.0
 	for w in weapons:
@@ -69,16 +70,17 @@ func sum_lv1(weapons: Array, ccfg: Dictionary, dot: float = 0.0) -> float:
 		var g := group_mult(d)
 		t += Combat.weapon_dps(Weapon.merged_stats(d, 1, ccfg)) * g
 		gsum += g
-	return t + dot * gsum
+	return t + passive
 
 
 # 当前总输出。pierce / aoe 只给保守折算（穿透要怪排队才吃得到、范围要够大才多打
 # 到一个），完全不计会让探针只认 dmg/rate/crit 三类道具，把玩家算弱、把敌人配软。
-func total(weapons: Array, st: Dictionary, dot: float, wok_pct_eff: float) -> float:
+# 角色自带命中 DoT 不在这里进：它按"同时点着几只"结算（SimChar.innate_dot），
+# 与武器对群折算不是同一把尺子，塞进来会双计（见 SimCore.combat_power）。
+func total(weapons: Array, st: Dictionary, wok_pct_eff: float) -> float:
 	var rp := float(st.get("rate_pct", 0.0))
 	var pa := float(st.get("pellets_add", 0.0))
 	var t := 0.0
-	var gsum := 0.0
 	for w in weapons:
 		var key := str(w.get("key", ""))
 		var d: Dictionary = defs.get(key, {})
@@ -88,14 +90,9 @@ func total(weapons: Array, st: Dictionary, dot: float, wok_pct_eff: float) -> fl
 		#    近战吃 melee_pct、远程吃 ranged_pct、元素额外吃 elem_pct
 		#    （entities/Player/PlayerWeapons.gd 就这么算的）。只套 dmg_pct
 		#    会把所有"元素流 / 近战流"角色的羁绊收益算成 0，排名彻底失真。
-		var g := group_mult(d)
-		t += Combat.weapon_dps(ww, 0.0, rp) * WeaponSets.damage_mult(d, st) * g
-		gsum += g
-	# 角色自带命中 DoT：每把武器碰到的怪都挂一份，所以跟着对群折算一起放大；
-	# 但它不吃暴击/穿透/范围/锅气档位（固定值 + 只吃 elem_pct，见 scenes/InnateDot.gd）。
-	var dot_total := dot * gsum
+		t += Combat.weapon_dps(ww, 0.0, rp) * WeaponSets.damage_mult(d, st) * group_mult(d)
 	var cc := clampf(float(st.get("crit_chance", 0.0)), 0.0, 1.0)
 	var pierce := 1.0 + 0.10 * minf(float(st.get("pierce_add", 0.0)), 4.0)
 	var aoe := 1.0 + 0.08 * minf(float(st.get("aoe_add", 0.0)) / 20.0, 4.0)
 	return t * (1.0 + cc * float(st.get("crit_mult", 0.0))) * pierce * aoe \
-		* wok_mult(wok_pct_eff) + dot_total
+		* wok_mult(wok_pct_eff)

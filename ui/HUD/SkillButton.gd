@@ -27,7 +27,7 @@ var _skill_ready := true
 var _skill_form := "base"    # 当前形态 key：凑够某类武器后技能"换了招"，名字和颜色都跟着变
 
 const SIZE := Vector2(88.0, 88.0)
-const WOK_SIZE := Vector2(88.0, 88.0)   # 半圆扇面上要和冰/毒拉开距离，不能太大
+const WOK_SIZE := Vector2(80.0, 80.0)   # 扇面里和冰/毒技能键斜 45° 相邻，80 是横屏 540 高内不出屏的上限（见 HudLayout.buttons_arc_r 的几何推导）
 const SKILL_SIZE := Vector2(76.0, 76.0)
 const ATTACK_SIZE := Vector2(100.0, 100.0)
 

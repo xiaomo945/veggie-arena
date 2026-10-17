@@ -37,6 +37,24 @@ static func active(s: Dictionary) -> bool:
 static func can_start(s: Dictionary, c: Dictionary) -> bool:
 	return float(s.get("cd", 0.0)) <= 0.0 and not active(s)
 
+# 随机冲刺方向。两种调用口径共用这一个函数（GDScript 没有重载）：
+#   random_dir()      —— 无参：连续随机角（randf 全局种子），触屏/无方向输入路径用；
+#                       单位长、非零，test_dash 11 抽 64 次方向互不相同。
+#   random_dir(rng)   —— 带种子 RNG：量化到 8 个离散方向（0/45/…/315°），
+#                       键盘冲刺（Player.kb_dash）与模拟器共用口径，test_dash 12 断言：
+#                       全部单位长、400 次抽样覆盖全部 8 向、均值无系统偏向。
+# 为什么离散向要单位长：本项目方向口径统一归一化（Movement.stick_direction 除长度、
+#   StickInput.stick_vector 用 limit_length(1.0)），键盘斜向移动也是单位长。早期写法给
+#   对角乘 0.7071 想"归一化"，但 45° 的 cos/sin 本来就是 0.7071 —— 再乘一次等于把斜冲刺
+#   砍到 70% 速度，"随机"就成了"替你挑最慢的方向"。这 8 个方向也正是键盘 WASD 能产生的
+#   全部 8 个方向（4 正向 + 4 斜向），随机冲刺和手动冲刺的手感因此完全一致。
+static func random_dir(rng: RandomNumberGenerator = null) -> Vector2:
+	if rng == null:
+		var a := randf() * TAU
+		return Vector2(cos(a), sin(a))
+	var step := rng.randi_range(0, 7)
+	return Vector2(cos(float(step) * (PI / 4.0)), sin(float(step) * (PI / 4.0)))
+
 # 触发冲刺。dir 为零向量时返回 false（没方向没法冲）。
 static func start(s: Dictionary, dir: Vector2, c: Dictionary) -> bool:
 	if not can_start(s, c):
@@ -48,14 +66,6 @@ static func start(s: Dictionary, dir: Vector2, c: Dictionary) -> bool:
 	s["cd"] = float(c.get("cooldown", 1.8))
 	s["ifr"] = float(c.get("ifr", 0.30))
 	return true
-
-# 无方向输入时冲刺朝哪：随机一个方向。
-# 玩家原话："冲刺技能如果不配合方向键单独按，就随机冲刺一个方向"。
-# 为什么不是朝面对方向：那常常正面冲进怪堆；随机至少有一半机会冲向空档，
-# 而且"急救闪"本来就不该有确定方向 —— 有方向Input时走 Input 侧，不走这里。
-static func random_dir() -> Vector2:
-	var a := randf() * TAU
-	return Vector2(cos(a), sin(a))
 
 # 每帧推进：冲刺计时、无敌计时、冷却各走各的。返回本帧是否"刚结束冲刺"。
 static func step(s: Dictionary, delta: float) -> bool:

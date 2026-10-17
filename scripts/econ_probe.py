@@ -111,12 +111,72 @@ def pick_type(rng, w):
 
 
 def count_of_wave(w):
+    """镜像真实刷怪数：普通波 spawn_rate×波长；boss 波（每 boss_every 波）再乘
+    boss_rate_mult —— core/../scenes/Game.gd:225 有这一手，漏掉它会低估 boss 波收入。"""
     r = spawn_rate(w)
-    return int(r * WAVE_LEN)
+    n = int(r * WAVE_LEN)
+    boss_every = int(SPAWN["boss_every"])
+    if boss_every > 0 and w % boss_every == 0:
+        n = int(n * float(SPAWN.get("boss_rate_mult", 1.0)))
+    return n
 
 
-def expected_gold_per_spawn(w, rng):
-    """按当前波的怪种构成估算一次刷怪的期望金币。"""
+def enemy_gold(kind: str, w: int) -> float:
+    """镜像 core/Spawner.stats_for：掉金 = 基值 + wave × gold_per_wave。
+    （漏掉波次项的旧口径会把终身收入低估约 5 倍，2026-10-15 修）"""
+    d = ENEMIES[kind]
+    return float(d.get("gold", 2)) + float(w) * float(d.get("gold_per_wave", 0))
+
+
+def elite_chance(w: int) -> float:
+    """镜像 core/Spawner.elite_chance：第 elite_from_wave 波起每 elite_every 波一轮，
+    轮内概率 = elite_chance + per×(w-from)，封顶 cap。"""
+    from_ = int(SPAWN.get("elite_from_wave", 0))
+    if from_ <= 0 or w < from_:
+        return 0.0
+    every = max(1, int(SPAWN.get("elite_every", 1)))
+    if (w - from_) % every != 0:
+        return 0.0
+    base = float(SPAWN.get("elite_chance", 0.0))
+    per = float(SPAWN.get("elite_chance_per_wave", 0.0))
+    cap = float(SPAWN.get("elite_chance_cap", 1.0))
+    return min(cap, base + per * (w - from_))
+
+
+def is_boss_wave(w: int) -> bool:
+    """镜像 EnemySystem.boss_wave()：常规每 boss_every 波 + 终局波必有。"""
+    every = int(SPAWN.get("boss_every", 5))
+    return w == WAVE_TOTAL or (every > 0 and w % every == 0)
+
+
+def boss_gold(w: int) -> float:
+    """镜像 EnemySystem.spawn_boss：Boss 波开局固定刷 1 只首领。
+    终局波走 final_boss 段的 gold_mult 强化。"""
+    fb = BAL.get("final_boss", {})
+    mult = 1.0
+    if w == WAVE_TOTAL and bool(fb.get("enabled", True)):
+        mult = float(fb.get("gold_mult", 1.0))
+    return enemy_gold("boss", w) * mult
+
+
+def wave_income(w: int, wave_len: float = WAVE_LEN) -> int:
+    """本波金币总收入（口径全部镜像 core）：
+    普通流（构成权重 × 每只期望金）× 数量（boss 波 ×0.55）
+      + boss 波单独的 1 只首领 + 波次奖励。精英轮按概率 ×3 计进每只期望金。"""
+    n = count_of_wave(w) if wave_len == WAVE_LEN else int(
+        int(spawn_rate(w) * wave_len) *
+        (float(SPAWN.get("boss_rate_mult", 1.0)) if is_boss_wave(w) else 1.0))
+    kill_gold = n * expected_gold_per_spawn(w)
+    if is_boss_wave(w):
+        kill_gold += boss_gold(w)
+    return int(kill_gold * endless_gold_pct(w)) + wave_bonus(w)
+
+
+def expected_gold_per_spawn(w):
+    """普通刷怪流的期望金币/只。镜像 core/Spawner.pick_type 构成权重 +
+    stats_for 的 gold 公式 + elite_chance 轮（精英金币 ×3）。
+    ⚠️ boss 不在这条流里 —— Boss 波是开局额外刷 1 只（EnemySystem.spawn_boss），
+    由 wave_income 单独计。旧版把 boss 金按概率混进普通流是错的（2026-10-15 修）。"""
     # 种类权重来自 spawn 配置里的 *_chance
     chances = {
         "fast": SPAWN["fast_chance"] if w >= SPAWN["fast_from_wave"] else 0.0,
@@ -130,15 +190,17 @@ def expected_gold_per_spawn(w, rng):
         "splitter": SPAWN["splitter_chance"] if w >= SPAWN["splitter_from_wave"] else 0.0,
         "bomber": SPAWN["bomber_chance"] if w >= SPAWN["bomber_from_wave"] else 0.0,
     }
-    boss_every = int(SPAWN["boss_every"])
-    boss_mult = float(SPAWN["boss_rate_mult"])
+    ec = elite_chance(w)          # 精英轮概率（不在轮内 = 0）
     total = 1.0 + sum(chances.values())
-    exp = float(ENEMIES["grunt"].get("gold", 2))
+
+    def g(kind):
+        """该种怪的每只期望金：普通值 + 精英轮概率×3 的加权。"""
+        base = enemy_gold(kind, w)
+        return (1.0 - ec) * base + ec * base * 3.0
+
+    exp = g("grunt")
     for k, c in chances.items():
-        exp += c / total * (float(ENEMIES[k].get("gold", 2)) - float(ENEMIES["grunt"].get("gold", 2)))
-    # boss：每 boss_every 波一次，频率再乘 boss_rate_mult
-    if boss_every > 0 and w % boss_every == 0:
-        exp += float(ENEMIES["boss"].get("gold", 40)) * boss_mult / max(1.0, total)
+        exp += c / total * (g(k) - g("grunt"))
     return exp
 
 
@@ -294,8 +356,7 @@ def greedy_run(max_w, rng, wave_len, max_lv, verbose=True):
     rows = []
     total_income = 0
     for w in range(1, max_w + 1):
-        n_spawn = int(spawn_rate(w) * wave_len)
-        income = int(n_spawn * expected_gold_per_spawn(w, rng) * endless_gold_pct(w)) + wave_bonus(w)
+        income = wave_income(w, wave_len)
         state["gold"] += income
         total_income += income
 
@@ -390,10 +451,9 @@ def main():
     rows = []
     for w in range(1, max_w + 1):
         n_spawn = count_of_wave(w)
-        g_per = expected_gold_per_spawn(w, rng)
+        g_per = expected_gold_per_spawn(w)
         gp = endless_gold_pct(w)
-        # 玩家击杀率：假设能清掉大部分（真实清场率受 DPS 限制，这里放开上限）
-        income = int(n_spawn * g_per * gp) + wave_bonus(w)
+        income = wave_income(w)
         wallet += income
         cat = catalog_cost(w, rng)
         ratio = income / cat if cat else 0
@@ -418,12 +478,14 @@ def main():
     print()
 
     # 满级武器的总花费
-    print("  满级成本：6 把武器全 6 级")
+    print("  满级成本：%d 把武器全满级" % MAX_SLOT)
     mid = sorted(float(v.get("cost", 20)) for v in WEAPONS.values())[len(WEAPONS) // 2]
     tot = sum(price_for_tier(mid, lv) for lv in range(1, MAX_LV + 1))
-    print("    单把 1→6 级：%s = %d" % (" + ".join(str(price_for_tier(mid, lv)) for lv in range(1, 7)), tot))
-    print("    6 把全满：%d 金币" % (tot * 6))
-    print("    136 个道具单价区间：%d ~ %d" % (
+    print("    单把 1→%d 级：%s = %d" % (MAX_LV,
+        " + ".join(str(price_for_tier(mid, lv)) for lv in range(1, MAX_LV + 1)), tot))
+    print("    %d 把全满：%d 金币" % (MAX_SLOT, tot * MAX_SLOT))
+    print("    %d 个道具单价区间：%d ~ %d" % (
+        len(UPGRADES),
         min(int(v.get("cost", 0)) for v in UPGRADES.values()),
         max(int(v.get("cost", 0)) for v in UPGRADES.values())))
     print("    道具全部买一遍：%d 金币" % sum(int(v.get("cost", 0)) for v in UPGRADES.values()))

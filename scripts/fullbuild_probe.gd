@@ -139,6 +139,11 @@ func _initialize() -> void:
 	var max_lv := int(shop.get("max_lv", 10))
 	var tiers := ShopTiers.new()
 	var clear_dps := Spawner.wave_total_hp(waves, scfg, data.enemies, length) / maxf(0.001, length)
+	# 毒系/命中 DoT 按【敌人血量】结算，而敌血随波次二次成长 —— 模拟器必须拿到
+	# 本波真实平均血量，用常数血量算会把焦辣萝卜这类角色算成"只有代价没有收益"。
+	var spawn_ps := Spawner.spawn_rate(waves, scfg)
+	var hp_avg := Spawner.wave_total_hp(waves, scfg, data.enemies, length) / maxf(0.001, spawn_ps * length)
+	var alive_cap := float(scfg.get("max_alive", 38))
 
 	# 预算：通用玩家打到第 W 波的累计收入（真实 Economy 产出，不是拍脑袋常数）。
 	# 每个角色拿到的钱完全一样 —— 差异只能来自角色自身的设计。
@@ -163,6 +168,9 @@ func _initialize() -> void:
 			sim.enemies[str(k)] = data.enemy(str(k))
 		for k in data.weapons:
 			sim.defs[str(k)] = data.weapon(str(k))
+		sim.hp_avg = hp_avg
+		sim.spawn_ps = spawn_ps
+		sim.alive_cap = alive_cap
 
 		# 候选池 = 本命 + 全部羁绊类 + DPS 最高的几把。
 		# 必须把羁绊类全放进来：只按 DPS 取前几把会漏掉"弱但对本命关键"的那把，

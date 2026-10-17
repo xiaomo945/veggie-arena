@@ -16,6 +16,7 @@ const HitSpark := preload("res://entities/effects/HitSpark.gd")
 const SparkPool := preload("res://entities/effects/SparkPool.gd")
 const Shake := preload("res://entities/effects/Shake.gd")
 const BattleWorld := preload("res://scenes/BattleWorld.gd")
+const Wok := preload("res://core/Wok.gd")
 const WokToss := preload("res://scenes/WokToss.gd")
 const BulletSystem := preload("res://scenes/BulletSystem.gd")
 const InnateDot := preload("res://scenes/InnateDot.gd")
@@ -223,8 +224,7 @@ func damage_enemy(e, amount: float) -> bool:
 	if ls > 0.0 and world.rng.randf() < LIFESTEAL_CHANCE:
 		GameState.heal(int(ls))
 	# 击杀按金币攒锅气：普通怪一点点，Boss 一大口，火候涨得有节奏
-	var heat: float = float(Data.wok_cfg().get("kill_heat", 9)) * (1.0 + 0.2 * float(e.gold))
-	GameState.add_wok(heat * (1.0 + GameState.stat_value("wok_pct")))
+	GameState.add_wok(Wok.kill_heat(Data.wok_cfg(), float(e.gold), GameState.stat_value("wok_pct")))
 	# 终局 Boss（第 20 波）被击杀 = 直接通关，不必再熬计时
 	if e.etype == "boss" and GameState.is_last_wave() and GameState.running:
 		Events.run_won.emit()

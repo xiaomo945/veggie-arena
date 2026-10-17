@@ -100,6 +100,7 @@ func _show() -> void:
 		GameState.wave, GameState.kills, GameState.gold, sc]
 	_recap.text = Recap.text()   # 羁绊复盘：让"下一局该堆什么"有个明确的落点
 	_root.visible = true
+	_btn.grab_focus()   # 键盘可重开：Enter / Space 直接再来一局
 
 func _on_locale_changed(_l: String = "") -> void:
 	_title.text = I18n.t("death_title")

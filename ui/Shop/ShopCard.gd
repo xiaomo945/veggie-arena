@@ -64,11 +64,11 @@ func _gui_input(event: InputEvent) -> void:
 		# 小按钮优先：点在锁/刷新上就不再触发购买（避免"想锁卡结果买下了"）
 		var hit := _hit_btn(p)
 		if hit == 1 and on_lock.is_valid():
-			on_lock.call(); accept_event(); return
+			on_lock.call(); get_viewport().set_input_as_handled(); return
 		if hit == 2 and on_reroll_one.is_valid():
-			on_reroll_one.call(); accept_event(); return
+			on_reroll_one.call(); get_viewport().set_input_as_handled(); return
 		_tap()
-		accept_event()
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion

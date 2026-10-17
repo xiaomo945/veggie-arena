@@ -1,8 +1,7 @@
 extends CanvasLayer
 
 # 补给站：波次结束后弹出。手机竖屏单列：顶部金币/属性 → 我的武器(可售) → 购买卡 → 合成/刷新/下一波。
-# 骨架与样式在 ShopPanel.gd；卡片画法在 ShopCard.gd；本文件只做业务。节奏（core/ShopPlan.gd）：
-# 每 big_every 波开一次"大商店"（全场打折）。⚠️ 卡数不随波次变：每波固定开满 6 张、不留空位（硬要求）。
+# 骨架与样式在 ShopPanel.gd，卡片画法在 ShopCard.gd，本文件只做业务。节奏（core/ShopPlan.gd）：每 big_every 波开一次"大商店"（全场打折）；⚠️ 卡数不随波次变，每波固定开满 6 张、不留空位（硬要求）。
 
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
@@ -47,6 +46,7 @@ func _ready() -> void:
 	ScreenMode.fit_overlay(_root)   # 横屏下把竖屏菜单缩放到 960x540 视口内、居中
 	Events.shop_opened.connect(_open)
 	I18n.locale_changed.connect(_on_locale_changed)
+	add_child(preload("res://ui/Shop/ShopKeys.gd").new())
 
 func _build() -> void:
 	_root = Control.new()
@@ -98,6 +98,7 @@ func _roll() -> void:
 	_refresh()
 
 func _refresh() -> void:
+	var cfg := Data.shop_cfg(); var infl := float(cfg.get("price_inflation", 0.0))
 	_panel.gold_lbl.text = I18n.t("shop_gold") % GameState.gold
 	_refresh_stats()
 	for i in _panel.cards.size():
@@ -109,14 +110,13 @@ func _refresh() -> void:
 		var d := _card_data(o, _sold[i], afford)
 		d["can_lock"] = false   # 锁定/单张刷新在详情页，小卡上不画按钮
 		d["locked"] = _locked.has(i)
-		d["reroll_one_cost"] = ShopPlan.single_reroll_cost(_reroll_times, Data.shop_cfg())
+		d["reroll_one_cost"] = ShopPlan.single_reroll_cost(_reroll_times, cfg, GameState.wave, infl)
 		c.setup(d)
 	_panel.merge_btn.text = I18n.t("shop_merge_btn")
 	_panel.merge_btn.disabled = not Inventory.has_mergeable(GameState.weapons, _max_lv)
-	# 刷新按钮文字以前没人设过（目检才发现是空白按钮），补上 + 显示当前刷新价
-	_panel.reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, Data.shop_cfg())
+	# 刷新按钮的文字一直没人设置过（截图目检才发现是空白按钮）；刷新价与道具同口径吃波次通胀
+	_panel.reroll_btn.text = I18n.t("shop_reroll") % Economy.reroll_cost(_reroll_times, cfg, GameState.wave, infl)
 	# 槽满提示"先卖一把"；大商店亮促销标识（攒钱这一波能大买的节奏要被看见）
-	var cfg := Data.shop_cfg()
 	if _slots_full():
 		_panel.hint_lbl.text = I18n.t("shop_slots_full_hint")
 	elif ShopPlan.is_big(GameState.wave, cfg):
@@ -180,6 +180,8 @@ func _card_data(o: Dictionary, sold: bool, afford: bool) -> Dictionary:
 		d["gift_skill_name"] = gt
 		d["tag"] = gt + " " + str(d.get("tag", ""))
 	return d
+
+# 购买（两态落法）：没满槽 → 单独占一格不自动合；满槽 → 同 key 同等级的那把直接合成升一级；买入价记进 buy_cost 供售出退款；买不了（满槽且没有可合的搭档）时金币原路退回。
 func _buy(index: int) -> void:
 	if index >= _offers.size() or _sold[index]: return
 	var o: Dictionary = _offers[index]; var cost := int(o.get("cost", 0))
@@ -238,8 +240,7 @@ func _flash_card(index: int, ok: bool) -> void:
 	c.modulate = Color(0.45, 1.0, 0.55) if ok else Color(1.0, 0.45, 0.45)
 	create_tween().tween_property(c, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.4)
 
-# 让 HUD 横幅弹一条短提示（买强化反馈 / 卖最后一把的红色告警）。
-# 通过 HUD 的公开访问器拿到 HudBanners 实例，不读私有字段（R3）。
+# 让 HUD 横幅弹一条短提示（买强化反馈 / 卖最后一把的红色告警）：通过 HUD 的公开访问器拿 HudBanners 实例，不读私有字段（R3）。
 func _pop_effect(text: String, col: Color) -> void:
 	var hud = get_tree().get_first_node_in_group("hud")
 	if hud == null or not hud.has_method("banners"):
@@ -266,8 +267,7 @@ func _lock_toggle(index: int) -> void:
 func _reroll_one(index: int) -> void:
 	if index >= _offers.size() or _locked.has(index):
 		return
-	var cfg := Data.shop_cfg()
-	var cost := ShopPlan.single_reroll_cost(_reroll_times, cfg)
+	var cfg := Data.shop_cfg(); var cost := ShopPlan.single_reroll_cost(_reroll_times, cfg, GameState.wave, float(cfg.get("price_inflation", 0.0)))
 	if not Economy.can_buy(GameState.gold, cost): return
 	var pool := _pool_now()
 	GameState.spend_gold(cost); _reroll_times += 1
@@ -277,14 +277,14 @@ func _reroll_one(index: int) -> void:
 
 func _pool_now() -> Array:
 	var cfg := Data.shop_cfg()
-	var infl := float(cfg.get("price_inflation", 0.0))
-	var disc := GameState.stat_value("shop_discount") + ShopPlan.discount(GameState.wave, cfg)
+	var infl := float(cfg.get("price_inflation", 0.0)); var disc := GameState.stat_value("shop_discount") + ShopPlan.discount(GameState.wave, cfg)
 	return Economy.build_pool(GameState.weapons, Data.weapons, Data.upgrades,
-		_max_slot, _max_lv, SaveMgr.unlocked_weapons(), disc, GameState.wave, infl)
+		_max_slot, _max_lv, SaveMgr.unlocked_weapons(), disc, GameState.wave, infl,
+		GameState.upgrades)   # 末参：属性线续抽，投过资的线更容易出（见 Economy.invested_lines）
 
 # 整店刷新：锁定的卡保留
 func _reroll_bought() -> void:
-	var cfg := Data.shop_cfg(); var cost := Economy.reroll_cost(_reroll_times, cfg)
+	var cfg := Data.shop_cfg(); var cost := Economy.reroll_cost(_reroll_times, cfg, GameState.wave, float(cfg.get("price_inflation", 0.0)))
 	if not Economy.can_buy(GameState.gold, cost): return
 	GameState.spend_gold(cost); _reroll_times += 1; _undo.reset()
 	if _locked.is_empty():

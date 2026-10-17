@@ -10,13 +10,13 @@ extends RefCounted
 # tests/test_art_icons.gd 会用 upgrades.json 全量比对，漏配直接红。
 
 const POOLS := {
-	"hp": ["max_hp", "heal_now", "wave_heal"],
+	"hp": ["max_hp", "heal_now", "wave_heal", "multi:heal_now/max_hp"],
 	"regen": ["regen"],
 	"speed": ["speed_pct"],
 	"dmg": ["dmg_pct", "low_hp_dmg", "hit_boost", "elem_pct", "melee_pct", "ranged_pct",
 		"multi:melee_pct/ranged_pct", "multi:dmg_pct/elem_pct"],
 	"rate": ["rate_pct", "fullauto"],
-	"armor": ["armor", "ifr_pct", "dodge"],
+	"armor": ["armor", "ifr_pct", "dodge", "multi:armor/heal_now"],
 	"crit": ["crit_chance", "crit_mult"],
 	"leech": ["lifesteal", "wok_lifesteal"],
 	"gold": ["gold_pct", "wok_gold", "shop_discount"],

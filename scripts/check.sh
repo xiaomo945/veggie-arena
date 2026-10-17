@@ -16,7 +16,8 @@ skip=0
 while IFS= read -r f; do
   # 名单要与 project.godot 的 autoload 完全一致：漏一个就会把"用了 autoload 的文件"
   # 当成语法错误误报（HudLayout / ScreenMode 曾被漏掉，误报过 2 个文件）。
-  if grep -qE '\b(Art|Data|Events|GameState|Settings|Steam|SaveMgr|Sfx|Bgm|Gamepad|I18n|HudLayout|ScreenMode|Perf)\.' "$f" 2>/dev/null; then
+  # Keyboard（电脑键盘操作层）也在名单里：它引用 Gamepad/GameState/Events，同样进不了 --check-only。
+  if grep -qE '\b(Art|Data|Events|GameState|Settings|Steam|SaveMgr|Sfx|Bgm|Keyboard|Gamepad|I18n|HudLayout|ScreenMode|Perf)\.' "$f" 2>/dev/null; then
     skip=$((skip+1))
     continue
   fi
@@ -251,6 +252,50 @@ if [ -f scripts/fx_band.py ]; then
   fi
 else
   echo "  ⚠ 缺少 scripts/fx_band.py，跳过"
+fi
+
+echo ""
+echo "=== 2.10 道具定价不变式（硬失败：同属性不得有严格劣势的死卡）==="
+# 判据见 scripts/upgrade_audit.py：道具可跨波重复购买且线性叠加，所以
+# "同属性更贵还更少"或"被 k 件基础档严格优势替代"的卡永远是死卡。
+# 2026-10-15 清掉 13 个死卡（速度线整线、hp2/dmg2/rate2/armor2/pellets3/
+# pellets4/wokdmg3/wokdmg4/wokkeep 等）后立此闸为据。
+if [ -f scripts/upgrade_audit.py ]; then
+  PY7=$(command -v python3.11 || command -v python3)
+  if ! "$PY7" scripts/upgrade_audit.py; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/upgrade_audit.py，跳过"
+fi
+
+echo ""
+echo "=== 2.11 零道具死亡波不变式（硬失败：零道具玩家必须 6~8 波阵亡）==="
+# 用户设计：零道具（只开局手枪+冲锋枪、不买任何东西）必须在一个"硬门槛"波阵亡，
+# 否则就没有购买压力。这是逼氪/逼构筑的核心不变式。
+# ⚠️ 历史教训（2026-10-16）：这个指标此前没有任何闸门守着，密度提升
+#   （max_alive 36→38 等）后它从文档记录的 6 静默漂到 3，没人发现。
+#   立此闸为据：任何改动若把零道具死亡波推到 [6,8] 之外，这里立刻红。
+# 判定：以普通技术（skill=0.5）跑 none 策略，死亡波落在 [6,8] 闭区间才算过。
+#   none 策略不进商店，结果对随机种子不敏感（确定性），seed=1 即可。
+if [ -f scripts/balance_model.py ]; then
+  PY8=$(command -v python3.11 || command -v python3)
+  dw=$("$PY8" - "$ROOT" <<'PY'
+import os, sys
+sys.path.insert(0, os.path.join(sys.argv[1], 'scripts'))
+import balance_model as bm
+r = bm.run('none', 0.5, max_wave=40, seed=1)
+print(r['death'] if r['death'] else 40)
+PY
+)
+  if [ -n "$dw" ] && [ "$dw" -ge 6 ] && [ "$dw" -le 8 ]; then
+    echo "  ✅ 零道具死亡波 = 第 $dw 波（∈[6,8]，硬门槛逼购买）"
+  else
+    echo "  ❌ 零道具死亡波 = ${dw:-?} 波（必须落在 [6,8]，否则购买压力消失）"
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/balance_model.py，跳过"
 fi
 
 echo ""

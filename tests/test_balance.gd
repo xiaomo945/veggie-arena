@@ -145,8 +145,12 @@ func run(data) -> Dictionary:
 						missing.append("upgrade." + k + "." + f)
 		else:
 			# 多属性道具的每一条也必须落在属性目录里，不然买了没效果
+			# （消费类除外：heal_now 是"即时回血"一次性效果，不进目录累加，
+			#   由 Inventory._add_one 与 GameState.buy_upgrade 的 match 分支专门
+			#   处理 —— 和扁平的 heal 卡同一路径。登记进目录反而会让它以永久
+			#   属性的身份出现在属性面板，语义不对，所以这里白名单放行。）
 			for sk in multi_stats:
-				if not Inventory.is_known_stat(str(sk)):
+				if str(sk) != "heal_now" and not Inventory.is_known_stat(str(sk)):
 					missing.append("upgrade." + k + ".stats." + str(sk))
 	chk(missing.is_empty(), "三张数据表字段完整" + ("" if missing.is_empty() else " 缺: " + str(missing)))
 

@@ -1,6 +1,6 @@
 extends Control
 
-# HUD 右下角技能簇 + 手动攻击键。
+# HUD 右下角技能簇 + 手动攻击键（王者荣耀式布局）。
 #
 # 布局（王者荣耀式环绕，全部写死，绝不漂移）：
 #   · 圆心 PIVOT 放"手动攻击键"——释放最常用的那个技能（skills.json 的 primary）
@@ -19,9 +19,9 @@ extends Control
 const SkillButtonScript := preload("res://ui/HUD/SkillButton.gd")
 const SkillSlots := preload("res://core/SkillSlots.gd")
 
-# 圆心 / 半径 / 扇面角度 / 冲刺位 全部走 HudLayout（竖屏 540x900 / 横屏 960x540 双布局）。
+# 圆心 / 弧半径 / 环绕角度 / 冲刺位 全部走 HudLayout（竖屏 540x900 / 横屏 960x540 双布局）。
 # 按钮是"轴对齐方块"，斜向排布时不能只看圆心距 —— 必须让相邻两块的 |dx| 或 |dy|
-# 大于两者半径之和，否则边角会叠、一根手指落进两个按钮被重复触发。
+# 大于两者半宽之和，否则边角会叠、一根手指落进两个按钮被重复触发（守卫见 test_button_layout.gd）。
 
 var _btns: Array = []          # [{type, node}]（全部按钮，供 slot_rect 取矩形）
 var _skill_btns: Array = []    # 只装技能按钮（槽位变化时整体重建的那一批）
@@ -117,6 +117,10 @@ func _rebuild_skills(ids: Array) -> void:
 func _add(s: Dictionary) -> void:
 	var b = SkillButtonScript.new()
 	b.btn_type = str(s.get("type", ""))
+	# 槽位带 id（SkillSystem 广播的：角色本命技 + 武器/道具赠送技）就按上：
+	# 不带的（wok/attack/dash 固定槽）留空，SkillButton 自己回落本命技。
+	# ⚠️ 这行丢过：合并时被删，导致多个技能槽全部回落成同一个本命技，
+	#    赠送技按钮放出来却放本命的招（tests/test_synergy.gd 的"不写死 id"就是防这个）。
 	var sid: String = str(s.get("id", ""))
 	if sid != "":
 		b.skill_id = sid

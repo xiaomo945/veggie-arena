@@ -1,9 +1,8 @@
 extends CanvasLayer
 
-# HUD：血条、波次进度、金币、击杀、武器槽、横幅、底部按钮。
+# HUD：血条、波次进度、金币、击杀、武器槽、横幅、底部按钮。竖屏 540x900。
 # 【架构】本文件是编排器：订阅 Events → 分发给子组件 → 驱动 tick，不含控件构造细节；
-#   HudTop / HudBanners / HudButtons / HudSynergy 各自管控件与安全区平移，互不认识
-#   （历史教训：曾长到 389 行，拆组件后单文件才不再随功能膨胀）。竖屏 540x900。
+#   HudTop / HudBanners / HudButtons / HudSynergy 各自管控件与安全区平移，互不认识（曾长到 389 行，拆组件后才不随功能膨胀）。
 
 const HudTopScript := preload("res://ui/HUD/HudTop.gd")
 const HudBannersScript := preload("res://ui/HUD/HudBanners.gd")
@@ -16,6 +15,9 @@ const Weapon := preload("res://core/Weapon.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
 const Stats := preload("res://core/Stats.gd")
 
+# 竖屏安全区：顶部内容下移避让刘海/状态栏，底部按钮上移避让手势条（值都在 HudLayout，
+# 相机要按"HUD 到底占多高"让位 —— 两处各写一份必然漂移，真踩过：角色被 HUD 盖死）。
+# ⚠️ 底部平移由 HudButtons.relayout() 自重放并自刷共享矩形，攻击键与摇杆底盘才永远同一水平线。
 const COMBO_WINDOW := 2.5   # 连击有效窗口（秒）
 const COMBO_MIN := 2        # 连击 >=2 才显示
 
@@ -95,8 +97,7 @@ func _ready() -> void:
 	# 横竖屏翻转 / 窗口缩放：ScreenMode 广播后各子组件按新模式自排
 	ScreenMode.layout_changed.connect(_on_layout_changed)
 
-# 布局模式翻转（横↔竖）：各子组件 relayout 内部已自 reset + 自重放安全区 +
-# 自刷共享矩形（HudTop/HudButtons 末尾；HudBanners 自接信号），HUD 只补挪 FPS 位。
+# 布局模式翻转（横↔竖）：各子组件 relayout 内部已自 reset + 自重放安全区 + 自刷共享矩形，HUD 只补挪 FPS 位。
 func _on_layout_changed(_land: bool) -> void:
 	if _top != null and _top.has_method("relayout"):
 		_top.relayout()
@@ -289,12 +290,11 @@ func _on_killed(_type: String, _pos: Vector2) -> void:
 	_combo += 1
 	_combo_t = COMBO_WINDOW
 
-# 竖屏安全区 / 异屏适配：顶部内容整体下移 TOP 避让刘海，底部按钮上移 BOTTOM 避让
-# 手势条；平移后同步刷新共享给 Joystick 的避让区（按钮挪走了摇杆不能还守旧坐标）。
+# 竖屏安全区 / 异屏适配：顶部内容整体下移 TOP 避让刘海。
+# ⚠️ _buttons 不在这里平移：HudButtons._ready→relayout() 已自重放 bottom_shift，
+# 并自刷 wok_toss_rect/dash_rect。这里再放 = 双重平移（攻击键/技能环整体上移
+# 34px，轮盘与攻击键不再同一水平线）—— kb_shot 布局断言抓到过这个回归。
 func _apply_safe_area() -> void:
 	_top.apply_safe_area(HudLayout.safe_top())
 	_banners.apply_safe_area(HudLayout.safe_top())
-	# _buttons 不在这里平移：HudButtons._ready→relayout() 已自重放 bottom_shift，
-	# 并自刷 wok_toss_rect/dash_rect。这里再放 = 双重平移（攻击键/技能环整体上移
-	# 34px，轮盘与攻击键不再同一水平线）—— kb_shot 布局断言抓到过这个回归。
 	GameState.pause_rect = _top.pause_rect()

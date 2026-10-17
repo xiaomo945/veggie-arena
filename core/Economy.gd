@@ -13,10 +13,16 @@ static func wave_bonus(wave: int, cfg: Dictionary) -> int:
 	return base + wave * per
 
 # 刷新第 n 次的价格（越刷越贵）
-static func reroll_cost(times: int, cfg: Dictionary) -> int:
+# ⚠️ wave/inflation_pct 与 price_of 同口径：刷新也是金币出口，必须一起吃波次通胀，
+# 否则后期道具价 ×6.7（0.3/波）而刷新还是原价 3 金 —— "金币必须有处可花"的通胀
+# 被刷新这条路整个漏掉。默认 0 = 不通胀（旧调用与单测零改动）。
+static func reroll_cost(times: int, cfg: Dictionary, wave: int = 0, inflation_pct: float = 0.0) -> int:
 	var base := int(cfg.get("reroll_base", 3))
 	var step := int(cfg.get("reroll_step", 2))
-	return base + times * step
+	var p := float(base + times * step)
+	if inflation_pct > 0.0 and wave > 1:
+		p *= (1.0 + float(wave - 1) * inflation_pct)
+	return maxi(1, int(round(p)))
 
 static func can_buy(gold: int, cost: int) -> bool:
 	return gold >= cost
@@ -147,9 +153,29 @@ static func _weighted_pick(items: Array, rng: RandomNumberGenerator) -> Variant:
 			break
 	return items[pick]
 
+# 玩家已投过资的属性线（线名 = 单属性卡的 stat 字段），返回 {线名: true}。
+# 为什么按 key 精确判而不是读属性总值：角色自带基础属性（commando 基础暴击
+# 0.08），读总值会把"角色天生会暴击"误判成"买了暴击卡"，pity 从第 1 波就误触发。
+static func invested_lines(upgrade_defs: Dictionary, owned_upgrades: Dictionary) -> Dictionary:
+	var lines := {}
+	if owned_upgrades.is_empty():
+		return lines
+	for key in owned_upgrades:
+		if int(owned_upgrades.get(str(key), 0)) <= 0:
+			continue
+		var u: Dictionary = upgrade_defs.get(str(key), {})
+		if u.is_empty() or u.get("stats") is Dictionary:
+			continue          # 多属性卡是独立原型，不属于任何单属性线
+		var s := str(u.get("stat", ""))
+		if not s.is_empty():
+			lines[s] = true
+	return lines
+
 # 构造可用商品池：武器（槽位未满，或可合成）+ 全部强化
 # weapons 里每项需含 "key" 与 "lv"
 # unlocked_weapons: 已解锁的武器 key 列表。传空数组表示"全部可买"（默认，向后兼容）。
+# owned_upgrades: 已购强化 key -> 次数（GameState.upgrades 原样）。用来做属性线
+#   续抽（见 invested_lines）；传空 = 不续抽（旧口径）。
 # rarity -> 抽取权重。稀有度越高越难出现，出现时才是"要不要为它改 build"的抉择。
 const RARITY_WEIGHT := {1: 6.0, 2: 3.0, 3: 1.0}
 # 武器与道具的相对权重：武器要凑满 6 个槽位，不能让 48 个道具把它淹掉
@@ -171,7 +197,7 @@ static func price_of(base_cost: int, discount_pct: float, wave: int = 0, inflati
 		p *= (1.0 - clampf(discount_pct, 0.0, 0.9))
 	return maxi(1, int(round(p)))
 
-static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Dictionary, max_slot: int, max_lv: int, unlocked_weapons: Array = [], discount_pct: float = 0.0, wave: int = 0, inflation_pct: float = 0.0) -> Array:
+static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Dictionary, max_slot: int, max_lv: int, unlocked_weapons: Array = [], discount_pct: float = 0.0, wave: int = 0, inflation_pct: float = 0.0, owned_upgrades: Dictionary = {}) -> Array:
 	var pool: Array = []
 	var tiers := ShopTiers.new()
 	var top_tier := tiers.max_tier_for_wave(wave, max_lv)
@@ -201,6 +227,10 @@ static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Di
 			w["base_cost"] = tier_base
 			w["cost"] = price_of(tier_base, discount_pct, wave, inflation_pct)
 			pool.append(w)
+	# 属性线续抽：已投过资的线，未持有的卡权重 ×chain_pity_mult。
+	# 已持有的卡不加成（重买走原速率，防止无限抽同一张）。
+	var lines := invested_lines(upgrade_defs, owned_upgrades)
+	var pity := tiers.chain_pity_mult()
 	for key in upgrade_defs.keys():
 		var u: Dictionary = upgrade_defs[key].duplicate()
 		var rar := int(u.get("rarity", 1))
@@ -209,9 +239,17 @@ static func build_pool(weapons: Array, weapon_defs: Dictionary, upgrade_defs: Di
 			continue
 		u["key"] = key
 		u["kind"] = "upgrade"
+		var w: float = RARITY_WEIGHT.get(rar, 3.0)
 		# 备用道具不参与正常抽卡（roll_offers 会单独挑出来兜底），权重压到接近 0：
 		# 万一哪天被并进主池，也不会污染正常出货率。
-		u["weight"] = SPARE_WEIGHT if bool(u.get("spare", false)) else RARITY_WEIGHT.get(rar, 3.0)
+		if bool(u.get("spare", false)):
+			w = SPARE_WEIGHT
+		# 属性线续抽：已投过资的线，未持有的卡权重 ×chain_pity_mult。
+		# 已持有的卡不加成（重买走原速率，防止无限抽同一张）。
+		elif pity > 1.0 and u.get("stats") == null:
+			if lines.has(str(u.get("stat", ""))) and int(owned_upgrades.get(key, 0)) <= 0:
+				w *= pity
+		u["weight"] = w
 		u["cost"] = price_of(int(u.get("cost", 0)), discount_pct, wave, inflation_pct)
 		pool.append(u)
 	return pool

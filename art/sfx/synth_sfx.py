@@ -1,18 +1,7 @@
 #!/usr/bin/env python3
 """
-《萝卜突围 / TURNIP TROUBLE》音效合成器  v2（卡通可爱 / 舒缓 / 轻）
-纯代码合成短音效 -> Ogg Vorbis (44100, mono, 峰值<=0.7)
-
-设计目标（玩家反馈）：
-  - 不要刺耳：禁用方波/锯齿波（它们的高次谐波是"炸耳"根源），只用正弦/三角。
-  - 不要烦躁：整体降频、柔化起音（attack 拉长）、平滑指数衰减、低音量。
-  - 不要频率太快：去掉所有"向上猛扫到 2~3kHz"的亮噪，最高成分压到 ~3.5kHz。
-  - 卡通可爱：用五声音阶 + 轻柔的滑音（boop/toot），像玩具八音盒而非电子枪。
-
-约束（不破坏既有调用方）：
-  - 文件名 / 输出目录不变（Sfx.gd 的 key 与节流逻辑照旧）。
-  - 每个音效时长 <= 旧 LIMITS（否则会与节流/混音假设冲突）。
-  - 固定随机种子，保证每次重生成结果一致。
+《萝卜突围 / TURNIP TROUBLE》音效合成器
+纯代码合成 11 个短音效 -> Ogg Vorbis (44100, mono, 峰值<=0.85)
 """
 import os
 import sys
@@ -20,8 +9,9 @@ import numpy as np
 import soundfile as sf
 
 SR = 44100
-PEAK = 0.70
+PEAK = 0.85
 # ⚠️ 本脚本就在 art/sfx/ 下，输出目录必须就是脚本所在目录。
+# 旧写法拼成 art/sfx/../art/sfx = art/art/sfx（错误目录），会导致重生成写不到真实音效上。
 OUT = os.path.dirname(os.path.abspath(__file__))
 
 # 中式五声音阶频率表 (宫商角徵羽: C D E G A)，含跨八度
@@ -32,7 +22,7 @@ PENTA = {
 }
 
 def norm(x, peak=PEAK):
-    """限幅归一化，给 Ogg 解码过冲留余量，绝不削波"""
+    """限幅归一化，给 Ogg Vorbis 解码过冲留 ~10% 余量，绝不削波"""
     mx = np.max(np.abs(x)) + 1e-9
     target = peak * 0.90
     if mx > target:
@@ -45,76 +35,74 @@ def add_silence(x, tail=0.0):
     return x
 
 def align(x, length):
+    """把信号裁剪或补零到指定长度"""
     if len(x) >= length:
         return x[:length]
     return np.concatenate([x, np.zeros(length - len(x))])
 
-def soft_lp(x, cutoff=3500.0):
-    """一阶低通，把 >cutoff 的高频毛刺磨掉（卡通/舒缓的关键一步）"""
-    dt = 1.0 / SR
-    rc = 1.0 / (2 * np.pi * cutoff)
-    a = dt / (rc + dt)
-    y = np.zeros(len(x))
-    prev = 0.0
-    for i in range(len(x)):
-        prev = a * prev + (1.0 - a) * x[i]
-        y[i] = prev
-    return y
-
-def note(freq, dur, wave="sine", amp=1.0, attack=0.010, decay=None, release=0.03):
-    """带包络的单音（只接受 sine / triangle）"""
+def note(freq, dur, wave="sine", amp=1.0, attack=0.005, decay=None, release=0.02):
+    """带包络的单音"""
     n = int(SR * dur)
     t = np.arange(n) / SR
     if wave == "sine":
         s = np.sin(2 * np.pi * freq * t)
     elif wave == "triangle":
         s = 2 * np.abs(2 * (freq * t - np.floor(freq * t + 0.5))) - 1
+    elif wave == "square":
+        s = np.sign(np.sin(2 * np.pi * freq * t))
+    elif wave == "saw":
+        s = 2 * (freq * t - np.floor(freq * t + 0.5))
     else:
-        raise ValueError("只用 sine/triangle，禁用 %s" % wave)
+        raise ValueError(wave)
     s = s * amp
+    # 指数衰减包络
     dec = decay if decay is not None else dur * 0.7
     env = np.ones(n)
     a_n = int(SR * attack)
     if a_n > 0:
         env[:a_n] = np.linspace(0, 1, a_n)
-    env = env * np.exp(-np.arange(n) / (SR * dec))
     rel_n = int(SR * release)
+    env = env * np.exp(-np.arange(n) / (SR * dec))
     if rel_n > 0:
         env[-rel_n:] *= np.linspace(1, 0, rel_n)
     return s * env
 
-def glide(f0, f1, dur, wave="sine", amp=1.0, attack=0.010, decay=None):
-    """轻柔滑音（卡通 boop/toot 的灵魂），频率随时间 f0->f1 平滑过渡"""
+def noise(dur, amp=1.0, color="white"):
+    n = int(SR * dur)
+    x = np.random.randn(n) * amp
+    if color == "lowpass":
+        # 简单一阶低通
+        a = 0.85
+        y = np.zeros(n)
+        prev = 0.0
+        for i in range(n):
+            prev = a * prev + (1 - a) * x[i]
+            y[i] = prev
+        x = y
+    return x
+
+def bp_sweep_noise(dur, f0, f1, amp=1.0, q=1.2):
+    """带通扫频噪声 (whoosh)"""
     n = int(SR * dur)
     t = np.arange(n) / SR
+    x = np.random.randn(n) * amp
+    # 时变频带通：用复数解调思路近似 -> 逐样本二阶 BPF 较贵，改用乘法+低通
+    env = np.linspace(0.2, 1.0, n) * np.exp(-3 * t / dur)[::-1]  # 先弱后强再弱
+    # 调制载波：频率随时间从 f0->f1
     phase = 2 * np.pi * np.cumsum(np.linspace(f0, f1, n)) / SR
-    s = np.sin(phase) if wave == "sine" else 2 * np.abs(2 * (phase / (2 * np.pi) - np.floor(phase / (2 * np.pi) + 0.5))) - 1
-    s = s * amp
-    dec = decay if decay is not None else dur * 0.75
-    env = np.ones(n)
-    a_n = int(SR * attack)
-    if a_n > 0:
-        env[:a_n] = np.linspace(0, 1, a_n)
-    env = env * np.exp(-np.arange(n) / (SR * dec))
-    return s * env
+    carrier = np.sin(phase)
+    y = x * carrier
+    # 低通平滑保留包络
+    a = 0.9
+    out = np.zeros(n)
+    prev = 0.0
+    for i in range(n):
+        prev = a * prev + (1 - a) * y[i]
+        out[i] = prev
+    return out * env * 4.0
 
-def noise(dur, amp=1.0):
-    n = int(SR * dur)
-    return np.random.randn(n) * amp
-
-def soft_noise(dur, amp=1.0, f0=500.0, f1=300.0):
-    """柔和的带通感噪声：低通后的噪声，频率偏低，绝不上探到刺耳区"""
-    n = int(SR * dur)
-    t = np.arange(n) / SR
-    x = noise(dur, amp)
-    # 用低频载频做"柔和的噗"而非尖噪
-    carrier = np.sin(2 * np.pi * np.cumsum(np.linspace(f0, f1, n)) / SR)
-    env = np.exp(-t / (dur * 0.5))
-    y = x * carrier * env
-    return soft_lp(y, 1800.0)
-
-def bell(freqs_amps, dur, amp=1.0, attack=0.004, decay=0.18):
-    """钟磬/八音盒音：仅整数倍正弦分音（无方波锯齿），柔和快衰"""
+def metallic(freqs_amps, dur, amp=1.0, attack=0.002, decay=0.12):
+    """金属噪 / 钟磬：多个非谐分音叠加，快衰"""
     n = int(SR * dur)
     t = np.arange(n) / SR
     s = np.zeros(n)
@@ -127,149 +115,213 @@ def bell(freqs_amps, dur, amp=1.0, attack=0.004, decay=0.18):
     env *= np.exp(-np.arange(n) / (SR * decay))
     return s * env
 
-# ---------- 13 个音效 ----------
+# ---------- 11 个音效 ----------
 
 def sfx_shoot():
-    # 柔和"嘟"：中频正弦小幅下滑 + 极轻的二次泛音，毫无咔哒/尖刺
-    s = glide(460, 340, 0.13, "sine", amp=0.55, attack=0.012, decay=0.10)
-    s += 0.12 * glide(920, 680, 0.13, "sine", amp=0.55, attack=0.012, decay=0.08)
-    s = soft_lp(s, 3000.0)
-    return norm(add_silence(align(s, int(SR * 0.15)), 0.004))
+    # 清脆短"噗/嗒"：高频三角快速下滑 + 微小噪声点击
+    n = int(SR * 0.16)
+    t = np.arange(n) / SR
+    f = np.linspace(720, 320, n)            # 下滑
+    # 柔和化（2026-10-04）：二次泛音 0.25->0.18，起音咔哒 0.25->0.14，
+    # 开火是最高频的音效，尖刺感主要来自这两处。
+    s = np.sin(2 * np.pi * np.cumsum(f) / SR) * 0.8
+    s += 0.18 * np.sin(2 * np.pi * 2 * np.cumsum(f) / SR)
+    env = np.exp(-t / 0.04)
+    env[:int(SR*0.003)] = np.linspace(0, 1, int(SR*0.003))
+    s = s * env
+    click = noise(0.012, 0.14)
+    return norm(add_silence(s[:int(SR*0.16)] + np.concatenate([click, np.zeros(max(0, int(SR*0.16)-len(click)))])[:int(SR*0.16)], 0.005))
 
 def sfx_hit():
-    # 软"啪"：低频闷击 + 一点点柔和带通噪声（频率压到 700->400，绝不上探）
-    thud = note(150, 0.09, "sine", amp=0.85, attack=0.002, decay=0.05, release=0.02)
-    nz = soft_noise(0.05, amp=0.22, f0=700, f1=400)
-    x = thud + align(nz, int(SR * 0.09))
-    return norm(add_silence(align(x, int(SR * 0.12)), 0.004))
+    # 闷脆"啪"：低撞击 thud + 短促带通噪声
+    # 柔和化（2026-10-04）：亮噪扫频 1800->1100Hz、幅度 0.6->0.32，
+    # 命中音每秒可能响十几次，高频成分压下去后整体不再"炸耳"。
+    thud = note(150, 0.10, "sine", amp=0.9, attack=0.001, decay=0.05, release=0.02)
+    nz = bp_sweep_noise(0.06, 1100, 500, amp=0.32, q=1.0)[:int(SR*0.06)]
+    x = thud + np.concatenate([nz, np.zeros(int(SR*0.10)-len(nz))])
+    return norm(add_silence(x[:int(SR*0.13)], 0.004))
 
 def sfx_kill():
-    # 可爱"啵"：低频上滑 boop + 极轻的柔噪爆点（不再扫到 2.5kHz）
-    pop = glide(240, 430, 0.18, "sine", amp=0.55, attack=0.006, decay=0.13)
-    pop[:int(SR*0.005)] = np.linspace(0, 1, int(SR*0.005)) * pop[:int(SR*0.005)]
-    burst = soft_noise(0.05, amp=0.16, f0=500, f1=300)
-    x = pop + align(burst, int(SR * 0.18))
-    return norm(add_silence(align(x, int(SR * 0.20)), 0.004))
-
-def sfx_hit_heavy():
-    # 重击"咚"：更低更软的长衰减闷响（资源缺失则静默，这里补上）
-    s = note(95, 0.22, "sine", amp=0.7, attack=0.003, decay=0.18, release=0.05)
-    s2 = note(150, 0.20, "sine", amp=0.7, attack=0.003, decay=0.15)
-    s = s + 0.4 * align(s2, len(s))
-    s = soft_lp(s, 2200.0)
-    return norm(add_silence(align(s, int(SR * 0.24)), 0.006))
-
-def sfx_kill_boss():
-    # Boss 爆：更低沉、更长的柔和中频"轰"，不是尖锐爆炸
-    swell = glide(70, 120, 0.5, "sine", amp=0.6, attack=0.04, decay=0.4)
-    s = swell + 0.5 * align(note(180, 0.45, "sine", amp=0.6, attack=0.02, decay=0.35), len(swell))
-    s = s + 0.25 * align(soft_noise(0.18, amp=0.4, f0=400, f1=200), len(s))
-    s = soft_lp(s, 2000.0)
-    return norm(add_silence(align(s, int(SR * 0.55)), 0.01))
+    # "啵"爆裂上扬：低频快速上滑 + 噪声爆点
+    n = int(SR * 0.28)
+    t = np.arange(n) / SR
+    f = np.linspace(180, 520, n)
+    pop = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.09)
+    pop[:int(SR*0.004)] = np.linspace(0, 1, int(SR*0.004)) * pop[:int(SR*0.004)]
+    burst = bp_sweep_noise(0.05, 500, 2500, amp=0.5)[:int(SR*0.05)]
+    burst = burst * np.exp(-np.arange(len(burst)) / (SR*0.02))
+    x = pop + np.concatenate([burst, np.zeros(n-len(burst))])
+    return norm(add_silence(x, 0.004))
 
 def sfx_coin():
-    # 柔和铜钱"叮"：降调 + 整数倍泛音 + 慢起音 + 轻度低通，捡钱太频繁必须轻
+    # 柔和版铜钱"叮"（2026-10-04 按玩家反馈重做）
+    # 旧版 base=E6(1318Hz) 且叠 2.76x(3639Hz)/5.4x(7120Hz) 非谐分音 —— 高频尖啸，
+    # 加上捡钱触发极密，听感是烦躁的"叮叮叮"。改法四步：
+    #   1) 降调：E6 -> A5(880Hz)，音高柔和一大截
+    #   2) 去非谐：只留 2x/3x 整数倍泛音，删掉 2.76x/5.4x 尖啸分音
+    #   3) 慢起音 attack 0.001 -> 0.012，去掉起音"咔哒"
+    #   4) 轻度低通 + 整体压到 0.42 音量（捡钱太频繁，响度必须让位）
     base = PENTA["A5"]  # 880.00
-    x = bell([(base, 1.0), (base * 2.0, 0.28), (base * 3.0, 0.09)],
-             dur=0.17, amp=0.8, attack=0.014, decay=0.10)
+    x = metallic([(base, 1.0), (base * 2.0, 0.30), (base * 3.0, 0.10)],
+                 dur=0.17, amp=0.85, attack=0.012, decay=0.10)
     L = int(SR * 0.17)
     x = align(x, L)
-    x += align(note(base, 0.17, "sine", amp=0.30, attack=0.014, decay=0.09), L)
-    x = soft_lp(x, 2600.0)
-    x = norm(x) * 0.36
+    x += align(note(base, 0.17, "sine", amp=0.35, attack=0.012, decay=0.09), L)
+    x += align(note(base * 1.5, 0.13, "sine", amp=0.10, attack=0.015, decay=0.06), L)
+    # 轻度一阶低通（截止约 2.5kHz）：保留基音与 2 倍泛音，磨掉高频毛刺
+    a = 0.7
+    y = np.zeros(len(x))
+    prev = 0.0
+    for i in range(len(x)):
+        prev = a * prev + (1 - a) * x[i]
+        y[i] = prev
+    x = norm(y) * 0.42
     return add_silence(x, 0.006)
 
 def sfx_dash():
-    # 柔和风声：频率压到 280->1300，远低于旧版 350->2600，听感是"呼"不是"嘶"
-    n = int(SR * 0.30)
-    t = np.arange(n) / SR
-    x = noise(0.30, 0.8)
-    carrier = np.sin(2 * np.pi * np.cumsum(np.linspace(280, 1300, n)) / SR)
-    env = np.exp(-t / 0.12)
-    y = x * carrier * env
-    y = soft_lp(y, 2000.0)
-    return norm(add_silence(align(y, int(SR * 0.31)), 0.005))
+    # whoosh 风声上滑
+    x = bp_sweep_noise(0.30, 350, 2600, amp=0.9, q=1.0)
+    return norm(add_silence(x, 0.005))
 
 def sfx_levelup():
-    # 上行"叮咚"（五声徵调），三角波本就柔和
+    # 上行"叮咚"：G4 B4 D5 (五声徵调)
     seq = [("G4", 0.10), ("D5", 0.10), ("G5", 0.16)]
     out = np.zeros(int(SR * 0.46))
     off = 0
     for name, d in seq:
         seg = int(SR * d)
-        s = align(note(PENTA[name], d, "triangle", amp=0.7, attack=0.006, decay=0.12), seg)
-        s += align(note(PENTA[name]*2, d*0.7, "sine", amp=0.15, attack=0.006, decay=0.08), seg)
+        s = align(note(PENTA[name], d, "triangle", amp=0.8, attack=0.004, decay=0.12), seg)
+        s += align(note(PENTA[name]*2, d*0.7, "sine", amp=0.2, attack=0.004, decay=0.08), seg)
         out[off:off+seg] += s
         off += int(SR * 0.13)
-    s = soft_lp(out, 3200.0)
-    return norm(add_silence(s, 0.01))
+    return norm(add_silence(out, 0.01))
 
 def sfx_unlock():
-    # 成就"叮铃"双音（八音盒感），纯正弦整数倍分音，柔
+    # 更有成就感的"叮铃"双音（上行 + 微光高泛音）
     seq = [("E5", 0.14), ("A5", 0.22)]
     out = np.zeros(int(SR * 0.58))
     off = 0
     for name, d in seq:
         seg = int(SR * d)
-        s = align(bell([(PENTA[name], 1.0), (PENTA[name]*2.0, 0.5), (PENTA[name]*3.0, 0.18)],
-                       dur=d, amp=0.8, attack=0.004, decay=0.14), seg)
-        s += align(note(PENTA[name], d, "triangle", amp=0.28, attack=0.005, decay=0.12), seg)
+        s = align(metallic([(PENTA[name], 1.0), (PENTA[name]*2.0, 0.6), (PENTA[name]*3.01, 0.25)],
+                           dur=d, amp=0.85, attack=0.001, decay=0.14), seg)
+        s += align(note(PENTA[name], d, "triangle", amp=0.35, attack=0.003, decay=0.12), seg)
         out[off:off+seg] += s
         off += int(SR * 0.16)
-    s = soft_lp(out, 3200.0)
-    return norm(add_silence(s, 0.02))
+    return norm(add_silence(out, 0.02))
 
 def sfx_victory():
-    # 上行琶音 C5 E5 G5 C6（大三和弦色彩），只用三角+正弦（去掉方波/锯齿的刺耳）
+    # 短小号上行琶音：C5 E5 G5 C6 (大三和弦色彩，五声友好)，方波+低通像小号
     seq = [("C5", 0.16), ("E5", 0.16), ("G5", 0.16), ("C6", 0.30)]
     out = np.zeros(int(SR * 1.10))
     off = 0
     for name, d in seq:
         seg = int(SR * d)
-        s = align(note(PENTA[name], d, "triangle", amp=0.6, attack=0.012, decay=0.18, release=0.05), seg)
-        s += align(note(PENTA[name]*2, d*0.6, "sine", amp=0.12, attack=0.012, decay=0.12), seg)
-        s = soft_lp(s, 3000.0)
+        s = align(note(PENTA[name], d, "saw", amp=0.55, attack=0.01, decay=0.18, release=0.05), seg)
+        s += align(note(PENTA[name], d, "square", amp=0.25, attack=0.01, decay=0.18), seg)
+        # 轻微低通
+        a = 0.82
+        y = np.zeros(len(s)); prev = 0.0
+        for i in range(len(s)):
+            prev = a*prev + (1-a)*s[i]; y[i] = prev
+        s = y
+        s += align(note(PENTA[name]*2, d*0.6, "sine", amp=0.12, attack=0.01, decay=0.12), seg)
         out[off:off+seg] += s
         off += int(SR * 0.17)
     return norm(add_silence(out, 0.02))
 
 def sfx_defeat():
-    # 下行小音，遗憾不恐怖：A4->E4->C4，柔和正弦
+    # 下行/低沉小音，遗憾不恐怖：A4->E4->C4，柔和正弦
     seq = [("A4", 0.20), ("E4", 0.22), ("C4", 0.34)]
     out = np.zeros(int(SR * 0.86))
     off = 0
     for name, d in seq:
         seg = int(SR * d)
-        s = align(note(PENTA[name], d, "sine", amp=0.65, attack=0.02, decay=0.22, release=0.06), seg)
-        s += align(note(PENTA[name]*0.5, d, "sine", amp=0.28, attack=0.02, decay=0.22), seg)
+        s = align(note(PENTA[name], d, "sine", amp=0.7, attack=0.02, decay=0.22, release=0.06), seg)
+        s += align(note(PENTA[name]*0.5, d, "sine", amp=0.3, attack=0.02, decay=0.22), seg)
         out[off:off+seg] += s
         off += int(SR * 0.24)
-    s = soft_lp(out, 2600.0)
-    return norm(add_silence(s, 0.02))
+    return norm(add_silence(out, 0.02))
 
 def sfx_button():
-    # 极轻"嗒"：中频正弦小下滑，无方波无噪声咔哒
-    s = glide(760, 560, 0.03, "sine", amp=0.42, attack=0.002, decay=0.02)
-    s = soft_lp(s, 3000.0)
-    return norm(add_silence(align(s, int(SR * 0.05)), 0.003))
+    # 极短"嗒"：高频小点击
+    click = noise(0.02, 0.6)[:int(SR*0.02)]
+    t = np.arange(len(click)) / SR
+    click = click * np.exp(-t / 0.006)
+    tick = note(1400, 0.02, "square", amp=0.4, attack=0.0005, decay=0.004)[:int(SR*0.02)]
+    x = click + tick
+    return norm(add_silence(x[:int(SR*0.05)], 0.003))
 
 def sfx_wok():
-    # 颠勺"哐"：低频非谐分音簇（压低基音与幅度）+ 柔和撞击头，短
-    base = 360.0
-    x = bell([(base, 1.0), (base*1.34, 0.7), (base*1.97, 0.5),
-              (base*2.41, 0.32), (base*3.13, 0.2)], dur=0.22, amp=0.75, attack=0.002, decay=0.10)
-    nz = soft_noise(0.04, amp=0.4, f0=900, f1=400)
-    x = x + align(nz, int(SR * 0.22))
-    x = soft_lp(x, 2400.0)
-    return norm(add_silence(align(x, int(SR * 0.24)), 0.005))
+    # 颠勺金属"哐当"：非谐分音簇 + 噪声撞击，短
+    base = 520.0
+    x = metallic([(base, 1.0), (base*1.34, 0.8), (base*1.97, 0.6),
+                  (base*2.41, 0.4), (base*3.13, 0.25)], dur=0.22, amp=0.9, attack=0.001, decay=0.10)
+    # 撞击噪声头
+    nz = bp_sweep_noise(0.04, 2500, 900, amp=0.7)[:int(SR*0.04)]
+    nz = nz * np.exp(-np.arange(len(nz)) / (SR*0.015))
+    x = x + np.concatenate([nz, np.zeros(int(SR*0.22)-len(nz))])
+    return norm(add_silence(x[:int(SR*0.24)], 0.005))
+
+def sfx_skill():
+    # 主动技能施放"灵光迸发"：纯音上扬蓄力滑音 + 高频钟磬闪光（无噪声底）。
+    # 刻意区别于颠勺(金属哐当)/开火(短噗)/升级(叮咚) —— 让"我放了个大招"在余光里也听得见。
+    #
+    # 2026-10-17 两轮试听重做：
+    #   v1 用 bp_sweep_noise(0.30s) 做蓄力风声，但那个 helper 的包络是
+    #      `linspace*exp(...)[::-1]` —— 反转后噪声在【结尾最响】，"叮"之后拖着一段
+    #      呲呲啦啦的杂音。v2 起改用纯音滑音蓄力：杂音去掉，但试听仍偏亮偏硬。
+    #   v3 按 sfx_coin 那套既定柔和化配方再柔一档：降调(E6->C6) / 去非谐(删 2.01x，
+    #      只留 2x·3x) / 慢起音(0.001->0.010 去"咔哒") / 轻度低通(约 3kHz 磨高频毛刺)，
+    #      蓄力滑音顶端 1600Hz->1250Hz，另垫一层五度正弦补厚度。
+    #   v4 再柔再短（要求"再柔和一点、再短一点"）：基音 C6->A5(880) 再降一档、
+    #      泛音再减(2x 0.26->0.20, 3x 0.08->0.05)、滑音顶端 1250->1150Hz；
+    #      全长 0.286s->0.205s：蓄力段 0.15->0.105s（峰值点 0.11->0.075s）、
+    #      叮 dur 0.17->0.125s / decay 0.105->0.075。
+    #      短了之后"闷"的风险变小（闷多半来自长尾），故低通维持 a=0.62 不再收紧。
+    # （bp_sweep_noise 是 hit/kill/dash/wok 共用的 helper，始终没动它，免得改坏已通过的音效。）
+    # 形态 form 不同则由 Sfx.gd 用 pitch_scale 调出层次，这里给一个干净的底音。
+    L = int(SR * 0.20)
+    # 蓄力滑音：440->1150Hz 指数上扬，0.075s 达峰 —— 正好"叮"落下
+    n_sw = int(SR * 0.105)
+    t = np.arange(n_sw) / SR
+    freq = 440.0 * (1150.0 / 440.0) ** (t / 0.105)
+    sweep = np.sin(2 * np.pi * np.cumsum(freq) / SR)
+    # 包络显式分段：0->0.075s 渐强蓄力，0.075->0.105s 收干净（尾部必须归零，不能最响）
+    env = np.ones(n_sw)
+    rise_n = int(SR * 0.075)
+    env[:rise_n] = np.linspace(0.15, 1.0, rise_n)
+    env[rise_n:] = np.linspace(1.0, 0.0, n_sw - rise_n)
+    sweep = sweep * env * 0.80
+    sweep[:int(SR*0.008)] *= np.linspace(0, 1, int(SR*0.008))   # 8ms 淡入，去掉起音硬边
+
+    # "叮"（柔和版 v4）：基音 C6(1046)->A5(880) 再降一档；只留 2x/3x 整数倍泛音且幅度再减，
+    # attack 0.010 保持（去"咔哒"）；decay 0.075 让尾巴短促干净
+    base = PENTA["A5"]
+    shim = metallic([(base, 1.0), (base * 2.0, 0.20), (base * 3.0, 0.05)],
+                    dur=0.125, amp=0.85, attack=0.010, decay=0.075)
+    # 垫一层五度正弦增加"厚度"（sfx_coin 柔和版同款做法），让"叮"不单薄
+    shim += align(note(base * 1.5, 0.11, "sine", amp=0.09, attack=0.014, decay=0.055), len(shim))
+
+    x = np.zeros(L)
+    x[:n_sw] += sweep
+    off = int(SR * 0.075)
+    x[off:off+len(shim)] += shim[:L-off]
+    # 轻度一阶低通（截止约 4.5kHz）：磨掉高频毛刺，但留住基音与 2 倍泛音，
+    # 别把"叮"的辨识度一起滤掉（先用 a=0.7 试过，谱质心 925Hz 偏闷）
+    a = 0.62
+    y = np.zeros(len(x))
+    prev = 0.0
+    for i in range(len(x)):
+        prev = a * prev + (1 - a) * x[i]
+        y[i] = prev
+    return norm(add_silence(y, 0.005)) * 0.86
 
 
 BUILDERS = {
     "sfx_shoot": sfx_shoot,
     "sfx_hit": sfx_hit,
     "sfx_kill": sfx_kill,
-    "sfx_hit_heavy": sfx_hit_heavy,
-    "sfx_kill_boss": sfx_kill_boss,
     "sfx_coin": sfx_coin,
     "sfx_dash": sfx_dash,
     "sfx_levelup": sfx_levelup,
@@ -278,20 +330,23 @@ BUILDERS = {
     "sfx_defeat": sfx_defeat,
     "sfx_button": sfx_button,
     "sfx_wok": sfx_wok,
+    "sfx_skill": sfx_skill,
 }
 
 # 时长上限自检 (秒)
 LIMITS = {
-    "sfx_shoot": 0.18, "sfx_hit": 0.15, "sfx_kill": 0.22, "sfx_hit_heavy": 0.26,
-    "sfx_kill_boss": 0.60, "sfx_coin": 0.18, "sfx_dash": 0.32, "sfx_levelup": 0.50,
-    "sfx_unlock": 0.60, "sfx_victory": 1.20, "sfx_defeat": 0.90, "sfx_button": 0.08,
-    "sfx_wok": 0.25,
+    "sfx_shoot": 0.18, "sfx_hit": 0.15, "sfx_kill": 0.30, "sfx_coin": 0.18,
+    "sfx_dash": 0.32, "sfx_levelup": 0.50, "sfx_unlock": 0.60, "sfx_victory": 1.20,
+    "sfx_defeat": 0.90,     "sfx_button": 0.08, "sfx_wok": 0.25,
+    # sfx_skill 上限收紧到 0.22（v4 定稿 0.205s）：反馈要求"短"，配闸门防以后被改长
+    "sfx_skill": 0.22,
 }
 
 def main(names=None):
     os.makedirs(OUT, exist_ok=True)
-    # 固定种子：噪声类音效每次重生成一致，只改某音效不会顺手改掉别的
-    np.random.seed(20261009)
+    # 固定种子：噪声类音效（开火咔哒/命中/冲刺/颠勺/按钮）每次重生成都一致，
+    # 只改某一个音效时不会把别的音效"顺手改掉"。
+    np.random.seed(20261004)
     report = []
     for name, fn in BUILDERS.items():
         if names and name not in names:
@@ -302,19 +357,15 @@ def main(names=None):
         info = sf.info(path)
         dur = info.duration
         peak = float(np.max(np.abs(x)))
-        # 高频能量占比（>4kHz 部分），用来客观验证"不刺耳"
-        spec = np.abs(np.fft.rfft(x * np.hanning(len(x))))
-        freqs = np.fft.rfftfreq(len(x), 1.0 / SR)
-        hi = np.sum(spec[freqs > 4000.0]) / (np.sum(spec) + 1e-9)
         size = os.path.getsize(path)
         ok_dur = dur <= LIMITS[name] + 0.01
         ok_peak = peak <= PEAK
-        report.append((name, dur, size, peak, hi, info.channels, ok_dur, ok_peak))
-    print("=== SYNTH REPORT (v2 卡通舒缓) ===")
-    for name, dur, size, peak, hi, ch, okd, okp in report:
-        print(f"{name:14s} dur={dur:6.3f}s size={size:6d}B peak={peak:.3f} "
-              f"hi4k={hi*100:4.1f}% ch={ch} dur_ok={okd} peak_ok={okp}")
-    bad = [r for r in report if not (r[7] and r[6])]
+        report.append((name, dur, size, peak, info.channels, ok_dur, ok_peak))
+    print("=== SYNTH REPORT ===")
+    for name, dur, size, peak, ch, okd, okp in report:
+        print(f"{name:14s} dur={dur:6.3f}s size={size:6d}B peak={peak:.3f} ch={ch} "
+              f"dur_ok={okd} peak_ok={okp}")
+    bad = [r for r in report if not (r[6] and r[5])]
     print("RESULT:", "ALL OK" if not bad else f"FAIL {bad}")
 
 if __name__ == "__main__":

@@ -124,32 +124,83 @@ func run(data = null) -> Dictionary:
 	chk(dist > 60.0, "冲刺距离 %.0fpx 够远（有位移感）" % dist)
 	chk(dist < 180.0, "冲刺距离 %.0fpx 不至于冲太远（可控）" % dist)
 
-	# 11) 无方向输入时的随机冲刺方向：必须非零、单位长、且真的会转
+	# 11) 无参重载 random_dir()：无方向输入时随机冲刺方向，必须非零、单位长、且真的会转
 	#     （纯逻辑层面：不设种子连抽 N 次，角度应覆盖不止一个象限）
 	var nonzero := true
 	var unit := true
-	var seen: Array[Vector2] = []
+	var seen_free: Array[Vector2] = []
 	for _m in 64:
 		var d := Dash.random_dir()
 		if d.length_squared() < 0.0001:
 			nonzero = false
 		if absf(d.length() - 1.0) > 0.0001:
 			unit = false
-		if seen.size() < 8:
-			seen.append(d)
+		if seen_free.size() < 8:
+			seen_free.append(d)
 	chk(nonzero, "random_dir() 从不返回零向量（零向量 start 会拒）")
 	chk(unit, "random_dir() 始终是单位向量（start 里还要再 normalized）")
 	var distinct := 0
-	for a in seen:
+	for a in seen_free:
 		var dup := false
-		for b in seen:
+		for b in seen_free:
 			if a != b and absf(a.angle_to(b)) < 0.01:
 				dup = true
 		if not dup:
 			distinct += 1
 	chk(distinct >= 4, "random_dir() 多次调用方向互不相同（真的随机：%d/8 个不同朝向）" % distinct)
 	# 随机方向能直接启动冲刺（玩家无方向按冲刺 = 随机冲一个方向）
+	var s8a := Dash.make()
+	chk(Dash.start(s8a, Dash.random_dir(), c), "random_dir() 的返回值可直接启动冲刺")
+
+	# 12) 带种子重载 random_dir(rng)：8 离散方向、单位长、可复现（键盘冲刺与模拟器共用口径）
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12345
+	var lens_ok := true
+	var quant_ok := true
+	var cx := 0.0
+	var cy := 0.0
+	for _i in 400:
+		var v := Dash.random_dir(rng)
+		cx += v.x
+		cy += v.y
+		if absf(v.length() - 1.0) > 0.001:
+			lens_ok = false
+		if not (_is_eight(absf(v.x)) and _is_eight(absf(v.y))):
+			quant_ok = false
+	chk(lens_ok, "随机冲刺方向始终单位长（斜向不比直向快/慢）")
+	chk(quant_ok, "随机冲刺方向量化到 8 个离散方向（与键盘 WASD 的 8 个方向一致）")
+
+	# 8 个方向都要出现：400 次抽样只出 4 个 = 分布有偏（等概率才叫"随机"）
+	var r2 := RandomNumberGenerator.new()
+	r2.seed = 2024
+	var seen := {}
+	for _i in 400:
+		var v := Dash.random_dir(r2)
+		seen[_dir_key(v)] = true
+	chk(seen.size() == 8, "400 次抽样覆盖全部 8 个方向（实测 %d 个）" % seen.size())
+	# 方向分布无系统偏向（平均值应接近原点）：每轴均值偏移 < 0.12
+	chk(absf(cx / 400.0) < 0.12 and absf(cy / 400.0) < 0.12,
+		"随机冲刺方向无系统偏向（均值 %.3f, %.3f）" % [cx / 400.0, cy / 400.0])
+
+	# 同种子可复现（测试/模拟都靠这个；不复现说明 rng 传错了）
+	var r3 := RandomNumberGenerator.new(); r3.seed = 99
+	var r4 := RandomNumberGenerator.new(); r4.seed = 99
+	var repro := true
+	for _i in 50:
+		if Dash.random_dir(r3) != Dash.random_dir(r4):
+			repro = false
+	chk(repro, "同种子随机冲刺方向可复现")
+
+	# 13) Player 侧：随机方向必须真能起冲刺（零向量会被 Dash.start 拒绝，接错线就永远冲不出去）
 	var s8 := Dash.make()
-	chk(Dash.start(s8, Dash.random_dir(), c), "random_dir() 的返回值可直接启动冲刺")
+	chk(Dash.start(s8, Dash.random_dir(rng), c), "随机方向可以触发冲刺")
 
 	return {"pass": _p, "fail": _f, "failures": _failures}
+
+# 方向的离散化键（用于统计覆盖面，避免浮点比较）
+func _dir_key(v: Vector2) -> String:
+	return "%d,%d" % [roundi(v.x * 1000.0), roundi(v.y * 1000.0)]
+
+# 8 离散方向判定：分量只能是 0 / ±1 / ±0.7071（45° 的 cos/sin）
+func _is_eight(a: float) -> bool:
+	return a < 0.001 or absf(a - 1.0) < 0.001 or absf(a - 0.7071) < 0.001

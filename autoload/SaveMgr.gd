@@ -111,6 +111,17 @@ func total_runs() -> int:
 func last_character() -> String:
 	return str(data.get("character", ""))
 
+# 首局引导：只在"真·首局"弹（从未记录过任何一局，且没被显式关过）。
+# 老存档（runs>0）即使没 onboarded 字段也不弹 —— 不打扰回归玩家。
+func needs_onboarding() -> bool:
+	return total_runs() == 0 and not bool(data.get("onboarded", false))
+
+func mark_onboarded() -> void:
+	if bool(data.get("onboarded", false)):
+		return
+	data["onboarded"] = true
+	flush()
+
 # 上次选的单局时长档（short / classic / endless）。玩过一次之后默认沿用，
 # 免得每次进游戏都要重新选 —— 但新档默认 short（一局约 11 分钟）。
 func run_mode() -> String:

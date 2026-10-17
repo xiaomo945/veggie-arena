@@ -1,6 +1,7 @@
 extends RefCounted
 
 const Economy := preload("res://core/Economy.gd")
+const ShopTiers := preload("res://core/ShopTiers.gd")
 
 var _p := 0
 var _f := 0
@@ -28,6 +29,14 @@ func run() -> Dictionary:
 	chk(Economy.reroll_cost(0, SHOP_CFG) == 3, "首次刷新 3 金币")
 	chk(Economy.reroll_cost(1, SHOP_CFG) == 5, "第二次刷新 5 金币")
 	chk(Economy.reroll_cost(3, SHOP_CFG) == 9, "第四次刷新 9 金币（越刷越贵）")
+	# 2b) 刷新与道具同口径吃波次通胀：刷新也是金币出口，
+	#     否则后期道具价 ×6.7 而刷新还是原价 3 金，通胀就漏了一个出水口
+	chk(Economy.reroll_cost(0, SHOP_CFG, 20, 0.3) == 20,
+		"第20波首次刷新吃通胀 3→20（×6.7，与 price_of 同口径）")
+	chk(Economy.reroll_cost(3, SHOP_CFG, 20, 0.3) == 60,
+		"第20波第四次刷新 9→60（次数涨价与通胀相乘）")
+	chk(Economy.reroll_cost(0, SHOP_CFG, 1, 0.3) == 3,
+		"第1波不涨价（首店还没经历通胀，与 price_of 的 wave>1 判据一致）")
 
 	# 3) 购买力
 	chk(Economy.can_buy(20, 12) == true, "钱够能买")
@@ -221,6 +230,58 @@ func run() -> Dictionary:
 	# 向后兼容：不传钱包（-1）时退回"最高档优先"，老调用方的行为不变
 	var legacy := Economy.roll_offers(ppool, 4, r3)
 	chk(str(legacy[0].get("key", "")) == "hi", "不传钱包时保持旧行为（最高档优先）")
+
+	# 9) 属性线续抽（羁绊续抽）：投过资的线，未持有的卡权重 ×chain_pity_mult。
+	#    证据：crit_mult 线 4 张卡合计 2.7%/抽，20 波单局中位 24 波才凑齐 ——
+	#    构筑线在单局时长内完不成，玩家"选了暴击流却永远堆不起来"。
+	var line_ups := {
+		"dmg1": {"stat": "dmg_pct", "value": 0.1, "rarity": 1, "cost": 10},
+		"dmg2": {"stat": "dmg_pct", "value": 0.2, "rarity": 2, "cost": 20},
+		"hp1": {"stat": "max_hp", "value": 15, "rarity": 1, "cost": 10},
+		"mix": {"stats": {"dmg_pct": 0.3}, "rarity": 2, "cost": 30},   # 多属性卡不进线
+	}
+	var w_of := func(pool: Array, key: String) -> float:
+		for it in pool:
+			if str(it.get("key")) == key:
+				return float(it.get("weight", 0.0))
+		return -1.0
+	var plain := Economy.build_pool(empty_weapons, wk, line_ups, 6, 4)
+	chk(absf(w_of.call(plain, "dmg2") - 3.0) < 0.001,
+		"未投过资：dmg2 权重 = 稀有度权重 3.0（实际 %.1f）" % w_of.call(plain, "dmg2"))
+	chk(absf(w_of.call(plain, "mix") - 3.0) < 0.001,
+		"多属性卡 mix 不受任何线影响（权重 3.0，实际 %.1f）" % w_of.call(plain, "mix"))
+	# 投了 dmg_pct 线（买了 dmg1）：dmg2 加速 ×chain_pity_mult（数据值），其余不动。
+	# 倍率是调参旋钮（data/shop_tiers.json），测试钉机制不钉数值：
+	# 超标由 power_band 把门，机制对不对由这里把门。
+	var pm := ShopTiers.new().chain_pity_mult()
+	var pity1 := Economy.build_pool(empty_weapons, wk, line_ups, 6, 4, [], 0.0, 5, 0.0, {"dmg1": 1})
+	chk(absf(w_of.call(pity1, "dmg2") - 3.0 * pm) < 0.001,
+		"投过 dmg 线：dmg2 权重 3.0→%.1f（×chain_pity_mult=%.1f，实际 %.1f）"
+			% [3.0 * pm, pm, w_of.call(pity1, "dmg2")])
+	chk(absf(w_of.call(pity1, "dmg1") - 6.0) < 0.001,
+		"已持有的卡不加速（重买走原速率 6.0，实际 %.1f）" % w_of.call(pity1, "dmg1"))
+	chk(absf(w_of.call(pity1, "hp1") - 6.0) < 0.001,
+		"没投过的线不受影响（hp1 仍 6.0，实际 %.1f）" % w_of.call(pity1, "hp1"))
+	chk(absf(w_of.call(pity1, "mix") - 3.0) < 0.001,
+		"多属性卡不因同名属性被误加速（mix 仍 3.0，实际 %.1f）" % w_of.call(pity1, "mix"))
+	# 买了多属性卡不算"投过资"（独立原型，不归属任何线）
+	var pity2 := Economy.build_pool(empty_weapons, wk, line_ups, 6, 4, [], 0.0, 5, 0.0, {"mix": 1})
+	chk(absf(w_of.call(pity2, "dmg2") - 3.0) < 0.001,
+		"只买多属性卡不触发续抽（dmg2 仍 3.0，实际 %.1f）" % w_of.call(pity2, "dmg2"))
+	# 向后兼容：不传 owned_upgrades = 旧口径（不续抽）
+	chk(absf(w_of.call(Economy.build_pool(empty_weapons, wk, line_ups, 6, 4), "dmg2") - 3.0) < 0.001,
+		"不传 owned_upgrades 时保持旧口径（无续抽）")
+	# invested_lines 的判据边界
+	chk(Economy.invested_lines(line_ups, {"dmg1": 1}).has("dmg_pct"),
+		"invested_lines：持有 dmg1 → dmg_pct 线已投")
+	chk(not Economy.invested_lines(line_ups, {"dmg1": 1}).has("max_hp"),
+		"invested_lines：只标记持有过的线")
+	chk(Economy.invested_lines(line_ups, {}).is_empty(),
+		"invested_lines：空持有 = 无线已投")
+	chk(Economy.invested_lines(line_ups, {"dmg1": 0}).is_empty(),
+		"invested_lines：次数为 0 不算持有")
+	chk(Economy.invested_lines(line_ups, {"mix": 2}).is_empty(),
+		"invested_lines：多属性卡不标记任何线")
 
 	# 6) 一波收入
 	var inc := Economy.wave_income(1, 15, 1.0, WAVE_CFG)

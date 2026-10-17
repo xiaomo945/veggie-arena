@@ -102,6 +102,13 @@ func max_rarity_for_wave(wave: int) -> int:
 			top = r
 	return top
 
+# 属性线续抽倍率：玩家已投过资（已购该线任意一张）的属性线，其余卡的权重 ×N。
+# 默认 1.0 = 关闭（向后兼容）；证据与设计意图见 data/shop_tiers.json 的
+# _doc_chain_pity（crit 线中位 24 波才凑齐 vs 20 波单局）。
+func chain_pity_mult() -> float:
+	_load()
+	return maxf(1.0, float(_cfg.get("chain_pity_mult", 1.0)))
+
 # 分级配色（用户指定：白/绿/蓝/紫/红/传说）
 func tier_color(lv: int) -> Color:
 	_load()
