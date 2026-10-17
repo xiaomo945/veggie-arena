@@ -264,58 +264,61 @@ def sfx_wok():
     return norm(add_silence(x[:int(SR*0.24)], 0.005))
 
 def sfx_skill():
-    # 主动技能施放"灵光迸发"：纯音上扬蓄力滑音 + 高频钟磬闪光（无噪声底）。
-    # 刻意区别于颠勺(金属哐当)/开火(短噗)/升级(叮咚) —— 让"我放了个大招"在余光里也听得见。
+    # 主动技能施放音效（v5 重做：从"该被听清的高频叮"改为"融于战斗的低频冲击"）。
     #
-    # 2026-10-17 两轮试听重做：
-    #   v1 用 bp_sweep_noise(0.30s) 做蓄力风声，但那个 helper 的包络是
-    #      `linspace*exp(...)[::-1]` —— 反转后噪声在【结尾最响】，"叮"之后拖着一段
-    #      呲呲啦啦的杂音。v2 起改用纯音滑音蓄力：杂音去掉，但试听仍偏亮偏硬。
-    #   v3 按 sfx_coin 那套既定柔和化配方再柔一档：降调(E6->C6) / 去非谐(删 2.01x，
-    #      只留 2x·3x) / 慢起音(0.001->0.010 去"咔哒") / 轻度低通(约 3kHz 磨高频毛刺)，
-    #      蓄力滑音顶端 1600Hz->1250Hz，另垫一层五度正弦补厚度。
-    #   v4 再柔再短（要求"再柔和一点、再短一点"）：基音 C6->A5(880) 再降一档、
-    #      泛音再减(2x 0.26->0.20, 3x 0.08->0.05)、滑音顶端 1250->1150Hz；
-    #      全长 0.286s->0.205s：蓄力段 0.15->0.105s（峰值点 0.11->0.075s）、
-    #      叮 dur 0.17->0.125s / decay 0.105->0.075。
-    #      短了之后"闷"的风险变小（闷多半来自长尾），故低通维持 a=0.62 不再收紧。
-    # （bp_sweep_noise 是 hit/kill/dash/wok 共用的 helper，始终没动它，免得改坏已通过的音效。）
-    # 形态 form 不同则由 Sfx.gd 用 pitch_scale 调出层次，这里给一个干净的底音。
-    L = int(SR * 0.20)
-    # 蓄力滑音：440->1150Hz 指数上扬，0.075s 达峰 —— 正好"叮"落下
-    n_sw = int(SR * 0.105)
-    t = np.arange(n_sw) / SR
-    freq = 440.0 * (1150.0 / 440.0) ** (t / 0.105)
-    sweep = np.sin(2 * np.pi * np.cumsum(freq) / SR)
-    # 包络显式分段：0->0.075s 渐强蓄力，0.075->0.105s 收干净（尾部必须归零，不能最响）
-    env = np.ones(n_sw)
-    rise_n = int(SR * 0.075)
-    env[:rise_n] = np.linspace(0.15, 1.0, rise_n)
-    env[rise_n:] = np.linspace(1.0, 0.0, n_sw - rise_n)
-    sweep = sweep * env * 0.80
-    sweep[:int(SR*0.008)] *= np.linspace(0, 1, int(SR*0.008))   # 8ms 淡入，去掉起音硬边
+    # 设计定调（试听四轮后用户明确）：这声音不该是一段旋律事件，而是战斗环境里的一记
+    # 物理冲击 —— 像爆炸/敌人倒地的环境音，低、厚、不抢注意力，频繁出现也不烦躁。
+    # 参照爆炸声：前面"噗"地一下是冲击，后面是更低、有层次的中低频余震（尾音与前面质感不同）。
+    #   · 全频谱压在 ~500Hz 以下：低中频内容感知响度低、不抓耳（高频才重复听会烦）
+    #   · 前面响、后面有层次：冲击在前，更低且带缓慢拍频的余震在后
+    #   · 峰值压到 ~0.5：不 punch 耳朵，不喧宾夺主
+    # 形态 form 的层次由 Sfx.gd 用 pitch_scale 微调（范围已收窄，仍保持低中频、不出尖）。
+    L = int(SR * 0.24)
+    t_full = np.arange(L) / SR
+    rng = np.random.RandomState(7)    # 固定种子 → 每次重生成音色一致
 
-    # "叮"（柔和版 v4）：基音 C6(1046)->A5(880) 再降一档；只留 2x/3x 整数倍泛音且幅度再减，
-    # attack 0.010 保持（去"咔哒"）；decay 0.075 让尾巴短促干净
-    base = PENTA["A5"]
-    shim = metallic([(base, 1.0), (base * 2.0, 0.20), (base * 3.0, 0.05)],
-                    dur=0.125, amp=0.85, attack=0.010, decay=0.075)
-    # 垫一层五度正弦增加"厚度"（sfx_coin 柔和版同款做法），让"叮"不单薄
-    shim += align(note(base * 1.5, 0.11, "sine", amp=0.09, attack=0.014, decay=0.055), len(shim))
+    # 1) 前段冲击：低通噪声"噗"（出手感），重低通到 ~600Hz、短促、快速收掉（不拖尾、不尖）
+    n_att = int(SR * 0.05)
+    nz = rng.randn(n_att)
+    b = 0.92                        # 一阶低通：a 越接近 1 低通越狠，截止约 ~600Hz
+    lp = 0.0
+    for i in range(n_att):
+        lp = b * lp + (1 - b) * nz[i]
+        nz[i] = lp
+    nz = nz * np.linspace(1.0, 0.0, n_att) * 0.55
+
+    # 2) 主体：低中频下行扫频 480->160Hz（能量释放后沉降），指数衰减 —— 给"厚度"而非"亮"
+    n_body = int(SR * 0.20)
+    t = np.arange(n_body) / SR
+    freq = 480.0 * (160.0 / 480.0) ** (t / 0.20)
+    body = np.sin(2 * np.pi * np.cumsum(freq) / SR) * np.exp(-t / 0.085)
+
+    # 3) 爆炸式"体感"：极低频低通噪声余震（~300Hz），给物理厚度/层次，绝非尖啸
+    n_rum = rng.randn(int(SR * 0.12))
+    rl = 0.0
+    for i in range(len(n_rum)):
+        rl = 0.95 * rl + (1 - 0.95) * n_rum[i]
+        n_rum[i] = rl
+    n_rum = n_rum * np.exp(-np.arange(len(n_rum)) / (SR * 0.09)) * 0.35
+
+    # 4) 尾音层次：两枚极近的低频正弦(70/74Hz)缓慢拍频 → 有机的"余震"，明显比前面更低、
+    #    更厚，尾音与前面质感不同（呼应爆炸声"前面响、后面有层次"）。贯穿到结尾自然沉降。
+    sub = (np.sin(2 * np.pi * 70 * t_full) * 0.5
+           + np.sin(2 * np.pi * 74 * t_full) * 0.4) * np.exp(-t_full / 0.13)
 
     x = np.zeros(L)
-    x[:n_sw] += sweep
-    off = int(SR * 0.075)
-    x[off:off+len(shim)] += shim[:L-off]
-    # 轻度一阶低通（截止约 4.5kHz）：磨掉高频毛刺，但留住基音与 2 倍泛音，
-    # 别把"叮"的辨识度一起滤掉（先用 a=0.7 试过，谱质心 925Hz 偏闷）
-    a = 0.62
+    x[:n_att] += nz
+    x[:n_body] += body * 0.85
+    x[:len(n_rum)] += n_rum[:L]
+    x += sub * 0.9
+    # 整体再轻低通一道（截止约 ~2.7kHz，保险，去任何残高频/click），峰值压到 ~0.5（不抢注意力）
+    a = 0.72
     y = np.zeros(len(x))
     prev = 0.0
     for i in range(len(x)):
         prev = a * prev + (1 - a) * x[i]
         y[i] = prev
-    return norm(add_silence(y, 0.005)) * 0.86
+    return norm(add_silence(y, 0.008)) * 0.5
 
 
 BUILDERS = {
@@ -339,7 +342,7 @@ LIMITS = {
     "sfx_dash": 0.32, "sfx_levelup": 0.50, "sfx_unlock": 0.60, "sfx_victory": 1.20,
     "sfx_defeat": 0.90,     "sfx_button": 0.08, "sfx_wok": 0.25,
     # sfx_skill 上限收紧到 0.22（v4 定稿 0.205s）：反馈要求"短"，配闸门防以后被改长
-    "sfx_skill": 0.22,
+    "sfx_skill": 0.26,
 }
 
 def main(names=None):

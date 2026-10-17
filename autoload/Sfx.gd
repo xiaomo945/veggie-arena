@@ -51,8 +51,9 @@ func _ready() -> void:
 	# 击杀/重击分层音（资源缺失则静默跳过，不影响既有调用方）
 	_load("hit_heavy", "res://art/sfx/sfx_hit_heavy.ogg")
 	_load("kill_boss", "res://art/sfx/sfx_kill_boss.ogg")
-	# 主动技能施放（锅气之外的手动大招：冰镇/毒雾/各角色终极形态）：专属"灵光迸发"音，
-	# 与颠勺(金属哐当)/开火(短噗)区分开；形态不同由 _on_skill 用 pitch_scale 调出层次。
+	# 主动技能施放（锅气之外的手动大招：冰镇/毒雾/各角色终极形态）：低频物理冲击音，
+	# 融于战斗、不抢注意力（全频谱压在 ~500Hz 以下、峰值 ~0.5）；形态不同由 _on_skill
+	# 用 pitch_scale 微调层次，但范围收窄、始终保持低中频、不出尖。
 	_load("skill", "res://art/sfx/sfx_skill.ogg")
 
 	Events.weapon_fired.connect(_on_shoot)
@@ -69,7 +70,7 @@ func _ready() -> void:
 	Events.run_won.connect(_on_victory)
 	# 角色升级（XP）：专属升级音，让"升了一级"在余光里也能听出来（不止经验条闪一下）。
 	Events.level_up.connect(_on_level_up)
-	# 主动技能施放：与大招同级的"右手技能"，让"我放了个大招"在余光里也听得见。
+	# 主动技能施放：低频冲击音，融为战斗环境的一部分，不被声音带走注意力。
 	Events.skill_cast.connect(_on_skill)
 	# 按设置应用音量（音效开关/总静音）；设置变了也由 PauseScreen 回调重调
 	# call_deferred：autoload 全局名在所有 _ready 跑完后才注册，此处延迟避免 Settings 仍是 Nil
@@ -181,17 +182,18 @@ func _on_level_up(_level: int, _gained: int) -> void:
 	_play("levelup", 0)
 
 func _on_skill(_id: String, _pos: Vector2, _radius: float, form: String) -> void:
-	# 主动技能施放：小节流(40ms)防误触双发；按形态微调音色，让不同大招可分辨
-	# （冰/电更亮、金/油更沉）。form="base" 或未知形态走默认 1.0。
+	# 主动技能施放：小节流(40ms)防误触双发；按形态微调音色，让不同大招略可分辨，
+	# 但范围收窄（0.88~1.10）——底层音已是低中频冲击，抬太高会重新变尖、抢注意力。
 	_play_pitched("skill", 40, _skill_pitch(form))
 
-# 不同技能形态 → 不同音高，制造听觉层次（与技能特效按形态换色呼应）
+# 不同技能形态 → 不同音高，制造轻微听觉层次（与技能特效按形态换色呼应）。
+# 注意：保持低中频，避免任何形态被 pitch_scale 抬回尖锐区。
 func _skill_pitch(form: String) -> float:
 	match form:
-		"glacial_burst", "shock_field": return 1.25   # 冰锥/电场：更亮
-		"wind_blade": return 1.12                      # 风刃：偏高
-		"gold_crash", "magma_fissure": return 0.85     # 金砖/滚油：更沉
-		"burst_arrow": return 1.05                     # 爆裂箭：略高
+		"glacial_burst", "shock_field": return 1.08   # 冰锥/电场：略提，仍低中频
+		"wind_blade": return 1.04                      # 风刃：略高
+		"gold_crash", "magma_fissure": return 0.88     # 金砖/滚油：更沉
+		"burst_arrow": return 1.00                     # 爆裂箭：中性
 		_: return 1.0
 
 func _on_victory() -> void:
