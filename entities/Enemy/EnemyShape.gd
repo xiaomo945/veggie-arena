@@ -3,6 +3,8 @@ extends RefCounted
 # 敌人卡通造型（缺贴图时的兜底 + 终局 Boss 装饰）。
 # 从 Enemy.gd 拆出来：那边顶着 300 行红线，要给"出场升起"动画腾地方。
 # 全是静态绘制函数：参数显式传入（不读调用方私有字段，架构守卫 R3）。
+# c 现为合批跟随代理 EnemyCanvas（EnemyDraw.gd 合批绘制的一部分）——
+# 代理转发到真正的绘制节点，变换语义与"每只怪自己是 CanvasItem"逐字一致。
 #
 # 卡通贴纸风四件套（这次美化统一上身，之前是纯色多边形，很平很丑）：
 #   1) 厚描边  —— poly() 里 1.14 倍暗色底，轮廓更墩实
@@ -11,12 +13,13 @@ extends RefCounted
 #   4) 专属小装饰 —— 犄角/引线/炮口/叶片/缝合线…，一眼认出是谁
 # 手绘兜底主要服务：swarm/brute/shambler/shooter/charger/splitter/bomber/splitling
 
+const EnemyCanvas := preload("res://entities/Enemy/EnemyCanvas.gd")
 const OUTLINE := Color(0.18, 0.10, 0.12, 1.0)
 
 # ---- 怒萌脸：怒眼 + 斜眉 + 龇牙，所有怪物共用 ----
 # 这次加了瞳孔高光（卡通眼）和腮红，比原来"两个黑点"精神多了
 # deco=false（性能低档）时跳过腮红 —— 眼/眉/牙是辨识度核心，永远保留。
-static func angry_face(c: CanvasItem, sz: float, look: Vector2, alpha: float, deco: bool = true) -> void:
+static func angry_face(c: EnemyCanvas, sz: float, look: Vector2, alpha: float, deco: bool = true) -> void:
 	var ex := sz * 0.40
 	var ey := -sz * 0.16
 	for sgn in [-1, 1]:
@@ -54,14 +57,14 @@ static func angry_face(c: CanvasItem, sz: float, look: Vector2, alpha: float, de
 # ---- 卡通体积：底部阴影 + 顶部高光 ----
 # deco=false（性能低档）时只画阴影外圈、跳过高光 —— 阴影留着（ grounding 不会"飘"），
 # 高光和阴影内圈是纯装饰，砍掉省一半 draw。
-static func _shade(c: CanvasItem, radius: float, deco: bool = true) -> void:
+static func _shade(c: EnemyCanvas, radius: float, deco: bool = true) -> void:
 	c.draw_set_transform(Vector2(0.0, radius * 0.44), 0.0, Vector2(1.0, 0.5))
 	c.draw_circle(Vector2.ZERO, radius * 0.80, Color(0.05, 0.02, 0.04, 0.20))
 	if deco:
 		c.draw_circle(Vector2.ZERO, radius * 0.62, Color(0.05, 0.02, 0.04, 0.16))
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-static func _gloss(c: CanvasItem, radius: float, deco: bool = true) -> void:
+static func _gloss(c: EnemyCanvas, radius: float, deco: bool = true) -> void:
 	if not deco:
 		return
 	c.draw_set_transform(Vector2(-radius * 0.30, -radius * 0.40), 0.0, Vector2(1.0, 0.60))
@@ -71,7 +74,7 @@ static func _gloss(c: CanvasItem, radius: float, deco: bool = true) -> void:
 # 落地阴影：脚下软椭圆（与 Boss 出场的土坑区分——这是"站在地上"的投影）。
 # 用显式多边形点画，不碰 draw_set_transform，所以无论被调用时本体处于
 # squash/rise 的什么变换下都不会打乱后续绘制，也不会被缩放乱跑。
-static func ground_shadow(c: CanvasItem, radius: float, deco: bool = true) -> void:
+static func ground_shadow(c: EnemyCanvas, radius: float, deco: bool = true) -> void:
 	var cy := radius * 0.95
 	var outer := PackedVector2Array()
 	for i in 10:
@@ -87,7 +90,7 @@ static func ground_shadow(c: CanvasItem, radius: float, deco: bool = true) -> vo
 	c.draw_colored_polygon(inner, Color(0.0, 0.0, 0.0, 0.22))
 
 # 多边形 + 厚暗色描边 + 内侧亮边（卡通贴纸感 + 果冻感 rim light）
-static func poly(c: CanvasItem, pts: PackedVector2Array, col: Color) -> void:
+static func poly(c: EnemyCanvas, pts: PackedVector2Array, col: Color) -> void:
 	var out := PackedVector2Array()
 	var rim := PackedVector2Array()
 	for p in pts:
@@ -100,7 +103,7 @@ static func poly(c: CanvasItem, pts: PackedVector2Array, col: Color) -> void:
 # ---- 凶萌造型：每种怪一个形状 + 专属装饰 ----
 # deco（装饰 LOD）：性能低档（PerfGuard CAPS.deco=false）时由调用方传 false，
 # 跳过腮红/高光/阴影内圈 —— 本体形状与脸永远保留，怪还是那只怪。
-static func body(c: CanvasItem, etype: String, radius: float, col: Color, deco: bool = true) -> void:
+static func body(c: EnemyCanvas, etype: String, radius: float, col: Color, deco: bool = true) -> void:
 	ground_shadow(c, radius, deco)   # 先画脚下投影，本体随后压在上面
 	var look := Vector2(0.0, 0.2)
 	match etype:
@@ -261,7 +264,7 @@ static func body(c: CanvasItem, etype: String, radius: float, col: Color, deco: 
 			angry_face(c, radius * 0.95, look, 1.0, deco)
 
 # Boss 出场时的土坑：脚下越裂越大的黑坑 + 坑沿一圈崩出的土块
-static func rise_hole(c: CanvasItem, radius: float, k: float) -> void:
+static func rise_hole(c: EnemyCanvas, radius: float, k: float) -> void:
 	var r := radius * (0.5 + 0.9 * k)
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.42))
 	c.draw_circle(Vector2.ZERO, r + 3.0, Color(0.02, 0.01, 0.02, 0.85))
@@ -277,7 +280,7 @@ static func rise_hole(c: CanvasItem, radius: float, k: float) -> void:
 			(p + p0) * 0.5 + Vector2(0, -3.0)]), Color(0.16, 0.10, 0.08, 0.9 * k))
 
 # 终局 Boss 装饰：金色尖刺环 + 双光环（缓慢旋转、外环脉动）
-static func final_decor(c: CanvasItem, radius: float, phase: float, col: Color) -> void:
+static func final_decor(c: EnemyCanvas, radius: float, phase: float, col: Color) -> void:
 	var pts := PackedVector2Array()
 	for i in range(20):
 		var a := TAU * float(i) / 20.0 + phase * 0.35

@@ -4,6 +4,7 @@ extends SceneTree
 # 跑法：xvfb-run -s "-screen 0 540x900x24" godot --path . --script res://scripts/shape_shot.gd
 
 const Shape := preload("res://entities/Enemy/EnemyShape.gd")
+const EnemyCanvas := preload("res://entities/Enemy/EnemyCanvas.gd")
 # [类型, 配色] —— 与任务给定的各类型色板一致
 const TYPES := [
 	["grunt", "#e0605f"], ["fast", "#ef9a4a"], ["tank", "#9a7ad0"],
@@ -28,10 +29,14 @@ func _initialize() -> void:
 
 class ShapeBoard extends Node2D:
 	func _draw() -> void:
+		# 合批②后 EnemyShape 的 c 参数是 EnemyCanvas（跟随代理，非 CanvasItem 本身）：
+		# 经代理把 draw_set_transform/draw_* 转写到本节点，与原自绘语义逐字一致。
+		var cv := EnemyCanvas.new()
+		cv.begin(self, Vector2.ZERO)
 		var cols := 4
 		for i in TYPES.size():
 			var x := 75.0 + float(i % cols) * 135.0
 			var y := 90.0 + float(i / cols) * 160.0
-			draw_set_transform(Vector2(x, y), 0.0, Vector2.ONE)
-			Shape.body(self, TYPES[i][0], 26.0, Color(TYPES[i][1]))
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			cv.draw_set_transform(Vector2(x, y), 0.0, Vector2.ONE)
+			Shape.body(cv, TYPES[i][0], 26.0, Color(TYPES[i][1]))
+		cv.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

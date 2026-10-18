@@ -1,9 +1,11 @@
 extends Node2D
 
-# 敌人：造型一眼能分清（grunt 红圆 / fast 橙三角 / tank 紫六边 / fly 菱 / boss 星）。
-# 有 res://art/sprite_enemy_<类型>.png 就画贴图，否则走凶萌手绘（EnemyShape）—— 闪白/挤压回弹/出场升起/血条共用。
+# 敌人：状态与逻辑（移动/受击/效果/Boss 阶段）在这；绘制已合批到 EnemyDraw.gd
+# （同屏敌人在一个节点画完，draw call 每只一次→1 次，治"满屏怪掉帧"）。
+# 造型一眼能分清（grunt 红圆 / fast 橙三角 / tank 紫六边 / fly 菱 / boss 星）：
+# 贴图在 spawn 时缓存到 _tex，逐怪差异化（闪白/挤压/升起/血条）由 EnemyDraw
+# 读取本文件尾部的公开状态访问器复刻绘制。
 
-const SPRITE_SCALE := 2.2   # 贴图边长 = radius * 系数（贴图角色约占画布 90%，与手绘体量一致）
 const FLASH_DUR := 0.16
 
 var alive := false
@@ -41,11 +43,9 @@ var _rise := -1.0
 # 受击挤压回弹（squash & stretch）：撞击方向 + 剩余时间
 var _squash := 0.0
 var _squash_dir := Vector2.ZERO
-var _dirty := false                 # 屏幕外时攒下的重绘请求（进屏幕再补，见 EnemyCull）
-var _tex: Texture2D = null          # spawn 时缓存一次贴图，省每帧 Art.sprite 的归一化/拼串/查表
+var _tex: Texture2D = null          # spawn 时缓存一次贴图（EnemyDraw 经 tex2d() 读），省每帧 Art.sprite 归一化/拼串/查表
 const Shake := preload("res://entities/effects/Shake.gd")
 const Cull := preload("res://entities/Enemy/EnemyCull.gd")
-const EnemyShape := preload("res://entities/Enemy/EnemyShape.gd")
 const DotTicker := preload("res://core/DotTicker.gd")
 
 const RISE_T := 0.85      # Boss "从地里升起来"的时长
@@ -80,11 +80,9 @@ func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	# Boss 出场要"从地里升起来"：等它走进屏幕那一刻才开始播（别白播）
 	_rise_armed = etype == "boss"
 	_rise = -1.0
-	_dirty = false           # 屏幕外时攒着没画的重绘请求（进屏幕再补）
 	_fx.clear()      # 对象池复用：上一只怪身上的毒/冰不能带到下一只身上
 	_ticker.reset()  # 上一任残留的 dot 累加也清掉，否则会误结算到新怪身上
 	visible = true
-	_redraw()
 
 func recycle() -> void:
 	alive = false
@@ -95,7 +93,6 @@ func recycle() -> void:
 func hurt(amount: float) -> bool:
 	hp -= amount
 	_flash = FLASH_DUR
-	_redraw()
 	if hp <= 0.0:
 		recycle()
 		return true
@@ -105,23 +102,18 @@ func hurt(amount: float) -> bool:
 func squash(dir: Vector2) -> void:
 	_squash = 0.14
 	_squash_dir = dir.normalized()
-	_redraw()
 
 func apply_knockback(dir: Vector2, impulse: float) -> void:
 	var v: Vector2 = _kb + dir * impulse
 	_kb = v.limit_length(220.0)
 
+# 逐帧推进（EnemyMind 驱动）。绘制侧重绘请求已挪去 EnemyDraw 每帧统一处理，
+# 这里只推状态计时。
 func tick(delta: float) -> void:
-	if _dirty and Cull.in_view(self):
-		_dirty = false
-		_redraw()
 	if _flash > 0.0:
 		_flash -= delta
-		if _flash <= 0.0:
-			_redraw()
 	if _squash > 0.0:
 		_squash = maxf(0.0, _squash - delta)
-		_redraw()
 	if _rise_armed:
 		_tick_rise(delta)
 	if etype == "boss":
@@ -132,17 +124,11 @@ func _tick_rise(delta: float) -> void:
 	if _rise < 0.0:
 		if Cull.in_view(self):
 			_rise = 0.0
-			_redraw()
 		return
 	_rise += delta
-	_redraw()
 	if _rise >= RISE_T:
 		_rise_armed = false
 		_rise = -1.0
-
-# 屏幕外不重绘（性能）：可见就画，不可见只记 _dirty，进屏幕时由 tick 补画
-func _redraw() -> void:
-	_dirty = not Cull.redraw_if_visible(self)
 
 # 施加一个状态效果。同种效果取"更强 + 更久"，不叠乘（叠乘会让数值失控）。
 func apply_fx(name: String, value: float, dur: float) -> void:
@@ -219,81 +205,33 @@ func _tick_boss(delta: float) -> void:
 			speed = _base_speed * 2.2                   # 冲锋：短暂极速猛冲
 			Shake.kick(4.0, 0.18)
 
-func _draw() -> void:
-	if not alive:
-		return
-	var c := tint
-	var flash_k := 0.0
-	if _flash > 0.0:
-		flash_k = clampf(_flash / FLASH_DUR, 0.0, 1.0)
-		# 受击瞬间整体闪白，随受击时间衰减回原色
-		c = tint.lerp(Color(1, 1, 1, 1), flash_k * 0.85)
-	# 出场升起：先把"土坑 + 尘土"画在脚下，再让本体缩放淡入
-	if _rise >= 0.0:
-		_draw_rise_hole()
-	_draw_body(c, flash_k)
-	# 受击红色染色：随受击时间衰减，强化"被打到了"
-	if _flash > 0.0:
-		draw_circle(Vector2.ZERO, radius, Color(1.0, 0.25, 0.25, 0.35 * flash_k))
-	if final_boss and _rise < 0.0:
-		EnemyShape.final_decor(self, radius, _phase, c)
-	_draw_hp_bar()
+# ---- 供合批绘制节点(EnemyDraw.gd)读取的公开状态 ----
+# R3：EnemyDraw 不跨文件碰本类私有字段，绘制所需的内部状态一律经这里读出
+# （EnemyDraw 侧复刻原 Enemy._draw 的绘制序列，保持逐怪差异化不变）。
 
-# 本体（贴图或手绘）+ 出场升起缩放 + 受击白色描边 + 挤压回弹
-func _draw_body(c: Color, flash_k: float) -> void:
-	var tex := _tex
-	var growing := _rise >= 0.0
-	# 升起中：本体从坑里长出来（overshoot 一下更有"破土"的劲）
-	if growing:
-		var k := clampf(_rise / RISE_T, 0.0, 1.0)
-		var sc := 0.25 + 0.85 * (1.0 - pow(1.0 - k, 2.6))
-		if k > 0.8:
-			sc = 1.0 + 0.12 * sin((k - 0.8) / 0.2 * PI)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2(sc, sc))
-	elif _squash > 0.0:
-		# squash：沿打击方向压到 0.72、垂直方向 1.22，随时间弹回
-		var q := _squash / 0.14
-		draw_set_transform(Vector2.ZERO, _squash_dir.angle(),
-			Vector2(1.0 - 0.28 * q, 1.0 + 0.22 * q))
-	if tex != null:
-		_draw_sprite(tex, radius * SPRITE_SCALE, c)
-	else:
-		_draw_shape(c)
-		# 精英/Boss 描边：远远就认得出是"硬货"
-		if elite:
-			draw_arc(Vector2.ZERO, radius + 4.0, 0.0, TAU, 16, Color(1, 1, 1, 0.7), 2.5, true)
-		elif etype == "boss":
-			draw_arc(Vector2.ZERO, radius + 5.0, 0.0, TAU, 18, Color(1, 0.3, 0.4, 0.8), 3.5, true)
-	# 冲刺/受击挤压共用一次变换复位；受击白描边随闪白淡出（贴图/手绘都吃得到）
-	if growing or _squash > 0.0:
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	if flash_k > 0.25:
-		_draw_flash_outline(radius * SPRITE_SCALE * 0.62 if tex != null else radius + 3.0, flash_k)
+# 受击闪白强度 0~1（原 _draw 里现算的 flash_k 挪到这，全项目只用这一个口径）
+func flash_k() -> float:
+	if _flash <= 0.0:
+		return 0.0
+	return clampf(_flash / FLASH_DUR, 0.0, 1.0)
 
-func _draw_flash_outline(r: float, k: float) -> void:
-	draw_arc(Vector2.ZERO, r, 0.0, TAU, 20, Color(1, 1, 1, k * 0.9), 2.6, true)
-# Boss 出场的土坑：脚下越裂越大的黑坑 + 几块崩出的土块
-func _draw_rise_hole() -> void:
-	EnemyShape.rise_hole(self, radius, clampf(_rise / RISE_T, 0.0, 1.0))
+func rising() -> bool:
+	return _rise >= 0.0
 
-func _draw_poly(pts: PackedVector2Array, c: Color) -> void:
-	EnemyShape.poly(self, pts, c)
-# 缺图时的手绘造型：委托给 EnemyShape（升起变换已在 _draw_body 里设好）
-func _draw_shape(c: Color) -> void:
-	EnemyShape.body(self, etype, radius, c, Perf.bool_cap("deco", true))
+func rise_t() -> float:
+	return _rise
 
-func _draw_sprite(tex: Texture2D, size: float, c: Color) -> void:
-	var half := size * 0.5
-	if _rise < 0.0:
-		EnemyShape.ground_shadow(self, half)   # 脚下投影（贴图怪也有"站地"感）
-	draw_texture_rect_region(tex, Rect2(-half, -half, size, size),
-		Rect2(Vector2.ZERO, tex.get_size()), c)
+func squashing() -> bool:
+	return _squash > 0.0
 
-# 血条：精英/Boss 常显；普通怪满血时不挡视线
-func _draw_hp_bar() -> void:
-	if hp >= max_hp and not elite and etype != "boss":
-		return
-	var w := radius * 2.0
-	var y := -radius - 8.0
-	draw_rect(Rect2(-w * 0.5, y, w, 3.5), Color(0, 0, 0, 0.55))
-	draw_rect(Rect2(-w * 0.5, y, w * clampf(hp / max_hp, 0.0, 1.0), 3.5), Color(0.85, 0.95, 0.5))
+func squash_q() -> float:
+	return _squash
+
+func squash_dir() -> Vector2:
+	return _squash_dir
+
+func anim_phase() -> float:
+	return _phase
+
+func tex2d() -> Texture2D:
+	return _tex

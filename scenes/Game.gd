@@ -5,6 +5,7 @@ extends Node2D
 
 const BulletScene := preload("res://entities/Bullet/Bullet.tscn")
 const EnemyScene := preload("res://entities/Enemy/Enemy.tscn")
+const EnemyDraw := preload("res://entities/Enemy/EnemyDraw.gd")
 const PickupFieldScene := preload("res://entities/Pickup/PickupField.tscn")
 const HUDScene := preload("res://ui/HUD/HUD.tscn")
 const FxScene := preload("res://ui/Fx/FxLayer.tscn")
@@ -135,15 +136,17 @@ func _build_pools() -> void:
 		b.recycle()
 		add_child(b)
 		world.bullets.append(b)
-	# "enemies" 组：整个池子一次性挂上（对象池里的节点常驻，靠 alive 标记区分死活），
-	# 这样别处想数"场上有几只怪"只要一次 group 查询，不必每帧同步一个计数器。
-	# 现在唯一的用处是设置里打开 FPS 计数器时把同屏怪数一起显示出来。
+	# "enemies" 组：整池一次性挂上（池节点常驻，靠 alive 标记区分死活），
+	# 别处想数同屏怪数只要一次 group 查询（现在唯一用处：FPS 计数器一起显示）。
 	for i in BattleWorld.MAX_ENEMIES:
 		var e = EnemyScene.instantiate()
 		e.recycle()
 		add_child(e)
 		e.add_to_group("enemies")
 		world.enemies.append(e)
+	# 合批绘制节点：同屏敌人在这一个节点里画完（draw call 每只一次→1 次）。
+	# 紧挨敌人池之后挂载，保持 子弹 < 敌人(合批) < 击杀爆点 的层级与原来一致。
+	add_child(EnemyDraw.new(world))
 
 func _on_player_died() -> void:
 	set_physics_process(false)
