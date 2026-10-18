@@ -255,6 +255,20 @@ else
 fi
 
 echo ""
+echo "=== 2.9.5 命中风暴分配闸门（③ 特效/GC 池化：最高频事件路径）==="
+# 2.9 守清场那一帧的尖峰，这里守【每次命中】的分配：6 武器每秒十几次命中，
+# per-hit 的新建/销毁累积成 GC 压力时均值帧率照样漂亮。两轮命中风暴
+# （真信号路径 + 真池）+ 全部老化，判据见 scripts/hit_storm_band.py。
+if [ -f scripts/hit_storm_band.py ]; then
+  PY7=$(command -v python3.11 || command -v python3)
+  if ! "$PY7" scripts/hit_storm_band.py; then
+    fail=$((fail+1))
+  fi
+else
+  echo "  ⚠ 缺少 scripts/hit_storm_band.py，跳过"
+fi
+
+echo ""
 echo "=== 2.10 道具定价不变式（硬失败：同属性不得有严格劣势的死卡）==="
 # 判据见 scripts/upgrade_audit.py：道具可跨波重复购买且线性叠加，所以
 # "同属性更贵还更少"或"被 k 件基础档严格优势替代"的卡永远是死卡。
