@@ -74,15 +74,15 @@ static func _gloss(c: CanvasItem, radius: float, deco: bool = true) -> void:
 static func ground_shadow(c: CanvasItem, radius: float, deco: bool = true) -> void:
 	var cy := radius * 0.95
 	var outer := PackedVector2Array()
-	for i in 18:
-		var a := TAU * float(i) / 18.0
+	for i in 10:
+		var a := TAU * float(i) / 10.0
 		outer.append(Vector2(cos(a) * radius * 0.95, cy + sin(a) * radius * 0.27))
 	c.draw_colored_polygon(outer, Color(0.0, 0.0, 0.0, 0.13))
 	if not deco:
-		return   # 低档：只画一圈影，省一个 16 点多边形
+		return   # 低档：只画一圈影，省一个 8 点多边形
 	var inner := PackedVector2Array()
-	for i in 16:
-		var a := TAU * float(i) / 16.0
+	for i in 8:
+		var a := TAU * float(i) / 8.0
 		inner.append(Vector2(cos(a) * radius * 0.72, cy + sin(a) * radius * 0.20))
 	c.draw_colored_polygon(inner, Color(0.0, 0.0, 0.0, 0.22))
 

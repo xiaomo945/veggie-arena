@@ -1,8 +1,7 @@
 extends Node2D
 
 # 敌人：造型一眼能分清（grunt 红圆 / fast 橙三角 / tank 紫六边 / fly 菱 / boss 星）。
-# 有 res://art/sprite_enemy_<类型>.png 就画贴图，否则走凶萌手绘（EnemyShape）；
-# 闪白 / 挤压回弹 / 出场升起 / 血条共用。
+# 有 res://art/sprite_enemy_<类型>.png 就画贴图，否则走凶萌手绘（EnemyShape）—— 闪白/挤压回弹/出场升起/血条共用。
 
 const SPRITE_SCALE := 2.2   # 贴图边长 = radius * 系数（贴图角色约占画布 90%，与手绘体量一致）
 const FLASH_DUR := 0.16
@@ -25,9 +24,9 @@ var _phase := 0.0
 var _kb := Vector2.ZERO          # 受击击退脉冲（由 EnemySystem 施加/衰减）
 # 状态效果统一表：{效果名: {"v": 强度, "t": 剩余秒}}。slow 减速 / freeze 冻结 / poison 中毒(按最大生命%结算) / burn 灼烧 / shred 破甲，加新效果只多一个名字。
 var _fx: Dictionary = {}
-# 持续伤害（毒/灼烧）节流累加器：见 tick_fx。一片怪同时中毒时，若每帧都走 damage_enemy
-# （发飘字+挤压+结算），会瞬间上千次调用卡死手机——这里把 dot 累加，每 0.5s 才结算一次。
-# 抽成独立 DotTicker（core/，纯逻辑不依赖 autoload）以便单元测试直接验证节流。
+# 持续伤害（毒/灼烧）节流累加器：见 tick_fx。一片怪同时中毒时若每帧都走 damage_enemy
+# （飘字+挤压+结算）会瞬间上千次调用卡死手机——这里把 dot 累加、每 0.5s 才结算一次；
+# 抽成独立 DotTicker（core/，纯逻辑）以便单测直接验证节流。
 var _ticker := DotTicker.new()
 # Boss 多阶段 / 冲锋技能（仅 etype=="boss" 生效）
 var _phase_steps: Array = []        # 阶段血量阈值（来自配置；空数组=不分阶段）
@@ -43,6 +42,7 @@ var _rise := -1.0
 var _squash := 0.0
 var _squash_dir := Vector2.ZERO
 var _dirty := false                 # 屏幕外时攒下的重绘请求（进屏幕再补，见 EnemyCull）
+var _tex: Texture2D = null          # spawn 时缓存一次贴图，省每帧 Art.sprite 的归一化/拼串/查表
 const Shake := preload("res://entities/effects/Shake.gd")
 const Cull := preload("res://entities/Enemy/EnemyCull.gd")
 const EnemyShape := preload("res://entities/Enemy/EnemyShape.gd")
@@ -52,6 +52,7 @@ const RISE_T := 0.85      # Boss "从地里升起来"的时长
 
 func spawn(pos: Vector2, stats: Dictionary, id: int) -> void:
 	etype = str(stats.get("type", "grunt"))
+	_tex = Art.sprite("enemy_" + etype)   # 缓存一次，_draw_body 不再每帧查表
 	eid = id
 	hp = float(stats.get("hp", 10))
 	max_hp = hp
@@ -240,7 +241,7 @@ func _draw() -> void:
 
 # 本体（贴图或手绘）+ 出场升起缩放 + 受击白色描边 + 挤压回弹
 func _draw_body(c: Color, flash_k: float) -> void:
-	var tex := Art.sprite("enemy_" + etype)
+	var tex := _tex
 	var growing := _rise >= 0.0
 	# 升起中：本体从坑里长出来（overshoot 一下更有"破土"的劲）
 	if growing:
