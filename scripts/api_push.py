@@ -27,7 +27,10 @@ API = "https://api.github.com"
 
 
 def sh(*args: str) -> str:
-    return subprocess.check_output(args, text=True).strip()
+    # ⚠️ text=True 默认按 Windows 本地编码（GBK）解码，git 输出的是 UTF-8，
+    # 中文路径会乱码 —— 后续与 -z 的原始字节路径互相匹配时静默错位。
+    # 显式 utf-8（踩过：docs/07_积压需求与排期.md 推送时 KeyError）。
+    return subprocess.check_output(args, text=True, encoding="utf-8").strip()
 
 
 def gh(method: str, path: str, payload=None):
@@ -87,9 +90,13 @@ def main() -> None:
     files = changed_files(parent, target)
     print("changed files: %d" % len(files))
 
-    # 2. 每个路径的真实 git mode（100644/100755/120000/160000）——从 ls-tree 读，别猜
+    # 2. 每个路径的真实 git mode（100644/100755/120000/160000）——从 ls-tree 读，别猜。
+    #    ⚠️ 必须 -z：git 对非 ASCII 路径会加双引号并转义（"docs/07\351..."），
+    #    与 diff -z 的原始路径对不上（KeyError 就是这么来的）。
     modes: dict = {}
-    for ln in sh("git", "ls-tree", "-r", target).splitlines():
+    for ln in sh("git", "ls-tree", "-r", "-z", target).split("\0"):
+        if not ln:
+            continue
         meta, path = ln.split("\t", 1)
         mode, typ, sha = meta.split()
         modes[path] = (mode, typ, sha)
