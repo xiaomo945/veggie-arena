@@ -45,4 +45,15 @@ func run(_arg = null) -> Dictionary:
 	chk(game.contains("Events.pause_requested.connect"), "Game 订阅 pause_requested")
 	chk(game.contains("Events.resume_requested.connect"), "Game 订阅 resume_requested")
 
+	# 选武器页键盘处理必须有局内门禁（2026-10-19 线上实测 bug）：
+	# 没门禁时局内 J/U 会漏进 _unhandled_key_input——
+	#   J=_on_confirm() → emit run_requested 静默重开，首局 Onboarding 引导跟着重弹挡屏
+	#   U=_on_back()    → _on_picker_back 把隐藏的标题页拉回来盖住战场
+	# 表现为"每一次按 J 和 U 都出现遮挡"。
+	var picker := FileAccess.get_file_as_string("res://ui/Screens/WeaponPicker.gd")
+	chk(picker.contains("if not visible or GameState.running"),
+		"WeaponPicker 键盘处理带 可见性+running 双门禁")
+	chk(picker.contains("KEY_ESCAPE, KEY_U:") and picker.contains("_on_back()"),
+		"选武器页 U/Esc = 返回（门禁保护下仅开打前有效）")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
