@@ -111,6 +111,7 @@ func _rebuild_skills(ids: Array) -> void:
 		_add({
 			"type": "skill",
 			"id": str(ids[i]),
+			"slot_index": i,
 			"center": pivot + Vector2(cos(a), sin(a)) * arc_r,
 		})
 
@@ -124,6 +125,8 @@ func _add(s: Dictionary) -> void:
 	var sid: String = str(s.get("id", ""))
 	if sid != "":
 		b.skill_id = sid
+	# 槽位下标（0/1/2 → 键盘 J/K/L）：SkillButton 画键位角标用
+	b.slot_index = int(s.get("slot_index", -1))
 	add_child(b)                                    # 先入树，_ready 里才定下 size
 	b.position = (s["center"] as Vector2) - b.size * 0.5
 	if b.btn_type == "wok":

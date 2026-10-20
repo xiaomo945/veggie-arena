@@ -65,4 +65,15 @@ func _run() -> void:
 	moved_b = pos1.distance_to(p.global_position)
 	var d2: Dictionary = p.get("_dash")
 	print("  B 结果: 位移 %.1fpx  dir=%s" % [moved_b, d2.get("dir")])
+	# 场景 C：朝正下冲刺（0,1）—— 验证角色不旋转：叶子必须还朝上。
+	# 旧代码把萝卜按 dash 方向整体旋转，朝下冲 = "头朝下"。窗口模式截图留证。
+	for _f in 100:
+		await physics_frame
+	print("=== C：朝正下 (0,1) dash + active 中段截图 ===")
+	p.call("_fire_dash", Vector2(0.0, 1.0))
+	for i in 3:   # 冲到中段（t 0.10 左右）再拍，形变和速度线都在
+		await physics_frame
+	await process_frame
+	root.get_texture().get_image().save_png("C:/Users/windos/AppData/Local/Temp/va_shot/dash_down.png")
+	print("  C 截图已存: C:/Users/windos/AppData/Local/Temp/va_shot/dash_down.png")
 	quit(0)

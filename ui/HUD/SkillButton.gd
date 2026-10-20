@@ -1,8 +1,7 @@
 extends Control
 
-# 右侧技能按钮（王者荣耀式）：锅气大按钮 / 冲刺 / 主动技，各自认领自己矩形内还没被
-# 占用的那根手指（多指各管各的）；不处理 GUI 点击（mouse_filter=IGNORE），触摸靠
-# _input 判矩形命中，桌面同路径，不会"点一下触发两次"。
+# 右侧技能按钮（王者荣耀式）：锅气/冲刺/主动技各自认领矩形内还没被占用的那根手指
+# （多指各管各的）；不处理 GUI 点击，触摸靠 _input 判矩形命中，桌面同路径不双触发。
 
 const TYPE_WOK := "wok"
 const TYPE_DASH := "dash"
@@ -11,9 +10,11 @@ const TYPE_ATTACK := "attack"    # 手动攻击键：右下角大按钮，释放
 
 const SkillDef := preload("res://core/SkillDef.gd")
 const SkillLook := preload("res://ui/SkillLook.gd")
+const KeyCap := preload("res://ui/HUD/KeyCap.gd")
 
 var btn_type := "dash"
 var skill_id := ""               # TYPE_SKILL 时有效：对应 data/skills.json 的 id
+var slot_index := -1             # 技能槽下标 0/1/2 → 键盘 J/K/L（KeyCap 角标用；固定槽 -1）
 
 var _touch_index := -1
 var _flash := 0.0   # 键盘触发白环的剩余强度（1→0 衰减，见 flash()/_process）
@@ -64,7 +65,7 @@ func _ready() -> void:
 func _char_skill_id() -> String:
 	return SkillDef.skill_id_of(Data.character(GameState.character))
 
-# 换角色后重取技能 id：显示名/配色/冷却曲线全跟着变（不同步会显示错误进度）
+# 换角色后重取技能 id：显示名/配色/冷却曲线全跟着变
 func _on_char_changed(_key: String) -> void:
 	var id := _char_skill_id()
 	if id == skill_id:
@@ -95,7 +96,7 @@ func set_charges(n: int) -> void:
 	_charges = n
 	queue_redraw()
 
-# 主动技能冷却状态（SkillSystem 每帧广播）
+# 主动技能冷却状态（SkillSystem 广播）
 func _on_skill_cd(id: String, ratio: float, ready: bool) -> void:
 	if id != skill_id:
 		return
@@ -147,13 +148,12 @@ func _trigger() -> void:
 		Events.skill_requested.emit(skill_id)
 	queue_redraw()
 
-# 公开触发（键盘 J/K/L/U/空格 经 HudButtons 的三个 press_*）：与手指点按同一条
-# _trigger，附带白环闪一下，让玩家看见"这键我按到了"
+# 公开触发（键盘 J/K/L/U/空格 经 HudButtons press_* 调）：同走 _trigger + 白环闪
 func press() -> void:
 	_trigger()
 	flash()
 
-# 键盘触发反馈：白环强度置 1，由 _process 衰减、_draw 画（手指点按不走这里）
+# 键盘触发反馈：白环强度置 1，_process 衰减、_draw 画
 func flash() -> void:
 	_flash = 1.0
 	queue_redraw()
@@ -178,6 +178,8 @@ func _draw() -> void:
 	# 键盘触发白环：贴外圈、随 _flash 淡出（和冷却扇形/充能环区分开）
 	if _flash > 0.0:
 		draw_arc(c, size.x * 0.5 - 1.0, 0.0, TAU, 48, Color(1, 1, 1, _flash), 3.0, true)
+		# 键位角标（映射口径见 ui/HUD/KeyCap.gd）
+		KeyCap.draw(self, KeyCap.label(btn_type, slot_index), size)
 
 func _on_locale_changed(_l: String = "") -> void:
 	queue_redraw()
@@ -204,8 +206,7 @@ func _draw_wok(c: Vector2) -> void:
 		34 if ready else 22, Color(1.0, 1.0, 0.98) if ready else Color(1.0, 0.85, 0.6, 0.8))
 
 # ---- 冲刺：大号双箭头（»）+ "冲刺" 文字标签 ----
-# 旧版被玩家吐槽"有两个箭头是冲刺吗？没有效果"：18px 小三角无文字还和快进键挨着被误认。
-# 现在换成 22px 粗双箭头 + 底部文字标签，快进按钮已整体删除（无消费者，误触还背锅）。
+# 旧版玩家吐槽"有两个箭头是冲刺吗？没有效果"：换成粗双箭头 + 底部文字标签。
 func _draw_dash(c: Vector2) -> void:
 	var radius := size.x * 0.5 - 4.0
 	var base := Color(0.16, 0.20, 0.28, 0.42)
@@ -233,7 +234,6 @@ func _draw_dash(c: Vector2) -> void:
 	draw_string(fs, Vector2(c.x - tw * 0.5, c.y + 26.0), txt,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.90, 0.97, 0.90, 0.92))
 
-# 扇形多边形（圆心 + 半径 + 起止角），用于冷却遮罩
 func _wedge(c: Vector2, r: float, from: float, to: float) -> PackedVector2Array:
 	var pts := PackedVector2Array([c])
 	var steps := 24
@@ -258,10 +258,10 @@ func _draw_skill(c: Vector2) -> void:
 	var fs := ThemeDB.fallback_font
 	if fs == null:
 		return
-	# 形态名优先：凑够 3 把刀的法师，按钮上写的就是"冰锥爆裂"而不是"冰霜新星"
+	# 形态名优先：凑够同类武器换了招，按钮写新招名（法师 ="冰锥爆裂"而非"冰霜新星"）
 	var txt := I18n.t("skill_" + _skill_form) if _skill_form != "base" \
 		else I18n.t("skill_" + skill_id)
-	# 按钮只有 76px 宽：技能名先按 18 号画，超宽一路缩到 12 号，绝不溢出按钮外
+	# 76px 宽按钮：技能名 18 号起画，超宽一路缩到 12 号，绝不溢出
 	var tfs := 18
 	var tw := fs.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs).x
 	while tw > size.x - 12.0 and tfs > 12:

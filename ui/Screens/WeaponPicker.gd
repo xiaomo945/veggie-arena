@@ -225,8 +225,7 @@ func _on_back() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	# ⚠️ 局内门禁：本页只在"未开打"时可见（GameState.running=false）。
 	# 没有这道门禁的惨案（线上实测）：局内 J/U 会漏进这里——
-	#   J=_on_confirm() → 直接 emit run_requested → 静默重开一局，
-	#     首局存档的 Onboarding 引导层跟着重弹出来挡屏；
+	#   J=_on_confirm() → 直接 emit run_requested → 静默重开一局；
 	#   U=_on_back()   → _on_picker_back 把隐藏的标题页拉回来盖住战场。
 	# 表现为"每一次按 J 和 U 都弹遮挡"。移动端不受影响（触屏不走这条）。
 	if not visible or GameState.running:

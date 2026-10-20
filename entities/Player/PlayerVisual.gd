@@ -43,13 +43,20 @@ func _draw() -> void:
 	# 冲刺瞬间沿冲刺方向轻微拉长（速度感），武器图标不跟着变形，所以画完马上复位
 	if player.Dash.active(player.dash_state()):
 		var ddir: Vector2 = player.dash_state()["dir"] as Vector2
-		var ang: float = ddir.angle()
 		# 冲刺速度线：身后三道短亮线，先于身体画（旧版只有淡残影 + 大幅形变，
 		# 玩家原话"按了一下角色扁一下，没有效果"）
 		_draw_dash_lines(ddir)
-		# 形变从 (1.45,0.72) 收到 (1.28,0.88)：旧值单独看就是"角色被压扁"，
-		# 速度感现在由残影拖尾 + 速度线承担，形变只留一点"前倾"的意味
-		draw_set_transform(Vector2.ZERO, ang, Vector2(1.28, 0.88))
+		# 形变 = 沿冲刺方向拉长 1.28 / 横向收 0.88，但【不旋转角色】：旋转会让
+		# 萝卜的叶子/脸跟着翻过去（冲刺朝斜下/下时"头朝下"）。做法是方向投影
+		# 矩阵 M = I + (λ−1)·d⊗d（d 为单位冲刺向），角色局部坐标系不变。
+		var L := 1.28
+		var k: float = (L - 1.0)
+		var ddx: float = ddir.x * ddir.x
+		var ddy: float = ddir.y * ddir.y
+		var dxy: float = ddir.x * ddir.y * k
+		var m := Transform2D(Vector2(1.0 + k * ddx, dxy), Vector2(dxy, 1.0 + k * ddy),
+			Vector2.ZERO)
+		draw_set_transform_matrix(m)
 		if tex != null:
 			_draw_sprite(tex, 1.0, 1.0, 1.0)
 		else:
@@ -118,8 +125,10 @@ func _draw_body(squash: float, stretch: float, alpha: float) -> void:
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(2, -bh), Vector2(12, -bh - 13), Vector2(1, -bh - 4)]),
 		Color(LEAF2.r, LEAF2.g, LEAF2.b, alpha))
-	# 脸：看向移动方向
+	# 脸：看向移动方向；冲刺期间看冲刺方向（_dir 是冲刺前的输入，脸会滞后一拍）
 	var look: Vector2 = player.move_dir()
+	if player.Dash.active(player.dash_state()):
+		look = player.dash_state()["dir"] as Vector2
 	if look == Vector2.ZERO:
 		look = Vector2(0, -1)
 	else:

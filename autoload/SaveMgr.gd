@@ -111,8 +111,9 @@ func total_runs() -> int:
 func last_character() -> String:
 	return str(data.get("character", ""))
 
-# 首局引导：只在"真·首局"弹（从未记录过任何一局，且没被显式关过）。
-# 老存档（runs>0）即使没 onboarded 字段也不弹 —— 不打扰回归玩家。
+# 首局引导开关（2026-10-20 已删引导层 Onboarding.gd——玩家反馈"太像错误
+# 提醒"，操作改到 HUD 按钮上的键位角标）。这两个函数暂无调用方，先留作
+# 兼容：老存档里的 onboarded 字段继续被读，不会有人再写它。
 func needs_onboarding() -> bool:
 	return total_runs() == 0 and not bool(data.get("onboarded", false))
 

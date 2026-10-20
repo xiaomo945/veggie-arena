@@ -47,7 +47,7 @@ func run(_arg = null) -> Dictionary:
 
 	# 选武器页键盘处理必须有局内门禁（2026-10-19 线上实测 bug）：
 	# 没门禁时局内 J/U 会漏进 _unhandled_key_input——
-	#   J=_on_confirm() → emit run_requested 静默重开，首局 Onboarding 引导跟着重弹挡屏
+	#   J=_on_confirm() → emit run_requested 静默重开一局
 	#   U=_on_back()    → _on_picker_back 把隐藏的标题页拉回来盖住战场
 	# 表现为"每一次按 J 和 U 都出现遮挡"。
 	var picker := FileAccess.get_file_as_string("res://ui/Screens/WeaponPicker.gd")
