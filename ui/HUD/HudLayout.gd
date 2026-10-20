@@ -107,8 +107,12 @@ func banner_ys() -> Array:
 func banner_w() -> float: return 960.0 if Data.is_landscape() else 540.0
 
 # ---- HudButtons：右下技能簇（圆心 + 扇面半径 + 冲刺位 + 扇面角度）----
+# 横屏 design 宽 960（LANDSCAPE_SIZE，不是 1080！）。2026-10-19 用户诉求
+# "整簇收紧贴右下角"：pivot (820,430)→(813,430)，冲刺从左上孤岛 (580,385)
+# 改到攻击键右侧 (916,385)——防重叠约束下半44+半50+净距8=102 →
+# 圆心 x = 960−44 = 916（右贴边），攻击圆心 x ≤ 813（|dx|=103 留 1px 余量）。
 func buttons_pivot() -> Vector2:
-	return Vector2(820.0, 430.0) if Data.is_landscape() else Vector2(468.0, 762.0)
+	return Vector2(813.0, 430.0) if Data.is_landscape() else Vector2(468.0, 762.0)
 # ⚠️ 弧半径是几何约束推出来的，别随手调（test_button_layout.gd 钉死）：
 #   攻击键(半50)↔锅气键(半40)斜 45° 相对，轴净距 = r·sin45°，要 ≥ 98（半径和+净距8）
 #   → r ≥ 138.6；锅气键屏上底边 = 攻击屏上y + r·sin45° + 40 ≤ 屏高：
@@ -116,10 +120,11 @@ func buttons_pivot() -> Vector2:
 func buttons_arc_r() -> float: return 143.0 if Data.is_landscape() else 152.0
 func buttons_dash_center() -> Vector2:
 	# 竖屏：冲刺在扇面左上 (455,500)，远离技能环也不进摇杆移动区。
-	# 横屏：贴在扇面左侧 (580,385)。⚠️ 不能更靠右：技1（180°）屏上中心
-	#    (677,396)，冲刺半 44 + 技能半 38 + 净距 8 = 90 → 冲刺圆心 x ≤ 587，
-	#    取 580 留 7px 余量；与锅气键(135°)轴净距 139、与攻击键 240，都富余。
-	return Vector2(580.0, 385.0) if Data.is_landscape() else Vector2(455.0, 500.0)
+	# 横屏：攻击键右侧 (916,385) —— 防重叠约束下最靠右的解：
+	#   半44+半50+净距8 = 102 → 圆心 x ≤ 960−44 = 916，攻击圆心 x ≤ 813；
+	#   与技3(270°) |dx|=103 ✓；与锅气键(135°) |dy|=146 ✓（判定取 max 轴距）。
+	#   ⚠️ 旧值 (580,385) 孤悬战场中部，用户反馈"按钮位置不对"（2026-10-19）。
+	return Vector2(916.0, 385.0) if Data.is_landscape() else Vector2(455.0, 500.0)
 # ⚠️ skill 槽【不写 id】：技能表已角色化，且武器/道具还会【赠送】技能
 #    （见 core/SkillSlots.gd）—— 写死 id 就会放出一个招不出来的按钮（真踩过：
 #    这里写 poison，而 poison 已被角色专属技能取代 → 按钮点了没反应）。
