@@ -169,8 +169,12 @@ func _physics_process(delta: float) -> void:
 			_speed, delta, _k_forward, _k_reverse)
 		_vx = nv.x
 		_vy = nv.y
-		global_position = Movement.clamp_to_arena(
-			global_position + Vector2(_vx, _vy) * delta, _arena, _radius)
+	# ⚠️ 位置更新必须在 if/else 之外：7109491 拆分重构时把它误缩进 else，
+	# 冲刺期间只设 _vx/_vy 从不动位置 —— dash 退化成"原地拉长变形"，
+	# 96px 冲刺距离全部变成结束瞬间几帧滑行的 13px（2026-10-20 实测复现）。
+	# scripts/dash_probe.gd 钉住：场景级 active 期间 position 必须持续变化。
+	global_position = Movement.clamp_to_arena(
+		global_position + Vector2(_vx, _vy) * delta, _arena, _radius)
 	if _ifr > 0.0:
 		_ifr -= delta
 	# 冲刺附带的无敌：比冲刺位移本身长一点，穿过怪堆不会刚落地就挨打

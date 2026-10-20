@@ -195,6 +195,18 @@ func run(data = null) -> Dictionary:
 	var s8 := Dash.make()
 	chk(Dash.start(s8, Dash.random_dir(rng), c), "随机方向可以触发冲刺")
 
+	# 14) 场景级位移回归（2026-10-20 用户实测"冲刺原地变形没有效果"）：
+	# 7109491 拆分重构把 Player._physics_process 的 global_position 更新误缩进
+	# else 分支 → 冲刺 9 帧只设 _vx/_vy 从不挪窝，96px 冲刺距离变成结束瞬间
+	# 13px 滑行。src 契约钉死缩进：位置更新必须单 tab（与 if/else 同级）。
+	var psrc := FileAccess.get_file_as_string("res://entities/Player/Player.gd")
+	chk(psrc.contains("\n\tglobal_position = Movement.clamp_to_arena("),
+		"Player 位置更新在 if/else 之外（冲刺期间也持续位移）")
+	chk(not psrc.contains("\n\t\tglobal_position = Movement.clamp_to_arena("),
+		"位置更新没有误缩进进 else（7109491 回归钉）")
+	chk(psrc.contains("\n\t\t_vx = dv.x") and psrc.contains("\n\t\t_vy = dv.y"),
+		"Dash.active 分支仍在设置冲刺速度（if 里算速度、if/else 外统一更新位置）")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
 
 # 方向的离散化键（用于统计覆盖面，避免浮点比较）
