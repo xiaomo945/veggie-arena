@@ -59,4 +59,29 @@ func run() -> Dictionary:
 		chk(num_right <= border_inner - 4.0,
 			"数字宽 %.0f：右缘 %.0f 距内边框 %.0f ≥ 4px（药丸宽 %.0f）" % [cw, num_right, border_inner, pw])
 
+	# 6) 一键购买（2026-10-21 玩家反馈"买东西太不方便、别点那么多下"）：
+	#    价格药丸 = 购买按钮，点它 1 次直接买入；卡面其余区域仍开详情页。
+	#    源码契约 + 命中区几何（+6px 外扩后横向不得出卡片）。
+	var ctl_src := FileAccess.get_file_as_string("res://ui/Shop/ShopCardCtl.gd")
+	var card_src := FileAccess.get_file_as_string("res://ui/Shop/ShopCard.gd")
+	var shop_src := FileAccess.get_file_as_string("res://ui/Shop/Shop.gd")
+	var panel_src := FileAccess.get_file_as_string("res://ui/Shop/ShopPanel.gd")
+	chk(ctl_src.contains("d[\"_pill\"] = pill"), "小卡把价格药丸命中区存进 _pill（点价格=购买）")
+	chk(card_src.contains("on_buy") and card_src.contains("_d.get(\"_pill\""),
+		"卡片点击优先判价格药丸 → 一键购买")
+	chk(shop_src.contains("c.on_buy = _buy.bind(i)"), "Shop 给每张卡接上一键购买")
+	for h in [132.0, 176.0]:
+		var pw2: float = ShopCardCtl.price_pill_w(24.0)
+		var pill := Rect2(151.0 - 10.0 - pw2, h - 26.0, pw2, 22.0).grow(6.0)
+		chk(pill.position.x >= 0.0 and pill.end.x <= 151.0,
+			"卡高 %.0f：购买命中区横向不出卡片（%.1f..%.1f）" % [h, pill.position.x, pill.end.x])
+
+	# 7) 按钮重排：合成/刷新搬到"我的武器"右侧，下一波改底部整宽主按钮
+	chk(panel_src.contains("set_position(Vector2(394, 112))"), "合成按钮在库存右侧（不再挤底部）")
+	chk(panel_src.contains("set_position(Vector2(394, 172))"), "刷新按钮在库存右侧")
+	chk(panel_src.contains("Vector2(PANEL_W - 28, 58)"), "下一波是底部整宽主按钮")
+	# 详情页关闭键与购买同排（旧版在右上角，买完要跨整页去关）
+	var detail_src := FileAccess.get_file_as_string("res://ui/Shop/ShopOfferDetail.gd")
+	chk(detail_src.contains("set_position(Vector2(398, 622))"), "详情页关闭键与购买同排")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}

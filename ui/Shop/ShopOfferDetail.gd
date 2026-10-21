@@ -97,7 +97,7 @@ func _build() -> void:
 	scroll.add_child(_body)
 
 	_buy_btn = Button.new()
-	_buy_btn.set_size(Vector2(232, 60))
+	_buy_btn.set_size(Vector2(200, 60))
 	_buy_btn.set_position(Vector2(20, 622))
 	_buy_btn.add_theme_font_size_override("font_size", 21)
 	_buy_btn.focus_mode = Control.FOCUS_NONE   # 防 ui_accept（空格/回车）误触发
@@ -106,27 +106,28 @@ func _build() -> void:
 	panel.add_child(_buy_btn)
 
 	_lock_btn = Button.new()
-	_lock_btn.set_size(Vector2(94, 60))
-	_lock_btn.set_position(Vector2(260, 622))
-	_lock_btn.add_theme_font_size_override("font_size", 16)
+	_lock_btn.set_size(Vector2(76, 60))
+	_lock_btn.set_position(Vector2(226, 622))
+	_lock_btn.add_theme_font_size_override("font_size", 15)
 	_lock_btn.focus_mode = Control.FOCUS_NONE
 	Art.style_button(_lock_btn, Color(0.30, 0.24, 0.30, 0.95), Color(0.99, 0.84, 0.35), Color(0.62, 0.55, 0.30))
 	_lock_btn.pressed.connect(_on_lock)
 	panel.add_child(_lock_btn)
 
 	_reroll_btn = Button.new()
-	_reroll_btn.set_size(Vector2(110, 60))
-	_reroll_btn.set_position(Vector2(360, 622))
-	_reroll_btn.add_theme_font_size_override("font_size", 16)
+	_reroll_btn.set_size(Vector2(84, 60))
+	_reroll_btn.set_position(Vector2(308, 622))
+	_reroll_btn.add_theme_font_size_override("font_size", 14)
 	_reroll_btn.focus_mode = Control.FOCUS_NONE
 	Art.style_button(_reroll_btn, Color(0.20, 0.30, 0.42, 0.95), Color(0.72, 0.90, 1.0), Color(0.45, 0.62, 0.80))
 	_reroll_btn.pressed.connect(_on_reroll)
 	panel.add_child(_reroll_btn)
 
+	# 关闭：与购买同排（旧版在右上角，买完要跨整页去关，玩家反馈"太费手"）
 	_close_btn = Button.new()
 	_close_btn.text = "✕"
-	_close_btn.set_size(Vector2(34, 34))
-	_close_btn.set_position(Vector2(470 - 44, 14))
+	_close_btn.set_size(Vector2(44, 60))
+	_close_btn.set_position(Vector2(398, 622))
 	_close_btn.add_theme_font_size_override("font_size", 20)
 	_close_btn.focus_mode = Control.FOCUS_NONE
 	Art.style_button(_close_btn, Color(0.40, 0.30, 0.18, 0.95), Color(0.98, 0.86, 0.50), Color(0.60, 0.46, 0.24))

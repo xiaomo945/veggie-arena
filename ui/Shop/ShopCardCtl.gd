@@ -160,10 +160,10 @@ static func _center(c: Control, font: Font, text: String, cx: float, y: float,
 # 锁定 / 单张刷新按钮不画在这里，移到独立详情页（点小卡弹出，见 ui/Screens/WeaponDetail.gd）。
 #
 # 布局（151×132 实卡，真机反馈"图标太小、价格文字没居中、框多余"后重做）：
-#   y 6~25    角标行：Lv（武器，右上）/ 稀有度 pips（道具，右上）/ 涨价（左上）
-#   y 26~98   图标相框：近满宽 + 大圆角，图标居中装满（旧版只有 54×54 一只小盒）
-#   y 100~132 底部行：名称在左、价格药丸在右下角（旧版在左下，且数字偏右 10px）
-static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
+#   y 6~25     角标行：Lv（武器，右上）/ 稀有度 pips（道具，右上）/ 涨价（左上）
+#   y 24~h-28  图标相框：近满宽 + 大圆角，图标居中装满（卡高 176 时图标 ≈124px）
+#   y h-26..   底部行：名称在左、价格药丸（= 一键购买按钮）在右下角
+static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font, coin: Texture2D = null) -> void:
 	if font == null:
 		return
 	var sold := bool(d.get("sold", false))
@@ -210,15 +210,17 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 	var fy := 24.0
 	var fh := maxf(36.0, r.size.y - fy - 28.0)     # 底部留给 名称+价格 行
 	var box := Rect2(8.0, fy, r.size.x - 16.0, fh)
-	c.draw_style_box(_sb_tile(accent.darkened(0.62), Color(accent, 0.85), 12.0, 2), box)
+	# 柔光底：图标后面垫一层同色低透明圆，暗底上图标才"发光"、不再像贴纸
+	c.draw_circle(box.get_center(), minf(box.size.x, box.size.y) * 0.46, Color(accent, 0.18))
+	c.draw_style_box(_sb_tile(accent.darkened(0.66), Color(accent, 0.55), 14.0, 1), box)
 	var tex: Texture2D = d.get("icon", null)
 	if tex != null and tex is Texture2D:
-		var s := minf(box.size.x - 12.0, box.size.y - 10.0)
+		var s := minf(box.size.x - 6.0, box.size.y - 4.0)
 		c.draw_texture_rect_region(tex,
 			Rect2(box.position.x + (box.size.x - s) * 0.5, box.position.y + (box.size.y - s) * 0.5, s, s),
 			Rect2(Vector2.ZERO, (tex as Texture2D).get_size()))
 	else:
-		var gs := minf(box.size.x - 12.0, box.size.y - 10.0)
+		var gs := minf(box.size.x - 6.0, box.size.y - 4.0)
 		draw_gem(c, Rect2(box.position.x + (box.size.x - gs) * 0.5,
 			box.position.y + (box.size.y - gs) * 0.5, gs, gs), accent)
 	# ---- 底部行：名称在左（不居中，给右下角药丸让位），价格药丸右下 ----
@@ -230,15 +232,18 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 	var pill := Rect2(r.size.x - 10.0 - pw, r.size.y - 26.0, pw, 22.0)
 	c.draw_style_box(_sb_tile(Color(0.30, 0.21, 0.06, 0.96) if ok else Color(0.28, 0.10, 0.08, 0.96),
 		Color(0.85, 0.66, 0.22) if ok else Color(0.95, 0.42, 0.40), 12.0, 2), pill)
-	var art = Engine.get_singleton("Art")
-	var coin: Texture2D = null
-	if art != null:
-		coin = art.coin_icon()
+	# 金币图标由调用方传入：静态工具类不能直接写 Art（--script 测试模式没有 autoload），
+	# 而 Engine.get_singleton("Art") 对 autoload 恒为 null（旧写法 → 价格药丸一直没有金币图）。
 	if coin != null:
 		c.draw_texture_rect_region(coin, Rect2(price_coin_x(pill), pill.position.y + 3.0, 16.0, 16.0),
 			Rect2(Vector2.ZERO, coin.get_size()))
 	_center(c, font, cost, price_num_cx(pill, cw),
 		pill.position.y + 11.0 + cfs * 0.35, cfs, GOLD if ok else Color(1.0, 0.72, 0.66))
+	# 价格药丸 = 购买按钮：右上角挂绿色"+"角标，点它 1 次就买（不必再进详情页）
+	var bpos := Vector2(pill.position.x + pill.size.x - 2.0, pill.position.y + 2.0)
+	c.draw_circle(bpos, 9.0, Color(0.25, 0.77, 0.32))
+	_center(c, font, "+", bpos.x, bpos.y + 4.5, 15, Color(1, 1, 1, 0.96))
+	d["_pill"] = pill.grow(6.0)   # 命中区（ShopCard._tap 读它）
 	# 名称：底部行左侧，最大宽度给药丸留位（放不下就截断，绝不压到药丸上）
 	var nm_c := Color(1.0, 1.0, 1.0, 0.97) if not dim else Color(0.6, 0.63, 0.67, 0.8)
 	var nm := str(d.get("name", ""))
@@ -249,11 +254,8 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 	c.draw_string(font, Vector2(10.0, r.size.y - 26.0 + 11.0 + 4.0 + nm_fs * 0.35 - 4.0), nm,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, nm_fs, nm_c)
 
-	# 已售出：整卡压暗 + 绿色大勾 + "已售出" + 价格删除线。
-	# 宽卡那套压暗+大勾（ShopCard._draw 宽卡分支）在真实商店里是死代码 —— 商店是
-	# 3 列网格、卡宽 151px，全走这里的小卡路径，所以"买过了"此前只有名字变灰，
-	# 真机反馈"只变个边框、根本看不出买没买成、反复点"。这里补齐且比宽卡更狠：
-	# 价格药丸一并划掉，杜绝"看着还能再买一次"的错觉。
+	# 已售出：整卡压暗 + 绿色大勾 + "已售出" + 价格删除线（商店全走小卡路径，
+	# 真机反馈旧版"只变个边框、看不出买没买成、反复点"，这里必须一眼可辨）。
 	if sold:
 		c.draw_style_box(_sb_tile(Color(0.05, 0.07, 0.04, 0.80), Color(0.25, 0.77, 0.32, 0.95), 14.0, 2), r)
 		var cx := r.size.x * 0.5
@@ -261,7 +263,7 @@ static func draw_tile(c: Control, r: Rect2, d: Dictionary, font: Font) -> void:
 		c.draw_polyline(PackedVector2Array([Vector2(cx - 18.0, cy + 2.0),
 			Vector2(cx - 6.0, cy + 14.0), Vector2(cx + 16.0, cy - 12.0)]),
 			Color(0.38, 0.92, 0.48), 5.0, true)
-		var i18n = Engine.get_singleton("I18n")
+		var i18n = c.get_node_or_null("/root/I18n")   # autoload 不是 engine singleton（旧写法恒 null → 中文也显示 SOLD）
 		var sold_txt := "SOLD"
 		if i18n != null:
 			sold_txt = str(i18n.t("shop_sold"))

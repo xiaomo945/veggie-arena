@@ -17,7 +17,7 @@ const PANEL_W := 496.0
 const PANEL_H := 762.0
 const CARD_H := 100.0
 const CARD_GAP := 8.0
-const CARD_MAX_H := 132.0      # 卡少时不要撑成巨无霸，剩下的空间居中留白
+const CARD_MAX_H := 176.0      # 卡少时不要撑成巨无霸；6 张时正好吃满卡片区、图标放到最大
 const INV_H := 116.0           # 我的武器：6 个固定方格（含标题行；放大图标+武器名后加高）
 const CARDS_Y := 252.0
 const CARDS_BOTTOM := 674.0    # 底部按钮上沿：卡片区总高度 = 674 - 224
@@ -98,7 +98,8 @@ func _build_stats() -> void:
 
 func _build_inventory() -> void:
 	inv = InventoryPanelScript.new()
-	inv.set_size(Vector2(PANEL_W - 28, INV_H)); inv.set_position(Vector2(14, 112))
+	# 右侧留 96px 给"合成 / 刷新"（从底部搬上来：买完顺手合成，不用跨半屏去够）
+	inv.set_size(Vector2(PANEL_W - 124, INV_H)); inv.set_position(Vector2(14, 112))
 	add_child(inv)
 
 # 一次建满 MAX_CARDS 张，实际显示几张由本场节奏决定（高度随之自适应）。
@@ -115,18 +116,20 @@ func _build_cards() -> void:
 func _build_buttons() -> void:
 	# ⚠️ 三个按钮全部 FOCUS_NONE：否则任一按钮拿到焦点后，键盘"空格/回车"会走
 	#    ui_accept 直接触发它（空格在战斗里是冲刺），与 kb_* 信号双路触发。
-	merge_btn = Button.new(); merge_btn.set_size(Vector2(126, 58)); merge_btn.set_position(Vector2(14, BTN_Y))
-	merge_btn.add_theme_font_size_override("font_size", 17)
+	# 合成 / 刷新搬到"我的武器"右侧竖排（原来和下一波一起挤在底部，够按钮要跨半屏）
+	merge_btn = Button.new(); merge_btn.set_size(Vector2(88, 56)); merge_btn.set_position(Vector2(394, 112))
+	merge_btn.add_theme_font_size_override("font_size", 15)
 	merge_btn.focus_mode = Control.FOCUS_NONE
 	style_btn(merge_btn, Color(0.95, 0.62, 0.16), Color(0.22, 0.13, 0.03), Color(0.86, 0.56, 0.14))
 	add_child(merge_btn)
-	reroll_btn = Button.new(); reroll_btn.set_size(Vector2(144, 58)); reroll_btn.set_position(Vector2(146, BTN_Y))
-	reroll_btn.add_theme_font_size_override("font_size", 17)
+	reroll_btn = Button.new(); reroll_btn.set_size(Vector2(88, 56)); reroll_btn.set_position(Vector2(394, 172))
+	reroll_btn.add_theme_font_size_override("font_size", 12)
 	reroll_btn.focus_mode = Control.FOCUS_NONE
 	style_btn(reroll_btn, Color(0.24, 0.33, 0.18), Color(0.74, 0.91, 0.54), Color(0.48, 0.64, 0.32))
 	add_child(reroll_btn)
-	next_btn = Button.new(); next_btn.set_size(Vector2(180, 58)); next_btn.set_position(Vector2(296, BTN_Y))
-	next_btn.text = I18n.t("shop_next"); next_btn.add_theme_font_size_override("font_size", 19)
+	# 下一波：底部整宽主按钮（唯一的高频出口，手指不用瞄）
+	next_btn = Button.new(); next_btn.set_size(Vector2(PANEL_W - 28, 58)); next_btn.set_position(Vector2(14, BTN_Y))
+	next_btn.text = I18n.t("shop_next"); next_btn.add_theme_font_size_override("font_size", 20)
 	next_btn.focus_mode = Control.FOCUS_NONE
 	style_btn(next_btn, Color(0.98, 0.80, 0.22), Color(0.24, 0.15, 0.04), Color(0.88, 0.66, 0.16))
 	add_child(next_btn)

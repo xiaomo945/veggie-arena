@@ -1,8 +1,8 @@
 extends Control
 
 # 商店单卡（哑组件）：只把一份报价画好看，购买逻辑全在 Shop.gd；data 由 Shop 预计算后
-# setup() 灌入（300 行红线）。配色走数值总表 §8.4：武器 Lv 灰/绿/蓝/紫，道具稀有度
-# 灰/蓝/紫。卡通暖色规范：卡片圆角 14 / 药丸 8~14 / 描边 2px，主次：名称 > 图标/价 > 标签。
+# setup() 灌入（300 行红线）。配色 §8.4：武器 Lv 灰/绿/蓝/紫，道具稀有度灰/蓝/紫；
+# 卡通暖色：卡片圆角 14 / 药丸 8~14 / 描边 2px，主次：名称 > 图标/价 > 标签。
 # ---- §8.4 配色（用户指定分级：白1/绿2/蓝3/紫4/红5/传说6）----
 const LV_COLORS := [Color(0.85,0.86,0.90), Color(0.25,0.77,0.32), Color(0.18,0.55,1.0),
 	Color(0.63,0.29,1.0), Color(1.0,0.30,0.24), Color(1.0,0.71,0.12)]
@@ -20,11 +20,12 @@ var _hover := false
 var _font: Font
 var _sbs: Dictionary = {}   # StyleBoxFlat 缓存（按参数去重，避免每次重绘都 new）
 var on_click: Callable = Callable()
+# 一键购买：点价格药丸（含绿色"+"角标）直接买入，不再"点卡→详情页→点购买"
+var on_buy: Callable = Callable()
 # 单卡可控（Q6）：右上角两个小按钮 —— 锁定（整店刷新时保留）/ 单张刷新（只换这一张）
 var on_lock: Callable = Callable()
 var on_reroll_one: Callable = Callable()
-# 同一次点按可能被重复投递（触屏 + 模拟鼠标事件落到相近坐标）：短时同位置只认一次，
-# 杜绝"点一下购买却买下两把"。emulate_mouse_from_touch 开启时触屏会同时投递 ScreenTouch 与模拟 MouseButton。
+# 触屏 + 模拟鼠标事件可能双投递：300ms 内同坐标只认一次（否则点一下买两把）。
 var _last_touch_pos := Vector2.INF
 var _last_touch_ms := -1000.0
 func _ready() -> void:
@@ -67,7 +68,7 @@ func _gui_input(event: InputEvent) -> void:
 			on_lock.call(); get_viewport().set_input_as_handled(); return
 		if hit == 2 and on_reroll_one.is_valid():
 			on_reroll_one.call(); get_viewport().set_input_as_handled(); return
-		_tap()
+		_tap(p)
 		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseMotion:
@@ -88,9 +89,14 @@ func _hit_btn(p: Vector2) -> int:
 		return 0
 	return Ctl.hit(size, p)
 
-func _tap() -> void:
+func _tap(p: Vector2) -> void:
 	# 槽满（disabled）的卡也允许点开详情页看介绍；只有已售出的卡不响应
 	if _d.get("sold", false):
+		return
+	# 价格药丸 = 一键购买（小卡路径把命中区存进 _pill）；卡面其余区域仍开详情页
+	var pill: Rect2 = _d.get("_pill", Rect2())
+	if pill.has_area() and pill.has_point(p) and on_buy.is_valid():
+		on_buy.call()
 		return
 	if on_click.is_valid():
 		on_click.call()
@@ -113,8 +119,7 @@ func _draw() -> void:
 	elif not afford:
 		border = Color(0.6, 0.5, 0.5, 0.9)
 	draw_style_box(_sb(CARD_BG if not dim else CARD_BG_DIM, border, 14.0, 4 if _hover else 2), r)
-	# 角色羁绊描边：本命武器整张卡描一圈金边、羁绊类描一圈淡蓝边。
-	# 这是"攒钱等它刷出来"的视觉钩子 —— 扫一眼货架就知道哪几张是给我的。
+	# 角色羁绊描边：本命金边 / 羁绊蓝边 —— 扫一眼货架就知道哪几张是给我的。
 	var syn := str(_d.get("syn", ""))
 	if syn != "" and not disabled:
 		var syn_col := SynText.color_of(syn)   # 本命金 / 杂食绿（开出新的一类）/ 羁绊蓝
@@ -122,7 +127,7 @@ func _draw() -> void:
 			3 if syn != "bond" else 2), r.grow(3.0))
 
 	# 小卡（网格 tile，宽 < 200）：只画图标+名+价+Lv，点它开详情页（锁定/刷新在详情页）
-	if r.size.x < 200.0: Ctl.draw_tile(self, r, _d, _font); return
+	if r.size.x < 200.0: Ctl.draw_tile(self, r, _d, _font, Art.coin_icon()); return
 	# 矮卡（大商店 6 张）砍掉描述、缩小图标，否则文字会糊成一团
 	var compact := Ctl.is_compact(r.size.y)
 	var ib := Ctl.icon_box(r.size.y)
@@ -146,9 +151,7 @@ func _draw() -> void:
 	var name_c := Color(1,1,1,0.97) if not dim else Color(0.6,0.63,0.67,0.8)
 	_center(_d.get("name", ""), tx + 8.0, 26, 18, name_c, r.size.x - tx - 92.0)
 
-	# 类型 + 状态标签 —— 只在高卡画：矮卡（大商店 6 张，h≈68）时标签行 y=47
-	# 会与左下价格药丸（y=34~58）叠在一起，"UPG" 被金币盖成"UPC"；
-	# 矮卡空间不够，套装/状态信息由套装条与角标承担，这里直接省略。
+	# 类型 + 状态标签只在高卡画（矮卡空间不够，套装/状态由套装条与角标承担）。
 	if not compact:
 		var tag := str(_d.get("tag", ""))
 		var tag_c := accent if not dim else Color(0.55,0.58,0.62,0.8)
@@ -169,9 +172,7 @@ func _draw() -> void:
 		# 矮卡例外（#288 第二环）：类型标签整行省略，但"白送主动技"是购买理由，必须露出来
 		Ctl.draw_gift_tag(self, _font, _d, tx, dim, r.size.x)
 
-	# 描述（按字符换行；卡矮就只画 1 行并上移，底部整条留给价格药丸，避免重叠）
-	# 验算：100 高卡 desc y=60（1 行，字底 ~72），药丸 y=72 起 → 分毫不压；
-	#       132 高卡 desc 两行 60/76（字底 ~88），药丸 y=104 起 → 同样安全。
+	# 描述：按字符换行，底部整条留给价格药丸（验算过 100/132 高卡都不重叠）。
 	if not compact:
 		var desc := str(_d.get("tip", ""))
 		var lines := 1 if r.size.y < 120.0 else 2

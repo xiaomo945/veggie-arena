@@ -1,7 +1,7 @@
 extends CanvasLayer
 
-# 补给站：波次结束后弹出。手机竖屏单列：顶部金币/属性 → 我的武器(可售) → 购买卡 → 合成/刷新/下一波。
-# 骨架与样式在 ShopPanel.gd，卡片画法在 ShopCard.gd，本文件只做业务。节奏（core/ShopPlan.gd）：每 big_every 波开一次"大商店"（全场打折）；⚠️ 卡数不随波次变，每波固定开满 6 张、不留空位（硬要求）。
+# 补给站：波次结束后弹出。竖屏单列：金币/属性 → 我的武器(可售) → 购买卡 → 合成/刷新/下一波。
+# 骨架/样式在 ShopPanel.gd，卡片画法在 ShopCard.gd，本文件只做业务（节奏见 core/ShopPlan.gd）。
 
 const Economy := preload("res://core/Economy.gd")
 const Inventory := preload("res://core/Inventory.gd")
@@ -64,8 +64,7 @@ func _build() -> void:
 	_panel.merge_btn.pressed.connect(_merge)
 	_panel.reroll_btn.pressed.connect(_reroll_bought)
 	_panel.next_btn.pressed.connect(_next_wave)
-	# 撤销按钮：浮在面板下方安全区，卖出后才出现（构造在 SellUndo.build_button）
-	_undo_btn = SellUndo.build_button(_root)
+	_undo_btn = SellUndo.build_button(_root)   # 卖出后才出现（见 SellUndo.build_button）
 	_undo.wire(_undo_btn, Callable(self, "_refresh"))
 	# 独立详情页。⚠️ 延后一拍再挂：父节点 _ready 里 add_child 会撞 "busy setting up children" 而失败
 	_offer_detail = ShopOfferDetailScript.new()
@@ -77,6 +76,7 @@ func _build() -> void:
 	for i in _panel.cards.size():
 		var c: ShopCardScript = _panel.cards[i]
 		c.on_click = _offer_detail.show_for.bind(i)
+		c.on_buy = _buy.bind(i)   # 点价格药丸 = 1 次点击直接买入
 	# 键盘操作（电脑版补给站）：挂 _root 下与卡片同父级（继承横屏缩放），shop 供它回调业务方法
 	var keys := ShopKeysScript.new(); keys.shop = self
 	_root.add_child(keys)
