@@ -207,6 +207,23 @@ func run(data = null) -> Dictionary:
 	chk(psrc.contains("\n\t\t_vx = dv.x") and psrc.contains("\n\t\t_vy = dv.y"),
 		"Dash.active 分支仍在设置冲刺速度（if 里算速度、if/else 外统一更新位置）")
 
+	# 15) 冲刺方向裁决（2026-10-21 玩家反馈"只有 8 个方向、手感生硬"）：
+	# 桌面端朝准星（连续 360°），摇杆端用摇杆方向；鼠标压在 HUD 上时退回移动方向。
+	var up := Vector2(0, -1)
+	chk(Dash.aim(Vector2.ZERO, Vector2(100, 0), true, false).is_equal_approx(Vector2(1, 0)),
+		"有鼠标且在空场景：朝准星冲（连续角度）")
+	var diag := Dash.aim(up, Vector2(100, 100), true, false)
+	chk(absf(diag.angle() - Vector2(1, 1).angle()) < 0.001,
+		"准星方向优先于键盘 8 向（能冲出 22.5° 这类中间角度）")
+	chk(Dash.aim(up, Vector2(100, 0), false, false).is_equal_approx(up),
+		"无鼠标（触屏）：用摇杆方向")
+	chk(Dash.aim(up, Vector2(100, 0), true, true).is_equal_approx(up),
+		"鼠标压在 UI 上：退回移动方向（不朝按钮冲）")
+	chk(Dash.aim(up, Vector2(1, 0), true, false).is_equal_approx(up),
+		"准星几乎贴脸：视为没瞄准，退回移动方向")
+	chk(psrc.contains("Dash.aim("), "Player 冲刺方向走 Dash.aim 裁决")
+	chk(psrc.contains("DEVICE_ID_EMULATION"), "Player 用 DEVICE_ID_EMULATION 排除触屏模拟鼠标")
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
 
 # 方向的离散化键（用于统计覆盖面，避免浮点比较）

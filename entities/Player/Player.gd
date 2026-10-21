@@ -1,9 +1,7 @@
 extends CharacterBody2D
 
 # 玩家：跑位手感（core/Movement）+ 武器环绕与自动开火（core/Weapon）
-# 本文件不含任何平衡数值 —— 速度、冷却、伤害全读 balance.json / weapons.json
-#
-# 外观（手绘/贴图）已抽到 entities/Player/PlayerVisual.gd，本脚本只负责物理与战斗。
+# 数值全读 balance.json / weapons.json；外观已抽到 PlayerVisual.gd。
 
 const Movement := preload("res://core/Movement.gd")
 const Weapon := preload("res://core/Weapon.gd")
@@ -44,6 +42,7 @@ var _dash_trail: Array = []      # 冲刺残影 [{pos, t}]
 var dash_count := 0                 # 本局冲刺次数（诊断/HUD 用）
 var _buf := {}                      # 输入缓冲（冲刺/技能按下时还没转好就先记着）
 var _dash_want := Vector2.ZERO      # 最近一次冲刺请求的方向（无方向输入时已置随机向）
+var _has_mouse := false             # 本局见过真实鼠标移动（触屏模拟事件不算）
 var hits_taken := 0            # 本局挨打次数（诊断：确认伤害系统真的在打人）
 var damage_taken := 0          # 本局累计受到的伤害
 
@@ -94,9 +93,8 @@ func _ready() -> void:
 	Events.dash_requested.connect(_on_dash_requested)
 	Events.character_changed.connect(_on_character_changed)
 	Events.weapons_changed.connect(_rebuild_weapons)
-	# ⚠️ 关键修复：开局（start_run → reset 设好 GameState.weapons 后）必须重建武器缓存，
-	# 否则 arms 一直用启动时那份（start_weapon 还是空时的 [pistol,smg]），选武器页设的
-	# 初始武器永远不生效，要到第一关商店买了才出现。run_started 在 reset() 之后 emit。
+	# ⚠️ 开局（start_run → reset 设好 GameState.weapons 后）必须重建武器缓存，
+	# 否则 arms 一直用启动时那份，选武器页设的初始武器永远不生效（run_started 在 reset 之后）。
 	Events.run_started.connect(_rebuild_weapons)
 	arms = PlayerWeapons.new(self)
 	_rebuild_weapons()
@@ -106,15 +104,21 @@ func _on_dir(d: Vector2) -> void:
 	if d.length_squared() > 0.0001:
 		_face = d.normalized()
 
+# 真实鼠标（非触屏模拟事件）移动过 → 桌面端冲刺可朝准星瞄准。
+# ⚠️ DEVICE_ID_EMULATION 是触屏模拟的鼠标事件，拿它判定"有鼠标"会让手机朝手指落点冲。
+func _input(ev: InputEvent) -> void:
+	if ev is InputEventMouseMotion and ev.device != InputEvent.DEVICE_ID_EMULATION:
+		_has_mouse = true
+
 func _on_release() -> void:
 	_dir = Vector2.ZERO
 
-# 冲刺按钮：有方向输入（摇杆/键盘 WASD）就朝那边冲；没有就随机冲一个方向
-# （玩家原话："不配合方向键单独按就随机冲刺，配合方向键就冲指定方向"）。
-# ⚠️ 冷却中按下不丢弃：记进输入缓冲（core/InputBuffer.gd），冷却一到就自动冲出去 ——
-#    冷却 1.8s，玩家凭手感常会早按 0.1 秒，没缓冲就是"按了没反应"。
+# 冲刺按钮：桌面端朝准星、摇杆端朝摇杆方向；没有方向输入就随机冲。
+# ⚠️ 冷却中按下不丢弃：记进输入缓冲，冷却一到自动冲出（玩家常早按 0.1 秒）。
 func _on_dash_requested() -> void:
-	var d := _dir
+	# 方向裁决：桌面端朝准星（连续 360°），摇杆端用摇杆方向，都没有才随机
+	var d := Dash.aim(_dir, get_global_mouse_position() - global_position,
+		_has_mouse, get_viewport().gui_get_hovered_control() != null)
 	if d.length_squared() < 0.0001:
 		d = Dash.random_dir()
 	_dash_want = d
@@ -169,10 +173,8 @@ func _physics_process(delta: float) -> void:
 			_speed, delta, _k_forward, _k_reverse)
 		_vx = nv.x
 		_vy = nv.y
-	# ⚠️ 位置更新必须在 if/else 之外：7109491 拆分重构时把它误缩进 else，
-	# 冲刺期间只设 _vx/_vy 从不动位置 —— dash 退化成"原地拉长变形"，
-	# 96px 冲刺距离全部变成结束瞬间几帧滑行的 13px（2026-10-20 实测复现）。
-	# scripts/dash_probe.gd 钉住：场景级 active 期间 position 必须持续变化。
+	# ⚠️ 位置更新必须在 if/else 之外：7109491 曾误缩进 else，冲刺只设速度不挪窝，
+	# 96px 冲刺退化成 13px 滑行（scripts/dash_probe.gd + test_dash 14 钉住）。
 	global_position = Movement.clamp_to_arena(
 		global_position + Vector2(_vx, _vy) * delta, _arena, _radius)
 	if _ifr > 0.0:
@@ -257,8 +259,7 @@ func _tick_regen(delta: float) -> void:
 		GameState.heal(n)
 
 # 速度 = 基准 × 道具加成(Speed%) × 玩家自调手感倍率(Settings.move_scale)。
-# 每帧重算而不是只在 rebuild 时算一次：设置里拧滑块要立刻生效，
-# 而 stat_value 只是遍历十几个升级项，每帧算一次的开销可以忽略。
+# 每帧重算：设置里拧滑块要立刻生效（stat_value 只遍历十几个升级项，开销可忽略）。
 func _refresh_speed() -> void:
 	var mult := 1.0
 	# 颠勺"狂暴"期间攻速移速一起涨（GameState 统一倒计时，武器端读同一个值）
@@ -267,8 +268,7 @@ func _refresh_speed() -> void:
 	# 刚挨过打：短暂加速，好让玩家有机会拉开距离而不是被黏着磨死
 	if _boost_left > 0.0:
 		mult *= 1.0 + GameState.stat_value("hit_boost")
-	# ⚠️ 硬上限：speed_pct 道具可一直堆、frenzy/hit_boost 还会乘，不封顶就会"飘到不跟手"。
-	#   cap 来自 balance.json 的 player.speed_cap（含所有倍率后的最终像素/秒上限）。
+	# ⚠️ 硬上限：speed_pct 可一直堆、frenzy/hit_boost 还会乘，不封顶就"飘到不跟手"（balance.json speed_cap）。
 	var cap := float(Data.player_cfg().get("speed_cap", 600.0))
 	# 加成走边际递减（core/SpeedCurve.gd）：堆太多会飘到"画面发晃"，实测不是性能问题
 	_speed = SpeedCurve.final_speed(float(Data.player_cfg().get("speed", 180)),

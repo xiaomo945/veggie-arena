@@ -37,12 +37,11 @@ static func active(s: Dictionary) -> bool:
 static func can_start(s: Dictionary, c: Dictionary) -> bool:
 	return float(s.get("cd", 0.0)) <= 0.0 and not active(s)
 
-# 随机冲刺方向。两种调用口径共用这一个函数（GDScript 没有重载）：
-#   random_dir()      —— 无参：连续随机角（randf 全局种子），触屏/无方向输入路径用；
-#                       单位长、非零，test_dash 11 抽 64 次方向互不相同。
-#   random_dir(rng)   —— 带种子 RNG：量化到 8 个离散方向（0/45/…/315°），
-#                       键盘冲刺（Player.kb_dash）与模拟器共用口径，test_dash 12 断言：
-#                       全部单位长、400 次抽样覆盖全部 8 向、均值无系统偏向。
+# 随机冲刺方向（只在"没有任何方向输入"时兜底）。两种调用口径共用这一个函数：
+#   random_dir()      —— 无参：连续随机角（randf 全局种子），单位长、非零，
+#                       test_dash 11 抽 64 次方向互不相同。
+#   random_dir(rng)   —— 带种子 RNG：量化到 8 个离散方向（0/45/…/315°），模拟器用，
+#                       test_dash 12 断言：全部单位长、400 次抽样覆盖 8 向、均值无偏向。
 # 为什么离散向要单位长：本项目方向口径统一归一化（Movement.stick_direction 除长度、
 #   StickInput.stick_vector 用 limit_length(1.0)），键盘斜向移动也是单位长。早期写法给
 #   对角乘 0.7071 想"归一化"，但 45° 的 cos/sin 本来就是 0.7071 —— 再乘一次等于把斜冲刺
@@ -54,6 +53,21 @@ static func random_dir(rng: RandomNumberGenerator = null) -> Vector2:
 		return Vector2(cos(a), sin(a))
 	var step := rng.randi_range(0, 7)
 	return Vector2(cos(float(step) * (PI / 4.0)), sin(float(step) * (PI / 4.0)))
+
+# 冲刺方向裁决（纯函数，便于单测）：桌面端鼠标瞄准优先，摇杆/键盘方向兜底。
+#   move      = 摇杆/键盘给出的方向（单位向量，或零向量）
+#   to_mouse  = 玩家→鼠标的世界向量（未归一化；长度过小视为没瞄准）
+#   has_mouse = 本局收到过【真实】鼠标移动（触屏模拟出来的鼠标事件不算）
+#   over_ui   = 鼠标正压在 HUD 按钮/面板上（此时"瞄准"没有意义）
+#
+# 为什么需要它：键盘 WASD 是 4 个二值键，天生只能产生 8 个方向，"上和左上之间"
+# 那个角度按不出来 —— 玩家反馈"冲刺只有 8 个方向、手感生硬"。鼠标瞄准给桌面端
+# 连续 360° 的角度，"往哪儿冲"由准星决定，冲刺方向才像自己的操作。
+# 压在 UI 上时退回 move：否则"点屏幕右下的冲刺键 → 朝右下冲"会完全反直觉。
+static func aim(move: Vector2, to_mouse: Vector2, has_mouse: bool, over_ui: bool) -> Vector2:
+	if has_mouse and not over_ui and to_mouse.length_squared() > 4.0:
+		return to_mouse.normalized()
+	return move
 
 # 触发冲刺。dir 为零向量时返回 false（没方向没法冲）。
 static func start(s: Dictionary, dir: Vector2, c: Dictionary) -> bool:
