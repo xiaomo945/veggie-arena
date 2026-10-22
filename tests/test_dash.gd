@@ -207,22 +207,39 @@ func run(data = null) -> Dictionary:
 	chk(psrc.contains("\n\t\t_vx = dv.x") and psrc.contains("\n\t\t_vy = dv.y"),
 		"Dash.active 分支仍在设置冲刺速度（if 里算速度、if/else 外统一更新位置）")
 
-	# 15) 冲刺方向裁决（2026-10-21 玩家反馈"只有 8 个方向、手感生硬"）：
-	# 桌面端朝准星（连续 360°），摇杆端用摇杆方向；鼠标压在 HUD 上时退回移动方向。
+	# 15) 冲刺方向裁决（2026-10-22 玩家纠正："两手用键盘根本不碰鼠标，就得按移动方向冲"）：
+	# **移动方向优先**；准星只在"一个方向键都没按"时补位，鼠标压 UI 时也不用准星。
 	var up := Vector2(0, -1)
-	chk(Dash.aim(Vector2.ZERO, Vector2(100, 0), true, false).is_equal_approx(Vector2(1, 0)),
-		"有鼠标且在空场景：朝准星冲（连续角度）")
-	var diag := Dash.aim(up, Vector2(100, 100), true, false)
-	chk(absf(diag.angle() - Vector2(1, 1).angle()) < 0.001,
-		"准星方向优先于键盘 8 向（能冲出 22.5° 这类中间角度）")
+	chk(Dash.aim(up, Vector2(100, 100), true, false).is_equal_approx(up),
+		"移动方向优先于准星（键盘玩家不碰鼠标也按移动方向冲）")
 	chk(Dash.aim(up, Vector2(100, 0), false, false).is_equal_approx(up),
-		"无鼠标（触屏）：用摇杆方向")
-	chk(Dash.aim(up, Vector2(100, 0), true, true).is_equal_approx(up),
-		"鼠标压在 UI 上：退回移动方向（不朝按钮冲）")
-	chk(Dash.aim(up, Vector2(1, 0), true, false).is_equal_approx(up),
-		"准星几乎贴脸：视为没瞄准，退回移动方向")
+		"无鼠标：用移动方向")
+	chk(Dash.aim(Vector2.ZERO, Vector2(100, 0), true, false).is_equal_approx(Vector2(1, 0)),
+		"没按方向键：桌面端朝准星补位（不再是随机向）")
+	chk(Dash.aim(Vector2.ZERO, Vector2(100, 0), true, true).is_equal_approx(Vector2.ZERO),
+		"没按方向键且鼠标压在 UI 上：返回零向量 → 随机兜底（不朝按钮冲）")
+	chk(Dash.aim(Vector2.ZERO, Vector2(1, 0), true, false).is_equal_approx(Vector2.ZERO),
+		"准星几乎贴脸：视为没瞄准")
 	chk(psrc.contains("Dash.aim("), "Player 冲刺方向走 Dash.aim 裁决")
+	chk(psrc.contains("Dash.sweep("), "Player 每帧对输入方向做平滑（转向瞬间给出中间角度）")
 	chk(psrc.contains("DEVICE_ID_EMULATION"), "Player 用 DEVICE_ID_EMULATION 排除触屏模拟鼠标")
+
+	# 16) 方向平滑（治"8 个方向、手感生硬"）：稳态精确 + 转向瞬间落在两键之间。
+	var ne := Vector2(1, -1).normalized()
+	var a0 := up.angle()
+	var a1 := ne.angle()
+	var mid := Dash.sweep(up, ne, 1.0 / 60.0)
+	chk(absf(mid.angle() - a0) > 0.02 and absf(mid.angle() - a1) > 0.02,
+		"转向一帧后方向落在两键之间（%.1f°，不是直接跳档）" % rad_to_deg(mid.angle()))
+	chk(mid.length() > 0.999 and mid.length() < 1.001, "平滑结果仍是单位向量（冲刺速度不被削）")
+	# 稳定按同一个键 → 收敛到输入方向；否则冲刺会系统性偏，玩家会觉得"冲不准"
+	var st := up
+	for _i in 60:
+		st = Dash.sweep(st, ne, 1.0 / 60.0)
+	chk(absf(st.angle() - a1) < 0.01, "持续按同一方向 60 帧后收敛到该方向（误差 %.3f°）"
+		% rad_to_deg(absf(st.angle() - a1)))
+	chk(Dash.sweep(up, Vector2.ZERO, 1.0 / 60.0).is_equal_approx(up), "松手后保留最后方向")
+	chk(Dash.sweep(up, -up, 1.0 / 60.0).is_equal_approx(-up), "180° 掉头直接切向，不做平滑")
 
 	return {"pass": _p, "fail": _f, "failures": _failures}
 

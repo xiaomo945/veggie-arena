@@ -43,6 +43,7 @@ var dash_count := 0                 # 本局冲刺次数（诊断/HUD 用）
 var _buf := {}                      # 输入缓冲（冲刺/技能按下时还没转好就先记着）
 var _dash_want := Vector2.ZERO      # 最近一次冲刺请求的方向（无方向输入时已置随机向）
 var _has_mouse := false             # 本局见过真实鼠标移动（触屏模拟事件不算）
+var _aim := Vector2.ZERO            # 方向平滑：连续化后的输入方向（转向瞬间给出中间角度）
 var hits_taken := 0            # 本局挨打次数（诊断：确认伤害系统真的在打人）
 var damage_taken := 0          # 本局累计受到的伤害
 
@@ -104,8 +105,7 @@ func _on_dir(d: Vector2) -> void:
 	if d.length_squared() > 0.0001:
 		_face = d.normalized()
 
-# 真实鼠标（非触屏模拟事件）移动过 → 桌面端冲刺可朝准星瞄准。
-# ⚠️ DEVICE_ID_EMULATION 是触屏模拟的鼠标事件，拿它判定"有鼠标"会让手机朝手指落点冲。
+# 真实鼠标移动过 → 桌面端"没按方向键"时可朝准星补位（触屏模拟事件不算，否则手机会朝手指冲）
 func _input(ev: InputEvent) -> void:
 	if ev is InputEventMouseMotion and ev.device != InputEvent.DEVICE_ID_EMULATION:
 		_has_mouse = true
@@ -113,11 +113,11 @@ func _input(ev: InputEvent) -> void:
 func _on_release() -> void:
 	_dir = Vector2.ZERO
 
-# 冲刺按钮：桌面端朝准星、摇杆端朝摇杆方向；没有方向输入就随机冲。
-# ⚠️ 冷却中按下不丢弃：记进输入缓冲，冷却一到自动冲出（玩家常早按 0.1 秒）。
+# 冲刺按钮：**按移动方向的角度冲**（键盘玩家两手不碰鼠标也完全够用）；一个方向键都没按
+# 才朝准星补位，再没有就随机。⚠️ 冷却中按下不丢弃：记进输入缓冲，冷却一到自动冲出。
 func _on_dash_requested() -> void:
-	# 方向裁决：桌面端朝准星（连续 360°），摇杆端用摇杆方向，都没有才随机
-	var d := Dash.aim(_dir, get_global_mouse_position() - global_position,
+	var mv := _aim if _dir.length_squared() > 0.0001 else Vector2.ZERO
+	var d := Dash.aim(mv, get_global_mouse_position() - global_position,
 		_has_mouse, get_viewport().gui_get_hovered_control() != null)
 	if d.length_squared() < 0.0001:
 		d = Dash.random_dir()
@@ -157,6 +157,7 @@ func _physics_process(delta: float) -> void:
 		_boost_left = maxf(0.0, _boost_left - delta)
 	_tick_regen(delta)
 	Dash.step(_dash, delta)
+	_aim = Dash.sweep(_aim, _dir, delta)
 	InputBuffer.tick(_buf, delta)
 	if InputBuffer.pending(_buf, "dash") and Dash.can_start(_dash, _dash_cfg):
 		InputBuffer.consume(_buf, "dash")
@@ -173,8 +174,7 @@ func _physics_process(delta: float) -> void:
 			_speed, delta, _k_forward, _k_reverse)
 		_vx = nv.x
 		_vy = nv.y
-	# ⚠️ 位置更新必须在 if/else 之外：7109491 曾误缩进 else，冲刺只设速度不挪窝，
-	# 96px 冲刺退化成 13px 滑行（scripts/dash_probe.gd + test_dash 14 钉住）。
+	# ⚠️ 位置更新必须在 if/else 之外：7109491 曾误缩进 else → 冲刺只设速度不挪窝（test_dash 14 钉住）。
 	global_position = Movement.clamp_to_arena(
 		global_position + Vector2(_vx, _vy) * delta, _arena, _radius)
 	if _ifr > 0.0:

@@ -54,20 +54,39 @@ static func random_dir(rng: RandomNumberGenerator = null) -> Vector2:
 	var step := rng.randi_range(0, 7)
 	return Vector2(cos(float(step) * (PI / 4.0)), sin(float(step) * (PI / 4.0)))
 
-# 冲刺方向裁决（纯函数，便于单测）：桌面端鼠标瞄准优先，摇杆/键盘方向兜底。
-#   move      = 摇杆/键盘给出的方向（单位向量，或零向量）
+# 方向平滑：键盘 WASD 只有 8 个方向，且转向是**瞬变**的（按下 A 的瞬间 90°→135°，
+# 中间没有任何帧）。对输入方向做一阶低通，转向后 0~120ms 内的方向落在两个键位之间 ——
+# 玩家"边转边冲"就能冲出 112.5° 这类中间角，冲刺从"8 格档位"变成连续平滑。
+# 稳态精确：一直按同一个键，收敛后方向与输入完全一致（不会一直歪着）。
+# ⚠️ 不能用"累积历史平均"代替：那样一直按 W 时方向永远是 90°，中间角反而出不来。
+const SWEEP_TAU := 0.12
+
+static func sweep(prev: Vector2, target: Vector2, delta: float) -> Vector2:
+	if target.length_squared() < 0.0001:
+		return prev                      # 松手不清零：松手瞬间按冲刺仍朝最后的方向
+	var t := target.normalized()
+	if prev.length_squared() < 0.0001:
+		return t
+	if prev.dot(t) < -0.9:
+		return t                         # 180° 掉头：平滑会经过垂直向，直接切更跟手
+	var k := 1.0 - exp(-delta / SWEEP_TAU)
+	var v := prev.lerp(t, k)
+	return v.normalized() if v.length_squared() > 0.0001 else t
+
+# 冲刺方向裁决（纯函数，便于单测）：**移动方向优先**。
+# 玩家原话："两手用键盘根本不碰鼠标，就得按移动方向的角度直接冲刺" —— 所以主路径
+# 必须是 move；准星只在"一个方向键都没按"时补位（总得朝个方向），再没有才随机。
+#   move      = 平滑后的移动方向（单位向量；无方向输入时为零向量）
 #   to_mouse  = 玩家→鼠标的世界向量（未归一化；长度过小视为没瞄准）
 #   has_mouse = 本局收到过【真实】鼠标移动（触屏模拟出来的鼠标事件不算）
 #   over_ui   = 鼠标正压在 HUD 按钮/面板上（此时"瞄准"没有意义）
-#
-# 为什么需要它：键盘 WASD 是 4 个二值键，天生只能产生 8 个方向，"上和左上之间"
-# 那个角度按不出来 —— 玩家反馈"冲刺只有 8 个方向、手感生硬"。鼠标瞄准给桌面端
-# 连续 360° 的角度，"往哪儿冲"由准星决定，冲刺方向才像自己的操作。
-# 压在 UI 上时退回 move：否则"点屏幕右下的冲刺键 → 朝右下冲"会完全反直觉。
+# 压在 UI 上时不用准星：否则"点屏幕右下的冲刺键 → 朝右下冲"会完全反直觉。
 static func aim(move: Vector2, to_mouse: Vector2, has_mouse: bool, over_ui: bool) -> Vector2:
+	if move.length_squared() > 0.0001:
+		return move.normalized()
 	if has_mouse and not over_ui and to_mouse.length_squared() > 4.0:
 		return to_mouse.normalized()
-	return move
+	return Vector2.ZERO
 
 # 触发冲刺。dir 为零向量时返回 false（没方向没法冲）。
 static func start(s: Dictionary, dir: Vector2, c: Dictionary) -> bool:
