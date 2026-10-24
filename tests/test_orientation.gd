@@ -39,4 +39,30 @@ func run(data) -> Dictionary:
 	# 复位，避免污染后续测试
 	data.set_landscape(false)
 
+	# ---- 首屏体检（2026-10-24，按"评审第一次打开"的视角钉死）----
+	# 三件事曾经都是坏的：标题页内容超过 900 高把 START 挤出屏（横屏只剩半截）、
+	# 新玩家进局没有任何操作提示、标题页底部摊着三行 build 阶梯（与角色详情页重复）。
+	_check_first_impression()
+
 	return {"pass": _p, "fail": _f, "failures": _failures}
+
+func _check_first_impression() -> void:
+	const SrcParse := preload("res://tests/SrcParse.gd")
+	var hint := SrcParse.read("res://ui/HUD/HintLine.gd")
+	chk(hint.length() > 0, "开局提示脚本存在")
+	chk(hint.contains("MOUSE_FILTER_IGNORE"), "开局提示不挡点击（mouse_filter=IGNORE）")
+	chk(hint.contains("run_started"), "开局提示在 run_started 时亮（不是一进游戏就常驻）")
+	chk(hint.contains("is_touchscreen_available"), "提示文案按设备分（手机说摇杆、桌面说 WASD）")
+	chk(hint.contains("set_anchors_and_offsets_preset"),
+		"提示铺满视口宽（只设 anchors 会停在文字宽，居中失效、左半截被裁）")
+	chk(hint.contains("0.30 if ScreenMode.is_widescreen() else 0.20"),
+		"提示位置竖 20% / 横 30%（避开连击按钮与顶部第二行）")
+	var hud := SrcParse.read("res://ui/HUD/HUD.gd")
+	chk(hud.contains("HintLineScript.new()"), "HUD 真的挂上了开局提示")
+	var ts := SrcParse.read("res://ui/Screens/TitleScreen.gd")
+	chk(ts.contains("_scale_text()") and ts.contains("title_scale"),
+		"标题页底部报内容量（19 位蔬菜 / 40 把武器）")
+	chk(not ts.contains("CharTiers.full("),
+		"标题页不再重复 build 阶梯（阶梯在角色详情页，省出的高度留给 START）")
+	chk(ts.contains("offset_bottom = -28.0"),
+		"标题页留底部安全区（-8 时 START 底边压在手势条/窗口边，真机横屏被裁）")

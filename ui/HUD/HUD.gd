@@ -1,8 +1,7 @@
 extends CanvasLayer
 
 # HUD：血条、波次进度、金币、击杀、武器槽、横幅、底部按钮。竖屏 540x900。
-# 【架构】本文件是编排器：订阅 Events → 分发给子组件 → 驱动 tick，不含控件构造细节；
-#   HudTop / HudBanners / HudButtons / HudSynergy 各自管控件与安全区平移，互不认识（曾长到 389 行，拆组件后才不随功能膨胀）。
+# 【架构】编排器：订阅 Events → 分发子组件 → 驱动 tick；HudTop/HudBanners/HudButtons/HudSynergy 各自管控件与安全区平移，互不认识。
 
 const HudTopScript := preload("res://ui/HUD/HudTop.gd")
 const HudBannersScript := preload("res://ui/HUD/HudBanners.gd")
@@ -10,13 +9,13 @@ const HudButtonsScript := preload("res://ui/HUD/HudButtons.gd")
 const HudSynergyScript := preload("res://ui/HUD/HudSynergy.gd")
 const WaveSkipScript := preload("res://ui/HUD/WaveSkip.gd")
 const FpsMeterScript := preload("res://ui/HUD/FpsMeter.gd")
+const HintLineScript := preload("res://ui/HUD/HintLine.gd")
 const DebugMode := preload("res://core/DebugMode.gd")
 const Weapon := preload("res://core/Weapon.gd")
 const WeaponSets := preload("res://core/WeaponSets.gd")
 const Stats := preload("res://core/Stats.gd")
 
-# 竖屏安全区：顶部内容下移避让刘海/状态栏，底部按钮上移避让手势条（值都在 HudLayout，
-# 相机要按"HUD 到底占多高"让位 —— 两处各写一份必然漂移，真踩过：角色被 HUD 盖死）。
+# 竖屏安全区：顶部下移避让刘海/状态栏，底部上移避让手势条（值都在 HudLayout，相机也按它让位，两处各写一份必然漂移）。
 # ⚠️ 底部平移由 HudButtons.relayout() 自重放并自刷共享矩形，攻击键与摇杆底盘才永远同一水平线。
 const COMBO_WINDOW := 2.5   # 连击有效窗口（秒）
 const COMBO_MIN := 2        # 连击 >=2 才显示
@@ -50,6 +49,7 @@ func _ready() -> void:
 	add_child(_banners)
 	add_to_group("hud")   # 供 Shop 等 UI 层通过 get_first_node_in_group 拿到 HUD，再取横幅组件
 
+	add_child(HintLineScript.new())   # 开局一行操作提示，6 秒淡出（IGNORE 鼠标，不挡点击）
 	_buttons = HudButtonsScript.new()
 	add_child(_buttons)
 

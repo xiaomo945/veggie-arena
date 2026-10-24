@@ -71,12 +71,17 @@ func run(_data) -> Dictionary:
 	chk("Synergy.progress(" in syn_src,
 		"羁绊条的数据来自 Synergy.progress（与战斗结算同一套规则，不会两处不一致）")
 
-	# ---- B3：选角页必须把整条阶梯摊开（开局前就能研究 build）----
+	# ---- B3：标题页底部报内容量（2026-10-24 改）----
+	# 原来这里摊 CharTiers.full 的完整阶梯（3 行 81px）。19 张角色卡把页面撑到贴底后
+	# START 底边出屏（横屏被裁），且阶梯与角色详情页完全重复 —— 改成一行内容量摘要，
+	# 顺带让新玩家/评审一眼看到"19 位蔬菜 · 40 把武器"。阶梯仍完整保留在 CharDetail。
 	var ts_src := SP.read("res://ui/Screens/TitleScreen.gd")
-	chk("CharTiers.full(" in ts_src,
-		"选角页画出了本命/羁绊的完整阶梯 + 形态预告（CharTiers.full）")
-	chk("character_changed" in ts_src and "_pick_lbl.text" in ts_src,
-		"换角色时阶梯文本跟着换（不换就会一直显示上一个角色的 build）")
+	chk("_scale_text()" in ts_src and "title_scale" in ts_src,
+		"标题页底部报内容量（角色数/武器数），不再重复阶梯")
+	chk("CharTiers.full(" not in ts_src,
+		"标题页不再摊 build 阶梯（省出高度给 START，信息在角色详情页）")
+	var cd_src := SP.read("res://ui/Screens/CharDetail.gd")
+	chk("tiers" in cd_src, "角色详情页仍完整展示阶梯（信息没丢，只是换了地方）")
 
 	# ---- B4：结算页必须复盘"这局羁绊堆到哪了" ----
 	# 没有复盘，玩家只会把失败归因为运气，下一局还是随手买。

@@ -4,7 +4,6 @@ extends CanvasLayer
 
 const CharacterPickerScript := preload("res://ui/Screens/CharacterPicker.gd")
 const CharDetailScript := preload("res://ui/Screens/CharDetail.gd")
-const CharTiers := preload("res://ui/Screens/CharTiers.gd")
 const UnlockText := preload("res://ui/UnlockText.gd")
 const WeaponPickerScript := preload("res://ui/Screens/WeaponPicker.gd")
 const RunModePickerScript := preload("res://ui/Screens/RunModePicker.gd")
@@ -59,7 +58,7 @@ func _build() -> void:
 	_box = VBoxContainer.new()
 	_box.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_box.offset_top = 72.0     # 顶部让给"解锁路线"按钮，标题从它下面开始
-	_box.offset_bottom = -8.0
+	_box.offset_bottom = -28.0   # 留底部安全区：-8 时 START 底边正好压在手势条/窗口边（真机横屏被裁）
 	_box.add_theme_constant_override("separation", 4)
 	_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_root.add_child(_box)
@@ -124,11 +123,11 @@ func _build() -> void:
 
 	# 开局前把这条 build 摊开给玩家看；英文下阶梯能超一屏宽，必须 autowrap 自由折行
 	var pick_hint := _mk_label(16, Color(0.60, 0.64, 0.72))
-	pick_hint.text = CharTiers.full(Data.character(GameState.character))
+	pick_hint.text = _scale_text()
 	pick_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_pick_lbl = pick_hint
 	_box.add_child(pick_hint)
-	Events.character_changed.connect(_on_character_changed)
+	# 换角色不再需要刷标题页底部那行（它报的是内容量，与角色无关）
 
 	var btn := Button.new()
 	btn.text = I18n.t("title_start")
@@ -204,11 +203,6 @@ func _on_tree_close() -> void:
 	Sfx.ui_click()
 	_tree_layer.visible = false
 
-# 换角色 = 换一整套阶梯，这行字必须跟着换（不换就会显示上一个角色的 build）
-func _on_character_changed(_key: String = "") -> void:
-	if _pick_lbl != null:
-		_pick_lbl.text = CharTiers.full(Data.character(GameState.character))
-
 # D3-4：点角色卡 → 弹该角色的独立详情页（本命/买什么/点什么技能/怎么玩）
 func _on_char_detail_requested(key: String) -> void:
 	if _char_detail != null:
@@ -217,8 +211,6 @@ func _on_char_detail_requested(key: String) -> void:
 # 详情页「选他」→ 真正换人（才走 GameState.set_character，触发重算血量/羁绊）
 func _on_char_picked(key: String) -> void:
 	GameState.set_character(key)
-	if _pick_lbl != null:
-		_pick_lbl.text = CharTiers.full(Data.character(GameState.character))
 
 func _on_start() -> void:
 	# START 是整局第一次点击：在这里出第一声，保证 Web/iOS 的 AudioContext 在"用户手势内"被解锁（iOS 上手势外出的第一声可能整局静音）。
@@ -277,10 +269,15 @@ func _on_locale_changed(_l: String = "") -> void:
 	var bs := SaveMgr.best_score()
 	_best_lbl.text = (I18n.t("title_best") % [bs, SaveMgr.best_wave()]) if bs > 0 else I18n.t("title_first")
 	_how_lbl.text = I18n.t("title_how")
-	_pick_lbl.text = CharTiers.full(Data.character(GameState.character))
+	_pick_lbl.text = _scale_text()
 	_start_btn.text = I18n.t("title_start")
 	_next_lbl.text = _next_text()
 	_next_lbl.visible = not _next_lbl.text.is_empty()
+
+# 底部这行报内容量（build 阶梯在角色详情页已完整展示）：新玩家/评审一眼看到体量，
+# 比一串"1:+4% 2:+9%"有用得多，也省掉三行高度 —— 19 张角色卡已把页面撑到贴底。
+func _scale_text() -> String:
+	return I18n.t("title_scale") % [SaveMgr.character_order().size(), Data.weapons.size()]
 
 # 标题页底部那行"下一把能拿到什么"：优先报角色，没有才报武器。角色比武器值钱 —— 它是一整条新玩法路线，玩家看见它更想再来一局（土豆兄弟的做法）。
 func _next_text() -> String:

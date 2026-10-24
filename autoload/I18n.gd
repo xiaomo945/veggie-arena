@@ -43,7 +43,6 @@ const UI := {
   "lang_zh": {"en": "中文", "zh": "中文"},
   "on": {"en": "ON", "zh": "开"},
   "off": {"en": "OFF", "zh": "关"},
-
   # ---- HUD ----
   "hud_gold": {"en": "GOLD %d", "zh": "金币 %d"},
   "hud_kills": {"en": "KILLS %d", "zh": "击杀 %d"},
@@ -91,7 +90,6 @@ const UI := {
   "skill_steam_burst": {"en": "STEAM", "zh": "蒸汽"},
   "skill_overload": {"en": "OVER", "zh": "超载"},
   "hud_attack": {"en": "ATK", "zh": "攻击"},
-
   # ---- 商店 ----
   "shop_title": {"en": "SHOP", "zh": "补给站"},
   "shop_gold": {"en": "GOLD %d", "zh": "金币 %d"},
@@ -193,6 +191,9 @@ const UI := {
   "title_how": {"en": "Drag the joystick to move\nWeapons fire on their own\nClear waves · grab gold · get stronger",
                 "zh": "拖动摇杆移动\n武器自动开火\n清波次 · 捡金币 · 变强"},
   "title_pick": {"en": "CHOOSE YOUR VEG", "zh": "选择你的蔬菜"},
+  "title_scale": {"en": "%d veg · %d weapons · tap a card", "zh": "%d 位蔬菜 · %d 把武器 · 点角色卡看详情"},
+  "hint_keys": {"en": "WASD move · SPACE dash · U attack · J/K/L skills", "zh": "WASD 移动 · 空格冲刺 · U 攻击 · J/K/L 技能"},
+  "hint_touch": {"en": "Drag the left stick to move · weapons fire on their own", "zh": "拖动左侧摇杆移动 · 武器自动开火 · 右下按钮放技能"},
   "mode_label": {"en": "RUN LENGTH", "zh": "单局时长"},
   "mode_short": {"en": "SHORT", "zh": "短局"},
   "mode_classic": {"en": "CLASSIC", "zh": "经典"},
